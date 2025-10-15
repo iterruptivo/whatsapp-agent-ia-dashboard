@@ -7,16 +7,16 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function OperativoPage() {
-  // Calculate default date range (last 30 days) in Lima timezone
+  // Calculate default date range (last 90 days) in Lima timezone
   const now = new Date();
 
   // Set to Lima timezone (UTC-5) - end of today
   const dateTo = new Date(now.toLocaleString('en-US', { timeZone: 'America/Lima' }));
   dateTo.setHours(23, 59, 59, 999);
 
-  // 30 days ago - start of day
+  // 90 days ago - start of day (temporary: capture all test leads)
   const dateFrom = new Date(dateTo);
-  dateFrom.setDate(dateFrom.getDate() - 30);
+  dateFrom.setDate(dateFrom.getDate() - 90);
   dateFrom.setHours(0, 0, 0, 0);
 
   // Fetch leads with 30-day filter (server-side)
