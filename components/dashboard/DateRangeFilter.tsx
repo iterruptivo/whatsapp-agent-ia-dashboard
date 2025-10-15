@@ -101,25 +101,24 @@ export default function DateRangeFilter({
         </button>
       </div>
 
-        {hasActiveFilter && (
-          <div className="w-full mt-2 text-xs text-gray-500">
-            {isDefaultRange ? (
-              <span className="text-gray-600">
-                Mostrando leads de los últimos 30 días por defecto
-              </span>
-            ) : (
-              <>
-                Mostrando leads capturados{' '}
-                {dateFrom && dateTo
-                  ? `entre ${dateFrom.split('-').reverse().join('/')} y ${dateTo.split('-').reverse().join('/')}`
-                  : dateFrom
-                  ? `desde ${dateFrom.split('-').reverse().join('/')}`
-                  : `hasta ${dateTo.split('-').reverse().join('/')}`}
-              </>
-            )}
-          </div>
-        )}
-      </div>
+      {hasActiveFilter && (
+        <div className="w-full mt-2 text-xs text-gray-500">
+          {isDefaultRange ? (
+            <span className="text-gray-600">
+              Mostrando leads de los últimos 30 días por defecto
+            </span>
+          ) : (
+            <>
+              Mostrando leads capturados{' '}
+              {dateFrom && dateTo
+                ? `entre ${dateFrom.split('-').reverse().join('/')} y ${dateTo.split('-').reverse().join('/')}`
+                : dateFrom
+                ? `desde ${dateFrom.split('-').reverse().join('/')}`
+                : `hasta ${dateTo.split('-').reverse().join('/')}`}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
