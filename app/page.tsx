@@ -19,8 +19,13 @@ export default async function Home() {
   dateFrom.setDate(dateFrom.getDate() - 30);
   dateFrom.setHours(0, 0, 0, 0);
 
+  console.log('[SERVER] Fetching leads with date range:', { dateFrom, dateTo });
+
   // Fetch leads with 30-day filter (server-side)
   const leads = await getAllLeads(dateFrom, dateTo);
+
+  console.log('[SERVER] Fetched leads count:', leads.length);
+  console.log('[SERVER] First 3 leads:', leads.slice(0, 3));
 
   // Format dates for input fields (YYYY-MM-DD)
   const dateFromString = dateFrom.toISOString().split('T')[0];

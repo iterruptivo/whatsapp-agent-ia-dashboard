@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import StatsCard from '@/components/dashboard/StatsCard';
 import PieChartComponent from '@/components/dashboard/PieChart';
 import LeadsTable from '@/components/dashboard/LeadsTable';
@@ -24,6 +24,12 @@ export default function DashboardClient({
   const [dateTo, setDateTo] = useState(initialDateTo);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[DashboardClient] Received initialLeads:', initialLeads.length);
+    console.log('[DashboardClient] First 3 leads:', initialLeads.slice(0, 3));
+  }, [initialLeads]);
 
   // Filter leads by date range
   const filteredLeads = useMemo(() => {
