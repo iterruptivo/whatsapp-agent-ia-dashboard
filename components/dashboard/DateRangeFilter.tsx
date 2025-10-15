@@ -78,7 +78,7 @@ export default function DateRangeFilter({
           <div className="w-full mt-2 text-xs text-gray-500">
             {isDefaultRange ? (
               <span className="text-gray-600">
-                Mostrando leads de los ultimos 30 dias por defecto
+                Mostrando leads de los últimos 30 días por defecto
               </span>
             ) : (
               <>

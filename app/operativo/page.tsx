@@ -7,16 +7,16 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function OperativoPage() {
-  // Calculate default date range (last 90 days) - Use UTC to avoid timezone issues
+  // Calculate default date range (last 30 days) - Use UTC to avoid timezone issues
   const now = new Date();
 
   // End of today (UTC)
   const dateTo = new Date(now);
   dateTo.setUTCHours(23, 59, 59, 999);
 
-  // 90 days ago - start of day (UTC)
+  // 30 days ago - start of day (UTC)
   const dateFrom = new Date(dateTo);
-  dateFrom.setUTCDate(dateFrom.getUTCDate() - 90);
+  dateFrom.setUTCDate(dateFrom.getUTCDate() - 30);
   dateFrom.setUTCHours(0, 0, 0, 0);
 
   // Fetch leads with 30-day filter (server-side)
