@@ -7,17 +7,17 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function Home() {
-  // Calculate default date range (last 90 days) in Lima timezone
+  // Calculate default date range (last 90 days) - Use UTC to avoid timezone issues
   const now = new Date();
 
-  // Set to Lima timezone (UTC-5) - end of today
-  const dateTo = new Date(now.toLocaleString('en-US', { timeZone: 'America/Lima' }));
-  dateTo.setHours(23, 59, 59, 999);
+  // End of today (UTC)
+  const dateTo = new Date(now);
+  dateTo.setUTCHours(23, 59, 59, 999);
 
-  // 90 days ago - start of day (temporary: capture all test leads)
+  // 90 days ago - start of day (UTC)
   const dateFrom = new Date(dateTo);
-  dateFrom.setDate(dateFrom.getDate() - 90);
-  dateFrom.setHours(0, 0, 0, 0);
+  dateFrom.setUTCDate(dateFrom.getUTCDate() - 90);
+  dateFrom.setUTCHours(0, 0, 0, 0);
 
   console.log('[SERVER] Fetching leads with date range:', { dateFrom, dateTo });
 
