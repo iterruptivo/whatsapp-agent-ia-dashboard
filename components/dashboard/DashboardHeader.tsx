@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/lib/auth-context';
 import { LogOut, User } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 interface DashboardHeaderProps {
   title: string;
@@ -10,6 +11,12 @@ interface DashboardHeaderProps {
 
 export default function DashboardHeader({ title, subtitle }: DashboardHeaderProps) {
   const { user, signOut, loading } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  // Fix hydration mismatch - only render user info after client mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogout = async () => {
     if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
@@ -27,10 +34,10 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
             <p className="text-gray-300 mt-1">{subtitle}</p>
           </div>
 
-          {/* User Info & Logout Section */}
-          {!loading && user && (
-            <div className="flex items-center gap-4">
-              {/* User Info */}
+          {/* User Info & Logout Section - Only render after mount to avoid hydration mismatch */}
+          {mounted && !loading && user && (
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* User Info - Hidden on mobile */}
               <div className="hidden sm:flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
                 <User className="w-5 h-5 text-white" />
                 <div className="text-white">
@@ -39,11 +46,12 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
                 </div>
               </div>
 
-              {/* Logout Button */}
+              {/* Logout Button - Always visible, icon-only on mobile */}
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors duration-200 font-medium"
+                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors duration-200 font-medium"
                 title="Cerrar sesión"
+                aria-label="Cerrar sesión"
               >
                 <LogOut className="w-5 h-5" />
                 <span className="hidden sm:inline">Cerrar Sesión</span>
