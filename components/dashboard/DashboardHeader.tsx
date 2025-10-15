@@ -23,6 +23,13 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
     }
   };
 
+  // Debug logging
+  useEffect(() => {
+    if (isClient) {
+      console.log('[DashboardHeader] State:', { isClient, loading, hasUser: !!user, userName: user?.nombre });
+    }
+  }, [isClient, loading, user]);
+
   return (
     <header className="bg-secondary shadow-md">
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -33,32 +40,41 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
             <p className="text-gray-300 mt-1">{subtitle}</p>
           </div>
 
-          {/* User Info & Logout Section - Only render after client mount and when user exists */}
-          {isClient && !loading && user && (
-            <div className="flex items-center gap-2 sm:gap-4">
-              {/* User Info - Hidden on mobile */}
-              <div className="hidden sm:flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
-                <User className="w-5 h-5 text-white" />
-                <div className="text-white">
-                  <p className="text-sm font-medium">{user.nombre}</p>
-                  <p className="text-xs text-gray-300">
-                    {user.rol === 'admin' ? 'Administrador' : 'Vendedor'}
-                  </p>
-                </div>
+          {/* User Info & Logout Section */}
+          {isClient ? (
+            loading ? (
+              // Loading state
+              <div className="flex items-center gap-2 text-white/70 text-sm">
+                <div className="animate-spin w-4 h-4 border-2 border-white/30 border-t-white rounded-full"></div>
+                <span className="hidden sm:inline">Cargando...</span>
               </div>
+            ) : user ? (
+              // User logged in
+              <div className="flex items-center gap-2 sm:gap-4">
+                {/* User Info - Hidden on mobile */}
+                <div className="hidden sm:flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
+                  <User className="w-5 h-5 text-white" />
+                  <div className="text-white">
+                    <p className="text-sm font-medium">{user.nombre}</p>
+                    <p className="text-xs text-gray-300">
+                      {user.rol === 'admin' ? 'Administrador' : 'Vendedor'}
+                    </p>
+                  </div>
+                </div>
 
-              {/* Logout Button - Always visible, icon-only on mobile */}
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors duration-200 font-medium"
-                title="Cerrar sesión"
-                aria-label="Cerrar sesión"
-              >
-                <LogOut className="w-5 h-5" />
-                <span className="hidden sm:inline">Cerrar Sesión</span>
-              </button>
-            </div>
-          )}
+                {/* Logout Button - Always visible, icon-only on mobile */}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-3 sm:px-4 py-2 rounded-lg transition-colors duration-200 font-medium"
+                  title="Cerrar sesión"
+                  aria-label="Cerrar sesión"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span className="hidden sm:inline">Cerrar Sesión</span>
+                </button>
+              </div>
+            ) : null
+          ) : null}
         </div>
       </div>
     </header>

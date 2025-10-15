@@ -47,31 +47,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ============================================================================
   const fetchUserData = async (authUser: SupabaseUser) => {
     try {
+      console.log('[AUTH DEBUG] Fetching user data for ID:', authUser.id);
+
       const { data, error } = await supabase
         .from('usuarios')
         .select('*')
         .eq('id', authUser.id)
         .single();
 
+      console.log('[AUTH DEBUG] Query result:', { data, error });
+
       if (error) {
-        console.error('Error fetching user data:', error);
+        console.error('[AUTH ERROR] Error fetching user data:', error);
         return null;
       }
 
       if (!data) {
-        console.error('User not found in usuarios table');
+        console.error('[AUTH ERROR] User not found in usuarios table for ID:', authUser.id);
         return null;
       }
 
       // Check if user is active
       if (!data.activo) {
-        console.error('User is deactivated');
+        console.error('[AUTH ERROR] User is deactivated:', data.email);
         return null;
       }
 
+      console.log('[AUTH SUCCESS] User data fetched:', data);
       return data as Usuario;
     } catch (error) {
-      console.error('Unexpected error fetching user data:', error);
+      console.error('[AUTH ERROR] Unexpected error fetching user data:', error);
       return null;
     }
   };
