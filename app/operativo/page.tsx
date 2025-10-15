@@ -2,6 +2,10 @@ import OperativoClient from '@/components/dashboard/OperativoClient';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { getAllLeads } from '@/lib/db';
 
+// CRITICAL: Disable Next.js caching to show fresh data from database
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function OperativoPage() {
   // Calculate default date range (last 30 days) in Lima timezone
   const now = new Date();
