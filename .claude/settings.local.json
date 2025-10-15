@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(npm run dev)",
+      "Bash(timeout:*)",
+      "Bash(npm run build)",
+      "Bash(tasklist)",
+      "Bash(findstr:*)",
+      "Bash(if exist .next rmdir /s /q .next)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run dev:*)",
+      "Bash(powershell:*)",
+      "Bash(if exist .nextcache rmdir /s /q .nextcache)",
+      "Bash(if exist .nextstatic rmdir /s /q .nextstatic)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(dir:*)",
+      "Read(//e/Iterruptivo/Proyectos-Clientes/EcoPlaza/AgenteIA-Whatsapp/**)",
+      "Bash(wc:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(cat:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

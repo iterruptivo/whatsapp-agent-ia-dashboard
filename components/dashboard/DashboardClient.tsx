@@ -1,0 +1,172 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import StatsCard from '@/components/dashboard/StatsCard';
+import PieChartComponent from '@/components/dashboard/PieChart';
+import LeadsTable from '@/components/dashboard/LeadsTable';
+import DateRangeFilter from '@/components/dashboard/DateRangeFilter';
+import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
+import { Lead } from '@/lib/db';
+import { Users, CheckCircle, Clock, TrendingUp, AlertCircle } from 'lucide-react';
+
+interface DashboardClientProps {
+  initialLeads: Lead[];
+  initialDateFrom?: string;
+  initialDateTo?: string;
+}
+
+export default function DashboardClient({
+  initialLeads,
+  initialDateFrom = '',
+  initialDateTo = '',
+}: DashboardClientProps) {
+  const [dateFrom, setDateFrom] = useState(initialDateFrom);
+  const [dateTo, setDateTo] = useState(initialDateTo);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // Filter leads by date range
+  const filteredLeads = useMemo(() => {
+    let filtered = initialLeads;
+
+    if (dateFrom) {
+      const fromDate = new Date(dateFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      filtered = filtered.filter((lead) => {
+        const leadDate = new Date(lead.fecha_captura);
+        return leadDate >= fromDate;
+      });
+    }
+
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      filtered = filtered.filter((lead) => {
+        const leadDate = new Date(lead.fecha_captura);
+        return leadDate <= toDate;
+      });
+    }
+
+    return filtered;
+  }, [initialLeads, dateFrom, dateTo]);
+
+  // Calculate stats from filtered leads
+  const stats = useMemo(() => {
+    const total = filteredLeads.length;
+    const completos = filteredLeads.filter((l) => l.estado === 'lead_completo').length;
+    const incompletos = filteredLeads.filter((l) => l.estado === 'lead_incompleto').length;
+    const conversacion = filteredLeads.filter((l) => l.estado === 'en_conversacion').length;
+    const abandonados = filteredLeads.filter((l) => l.estado === 'conversacion_abandonada').length;
+    const tasaConversion = total > 0 ? ((completos / total) * 100).toFixed(1) : '0.0';
+
+    return {
+      total,
+      completos,
+      incompletos,
+      conversacion,
+      abandonados,
+      tasaConversion,
+    };
+  }, [filteredLeads]);
+
+  // Calculate chart data from filtered leads
+  const chartData = useMemo(() => {
+    return [
+      {
+        name: 'Lead Completo',
+        value: filteredLeads.filter((l) => l.estado === 'lead_completo').length,
+        color: '#1b967a',
+      },
+      {
+        name: 'Lead Incompleto',
+        value: filteredLeads.filter((l) => l.estado === 'lead_incompleto').length,
+        color: '#fbde17',
+      },
+      {
+        name: 'En Conversación',
+        value: filteredLeads.filter((l) => l.estado === 'en_conversacion').length,
+        color: '#192c4d',
+      },
+      {
+        name: 'Abandonado',
+        value: filteredLeads.filter((l) => l.estado === 'conversacion_abandonada').length,
+        color: '#cbd5e1',
+      },
+    ];
+  }, [filteredLeads]);
+
+  const handleClearFilters = () => {
+    setDateFrom(initialDateFrom);
+    setDateTo(initialDateTo);
+  };
+
+  const handleLeadClick = (lead: Lead) => {
+    setSelectedLead(lead);
+    setIsPanelOpen(true);
+  };
+
+  const handleClosePanel = () => {
+    setIsPanelOpen(false);
+    // Delay clearing selectedLead for smooth animation
+    setTimeout(() => setSelectedLead(null), 300);
+  };
+
+  return (
+    <>
+      {/* Date Range Filter */}
+      <DateRangeFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        onClear={handleClearFilters}
+        defaultDateFrom={initialDateFrom}
+        defaultDateTo={initialDateTo}
+      />
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <StatsCard title="Total Leads" value={stats.total} icon={Users} color="primary" />
+        <StatsCard
+          title="Leads Completos"
+          value={stats.completos}
+          icon={CheckCircle}
+          color="primary"
+        />
+        <StatsCard
+          title="Leads Incompletos"
+          value={stats.incompletos}
+          icon={AlertCircle}
+          color="accent"
+        />
+        <StatsCard
+          title="En Conversación"
+          value={stats.conversacion}
+          icon={Clock}
+          color="secondary"
+        />
+        <StatsCard
+          title="Tasa Conversión"
+          value={`${stats.tasaConversion}%`}
+          icon={TrendingUp}
+          color="accent"
+        />
+      </div>
+
+      {/* Chart Section */}
+      <div className="mb-8">
+        <PieChartComponent data={chartData} />
+      </div>
+
+      {/* Table Section */}
+      <LeadsTable
+        leads={filteredLeads}
+        totalLeads={initialLeads.length}
+        onLeadClick={handleLeadClick}
+      />
+
+      {/* Lead Detail Panel */}
+      <LeadDetailPanel lead={selectedLead} isOpen={isPanelOpen} onClose={handleClosePanel} />
+    </>
+  );
+}

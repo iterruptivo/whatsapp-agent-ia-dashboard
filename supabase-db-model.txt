@@ -1,0 +1,55 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.leads (
+
+  id uuid NOT NULL DEFAULT gen_random_uuid() UNIQUE,
+
+  telefono character varying NOT NULL,
+
+  nombre character varying,
+
+  rubro character varying,
+
+  horario_visita text,
+
+  estado text,
+
+  historial_conversacion text,
+
+  historial_reciente text,
+
+  resumen_historial text,
+
+  ultimo_mensaje text,
+
+  intentos_bot integer DEFAULT 0,
+
+  fecha_captura timestamp with time zone DEFAULT now(),
+
+  created_at timestamp with time zone DEFAULT now(),
+
+  updated_at timestamp with time zone DEFAULT now(),
+
+  notificacion_enviada boolean DEFAULT false,
+
+  CONSTRAINT leads_pkey PRIMARY KEY (telefono)
+
+);
+
+CREATE TABLE public.vendedores (
+
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+
+  nombre character varying NOT NULL,
+
+  telefono character varying NOT NULL UNIQUE,
+
+  activo boolean DEFAULT true,
+
+  created_at timestamp with time zone DEFAULT now(),
+
+  CONSTRAINT vendedores_pkey PRIMARY KEY (id)
+
+);

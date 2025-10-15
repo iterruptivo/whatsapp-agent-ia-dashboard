@@ -1,8 +1,8 @@
-import DashboardClient from '@/components/dashboard/DashboardClient';
+import OperativoClient from '@/components/dashboard/OperativoClient';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { getAllLeads } from '@/lib/db';
 
-export default async function Home() {
+export default async function OperativoPage() {
   // Calculate default date range (last 30 days) in Lima timezone
   const now = new Date();
 
@@ -25,11 +25,11 @@ export default async function Home() {
   return (
     <div className="min-h-screen">
       {/* Header with logout button */}
-      <DashboardHeader title="Dashboard EcoPlaza" subtitle="Gestión de Leads - Proyecto Trapiche" />
+      <DashboardHeader title="Dashboard Operativo" subtitle="Gestión de Leads - Proyecto Trapiche" />
 
       {/* Main Content */}
       <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <DashboardClient
+        <OperativoClient
           initialLeads={leads}
           initialDateFrom={dateFromString}
           initialDateTo={dateToString}
