@@ -8,7 +8,6 @@ import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
 import { Lead, Vendedor, getAllVendedores } from '@/lib/db';
 import { assignLeadToVendedor } from '@/lib/actions';
 import { useAuth } from '@/lib/auth-context';
-import { Calendar, X } from 'lucide-react';
 
 interface OperativoClientProps {
   initialLeads: Lead[];
@@ -112,72 +111,15 @@ export default function OperativoClient({
   return (
     <>
       {/* Date Range Filter */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-        <div className="flex items-center flex-wrap gap-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="text-primary" size={20} />
-            <span className="text-sm font-medium text-gray-700">Filtrar por fecha:</span>
-          </div>
-
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <label htmlFor="date-from" className="text-sm text-gray-600">
-                Desde:
-              </label>
-              <input
-                id="date-from"
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <label htmlFor="date-to" className="text-sm text-gray-600">
-                Hasta:
-              </label>
-              <input
-                id="date-to"
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-              />
-            </div>
-
-            {((dateFrom && dateFrom !== initialDateFrom) || (dateTo && dateTo !== initialDateTo)) && (
-              <button
-                onClick={handleClearFilters}
-                className="flex items-center gap-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
-              >
-                <X className="w-4 h-4" />
-                Limpiar Selección
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Date Range Indicator */}
-        {(dateFrom || dateTo) && (
-          <div className="mt-3 pt-3 border-t border-gray-200 text-xs text-gray-500">
-            {dateFrom === initialDateFrom && dateTo === initialDateTo ? (
-              <span className="text-gray-600">
-                Mostrando leads de los últimos 30 días por defecto
-              </span>
-            ) : (
-              <>
-                Mostrando leads capturados{' '}
-                {dateFrom && dateTo
-                  ? `entre ${dateFrom.split('-').reverse().join('/')} y ${dateTo.split('-').reverse().join('/')}`
-                  : dateFrom
-                  ? `desde ${dateFrom.split('-').reverse().join('/')}`
-                  : `hasta ${dateTo.split('-').reverse().join('/')}`}
-              </>
-            )}
-          </div>
-        )}
-      </div>
+      <DateRangeFilter
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        onDateFromChange={setDateFrom}
+        onDateToChange={setDateTo}
+        onClear={handleClearFilters}
+        defaultDateFrom={initialDateFrom}
+        defaultDateTo={initialDateTo}
+      />
 
       {/* Assignment Filter Tabs */}
       <div className="flex gap-2 mb-6">
