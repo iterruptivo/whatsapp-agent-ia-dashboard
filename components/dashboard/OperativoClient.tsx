@@ -168,6 +168,7 @@ export default function OperativoClient({
         vendedores={vendedores}
         currentVendedorId={currentVendedorId}
         onAssignLead={handleAssignLead}
+        userRole={user?.rol || null}
       />
 
       {/* Lead Detail Panel */}

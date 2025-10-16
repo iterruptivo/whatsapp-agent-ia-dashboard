@@ -12,6 +12,7 @@ interface LeadsTableProps {
   vendedores?: Vendedor[];
   currentVendedorId?: string | null;
   onAssignLead?: (leadId: string, vendedorId: string) => Promise<void>;
+  userRole?: 'admin' | 'vendedor' | null;
 }
 
 export default function LeadsTable({
@@ -21,6 +22,7 @@ export default function LeadsTable({
   vendedores,
   currentVendedorId,
   onAssignLead,
+  userRole,
 }: LeadsTableProps) {
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -205,13 +207,34 @@ export default function LeadsTable({
                 </td>
                 <td className="py-3 px-4">{getEstadoBadge(lead.estado)}</td>
                 <td className="py-3 px-4">
-                  {lead.vendedor_asignado_id ? (
-                    // Already assigned - READ ONLY
+                  {userRole === 'admin' && vendedores && onAssignLead ? (
+                    // ADMIN: Always show dropdown (can reassign or liberate)
+                    <select
+                      value={lead.vendedor_asignado_id || ''}
+                      onChange={(e) => {
+                        if (e.target.value !== lead.vendedor_asignado_id) {
+                          onAssignLead(lead.id, e.target.value);
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()} // Prevent row click when clicking dropdown
+                      className="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                    >
+                      <option value="">-- Sin Asignar --</option>
+                      {vendedores
+                        .filter((v) => v.activo)
+                        .map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.nombre}
+                          </option>
+                        ))}
+                    </select>
+                  ) : lead.vendedor_asignado_id ? (
+                    // VENDEDOR: Already assigned - READ ONLY
                     <span className="text-gray-700 font-medium">
                       {lead.vendedor_nombre || 'Vendedor asignado'}
                     </span>
-                  ) : vendedores && onAssignLead ? (
-                    // Available - DROPDOWN (only if vendedores and onAssignLead provided)
+                  ) : vendedores && onAssignLead && currentVendedorId ? (
+                    // VENDEDOR: Available - DROPDOWN (only shows themselves)
                     <select
                       value=""
                       onChange={(e) => {
@@ -224,7 +247,7 @@ export default function LeadsTable({
                     >
                       <option value="">-- Tomar Lead --</option>
                       {vendedores
-                        .filter((v) => v.activo)
+                        .filter((v) => v.activo && v.id === currentVendedorId)
                         .map((v) => (
                           <option key={v.id} value={v.id}>
                             {v.nombre}

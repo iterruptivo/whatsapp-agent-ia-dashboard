@@ -83,8 +83,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // CRITICAL FIX: Wrapper with timeout to prevent infinite loading
   const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 8000) => {
-    const timeoutPromise = new Promise<null>((_, reject) =>
-      setTimeout(() => reject(new Error('Timeout fetching user data')), timeoutMs)
+    const timeoutPromise = new Promise<null>((resolve) =>
+      setTimeout(() => {
+        console.warn('[AUTH WARNING] Timeout fetching user data after', timeoutMs, 'ms');
+        resolve(null);
+      }, timeoutMs)
     );
 
     try {
@@ -93,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         timeoutPromise
       ]);
     } catch (error) {
-      console.error('[AUTH ERROR] Timeout or error in fetchUserDataWithTimeout:', error);
+      console.error('[AUTH ERROR] Error in fetchUserDataWithTimeout:', error);
       return null;
     }
   };
@@ -104,19 +107,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        // Get current session
+        // Step 1: Check if session exists (fast, from cookies)
         const { data: { session } } = await supabase.auth.getSession();
 
-        if (session?.user) {
-          setSupabaseUser(session.user);
-          // CRITICAL FIX: Use timeout wrapper to prevent infinite loading
-          const userData = await fetchUserDataWithTimeout(session.user, 8000);
-          setUser(userData);
+        if (!session) {
+          // No session - user is not logged in
+          setLoading(false);
+          return;
         }
+
+        // Step 2: SECURITY FIX - Verify session with server using getUser()
+        const { data: { user: authUser }, error } = await supabase.auth.getUser();
+
+        if (error || !authUser) {
+          console.error('[AUTH ERROR] Session validation failed:', error);
+          // Session is invalid - clear it
+          await supabase.auth.signOut();
+          setLoading(false);
+          return;
+        }
+
+        // Session is valid and verified
+        setSupabaseUser(authUser);
+        const userData = await fetchUserDataWithTimeout(authUser, 8000);
+        setUser(userData);
       } catch (error) {
         console.error('[AUTH ERROR] Error initializing auth:', error);
       } finally {
-        // CRITICAL: Always reset loading, even if fetch fails
         setLoading(false);
       }
     };

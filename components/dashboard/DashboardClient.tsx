@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import StatsCard from '@/components/dashboard/StatsCard';
 import PieChartComponent from '@/components/dashboard/PieChart';
 import LeadsTable from '@/components/dashboard/LeadsTable';
 import DateRangeFilter from '@/components/dashboard/DateRangeFilter';
 import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
-import { Lead } from '@/lib/db';
+import { Lead, Vendedor, getAllVendedores } from '@/lib/db';
+import { assignLeadToVendedor } from '@/lib/actions';
+import { useAuth } from '@/lib/auth-context';
 import { Users, CheckCircle, Clock, TrendingUp, AlertCircle } from 'lucide-react';
 
 interface DashboardClientProps {
@@ -20,10 +23,20 @@ export default function DashboardClient({
   initialDateFrom = '',
   initialDateTo = '',
 }: DashboardClientProps) {
+  const router = useRouter();
+  const { user } = useAuth(); // Get authenticated user from context
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
   const [dateTo, setDateTo] = useState(initialDateTo);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
+
+  // Vendedor state (for admin - fetches all vendedores for assignment dropdown)
+  const [vendedores, setVendedores] = useState<Vendedor[]>([]);
+
+  // Fetch vendedores on mount (only for assignment dropdown in table)
+  useEffect(() => {
+    getAllVendedores().then(setVendedores);
+  }, []);
 
   // Debug logging
   useEffect(() => {
@@ -121,6 +134,25 @@ export default function DashboardClient({
     setTimeout(() => setSelectedLead(null), 300);
   };
 
+  const handleAssignLead = async (leadId: string, vendedorId: string) => {
+    try {
+      const result = await assignLeadToVendedor(leadId, vendedorId);
+
+      if (result.success) {
+        // Success notification
+        alert(result.message || `Lead "${result.leadNombre}" asignado a ${result.vendedorNombre}`);
+        // Refresh page to update data
+        router.refresh();
+      } else {
+        // Error notification
+        alert(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error al asignar lead:', error);
+      alert('Error inesperado al asignar lead. Por favor intenta nuevamente.');
+    }
+  };
+
   return (
     <>
       {/* Date Range Filter */}
@@ -173,6 +205,10 @@ export default function DashboardClient({
         leads={filteredLeads}
         totalLeads={initialLeads.length}
         onLeadClick={handleLeadClick}
+        vendedores={vendedores}
+        currentVendedorId={user?.vendedor_id || null}
+        onAssignLead={handleAssignLead}
+        userRole={user?.rol || null}
       />
 
       {/* Lead Detail Panel */}
