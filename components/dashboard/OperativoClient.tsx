@@ -45,7 +45,9 @@ export default function OperativoClient({
 
     // Date filtering (existing)
     if (dateFrom) {
-      const fromDate = new Date(dateFrom);
+      // Parse date string as LOCAL timezone (not UTC) to match user's timezone
+      const [year, month, day] = dateFrom.split('-').map(Number);
+      const fromDate = new Date(year, month - 1, day);
       fromDate.setHours(0, 0, 0, 0);
       filtered = filtered.filter((lead) => {
         const leadDate = new Date(lead.fecha_captura);
@@ -54,7 +56,9 @@ export default function OperativoClient({
     }
 
     if (dateTo) {
-      const toDate = new Date(dateTo);
+      // Parse date string as LOCAL timezone (not UTC) to match user's timezone
+      const [year, month, day] = dateTo.split('-').map(Number);
+      const toDate = new Date(year, month - 1, day);
       toDate.setHours(23, 59, 59, 999);
       filtered = filtered.filter((lead) => {
         const leadDate = new Date(lead.fecha_captura);
