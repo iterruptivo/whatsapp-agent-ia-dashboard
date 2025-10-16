@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   // ============================================================================
-  // FETCH USER DATA FROM USUARIOS TABLE
+  // FETCH USER DATA FROM USUARIOS TABLE (WITH TIMEOUT)
   // ============================================================================
   const fetchUserData = async (authUser: SupabaseUser) => {
     try {
@@ -81,6 +81,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // CRITICAL FIX: Wrapper with timeout to prevent infinite loading
+  const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 8000) => {
+    const timeoutPromise = new Promise<null>((_, reject) =>
+      setTimeout(() => reject(new Error('Timeout fetching user data')), timeoutMs)
+    );
+
+    try {
+      return await Promise.race([
+        fetchUserData(authUser),
+        timeoutPromise
+      ]);
+    } catch (error) {
+      console.error('[AUTH ERROR] Timeout or error in fetchUserDataWithTimeout:', error);
+      return null;
+    }
+  };
+
   // ============================================================================
   // INITIALIZE SESSION ON MOUNT
   // ============================================================================
@@ -92,12 +109,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (session?.user) {
           setSupabaseUser(session.user);
-          const userData = await fetchUserData(session.user);
+          // CRITICAL FIX: Use timeout wrapper to prevent infinite loading
+          const userData = await fetchUserDataWithTimeout(session.user, 8000);
           setUser(userData);
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('[AUTH ERROR] Error initializing auth:', error);
       } finally {
+        // CRITICAL: Always reset loading, even if fetch fails
         setLoading(false);
       }
     };
@@ -107,13 +126,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event);
+        console.log('[AUTH] State changed:', event);
 
-        if (session?.user) {
-          setSupabaseUser(session.user);
-          const userData = await fetchUserData(session.user);
-          setUser(userData);
-        } else {
+        // CRITICAL FIX: Only re-fetch user data on SIGN_IN or USER_UPDATED
+        // Token refresh events should NOT trigger expensive DB queries
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          if (session?.user) {
+            setSupabaseUser(session.user);
+            // Use timeout wrapper to prevent infinite loading
+            const userData = await fetchUserDataWithTimeout(session.user, 8000);
+            setUser(userData);
+          }
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Token refresh: only update session, keep existing user data
+          console.log('[AUTH] Token refreshed, keeping current user data');
+          if (session?.user) {
+            setSupabaseUser(session.user);
+            // user state unchanged - no DB fetch needed
+          }
+        } else if (event === 'SIGNED_OUT') {
           setSupabaseUser(null);
           setUser(null);
         }
