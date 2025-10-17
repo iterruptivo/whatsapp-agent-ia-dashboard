@@ -19,7 +19,12 @@
       "Read(//e/Iterruptivo/Proyectos-Clientes/EcoPlaza/AgenteIA-Whatsapp/**)",
       "Bash(wc:*)",
       "Bash(npm uninstall:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nCRITICAL FIX: Resolve React Error #418 and aggressive caching\n\nROOT CAUSES FIXED:\n1. Hydration Mismatch (React Error #418)\n   - DashboardHeader now renders invisible placeholder during SSR\n   - Eliminates server/client DOM structure mismatch\n   - User info fills in seamlessly after client mount\n\n2. Aggressive Next.js 15 Caching\n   - Added ''force-dynamic'' export to app/page.tsx\n   - Added ''force-dynamic'' export to app/operativo/page.tsx\n   - Dashboard now shows fresh data on every request\n   - Database changes reflect immediately (no stale cache)\n\nIMPACT:\n- Console errors eliminated (no more React #418)\n- Truncate leads table → Dashboard shows empty immediately\n- Add new leads → Dashboard shows them immediately\n- Ready for presentation tomorrow\n\nTESTING REQUIRED:\n- Hard refresh (Ctrl+Shift+R) to clear browser cache\n- Verify console has NO errors\n- Truncate leads → Verify empty dashboard\n- Add test leads → Verify they appear immediately\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(python3 -c \"import json; data = json.load(open(''V5B - Supabase - EcoPlaza Agente IA Whatsapp (Githup) (3).json'')); node = [n for n in data[''nodes''] if n.get(''name'') == ''OpenAI - Extract Data''][0]; print(json.dumps(node[''parameters''], indent=2))\")"
     ],
     "deny": [],
     "ask": []

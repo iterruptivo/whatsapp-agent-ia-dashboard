@@ -30,6 +30,7 @@ export default function OperativoClient({
   // Vendedor state (for admin - fetches all vendedores for assignment dropdown)
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [assignmentFilter, setAssignmentFilter] = useState<'todos' | 'sin_asignar' | 'mis_leads'>('todos');
+  const [selectedVendedorFilter, setSelectedVendedorFilter] = useState<string>(''); // Admin-only: filter by specific vendedor
 
   // Fetch vendedores on mount (only for assignment dropdown in table)
   useEffect(() => {
@@ -74,8 +75,13 @@ export default function OperativoClient({
     }
     // 'todos' shows all leads (no additional filtering)
 
+    // Admin-only: Filter by specific vendedor (dropdown)
+    if (selectedVendedorFilter && user?.rol === 'admin') {
+      filtered = filtered.filter((lead) => lead.vendedor_asignado_id === selectedVendedorFilter);
+    }
+
     return filtered;
-  }, [initialLeads, dateFrom, dateTo, assignmentFilter, currentVendedorId]);
+  }, [initialLeads, dateFrom, dateTo, assignmentFilter, currentVendedorId, selectedVendedorFilter, user?.rol]);
 
   const handleClearFilters = () => {
     setDateFrom(initialDateFrom);
@@ -125,39 +131,62 @@ export default function OperativoClient({
         defaultDateTo={initialDateTo}
       />
 
-      {/* Assignment Filter Tabs */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setAssignmentFilter('todos')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            assignmentFilter === 'todos'
-              ? 'bg-primary text-white shadow-md'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-          }`}
-        >
-          Todos
-        </button>
-        <button
-          onClick={() => setAssignmentFilter('sin_asignar')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            assignmentFilter === 'sin_asignar'
-              ? 'bg-primary text-white shadow-md'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-          }`}
-        >
-          Sin Asignar
-        </button>
-        <button
-          onClick={() => setAssignmentFilter('mis_leads')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            assignmentFilter === 'mis_leads'
-              ? 'bg-primary text-white shadow-md'
-              : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-          }`}
-          disabled={!currentVendedorId}
-        >
-          Mis Leads
-        </button>
+      {/* Assignment Filter Tabs + Admin Vendedor Dropdown */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        {/* Filter Tabs */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setAssignmentFilter('todos')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              assignmentFilter === 'todos'
+                ? 'bg-primary text-white shadow-md'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Todos
+          </button>
+          <button
+            onClick={() => setAssignmentFilter('sin_asignar')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              assignmentFilter === 'sin_asignar'
+                ? 'bg-primary text-white shadow-md'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Sin Asignar
+          </button>
+          <button
+            onClick={() => setAssignmentFilter('mis_leads')}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              assignmentFilter === 'mis_leads'
+                ? 'bg-primary text-white shadow-md'
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+            disabled={!currentVendedorId}
+          >
+            Mis Leads
+          </button>
+        </div>
+
+        {/* Admin-only: Vendedor Filter Dropdown */}
+        {user?.rol === 'admin' && (
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedVendedorFilter}
+              onChange={(e) => setSelectedVendedorFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors hover:bg-gray-50"
+            >
+              <option value="">Todos los vendedores</option>
+              {vendedores
+                .filter((v) => v.activo)
+                .map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.nombre}
+                  </option>
+                ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Leads Table */}
