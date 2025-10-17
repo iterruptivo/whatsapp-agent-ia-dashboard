@@ -155,17 +155,20 @@ export default function OperativoClient({
           >
             Sin Asignar
           </button>
-          <button
-            onClick={() => setAssignmentFilter('mis_leads')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              assignmentFilter === 'mis_leads'
-                ? 'bg-primary text-white shadow-md'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-            disabled={!currentVendedorId}
-          >
-            Mis Leads
-          </button>
+          {/* Only show "Mis Leads" for vendedor role */}
+          {user?.rol === 'vendedor' && (
+            <button
+              onClick={() => setAssignmentFilter('mis_leads')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                assignmentFilter === 'mis_leads'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+              disabled={!currentVendedorId}
+            >
+              Mis Leads
+            </button>
+          )}
         </div>
 
         {/* Admin-only: Vendedor Filter Dropdown */}
