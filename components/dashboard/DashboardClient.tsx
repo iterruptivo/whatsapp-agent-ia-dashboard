@@ -33,6 +33,7 @@ export default function DashboardClient({
   // Vendedor state (for admin - fetches all vendedores for assignment dropdown)
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [selectedVendedorFilter, setSelectedVendedorFilter] = useState<string>(''); // Admin-only: filter by specific vendedor
+  const [assignmentFilter, setAssignmentFilter] = useState<'todos' | 'sin_asignar'>('todos'); // Admin-only: assignment filter
 
   // Fetch vendedores on mount (only for assignment dropdown in table)
   useEffect(() => {
@@ -71,13 +72,19 @@ export default function DashboardClient({
       });
     }
 
+    // Assignment filtering (admin only)
+    if (assignmentFilter === 'sin_asignar') {
+      filtered = filtered.filter((lead) => lead.vendedor_asignado_id === null);
+    }
+    // 'todos' shows all leads (no additional filtering)
+
     // Admin-only: Filter by specific vendedor (dropdown)
     if (selectedVendedorFilter && user?.rol === 'admin') {
       filtered = filtered.filter((lead) => lead.vendedor_asignado_id === selectedVendedorFilter);
     }
 
     return filtered;
-  }, [initialLeads, dateFrom, dateTo, selectedVendedorFilter, user?.rol]);
+  }, [initialLeads, dateFrom, dateTo, assignmentFilter, selectedVendedorFilter, user?.rol]);
 
   // Calculate stats from filtered leads
   const stats = useMemo(() => {
@@ -206,23 +213,50 @@ export default function DashboardClient({
         <PieChartComponent data={chartData} />
       </div>
 
-      {/* Admin-only: Vendedor Filter Dropdown */}
+      {/* Admin-only: Assignment Filter Tabs + Vendedor Dropdown */}
       {user?.rol === 'admin' && (
-        <div className="flex justify-end mb-6">
-          <select
-            value={selectedVendedorFilter}
-            onChange={(e) => setSelectedVendedorFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors hover:bg-gray-50"
-          >
-            <option value="">Todos los vendedores</option>
-            {vendedores
-              .filter((v) => v.activo)
-              .map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.nombre}
-                </option>
-              ))}
-          </select>
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          {/* Filter Tabs */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setAssignmentFilter('todos')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                assignmentFilter === 'todos'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setAssignmentFilter('sin_asignar')}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                assignmentFilter === 'sin_asignar'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              Sin Asignar
+            </button>
+          </div>
+
+          {/* Admin-only: Vendedor Filter Dropdown */}
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedVendedorFilter}
+              onChange={(e) => setSelectedVendedorFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors hover:bg-gray-50"
+            >
+              <option value="">Todos los vendedores</option>
+              {vendedores
+                .filter((v) => v.activo)
+                .map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.nombre}
+                  </option>
+                ))}
+            </select>
+          </div>
         </div>
       )}
 
