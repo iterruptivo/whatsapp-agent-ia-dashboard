@@ -24,6 +24,10 @@ export default function Home() {
   useEffect(() => {
     if (selectedProyecto && user) {
       async function fetchData() {
+        // Capture selectedProyecto value to avoid null reference
+        const proyecto = selectedProyecto;
+        if (!proyecto) return;
+
         setLoading(true);
 
         // Calculate default date range (last 30 days)
@@ -34,11 +38,11 @@ export default function Home() {
         dateFrom.setUTCDate(dateFrom.getUTCDate() - 30);
         dateFrom.setUTCHours(0, 0, 0, 0);
 
-        console.log('[CLIENT] Fetching leads for proyecto:', selectedProyecto.nombre);
-        console.log('[CLIENT] Proyecto ID:', selectedProyecto.id);
+        console.log('[CLIENT] Fetching leads for proyecto:', proyecto.nombre);
+        console.log('[CLIENT] Proyecto ID:', proyecto.id);
 
         // MULTI-PROYECTO: Fetch leads filtered by proyecto
-        const data = await getAllLeads(dateFrom, dateTo, selectedProyecto.id);
+        const data = await getAllLeads(dateFrom, dateTo, proyecto.id);
 
         console.log('[CLIENT] Fetched leads count:', data.length);
         setLeads(data);
@@ -50,7 +54,8 @@ export default function Home() {
 
   // Function to refetch leads (for real-time updates after assignment)
   const refetchLeads = useCallback(async () => {
-    if (selectedProyecto) {
+    const proyecto = selectedProyecto;
+    if (proyecto) {
       const now = new Date();
       const dateTo = new Date(now);
       dateTo.setUTCHours(23, 59, 59, 999);
@@ -58,7 +63,7 @@ export default function Home() {
       dateFrom.setUTCDate(dateFrom.getUTCDate() - 30);
       dateFrom.setUTCHours(0, 0, 0, 0);
 
-      const data = await getAllLeads(dateFrom, dateTo, selectedProyecto.id);
+      const data = await getAllLeads(dateFrom, dateTo, proyecto.id);
       setLeads(data);
     }
   }, [selectedProyecto]);
