@@ -1,10 +1,9 @@
 {
-  "name": "Victoria - Eco - Trapiche - PROD -Whatsapp (922066907)",
+  "name": "Victoria - Eco - Callao - PROD -Whatsapp (922066943)",
   "nodes": [
     {
       "parameters": {
-        "httpMethod": "POST",
-        "path": "whatsapp-eco-victoria",
+        "path": "whatsapp-eco-callao",
         "responseMode": "responseNode",
         "options": {}
       },
@@ -14,9 +13,9 @@
         -4144,
         -176
       ],
-      "id": "db27d86a-d53d-4842-b44d-03de0e1f42cf",
+      "id": "4a0afd32-25e3-472e-8555-1226db1f0a7c",
       "name": "Webhook: Recibir WhatsApp",
-      "webhookId": "53aca111-64dd-4669-8d1c-8b31a4ac89f1"
+      "webhookId": "84107769-58f9-467e-8d6e-da0c506b2293"
     },
     {
       "parameters": {
@@ -32,7 +31,7 @@
         -3472,
         -368
       ],
-      "id": "b1169636-868a-419f-8113-d98e62218930",
+      "id": "a2427bba-8072-4808-8a27-2287d3dcb9df",
       "name": "Respond to Webhook"
     },
     {
@@ -123,7 +122,7 @@
         -3728,
         -192
       ],
-      "id": "aab56864-9c67-4dbb-a27b-2d8aad5d22ef",
+      "id": "603ba596-50e1-41ee-8654-9c20913b22b3",
       "name": "Switch"
     },
     {
@@ -153,7 +152,7 @@
         -1632,
         -320
       ],
-      "id": "80fece52-8fcf-4ddf-ab98-ab6b48ec8a69",
+      "id": "f386f786-87c6-449c-a87b-e90481e06499",
       "name": "Message a model",
       "credentials": {
         "openAiApi": {
@@ -165,7 +164,7 @@
     {
       "parameters": {
         "operation": "send",
-        "phoneNumberId": "757095820830409",
+        "phoneNumberId": "771452262728711",
         "recipientPhoneNumber": "={{ $node[\"Webhook: Recibir WhatsApp\"].json.body.entry[0].changes[0].value.contacts[0].wa_id }}\n",
         "textBody": "={{ $node[\"Code2\"].json.mensaje_bot_final }}",
         "additionalFields": {
@@ -178,13 +177,13 @@
         160,
         288
       ],
-      "id": "48d4517e-6aa6-4422-95ce-50742c8d45b3",
+      "id": "fc589c51-12b0-499d-a90c-c7509d8f3d56",
       "name": "Send message",
-      "webhookId": "44567a64-e03d-4d93-9d5f-1bff4ba673cb",
+      "webhookId": "96927320-ec57-4601-b2ed-daabf5d4a3d1",
       "credentials": {
         "whatsAppApi": {
-          "id": "uVeIndqI3yCXSK6H",
-          "name": "WhatsApp account (Business - iterruptivo cel 922066907)"
+          "id": "hmJdrkvSmxXNS5rM",
+          "name": "WhatsApp account (Business - EcoPlaza Trapiche cel 922066943)"
         }
       }
     },
@@ -219,12 +218,12 @@
         -3936,
         -352
       ],
-      "id": "b63a0ae7-f72d-477d-8dae-7622cff7c8fc",
+      "id": "b2df6b0f-11e2-4a21-b4fe-08b128d8c9d9",
       "name": "If"
     },
     {
       "parameters": {
-        "jsCode": "// Entradas\n  const botResponse = $node[\"Message a model\"].json?.message?.content || \"\";\n  const telefono = $node[\"Code1\"].json.telefono || \"\";\n  const historialPrevio = $node[\"Code1\"].json.historial || \"\";\n  const userMessage = $node[\"Code1\"].json.userMessage || \"\";\n\n  const nombrePrevio = $node[\"Code1\"].json.nombre_actual || \"\";\n  const rubroPrevio = $node[\"Code1\"].json.rubro_previo || \"\";\n  const horarioPrevio = $node[\"Code1\"].json.horario_previo || \"\";\n\n  // Datos extraídos por GPT\n  const extractedRaw = $node[\"OpenAI - Extract Data\"].json?.message?.content;\n  let extracted = { nombre: \"\", rubro: \"\", horario_visita: \"\", horario_visita_fecha: \"\", horario_visita_hora: \"\"\n  };\n  try {\n    if (typeof extractedRaw === \"string\") extracted = JSON.parse(extractedRaw);\n    else if (typeof extractedRaw === \"object\" && extractedRaw) extracted = extractedRaw;\n  } catch (e) { /* default */ }\n\n  const nombre = (extracted.nombre || \"\").trim() || nombrePrevio;\n  const rubro = (extracted.rubro || \"\").trim() || rubroPrevio;\n  const horario = (extracted.horario_visita || \"\").trim() || horarioPrevio;\n\n  // ═══════════════════════════════════════════════════════════\n  // TIMESTAMP PRESERVATION LOGIC\n  // ═══════════════════════════════════════════════════════════\n\n  // Leer nuevo timestamp del parser\n  const nuevoTimestamp = $node[\"Parse Horario to Timestamp\"].json?.horario_visita_timestamp || null;\n\n  // Leer timestamp anterior de la BD (vía Code1)\n  const timestampPrevio = $node[\"Code1\"].json.timestamp_previo || null;\n\n  // PRESERVAR: Si nuevo es null, mantener el anterior\n  // Si nuevo NO es null, usar el nuevo (permite actualizar si usuario cambia horario)\n  const horario_visita_timestamp = nuevoTimestamp !== null ? nuevoTimestamp : timestampPrevio;\n\n  // ═══════════════════════════════════════════════════════════\n  // NOTIFICACION_ENVIADA PRESERVATION LOGIC\n  // ═══════════════════════════════════════════════════════════\n\n  // Leer estado de notificacion desde Code1 (desde BD)\n  const notificacionEnviada = $node[\"Code1\"].json.notificacion_previamente_enviada || false;\n\n  // ═══════════════════════════════════════════════════════════\n\n  // Contar intentos\n  const noaMessages = (historialPrevio.match(/\\nAgenteIA:/g) || []).length;\n\n  let estado = \"en_conversacion\";\n  let debeForazarCierre = false;\n\n  // ---- LÓGICA INTELIGENTE DE ESTADOS ----\n\n  // 1. Si tiene TODOS los datos → Lead completo (puede seguir preguntando)\n  if (nombre && rubro && horario) {\n    estado = \"lead_completo\";\n    debeForazarCierre = false;  // NUNCA forzar cierre si tiene datos completos\n  }\n  // 2. Si tiene ALGUNOS datos (parcial)\n  else if (nombre || rubro || horario) {\n    // Dar más oportunidades (15 intentos) porque muestra interés\n    if (noaMessages >= 15) {\n      estado = \"lead_incompleto\";\n      debeForazarCierre = true;\n    } else {\n      estado = \"en_conversacion\";\n      debeForazarCierre = false;\n    }\n  }\n  // 3. Si NO tiene NINGÚN dato\n  else {\n    // Cerrar antes (10 intentos) porque no muestra interés real\n    if (noaMessages >= 10) {\n      estado = \"conversacion_abandonada\";\n      debeForazarCierre = true;\n    } else {\n      estado = \"en_conversacion\";\n      debeForazarCierre = false;\n    }\n  }\n\n  // ---- MENSAJE FINAL ----\n  let mensajeBot = botResponse;\n\n  // Solo forzar cierre si corresponde\n  if (debeForazarCierre) {\n    mensajeBot = \"Su caso es importante para nosotros, pronto un asesor especializado se comunicará con usted para atender sus consultas de forma detallada, manténgase al pendiente por favor. 🤗\";\n  }\n\n  // Construir historial completo (NO duplicar mensaje de usuario, ya está en historialPrevio)\n  const historial_conversacion =\n    (historialPrevio ? historialPrevio + \"\\n\" : \"\") +\n    \"AgenteIA: \" + mensajeBot;\n\n  // Últimos 10 mensajes\n  const lines = historial_conversacion.split(/\\r?\\n/).filter(Boolean);\n  const historial_reciente = lines.slice(-10).join(\"\\n\");\n\n  return [{\n    json: {\n      telefono: telefono,\n      nombre: nombre,\n      rubro: rubro,\n      horario_visita: horario,\n      horario_visita_timestamp: horario_visita_timestamp,\n      historial_conversacion,\n      historial_reciente,\n      fecha_captura: new Date().toISOString(),\n      ultimo_mensaje: userMessage,\n      estado: estado,\n      intentos_bot: noaMessages + 1,\n      mensaje_bot_final: mensajeBot,\n      notificacion_enviada: notificacionEnviada,\n      estado_al_notificar: null\n    }\n  }];"
+        "jsCode": "// Entradas\n  const botResponse = $node[\"Message a model\"].json?.message?.content || \"\";\n  const telefono = $node[\"Code1\"].json.telefono || \"\";\n  const historialPrevio = $node[\"Code1\"].json.historial || \"\";\n  const userMessage = $node[\"Code1\"].json.userMessage || \"\";\n\n  const nombrePrevio = $node[\"Code1\"].json.nombre_actual || \"\";\n  const rubroPrevio = $node[\"Code1\"].json.rubro_previo || \"\";\n  const horarioPrevio = $node[\"Code1\"].json.horario_previo || \"\";\n\n  // Datos extraídos por GPT\n  const extractedRaw = $node[\"OpenAI - Extract Data\"].json?.message?.content;\n  let extracted = { nombre: \"\", rubro: \"\", horario_visita: \"\", horario_visita_fecha: \"\", horario_visita_hora: \"\"\n  };\n  try {\n    if (typeof extractedRaw === \"string\") extracted = JSON.parse(extractedRaw);\n    else if (typeof extractedRaw === \"object\" && extractedRaw) extracted = extractedRaw;\n  } catch (e) { /* default */ }\n\n  const nombre = (extracted.nombre || \"\").trim() || nombrePrevio;\n  \n  // ═══════════════════════════════════════════════════════════\n  // ECOPLAZA CALLAO - RUBRO HARDCODED (TEMPORAL)\n  // ═══════════════════════════════════════════════════════════\n  // NOTA: Después del 29 de Octubre 2025, revertir a lógica normal\n  const rubro = \"inauguración\"; // Auto-asignado para invitación a inauguración\n  \n  let horario = (extracted.horario_visita || \"\").trim() || horarioPrevio;\n\n  // ═══════════════════════════════════════════════════════════\n  // TIMESTAMP PRESERVATION LOGIC\n  // ═══════════════════════════════════════════════════════════\n\n  // Leer nuevo timestamp del parser\n  const nuevoTimestamp = $node[\"Parse Horario to Timestamp\"].json?.horario_visita_timestamp || null;\n\n  // Leer timestamp anterior de la BD (vía Code1)\n  const timestampPrevio = $node[\"Code1\"].json.timestamp_previo || null;\n\n  // PRESERVAR: Si nuevo es null, mantener el anterior\n  // Si nuevo NO es null, usar el nuevo (permite actualizar si usuario cambia horario)\n  let horario_visita_timestamp = nuevoTimestamp !== null ? nuevoTimestamp : timestampPrevio;\n\n  // ═══════════════════════════════════════════════════════════\n  // ECOPLAZA CALLAO - DETECCIÓN DE CONFIRMACIÓN DE ASISTENCIA (TEMPORAL)\n  // ═══════════════════════════════════════════════════════════\n  // NOTA: Después del 29 de Octubre 2025, eliminar esta sección\n  \n  // Regex para detectar confirmación de asistencia\n  const confirmacionRegex = /(sí|si|confirmo|asistiré|asistire|claro|por supuesto|acepto|voy|iré|ire|está bien|ok|vale|afirmativo)/i;\n  const hasConfirmed = confirmacionRegex.test(userMessage);\n\n  // Si confirmó asistencia Y ya tiene nombre → asignar fecha fija de inauguración\n  if (hasConfirmed && nombre) {\n    horario = \"Miércoles 29 de octubre a las 9:30 AM\";\n    // Timestamp: 29 Oct 2025 9:30 AM Lima (UTC-5) = 14:30 UTC\n    horario_visita_timestamp = \"2025-10-29T14:30:00.000Z\";\n  }\n\n  // ═══════════════════════════════════════════════════════════\n  // NOTIFICACION_ENVIADA PRESERVATION LOGIC\n  // ═══════════════════════════════════════════════════════════\n\n  // Leer estado de notificacion desde Code1 (desde BD)\n  const notificacionEnviada = $node[\"Code1\"].json.notificacion_previamente_enviada || false;\n\n  // ═══════════════════════════════════════════════════════════\n\n  // Contar intentos\n  const noaMessages = (historialPrevio.match(/\\nAgenteIA:/g) || []).length;\n\n  let estado = \"en_conversacion\";\n  let debeForazarCierre = false;\n\n  // ---- LÓGICA INTELIGENTE DE ESTADOS ----\n\n  // 1. Si tiene TODOS los datos → Lead completo (puede seguir preguntando)\n  if (nombre && rubro && horario) {\n    estado = \"lead_completo\";\n    debeForazarCierre = false;  // NUNCA forzar cierre si tiene datos completos\n  }\n  // 2. Si tiene ALGUNOS datos (parcial)\n  else if (nombre || rubro || horario) {\n    // Dar más oportunidades (15 intentos) porque muestra interés\n    if (noaMessages >= 15) {\n      estado = \"lead_incompleto\";\n      debeForazarCierre = true;\n    } else {\n      estado = \"en_conversacion\";\n      debeForazarCierre = false;\n    }\n  }\n  // 3. Si NO tiene NINGÚN dato\n  else {\n    // Cerrar antes (10 intentos) porque no muestra interés real\n    if (noaMessages >= 10) {\n      estado = \"conversacion_abandonada\";\n      debeForazarCierre = true;\n    } else {\n      estado = \"en_conversacion\";\n      debeForazarCierre = false;\n    }\n  }\n\n  // ---- MENSAJE FINAL ----\n  let mensajeBot = botResponse;\n\n  // Solo forzar cierre si corresponde\n  if (debeForazarCierre) {\n    mensajeBot = \"Su caso es importante para nosotros, pronto un asesor especializado se comunicará con usted para atender sus consultas de forma detallada, manténgase al pendiente por favor. 🤗\";\n  }\n\n  // Construir historial completo (NO duplicar mensaje de usuario, ya está en historialPrevio)\n  const historial_conversacion =\n    (historialPrevio ? historialPrevio + \"\\n\" : \"\") +\n    \"AgenteIA: \" + mensajeBot;\n\n  // Últimos 10 mensajes\n  const lines = historial_conversacion.split(/\\r?\\n/).filter(Boolean);\n  const historial_reciente = lines.slice(-10).join(\"\\n\");\n\n  return [{\n    json: {\n      telefono: telefono,\n      nombre: nombre,\n      rubro: rubro,\n      horario_visita: horario,\n      horario_visita_timestamp: horario_visita_timestamp,\n      historial_conversacion,\n      historial_reciente,\n      fecha_captura: new Date().toISOString(),\n      ultimo_mensaje: userMessage,\n      estado: estado,\n      intentos_bot: noaMessages + 1,\n      mensaje_bot_final: mensajeBot,\n      notificacion_enviada: notificacionEnviada,\n      estado_al_notificar: null\n    }\n  }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -232,7 +231,7 @@
         -2224,
         160
       ],
-      "id": "fee310c1-a682-460c-b06d-c15b3221ac76",
+      "id": "da2ca3c4-9c80-4336-a0e9-e797ca0108b8",
       "name": "Code2"
     },
     {
@@ -245,7 +244,7 @@
         -1952,
         -192
       ],
-      "id": "822a12be-0ba0-47fc-90b2-790cd8ad08f7",
+      "id": "2811b959-1a30-4806-bfbc-fd938288347d",
       "name": "Code1"
     },
     {
@@ -258,7 +257,7 @@
         -3904,
         160
       ],
-      "id": "c476af5c-c789-4e81-be77-32fa7916df74",
+      "id": "8b465ee4-e4f8-4215-9405-88b4d75921ad",
       "name": "Code - Extract Audio Info"
     },
     {
@@ -280,12 +279,12 @@
         -3632,
         160
       ],
-      "id": "4bb0a9cc-8fda-45ca-b98e-3aa29c55e791",
+      "id": "9e01d379-282d-4849-982c-98d1b0871972",
       "name": "HTTP Request - Get Audio URL",
       "credentials": {
         "httpCustomAuth": {
-          "id": "vYJ67DysgTKJEf0q",
-          "name": "WhatsApp Graph API (Custom - Business iterruptivo)"
+          "id": "P5pI2f13ZFQRYvYM",
+          "name": "WhatsApp Graph API (EcoPlaza Victoria Callao - Eco Plaza Business)"
         }
       }
     },
@@ -314,12 +313,12 @@
         -3344,
         160
       ],
-      "id": "c21588b2-7f40-49bc-a5c7-1e539cc9869a",
+      "id": "4d62f99b-92ab-450a-baf8-44c2a363cb44",
       "name": "HTTP Request - Download Audio",
       "credentials": {
         "httpCustomAuth": {
-          "id": "vYJ67DysgTKJEf0q",
-          "name": "WhatsApp Graph API (Custom - Business iterruptivo)"
+          "id": "P5pI2f13ZFQRYvYM",
+          "name": "WhatsApp Graph API (EcoPlaza Victoria Callao - Eco Plaza Business)"
         }
       }
     },
@@ -337,7 +336,7 @@
         -3072,
         160
       ],
-      "id": "21a86e76-c576-4527-a65b-700539faedc2",
+      "id": "67073fa3-ee30-4987-84fd-05f425e49e50",
       "name": "OpenAI - Whisper Transcribe",
       "credentials": {
         "openAiApi": {
@@ -356,7 +355,7 @@
         -2848,
         160
       ],
-      "id": "154ff8a5-eed9-48c2-ad40-263ab45ed86d",
+      "id": "35ac5e3e-fc9a-4c4b-8b8e-b6dd7050e86a",
       "name": "Code - Format Transcription"
     },
     {
@@ -378,7 +377,7 @@
         -2208,
         -192
       ],
-      "id": "ac0cc5b9-b0ff-43f7-84f6-73af963ce416",
+      "id": "0dbf220b-b7fc-4acb-8e6a-f60ba971e6e1",
       "name": "Merge"
     },
     {
@@ -392,7 +391,7 @@
         "messages": {
           "values": [
             {
-              "content": "=Eres un extractor de datos experto. Analiza la conversación y extrae SOLO la información solicitada.\n\n  DATOS A EXTRAER:\n  1. nombre: El nombre completo de la persona (solo si lo menciona explícitamente)\n  2. rubro: El tipo de negocio, producto o actividad comercial (ej: ferretería, bazar, pescado, ropa, textil, frutas, verduras, pollos, carnes, celulares, televisiones, etc.)\n  3. horario_visita: Texto original que mencionó sobre horario de visita\n  4. horario_visita_fecha: Fecha calculada en formato DD/MM/YYYY\n  5. horario_visita_hora: Hora en formato H:MMam/pm (ejemplo: 3:00pm, 10:00am)\n\n  ═══════════════════════════════════════════════════════\n  CONTEXTO TEMPORAL (para cálculo de fechas):\n  ═══════════════════════════════════════════════════════\n  - Fecha de HOY: {{$now.format('DD/MM/YYYY')}}\n  - Día de la semana HOY: {{$now.format('dddd')}}\n  - Formato de fecha esperado: DD/MM/YYYY (día/mes/año)\n  - Timezone: America/Lima (UTC-5)\n  - Idioma: Español (Perú)\n\n  ═══════════════════════════════════════════════════════\n  INSTRUCCIONES PARA CALCULAR FECHAS:\n  ═══════════════════════════════════════════════════════\n\n  Tú eres GPT-4o-mini y eres capaz de razonar sobre fechas. Usa el contexto de \"hoy\" para calcular correctamente:\n\n  FECHAS RELATIVAS:\n  - \"hoy\" → Calcula fecha de hoy\n  - \"mañana\" → Suma 1 día a hoy\n  - \"pasado mañana\" → Suma 2 días a hoy\n  - \"dentro de X días\" → Suma X días a hoy\n\n  DÍAS DE LA SEMANA:\n  - \"el lunes\", \"próximo lunes\", \"el lunes que viene\" → Próximo lunes DESPUÉS de hoy\n  - \"martes de la próxima semana\" → Martes de la semana siguiente a la actual\n  - \"jueves de esta semana\" → Si hoy es antes del jueves, el jueves de esta semana; si ya pasó, el próximo jueves\n  - IMPORTANTE: Si hoy es martes y dice \"el martes\", asume que se refiere al próximo martes (no hoy)\n\n  FECHAS EXPLÍCITAS:\n  - \"el 20 de octubre\" → 20/10/2025\n  - \"15 de noviembre\" → 15/11/2025\n\n  CALCULA CORRECTAMENTE:\n  - Hoy es {{$now.format('dddd')}} {{$now.format('DD/MM/YYYY')}}\n  - Usa lógica matemática para sumar días y calcular el día de la semana correcto\n  - Retorna SIEMPRE en formato DD/MM/YYYY\n\n  ═══════════════════════════════════════════════════════\n  INSTRUCCIONES PARA PARSEAR HORAS:\n  ═══════════════════════════════════════════════════════\n\n  FORMATO ESPERADO: H:MMam/pm (ejemplos: 3:00pm, 10:00am, 8:30am)\n\n  CONVERSIONES COMUNES:\n  - \"4 de la tarde\" → 4:00pm\n  - \"10 de la mañana\" → 10:00am\n  - \"3 y media de la tarde\" → 3:30pm\n  - \"mediodía\" → 12:00pm\n  - \"8 de la mañana\" → 8:00am\n\n  CASOS ESPECIALES:\n  - Si dice \"por la mañana\" SIN hora específica → Dejar VACÍO y no tomarlo en cuenta (Victoria preguntará)\n  - Si dice \"por la tarde\" SIN hora específica → Dejar VACÍO y no tomarlo en cuenta (Victoria preguntará)\n  - Si solo menciona fecha sin hora → Dejar horario_visita_hora VACÍO\n  - Si dice \"este fin de semana\" Sin hora y día específico → Dejar VACÍO y no tomarlo en cuenta (Victoria preguntará)\n\n  REGLA CRÍTICA DE VALIDACIÓN:\n  ═══════════════════════════════════════════════════════════\n  ANTES de retornar el JSON, valida:\n\n  1. Si horario_visita_fecha está VACÍO → horario_visita DEBE estar VACÍO también\n  2. Si horario_visita_hora está VACÍO → horario_visita DEBE estar VACÍO también\n  3. \"este fin de semana\", \"por la tarde\", \"por la mañana\", \"cualquier día\" → TODOS los campos VACÍOS\n\n  Ejemplos de lo que NO debes capturar:\n  - \"este fin de semana\" → Todo VACÍO\n  - \"por la tarde\" → Todo VACÍO\n  - \"cuando pueda\" → Todo VACÍO\n  - \"cualquier día\" → Todo VACÍO\n\n  SOLO captura horario_visita si tienes DÍA ESPECÍFICO (ej: lunes, martes, 15 de octubre)\n\n  ═══════════════════════════════════════════════════════\n  REGLAS CRÍTICAS:\n  ═══════════════════════════════════════════════════════\n\n  1. Si NO menciona horario de visita → Todos los campos de horario VACÍOS\n  2. Si menciona día pero NO hora específica → horario_visita y horario_visita_fecha llenos, horario_visita_hora VACÍO\n  3. Si menciona día Y hora específica → Todos los campos llenos\n  4. NO inventes información que no está en el mensaje\n  5. NO repitas datos de mensajes anteriores si no se mencionan en el actual\n  6. Si solo saluda → Todos los campos VACÍOS\n  7. SIEMPRE calcula fechas basándote en HOY ({{$now.format('DD/MM/YYYY')}})\n  8. Confía en tu capacidad de razonamiento temporal (eres GPT-4o-mini)\n  9. Si no tienes claro el día y hora de visita → Todos los campos de horario VACÍOS (Victoria pregutnará)\n\n  ═══════════════════════════════════════════════════════\n  EJEMPLOS (HOY es {{$now.format('dddd')}} {{$now.format('DD/MM/YYYY')}}):\n  ═══════════════════════════════════════════════════════\n\n  Ejemplo 1:\n  Usuario: \"el próximo jueves a las 4 de la tarde\"\n  Respuesta:\n  {\n    \"nombre\": \"\",\n    \"rubro\": \"\",\n    \"horario_visita\": \"el próximo jueves a las 4 de la tarde\",\n    \"horario_visita_fecha\": \"16/10/2025\",\n    \"horario_visita_hora\": \"4:00pm\"\n  }\n\n  Ejemplo 2:\n  Usuario: \"martes de la próxima semana\"\n  Respuesta:\n  {\n    \"nombre\": \"\",\n    \"rubro\": \"\",\n    \"horario_visita\": \"martes de la próxima semana\",\n    \"horario_visita_fecha\": \"21/10/2025\",\n    \"horario_visita_hora\": \"\"\n  }\n\n  Ejemplo 3:\n  Usuario: \"mañana por la mañana\"\n  Respuesta:\n  {\n    \"nombre\": \"\",\n    \"rubro\": \"\",\n    \"horario_visita\": \"mañana por la mañana\",\n    \"horario_visita_fecha\": \"15/10/2025\",\n    \"horario_visita_hora\": \"\"\n  }\n\n  Ejemplo 4:\n  Usuario: \"dentro de 5 días a las 10am\"\n  Respuesta:\n  {\n    \"nombre\": \"\",\n    \"rubro\": \"\",\n    \"horario_visita\": \"dentro de 5 días a las 10am\",\n    \"horario_visita_fecha\": \"19/10/2025\",\n    \"horario_visita_hora\": \"10:00am\"\n  }\n\n  ═══════════════════════════════════════════════════════\n  FORMATO DE RESPUESTA (JSON estricto):\n  ═══════════════════════════════════════════════════════\n  {\n    \"nombre\": \"\",\n    \"rubro\": \"\",\n    \"horario_visita\": \"\",\n    \"horario_visita_fecha\": \"\",\n    \"horario_visita_hora\": \"\"\n  }",
+              "content": "=Eres un extractor de datos experto. Analiza la conversación y extrae SOLO la información solicitada.\n\n  DATOS A EXTRAER:\n  1. nombre: El nombre completo de la persona (solo si lo menciona explícitamente)\n  2. rubro: El tipo de negocio, producto o actividad comercial (ej: ferretería, bazar, pescado, ropa, textil, frutas, verduras, pollos, carnes, celulares, televisiones, etc.)\n  3. horario_visita: Texto original que mencionó sobre horario de visita\n  4. horario_visita_fecha: Fecha calculada en formato DD/MM/YYYY\n  5. horario_visita_hora: Hora en formato H:MMam/pm (ejemplo: 3:00pm, 10:00am)\n\n  ═══════════════════════════════════════════════════════\n  CONTEXTO TEMPORAL (para cálculo de fechas):\n  ═══════════════════════════════════════════════════════\n  - Fecha de HOY: {{$now.format('D')}}\n  - Día de la semana HOY: {{$now.format('DDDD')}}\n  - Formato de fecha esperado: DD/MM/YYYY (día/mes/año)\n  - Timezone: America/Lima (UTC-5)\n  - Idioma: Español (Perú)\n\n  ═══════════════════════════════════════════════════════\n  INSTRUCCIONES PARA CALCULAR FECHAS:\n  ═══════════════════════════════════════════════════════\n\n  Tú eres GPT-4o-mini y eres capaz de razonar sobre fechas. Usa el contexto de \"hoy\" para calcular correctamente:\n\n  FECHAS RELATIVAS:\n  - \"hoy\" → Calcula fecha de hoy\n  - \"mañana\" → Suma 1 día a hoy\n  - \"pasado mañana\" → Suma 2 días a hoy\n  - \"dentro de X días\" → Suma X días a hoy\n\n  DÍAS DE LA SEMANA:\n  - \"el lunes\", \"próximo lunes\", \"el lunes que viene\" → Próximo lunes DESPUÉS de hoy\n  - \"martes de la próxima semana\" → Martes de la semana siguiente a la actual\n  - \"jueves de esta semana\" → Si hoy es antes del jueves, el jueves de esta semana; si ya pasó, el próximo jueves\n  - IMPORTANTE: Si hoy es martes y dice \"el martes\", asume que se refiere al próximo martes (no hoy)\n\n  FECHAS EXPLÍCITAS:\n  - \"el 20 de octubre\" → 20/10/2025\n  - \"15 de noviembre\" → 15/11/2025\n\n  CALCULA CORRECTAMENTE:\n  - Hoy es {{$now.format('DDDD')}}\n  - Usa lógica matemática para sumar días y calcular el día de la semana correcto\n  - Retorna SIEMPRE en formato DD/MM/YYYY\n\n  ═══════════════════════════════════════════════════════\n  INSTRUCCIONES PARA PARSEAR HORAS:\n  ═══════════════════════════════════════════════════════\n\n  FORMATO ESPERADO: H:MMam/pm (ejemplos: 3:00pm, 10:00am, 8:30am)\n\n  CONVERSIONES COMUNES:\n  - \"4 de la tarde\" → 4:00pm\n  - \"10 de la mañana\" → 10:00am\n  - \"3 y media de la tarde\" → 3:30pm\n  - \"mediodía\" → 12:00pm\n  - \"8 de la mañana\" → 8:00am\n\n  CASOS ESPECIALES:\n  - Si dice \"por la mañana\" SIN hora específica → Dejar VACÍO y no tomarlo en cuenta (Victoria preguntará)\n  - Si dice \"por la tarde\" SIN hora específica → Dejar VACÍO y no tomarlo en cuenta (Victoria preguntará)\n  - Si solo menciona fecha sin hora → Dejar horario_visita_hora VACÍO\n  - Si dice \"este fin de semana\" Sin hora y día específico → Dejar VACÍO y no tomarlo en cuenta (Victoria preguntará)\n\n  REGLA CRÍTICA DE VALIDACIÓN:\n  ═══════════════════════════════════════════════════════════\n  ANTES de retornar el JSON, valida:\n\n  1. Si horario_visita_fecha está VACÍO → horario_visita DEBE estar VACÍO también\n  2. Si horario_visita_hora está VACÍO → horario_visita DEBE estar VACÍO también\n  3. \"este fin de semana\", \"por la tarde\", \"por la mañana\", \"cualquier día\" → TODOS los campos VACÍOS\n\n  Ejemplos de lo que NO debes capturar:\n  - \"este fin de semana\" → Todo VACÍO\n  - \"por la tarde\" → Todo VACÍO\n  - \"cuando pueda\" → Todo VACÍO\n  - \"cualquier día\" → Todo VACÍO\n\n  SOLO captura horario_visita si tienes DÍA ESPECÍFICO (ej: lunes, martes, 15 de octubre)\n\n  ═══════════════════════════════════════════════════════\n  REGLAS CRÍTICAS:\n  ═══════════════════════════════════════════════════════\n\n  1. Si NO menciona horario de visita → Todos los campos de horario VACÍOS\n  2. Si menciona día pero NO hora específica → horario_visita y horario_visita_fecha llenos, horario_visita_hora VACÍO\n  3. Si menciona día Y hora específica → Todos los campos llenos\n  4. NO inventes información que no está en el mensaje\n  5. NO repitas datos de mensajes anteriores si no se mencionan en el actual\n  6. Si solo saluda → Todos los campos VACÍOS\n  7. SIEMPRE calcula fechas basándote en HOY ({{$now.format('DDDD')}})\n  8. Confía en tu capacidad de razonamiento temporal (eres GPT-4o-mini)\n  9. Si no tienes claro el día y hora de visita → Todos los campos de horario VACÍOS (Victoria pregutnará)\n\n  ═══════════════════════════════════════════════════════\n  EJEMPLOS (HOY es {{$now.format('DDDD')}}):\n  ═══════════════════════════════════════════════════════\n\n  Ejemplo 1:\n  Usuario: \"el próximo jueves a las 4 de la tarde\"\n  Respuesta:\n  {\n    \"nombre\": \"\",\n    \"rubro\": \"\",\n    \"horario_visita\": \"el próximo jueves a las 4 de la tarde\",\n    \"horario_visita_fecha\": \"16/10/2025\",\n    \"horario_visita_hora\": \"4:00pm\"\n  }\n\n  Ejemplo 2:\n  Usuario: \"martes de la próxima semana\"\n  Respuesta:\n  {\n    \"nombre\": \"\",\n    \"rubro\": \"\",\n    \"horario_visita\": \"martes de la próxima semana\",\n    \"horario_visita_fecha\": \"21/10/2025\",\n    \"horario_visita_hora\": \"\"\n  }\n\n  Ejemplo 3:\n  Usuario: \"mañana por la mañana\"\n  Respuesta:\n  {\n    \"nombre\": \"\",\n    \"rubro\": \"\",\n    \"horario_visita\": \"mañana por la mañana\",\n    \"horario_visita_fecha\": \"15/10/2025\",\n    \"horario_visita_hora\": \"\"\n  }\n\n  Ejemplo 4:\n  Usuario: \"dentro de 5 días a las 10am\"\n  Respuesta:\n  {\n    \"nombre\": \"\",\n    \"rubro\": \"\",\n    \"horario_visita\": \"dentro de 5 días a las 10am\",\n    \"horario_visita_fecha\": \"19/10/2025\",\n    \"horario_visita_hora\": \"10:00am\"\n  }\n\n  ═══════════════════════════════════════════════════════\n  FORMATO DE RESPUESTA (JSON estricto):\n  ═══════════════════════════════════════════════════════\n  {\n    \"nombre\": \"\",\n    \"rubro\": \"\",\n    \"horario_visita\": \"\",\n    \"horario_visita_fecha\": \"\",\n    \"horario_visita_hora\": \"\"\n  }",
               "role": "system"
             },
             {
@@ -411,7 +410,7 @@
         -1616,
         -96
       ],
-      "id": "aa51a481-3dbc-42d5-a82f-07a9d259d8bd",
+      "id": "09c6452f-319c-4c50-af8d-d487e9f533d6",
       "name": "OpenAI - Extract Data",
       "credentials": {
         "openAiApi": {
@@ -430,12 +429,12 @@
         -1824,
         -32
       ],
-      "id": "5a31b4ac-792e-44a8-a1b5-7688142f21e9",
+      "id": "2205ae2f-355e-4d51-9b89-1b0347db4bb8",
       "name": "Parse Horario to Timestamp"
     },
     {
       "parameters": {
-        "url": "https://raw.githubusercontent.com/iterruptivo/ecoplaza-agente-ia/refs/heads/main/ecoplaza-instrucciones-agente.txt",
+        "url": "https://raw.githubusercontent.com/iterruptivo/ecoplaza-agente-ia/refs/heads/main/ecoplaza-instrucciones-agente-callao.txt",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
@@ -446,12 +445,12 @@
         -2864,
         -208
       ],
-      "id": "530f1bd4-85e0-4b41-992c-4256c6b0e9d7",
+      "id": "a7e9f1b7-f40b-457c-aa6a-9b3ec900088a",
       "name": "HTTP Request (GitHub)",
       "credentials": {
         "httpHeaderAuth": {
-          "id": "ilMGirJWHVtqUPrH",
-          "name": "Header Auth account (githup)"
+          "id": "MLXcKawD1e0ddlpV",
+          "name": "WhatsApp Graph API (Test)"
         }
       }
     },
@@ -472,12 +471,12 @@
         -3152,
         -208
       ],
-      "id": "0419efa7-b81e-4789-bb1e-94c59b6b04cc",
+      "id": "f542ed66-fa17-4195-98b7-69577d6e5aa8",
       "name": "HTTP Request - Mark Message as Read",
       "credentials": {
         "httpCustomAuth": {
-          "id": "vYJ67DysgTKJEf0q",
-          "name": "WhatsApp Graph API (Custom - Business iterruptivo)"
+          "id": "P5pI2f13ZFQRYvYM",
+          "name": "WhatsApp Graph API (EcoPlaza Victoria Callao - Eco Plaza Business)"
         }
       }
     },
@@ -491,7 +490,7 @@
         -3472,
         -208
       ],
-      "id": "d313a8ae-62cb-4142-bdab-eb96da075e5d",
+      "id": "92b9f0b3-dc52-41c5-ad4e-5a0d69c0ab87",
       "name": "Code in JavaScript"
     },
     {
@@ -524,7 +523,7 @@
         -2272,
         336
       ],
-      "id": "5e7f87d6-8cbe-4129-a90b-609739db2b31",
+      "id": "c58456d7-7066-4ae3-a01e-34c1ee743248",
       "name": "OpenAI Summarize History",
       "credentials": {
         "openAiApi": {
@@ -553,7 +552,7 @@
         -1520,
         208
       ],
-      "id": "4d083521-98fd-45cb-a72e-917b9c00889b",
+      "id": "faceb1d6-84d3-4dc2-9717-882e3e5f8409",
       "name": "Merge1"
     },
     {
@@ -576,7 +575,7 @@
         -1760,
         304
       ],
-      "id": "e64561c1-8018-4720-a2b3-473860a5cd3b",
+      "id": "d2b34a10-2aac-4fb8-a44d-b8cd65743bc7",
       "name": "Edit Fields"
     },
     {
@@ -618,13 +617,13 @@
         -1344,
         144
       ],
-      "id": "16d9e71b-a076-40f5-a3fe-8629cbb06b8d",
+      "id": "aa731eb0-0052-41bc-9c37-7ed2af22d515",
       "name": "IF - Conversacion Cerrada?"
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.facebook.com/v21.0/757095820830409/messages",
+        "url": "=https://graph.facebook.com/v21.0/771452262728711/messages",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpCustomAuth",
         "sendBody": true,
@@ -638,12 +637,12 @@
         144,
         -352
       ],
-      "id": "70237e71-47a8-43b7-a9b5-d975ca67a8eb",
+      "id": "56b5f3aa-d698-4cf2-8906-5c906ea7c07e",
       "name": "WhatsApp - Send Vendor Notification",
       "credentials": {
         "httpCustomAuth": {
-          "id": "vYJ67DysgTKJEf0q",
-          "name": "WhatsApp Graph API (Custom - Business iterruptivo)"
+          "id": "P5pI2f13ZFQRYvYM",
+          "name": "WhatsApp Graph API (EcoPlaza Victoria Callao - Eco Plaza Business)"
         }
       }
     },
@@ -657,12 +656,12 @@
         -400,
         -48
       ],
-      "id": "ae58220c-04fb-4fc4-8c71-b33703050fc0",
+      "id": "508e6fa0-a106-491f-b72a-98e23059287c",
       "name": "Code - Get First Item"
     },
     {
       "parameters": {
-        "jsCode": "// === 1) Lead desde el nodo \"IF - Conversacion Cerrada?\" ===\nconst leadItem = $items(\"IF - Conversacion Cerrada?\", 0, 0);\nconst leadData = leadItem?.json || {};\n\n// Obtener el estado desde Code2 (es la fuente más confiable)\nconst estado = leadData.estado || $node[\"Code2\"]?.json?.estado || \"en_conversacion\";\n\n// === 2) Vendedores ===\nconst vendedores = $input.all();\n\n// === 3) Formatear estado y mensaje ===\nconst estadoUpper = estado.toUpperCase().replace(/_/g, \" \");\nconst mensaje = `Nuevo Lead Proyecto Trapiche - Estado: ${estadoUpper}`;\n\n// === 4) Crear items por vendedor ===\nreturn vendedores\n  .map(v => v?.json)\n  .filter(v => v && v.telefono)\n  .map(v => ({\n    json: {\n      vendor_phone: v.telefono,\n      vendor_name: v.nombre,\n      notification_message: mensaje,\n      ...leadData,\n    },\n  }));\n"
+        "jsCode": "// === 1) Lead desde el nodo \"IF - Conversacion Cerrada?\" ===\nconst leadItem = $items(\"IF - Conversacion Cerrada?\", 0, 0);\nconst leadData = leadItem?.json || {};\n\n// Obtener el estado desde Code2 (es la fuente más confiable)\nconst estado = leadData.estado || $node[\"Code2\"]?.json?.estado || \"en_conversacion\";\n\n// === 2) Vendedores ===\nconst vendedores = $input.all();\n\n// === 3) Formatear estado y mensaje ===\nconst estadoUpper = estado.toUpperCase().replace(/_/g, \" \");\nconst mensaje = `Nuevo Lead Proyecto Trapiche - Estado: ${estadoUpper}`;\n\n// === 4) Crear items por vendedor ===\nreturn vendedores\n  .map(v => v?.json)\n  .filter(v => v && v.telefono)\n  .map(v => ({\n    json: {\n      vendor_phone: v.telefono,\n      vendor_name: v.nombre,\n      notification_message: mensaje,\n      ...leadData,\n    },\n  }));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -670,7 +669,7 @@
         -352,
         -368
       ],
-      "id": "52967a01-7a94-479b-92a8-0776cf1ddb92",
+      "id": "f845b00e-e812-4bea-9505-940e32914c47",
       "name": "Code - Format Vendor Notifications"
     },
     {
@@ -686,7 +685,7 @@
         -144,
         -368
       ],
-      "id": "51328b7b-cb58-4d82-8a68-ea223cd7911d",
+      "id": "7d40c553-ae9d-4b9e-8455-093d1c97df13",
       "name": "Split In Batches - Vendors"
     },
     {
@@ -697,9 +696,9 @@
         -80,
         -32
       ],
-      "id": "bfe6e453-1405-4c29-a501-30732313ab18",
+      "id": "530456f9-16a8-409e-aaf5-72b729065c46",
       "name": "Wait",
-      "webhookId": "a702250c-f1cb-4da2-bc31-3dc863758037"
+      "webhookId": "17c1ee0a-76d5-4d31-941d-4690ac69775e"
     },
     {
       "parameters": {
@@ -735,9 +734,125 @@
         -2576,
         -208
       ],
-      "id": "0b067b88-002f-4248-b73d-cc092f76a5e9",
+      "id": "2008d88e-0be0-45fc-b6b0-90cb280aaecc",
       "name": "Supabase - Get Lead",
       "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "url": "https://qssefegfzxxurqbzndrs.supabase.co/rest/v1/vendedores?activo=eq.true&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzc2VmZWdmenh4dXJxYnpuZHJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMjA2MTEsImV4cCI6MjA3NTY5NjYxMX0.O6GW7ODPKK4asqDpsnA5Ejn11r_bz3Eklp5qk-1QOiQ"
+            },
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzc2VmZWdmenh4dXJxYnpuZHJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMjA2MTEsImV4cCI6MjA3NTY5NjYxMX0.O6GW7ODPKK4asqDpsnA5Ejn11r_bz3Eklp5qk-1QOiQ"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -544,
+        -368
+      ],
+      "id": "e3a8befb-b20c-4786-bd7f-efed4cb3efdd",
+      "name": "Supabase - Get Vendedores"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "62b93104-2e80-460f-9646-337343ff3daa",
+              "leftValue": "={{ !$json.notificacion_enviada }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -960,
+        -144
+      ],
+      "id": "6f2deeac-773e-4a17-bda3-65fe55ce8307",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "url": "=https://qssefegfzxxurqbzndrs.supabase.co/rest/v1/leads?telefono=eq.{{ $json.telefono }}&select=*",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzc2VmZWdmenh4dXJxYnpuZHJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMjA2MTEsImV4cCI6MjA3NTY5NjYxMX0.O6GW7ODPKK4asqDpsnA5Ejn11r_bz3Eklp5qk-1QOiQ"
+            },
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzc2VmZWdmenh4dXJxYnpuZHJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMjA2MTEsImV4cCI6MjA3NTY5NjYxMX0.O6GW7ODPKK4asqDpsnA5Ejn11r_bz3Eklp5qk-1QOiQ"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1216,
+        -144
+      ],
+      "id": "8b39db1b-7950-4528-9def-9866b1bd6b67",
+      "name": "Supabase - Get Lead1",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "MLXcKawD1e0ddlpV",
+          "name": "WhatsApp Graph API (Test)"
+        }
+      }
     },
     {
       "parameters": {
@@ -822,6 +937,10 @@
             {
               "name": "estado_al_notificar",
               "value": "={{$json.estado_al_notificar}}"
+            },
+            {
+              "name": "proyecto_id",
+              "value": "0661ce3d-4a99-4f7d-82bf-242ecfa58f28"
             }
           ]
         },
@@ -840,124 +959,8 @@
         -528,
         288
       ],
-      "id": "be074270-cdf1-4760-ac39-d996014e5670",
-      "name": "Supabase - Upsert Lead"
-    },
-    {
-      "parameters": {
-        "url": "https://qssefegfzxxurqbzndrs.supabase.co/rest/v1/vendedores?activo=eq.true&select=*",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzc2VmZWdmenh4dXJxYnpuZHJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMjA2MTEsImV4cCI6MjA3NTY5NjYxMX0.O6GW7ODPKK4asqDpsnA5Ejn11r_bz3Eklp5qk-1QOiQ"
-            },
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzc2VmZWdmenh4dXJxYnpuZHJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMjA2MTEsImV4cCI6MjA3NTY5NjYxMX0.O6GW7ODPKK4asqDpsnA5Ejn11r_bz3Eklp5qk-1QOiQ"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        -544,
-        -368
-      ],
-      "id": "ab2550c7-4272-40f2-9c1f-0a016648f08f",
-      "name": "Supabase - Get Vendedores"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "62b93104-2e80-460f-9646-337343ff3daa",
-              "leftValue": "={{ !$json.notificacion_enviada }}",
-              "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        -960,
-        -144
-      ],
-      "id": "50110abe-4407-4254-a482-d442587173ee",
-      "name": "If1"
-    },
-    {
-      "parameters": {
-        "url": "=https://qssefegfzxxurqbzndrs.supabase.co/rest/v1/leads?telefono=eq.{{ $json.telefono }}&select=*",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Authorization",
-              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzc2VmZWdmenh4dXJxYnpuZHJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMjA2MTEsImV4cCI6MjA3NTY5NjYxMX0.O6GW7ODPKK4asqDpsnA5Ejn11r_bz3Eklp5qk-1QOiQ"
-            },
-            {
-              "name": "apikey",
-              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzc2VmZWdmenh4dXJxYnpuZHJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMjA2MTEsImV4cCI6MjA3NTY5NjYxMX0.O6GW7ODPKK4asqDpsnA5Ejn11r_bz3Eklp5qk-1QOiQ"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        -1216,
-        -144
-      ],
-      "id": "4af0e471-e61f-4621-94e8-52fe542d8bdf",
-      "name": "Supabase - Get Lead1",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "5pHMC1T78XfLbQ81",
-          "name": "Supabase API Key"
-        }
-      }
+      "id": "a8e16fe7-b875-45de-80a0-358906c65044",
+      "name": "Supabase - Upsert Lead - EcoPlaza Trapiche - Prod"
     }
   ],
   "pinData": {},
@@ -991,12 +994,12 @@
         ],
         [
           {
-            "node": "Code in JavaScript",
+            "node": "Code - Extract Audio Info",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Code - Extract Audio Info",
+            "node": "Code in JavaScript",
             "type": "main",
             "index": 0
           }
@@ -1206,7 +1209,7 @@
         ],
         [
           {
-            "node": "Supabase - Upsert Lead",
+            "node": "Supabase - Upsert Lead - EcoPlaza Trapiche - Prod",
             "type": "main",
             "index": 0
           }
@@ -1228,7 +1231,7 @@
       "main": [
         [
           {
-            "node": "Supabase - Upsert Lead",
+            "node": "Supabase - Upsert Lead - EcoPlaza Trapiche - Prod",
             "type": "main",
             "index": 0
           }
@@ -1286,17 +1289,6 @@
         ]
       ]
     },
-    "Supabase - Upsert Lead": {
-      "main": [
-        [
-          {
-            "node": "Send message",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Supabase - Get Vendedores": {
       "main": [
         [
@@ -1319,7 +1311,7 @@
         ],
         [
           {
-            "node": "Supabase - Upsert Lead",
+            "node": "Supabase - Upsert Lead - EcoPlaza Trapiche - Prod",
             "type": "main",
             "index": 0
           }
@@ -1342,18 +1334,29 @@
         [],
         []
       ]
+    },
+    "Supabase - Upsert Lead - EcoPlaza Trapiche - Prod": {
+      "main": [
+        [
+          {
+            "node": "Send message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "b99b8ebc-c971-4213-9678-963f174417eb",
+  "versionId": "5dd9bac5-7c17-4208-9bea-9497887e75e9",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "ac495b013a9dddb9724430276f2a1ebc03086cb4690790d0c3f0b57736633d28"
   },
-  "id": "EFm0520weXRlELzc",
+  "id": "dMbR0LmkPJx6SjX8",
   "tags": [
     {
       "createdAt": "2025-10-05T15:49:21.676Z",

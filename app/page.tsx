@@ -1,40 +1,97 @@
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import DashboardClient from '@/components/dashboard/DashboardClient';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import { getAllLeads } from '@/lib/db';
+import { getAllLeads, Lead } from '@/lib/db';
+import { useAuth } from '@/lib/auth-context';
 
-// CRITICAL: Disable Next.js caching to show fresh data from database
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+export default function Home() {
+  const router = useRouter();
+  const { user, selectedProyecto, loading: authLoading } = useAuth();
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default async function Home() {
-  // Calculate default date range (last 30 days) - Use UTC to avoid timezone issues
+  // Redirect if not authenticated or no proyecto selected
+  useEffect(() => {
+    if (!authLoading && (!user || !selectedProyecto)) {
+      router.push('/login');
+    }
+  }, [user, selectedProyecto, authLoading, router]);
+
+  // Fetch leads when selectedProyecto changes
+  useEffect(() => {
+    if (selectedProyecto && user) {
+      async function fetchData() {
+        setLoading(true);
+
+        // Calculate default date range (last 30 days)
+        const now = new Date();
+        const dateTo = new Date(now);
+        dateTo.setUTCHours(23, 59, 59, 999);
+        const dateFrom = new Date(dateTo);
+        dateFrom.setUTCDate(dateFrom.getUTCDate() - 30);
+        dateFrom.setUTCHours(0, 0, 0, 0);
+
+        console.log('[CLIENT] Fetching leads for proyecto:', selectedProyecto.nombre);
+        console.log('[CLIENT] Proyecto ID:', selectedProyecto.id);
+
+        // MULTI-PROYECTO: Fetch leads filtered by proyecto
+        const data = await getAllLeads(dateFrom, dateTo, selectedProyecto.id);
+
+        console.log('[CLIENT] Fetched leads count:', data.length);
+        setLeads(data);
+        setLoading(false);
+      }
+      fetchData();
+    }
+  }, [selectedProyecto, user]);
+
+  // Function to refetch leads (for real-time updates after assignment)
+  const refetchLeads = useCallback(async () => {
+    if (selectedProyecto) {
+      const now = new Date();
+      const dateTo = new Date(now);
+      dateTo.setUTCHours(23, 59, 59, 999);
+      const dateFrom = new Date(dateTo);
+      dateFrom.setUTCDate(dateFrom.getUTCDate() - 30);
+      dateFrom.setUTCHours(0, 0, 0, 0);
+
+      const data = await getAllLeads(dateFrom, dateTo, selectedProyecto.id);
+      setLeads(data);
+    }
+  }, [selectedProyecto]);
+
+  // Show loading while auth or data is loading
+  if (authLoading || loading || !selectedProyecto) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate initial date range strings for DashboardClient
   const now = new Date();
-
-  // End of today (UTC)
   const dateTo = new Date(now);
   dateTo.setUTCHours(23, 59, 59, 999);
-
-  // 30 days ago - start of day (UTC)
   const dateFrom = new Date(dateTo);
   dateFrom.setUTCDate(dateFrom.getUTCDate() - 30);
   dateFrom.setUTCHours(0, 0, 0, 0);
-
-  console.log('[SERVER] Fetching leads with date range:', { dateFrom, dateTo });
-
-  // Fetch leads with 30-day filter (server-side)
-  const leads = await getAllLeads(dateFrom, dateTo);
-
-  console.log('[SERVER] Fetched leads count:', leads.length);
-  console.log('[SERVER] First 3 leads:', leads.slice(0, 3));
-
-  // Format dates for input fields (YYYY-MM-DD)
   const dateFromString = dateFrom.toISOString().split('T')[0];
   const dateToString = dateTo.toISOString().split('T')[0];
 
   return (
     <div className="min-h-screen">
       {/* Header with logout button */}
-      <DashboardHeader title="Dashboard EcoPlaza" subtitle="Gestión de Leads - Proyecto Trapiche" />
+      <DashboardHeader
+        title="Dashboard EcoPlaza"
+        subtitle={`Gestión de Leads - ${selectedProyecto.nombre}`}
+      />
 
       {/* Main Content */}
       <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -42,6 +99,7 @@ export default async function Home() {
           initialLeads={leads}
           initialDateFrom={dateFromString}
           initialDateTo={dateToString}
+          onRefresh={refetchLeads}
         />
       </main>
     </div>

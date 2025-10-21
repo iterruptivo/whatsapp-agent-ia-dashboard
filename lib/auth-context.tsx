@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { useRouter } from 'next/navigation';
+import { Proyecto } from './db';
 
 // ============================================================================
 // TYPES
@@ -21,8 +22,9 @@ interface Usuario {
 interface AuthContextType {
   user: Usuario | null;
   supabaseUser: SupabaseUser | null;
+  selectedProyecto: Proyecto | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signIn: (email: string, password: string, proyectoId: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
 }
 
@@ -40,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [user, setUser] = useState<Usuario | null>(null);
+  const [selectedProyecto, setSelectedProyecto] = useState<Proyecto | null>(null);
   const [loading, setLoading] = useState(true);
 
   // ============================================================================
@@ -102,6 +105,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ============================================================================
+  // FETCH PROYECTO DATA (for multi-proyecto support)
+  // ============================================================================
+  const fetchProyectoData = async (proyectoId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('proyectos')
+        .select('*')
+        .eq('id', proyectoId)
+        .eq('activo', true)
+        .single();
+
+      if (error) {
+        console.error('[AUTH ERROR] Error fetching proyecto:', error);
+        return null;
+      }
+
+      if (!data) {
+        console.error('[AUTH ERROR] Proyecto not found or inactive:', proyectoId);
+        return null;
+      }
+
+      return data as Proyecto;
+    } catch (error) {
+      console.error('[AUTH ERROR] Unexpected error fetching proyecto:', error);
+      return null;
+    }
+  };
+
+  // ============================================================================
   // INITIALIZE SESSION ON MOUNT
   // ============================================================================
   useEffect(() => {
@@ -131,6 +163,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSupabaseUser(authUser);
         const userData = await fetchUserDataWithTimeout(authUser, 8000);
         setUser(userData);
+
+        // MULTI-PROYECTO: Restore selected proyecto from sessionStorage
+        const savedProyectoId = sessionStorage.getItem('selected_proyecto_id');
+        if (savedProyectoId && userData) {
+          const proyectoData = await fetchProyectoData(savedProyectoId);
+          setSelectedProyecto(proyectoData);
+        }
       } catch (error) {
         console.error('[AUTH ERROR] Error initializing auth:', error);
       } finally {
@@ -176,9 +215,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ============================================================================
-  // SIGN IN
+  // SIGN IN (with proyecto selection)
   // ============================================================================
-  const signIn = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const signIn = async (email: string, password: string, proyectoId: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -203,8 +242,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'Usuario no autorizado o desactivado' };
       }
 
+      // MULTI-PROYECTO: Fetch and validate selected proyecto
+      const proyectoData = await fetchProyectoData(proyectoId);
+
+      if (!proyectoData) {
+        await supabase.auth.signOut(); // Clean up session
+        return { success: false, error: 'Proyecto no válido o inactivo' };
+      }
+
+      // Set auth state
       setSupabaseUser(data.user);
       setUser(userData);
+      setSelectedProyecto(proyectoData);
+
+      // Save proyecto to sessionStorage for persistence
+      sessionStorage.setItem('selected_proyecto_id', proyectoId);
 
       // Redirect based on role
       if (userData.rol === 'admin') {
@@ -228,6 +280,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut();
       setSupabaseUser(null);
       setUser(null);
+      setSelectedProyecto(null);
+      sessionStorage.removeItem('selected_proyecto_id');
       router.push('/login');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -240,6 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextType = {
     user,
     supabaseUser,
+    selectedProyecto,
     loading,
     signIn,
     signOut,

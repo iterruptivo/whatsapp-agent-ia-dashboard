@@ -3,6 +3,8 @@
 import { useAuth } from '@/lib/auth-context';
 import { LogOut, User } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
 interface DashboardHeaderProps {
   title: string;
@@ -12,15 +14,23 @@ interface DashboardHeaderProps {
 export default function DashboardHeader({ title, subtitle }: DashboardHeaderProps) {
   const { user, signOut, loading } = useAuth();
   const [isClient, setIsClient] = useState(false);
+  const { isOpen, config, showDialog, closeDialog } = useConfirmDialog();
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   const handleLogout = async () => {
-    if (confirm('¿Estás seguro que deseas cerrar sesión?')) {
-      await signOut();
-    }
+    showDialog({
+      title: '¿Cerrar sesión?',
+      message: 'Vas a cerrar sesión. Tendrás que volver a iniciar sesión para acceder al dashboard.',
+      variant: 'danger',
+      confirmText: 'Cerrar Sesión',
+      cancelText: 'Cancelar',
+      onConfirm: async () => {
+        await signOut();
+      },
+    });
   };
 
   // Debug logging
@@ -77,6 +87,20 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
           ) : null}
         </div>
       </div>
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={isOpen}
+        onClose={closeDialog}
+        onConfirm={config.onConfirm}
+        title={config.title}
+        message={config.message}
+        type={config.type}
+        variant={config.variant}
+        confirmText={config.confirmText}
+        cancelText={config.cancelText}
+        showCancel={config.showCancel}
+      />
     </header>
   );
 }

@@ -1,5 +1,15 @@
 import { supabase } from './supabase';
 
+// Proyecto interface matching Supabase proyectos table
+export interface Proyecto {
+  id: string;
+  nombre: string;
+  slug: string;
+  color: string | null;
+  activo: boolean;
+  created_at?: string;
+}
+
 // Updated Lead interface matching Supabase schema
 export interface Lead {
   id: string;
@@ -21,6 +31,9 @@ export interface Lead {
   notificacion_enviada: boolean;
   vendedor_asignado_id: string | null; // ID del vendedor asignado (nullable - lead disponible si null)
   vendedor_nombre?: string | null; // Nombre del vendedor (obtenido via JOIN, opcional)
+  proyecto_id: string; // ID del proyecto (Trapiche, Callao, etc.)
+  proyecto_nombre?: string | null; // Nombre del proyecto (obtenido via JOIN, opcional)
+  proyecto_color?: string | null; // Color del proyecto (obtenido via JOIN, opcional)
 }
 
 // Vendedor interface matching Supabase vendedores table
@@ -29,6 +42,32 @@ export interface Vendedor {
   nombre: string;
   telefono: string;
   activo: boolean;
+}
+
+// Get all proyectos from Supabase (only active ones by default)
+export async function getAllProyectos(includeInactive = false): Promise<Proyecto[]> {
+  try {
+    let query = supabase
+      .from('proyectos')
+      .select('id, nombre, slug, color, activo, created_at');
+
+    // Filter by active status unless includeInactive is true
+    if (!includeInactive) {
+      query = query.eq('activo', true);
+    }
+
+    const { data, error } = await query.order('nombre', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching proyectos:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in getAllProyectos:', error);
+    return [];
+  }
 }
 
 // Get all vendedores from Supabase (only active ones by default)
@@ -57,17 +96,24 @@ export async function getAllVendedores(includeInactive = false): Promise<Vendedo
   }
 }
 
-// Get all leads from Supabase with optional date range filtering
-// Includes vendedor info via LEFT JOIN for display purposes
-export async function getAllLeads(dateFrom?: Date, dateTo?: Date): Promise<Lead[]> {
+// Get all leads from Supabase with optional date range and proyecto filtering
+// Includes vendedor and proyecto info via LEFT JOINs for display purposes
+export async function getAllLeads(dateFrom?: Date, dateTo?: Date, proyectoId?: string): Promise<Lead[]> {
   try {
-    // Use LEFT JOIN to include vendedor.nombre when vendedor_asignado_id is not null
+    // Use LEFT JOINs to include vendedor.nombre and proyecto info
     let query = supabase
       .from('leads')
       .select(`
         *,
-        vendedor_nombre:vendedores(nombre)
+        vendedor_nombre:vendedores(nombre),
+        proyecto_nombre:proyectos(nombre),
+        proyecto_color:proyectos(color)
       `);
+
+    // CRITICAL: Filter by proyecto_id if provided (for multi-proyecto support)
+    if (proyectoId) {
+      query = query.eq('proyecto_id', proyectoId);
+    }
 
     // Apply date range filter if provided
     if (dateFrom) {
@@ -85,10 +131,12 @@ export async function getAllLeads(dateFrom?: Date, dateTo?: Date): Promise<Lead[
       return [];
     }
 
-    // Transform data to flatten vendedor_nombre from nested object
+    // Transform data to flatten nested objects from JOINs
     const transformedData = (data || []).map(lead => ({
       ...lead,
       vendedor_nombre: lead.vendedor_nombre?.nombre || null,
+      proyecto_nombre: lead.proyecto_nombre?.nombre || null,
+      proyecto_color: lead.proyecto_color?.color || null,
     }));
 
     return transformedData as Lead[];

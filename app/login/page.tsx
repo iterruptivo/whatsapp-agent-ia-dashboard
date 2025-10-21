@@ -3,15 +3,27 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { Lock, Mail, LogIn, AlertCircle } from 'lucide-react';
+import { getAllProyectos, Proyecto } from '@/lib/db';
+import { Lock, Mail, LogIn, AlertCircle, FolderOpen } from 'lucide-react';
 
 export default function LoginPage() {
   const { signIn, loading } = useAuth();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [proyectoId, setProyectoId] = useState('');
+  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch proyectos on mount (for dropdown)
+  useEffect(() => {
+    async function fetchProyectos() {
+      const data = await getAllProyectos();
+      setProyectos(data);
+    }
+    fetchProyectos();
+  }, []);
 
   // Check for URL error parameter (e.g., ?error=deactivated)
   useEffect(() => {
@@ -33,6 +45,13 @@ export default function LoginPage() {
       return;
     }
 
+    // MULTI-PROYECTO: Validate proyecto is selected
+    if (!proyectoId) {
+      setError('Por favor selecciona un proyecto');
+      setIsSubmitting(false);
+      return;
+    }
+
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
@@ -41,8 +60,8 @@ export default function LoginPage() {
       return;
     }
 
-    // Sign in
-    const result = await signIn(email, password);
+    // Sign in with proyecto
+    const result = await signIn(email, password, proyectoId);
 
     if (!result.success) {
       setError(result.error || 'Error al iniciar sesión');
@@ -124,6 +143,38 @@ export default function LoginPage() {
                     className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
                     autoComplete="current-password"
                   />
+                </div>
+              </div>
+
+              {/* Proyecto Dropdown - MULTI-PROYECTO SUPPORT */}
+              <div>
+                <label htmlFor="proyecto" className="block text-sm font-medium text-gray-700 mb-2">
+                  Proyecto
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FolderOpen className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <select
+                    id="proyecto"
+                    value={proyectoId}
+                    onChange={(e) => setProyectoId(e.target.value)}
+                    disabled={isSubmitting || proyectos.length === 0}
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all disabled:bg-gray-100 disabled:cursor-not-allowed appearance-none bg-white"
+                  >
+                    <option value="">-- Selecciona un proyecto --</option>
+                    {proyectos.map((proyecto) => (
+                      <option key={proyecto.id} value={proyecto.id}>
+                        {proyecto.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Custom dropdown arrow */}
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
 
