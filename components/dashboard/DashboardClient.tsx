@@ -11,20 +11,25 @@ import { Lead, Vendedor, getAllVendedores } from '@/lib/db';
 import { assignLeadToVendedor } from '@/lib/actions';
 import { useAuth } from '@/lib/auth-context';
 import { Users, CheckCircle, Clock, TrendingUp, AlertCircle } from 'lucide-react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
 interface DashboardClientProps {
   initialLeads: Lead[];
   initialDateFrom?: string;
   initialDateTo?: string;
+  onRefresh?: () => Promise<void>;
 }
 
 export default function DashboardClient({
   initialLeads,
   initialDateFrom = '',
   initialDateTo = '',
+  onRefresh,
 }: DashboardClientProps) {
   const router = useRouter();
   const { user } = useAuth(); // Get authenticated user from context
+  const { isOpen, config, showDialog, closeDialog } = useConfirmDialog();
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
   const [dateTo, setDateTo] = useState(initialDateTo);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -34,6 +39,9 @@ export default function DashboardClient({
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [selectedVendedorFilter, setSelectedVendedorFilter] = useState<string>(''); // Admin-only: filter by specific vendedor
   const [assignmentFilter, setAssignmentFilter] = useState<'todos' | 'sin_asignar'>('todos'); // Admin-only: assignment filter
+
+  // Estado filter (for both admin and vendedor)
+  const [estadoFilter, setEstadoFilter] = useState<string>(''); // Filter by lead estado
 
   // Fetch vendedores on mount (only for assignment dropdown in table)
   useEffect(() => {
@@ -83,8 +91,13 @@ export default function DashboardClient({
       filtered = filtered.filter((lead) => lead.vendedor_asignado_id === selectedVendedorFilter);
     }
 
+    // NEW: Filter by estado (applies to both admin and vendedor)
+    if (estadoFilter) {
+      filtered = filtered.filter((lead) => lead.estado === estadoFilter);
+    }
+
     return filtered;
-  }, [initialLeads, dateFrom, dateTo, assignmentFilter, selectedVendedorFilter, user?.rol]);
+  }, [initialLeads, dateFrom, dateTo, assignmentFilter, selectedVendedorFilter, estadoFilter, user?.rol]);
 
   // Calculate stats from filtered leads
   const stats = useMemo(() => {
@@ -152,17 +165,41 @@ export default function DashboardClient({
       const result = await assignLeadToVendedor(leadId, vendedorId);
 
       if (result.success) {
+        // Refetch leads BEFORE showing success dialog (real-time update)
+        if (onRefresh) {
+          await onRefresh();
+        }
+
         // Success notification
-        alert(result.message || `Lead "${result.leadNombre}" asignado a ${result.vendedorNombre}`);
-        // Refresh page to update data
-        router.refresh();
+        showDialog({
+          title: '¡Asignación exitosa!',
+          message: result.message || `Lead "${result.leadNombre}" asignado a ${result.vendedorNombre}`,
+          type: 'success',
+          variant: 'success',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        });
       } else {
         // Error notification
-        alert(`Error: ${result.message}`);
+        showDialog({
+          title: 'Error al asignar',
+          message: result.message || 'No se pudo asignar el lead',
+          type: 'error',
+          variant: 'danger',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        });
       }
     } catch (error) {
       console.error('Error al asignar lead:', error);
-      alert('Error inesperado al asignar lead. Por favor intenta nuevamente.');
+      showDialog({
+        title: 'Error inesperado',
+        message: 'Ocurrió un error al asignar el lead. Por favor intenta nuevamente.',
+        type: 'error',
+        variant: 'danger',
+        confirmText: 'Aceptar',
+        showCancel: false,
+      });
     }
   };
 
@@ -257,6 +294,21 @@ export default function DashboardClient({
                 ))}
             </select>
           </div>
+
+          {/* Admin-only: Estado Filter Dropdown */}
+          <div className="flex items-center gap-2">
+            <select
+              value={estadoFilter}
+              onChange={(e) => setEstadoFilter(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors hover:bg-gray-50"
+            >
+              <option value="">Todos los estados</option>
+              <option value="lead_completo">Lead Completo</option>
+              <option value="lead_incompleto">Lead Incompleto</option>
+              <option value="en_conversacion">En Conversación</option>
+              <option value="conversacion_abandonada">Conversación Abandonada</option>
+            </select>
+          </div>
         </div>
       )}
 
@@ -273,6 +325,20 @@ export default function DashboardClient({
 
       {/* Lead Detail Panel */}
       <LeadDetailPanel lead={selectedLead} isOpen={isPanelOpen} onClose={handleClosePanel} />
+
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={isOpen}
+        onClose={closeDialog}
+        onConfirm={config.onConfirm}
+        title={config.title}
+        message={config.message}
+        type={config.type}
+        variant={config.variant}
+        confirmText={config.confirmText}
+        cancelText={config.cancelText}
+        showCancel={config.showCancel}
+      />
     </>
   );
 }

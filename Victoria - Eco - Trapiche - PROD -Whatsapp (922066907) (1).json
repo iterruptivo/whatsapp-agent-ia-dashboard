@@ -662,7 +662,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// === 1) Lead desde el nodo \"IF - Conversacion Cerrada?\" ===\nconst leadItem = $items(\"IF - Conversacion Cerrada?\", 0, 0);\nconst leadData = leadItem?.json || {};\n\n// Obtener el estado desde Code2 (es la fuente más confiable)\nconst estado = leadData.estado || $node[\"Code2\"]?.json?.estado || \"en_conversacion\";\n\n// === 2) Vendedores ===\nconst vendedores = $input.all();\n\n// === 3) Formatear estado y mensaje ===\nconst estadoUpper = estado.toUpperCase().replace(/_/g, \" \");\nconst mensaje = `Nuevo Lead Proyecto Trapiche - Estado: ${estadoUpper}`;\n\n// === 4) Crear items por vendedor ===\nreturn vendedores\n  .map(v => v?.json)\n  .filter(v => v && v.telefono)\n  .map(v => ({\n    json: {\n      vendor_phone: v.telefono,\n      vendor_name: v.nombre,\n      notification_message: mensaje,\n      ...leadData,\n    },\n  }));\n"
+        "jsCode": "// === 1) Lead desde el nodo \"IF - Conversacion Cerrada?\" ===\nconst leadItem = $items(\"IF - Conversacion Cerrada?\", 0, 0);\nconst leadData = leadItem?.json || {};\n\n// Obtener el estado desde Code2 (es la fuente más confiable)\nconst estado = leadData.estado || $node[\"Code2\"]?.json?.estado || \"en_conversacion\";\n\n// === 2) Vendedores ===\nconst vendedores = $input.all();\n\n// === 3) Formatear estado y mensaje ===\nconst estadoUpper = estado.toUpperCase().replace(/_/g, \" \");\nconst mensaje = `Nuevo Lead Proyecto Trapiche - Estado: ${estadoUpper}`;\n\n// === 4) Crear items por vendedor ===\nreturn vendedores\n  .map(v => v?.json)\n  .filter(v => v && v.telefono)\n  .map(v => ({\n    json: {\n      vendor_phone: v.telefono,\n      vendor_name: v.nombre,\n      notification_message: mensaje,\n      ...leadData,\n    },\n  }));"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1348,7 +1348,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "b99b8ebc-c971-4213-9678-963f174417eb",
+  "versionId": "087614cf-ec02-40e0-ac63-7f65db70c287",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "ac495b013a9dddb9724430276f2a1ebc03086cb4690790d0c3f0b57736633d28"
