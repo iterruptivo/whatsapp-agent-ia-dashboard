@@ -53,15 +53,17 @@ export default function Home() {
   }, [selectedProyecto, user]);
 
   // Function to refetch leads (for real-time updates after assignment)
-  const refetchLeads = useCallback(async () => {
+  const refetchLeads = useCallback(async (dateFromStr: string, dateToStr: string) => {
     const proyecto = selectedProyecto;
     if (proyecto) {
-      const now = new Date();
-      const dateTo = new Date(now);
-      dateTo.setUTCHours(23, 59, 59, 999);
-      const dateFrom = new Date(dateTo);
-      dateFrom.setUTCDate(dateFrom.getUTCDate() - 30);
-      dateFrom.setUTCHours(0, 0, 0, 0);
+      // Parse date strings to Date objects
+      const [yearFrom, monthFrom, dayFrom] = dateFromStr.split('-').map(Number);
+      const dateFrom = new Date(yearFrom, monthFrom - 1, dayFrom);
+      dateFrom.setHours(0, 0, 0, 0);
+
+      const [yearTo, monthTo, dayTo] = dateToStr.split('-').map(Number);
+      const dateTo = new Date(yearTo, monthTo - 1, dayTo);
+      dateTo.setHours(23, 59, 59, 999);
 
       const data = await getAllLeads(dateFrom, dateTo, proyecto.id);
       setLeads(data);

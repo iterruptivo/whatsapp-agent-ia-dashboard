@@ -1,7 +1,6 @@
 'use client';
 
 import { Calendar, X, RefreshCw } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 interface DateRangeFilterProps {
@@ -12,6 +11,7 @@ interface DateRangeFilterProps {
   onClear: () => void;
   defaultDateFrom?: string;
   defaultDateTo?: string;
+  onRefresh?: () => Promise<void>; // NEW: Función para refetch de datos
 }
 
 export default function DateRangeFilter({
@@ -22,8 +22,8 @@ export default function DateRangeFilter({
   onClear,
   defaultDateFrom = '',
   defaultDateTo = '',
+  onRefresh,
 }: DateRangeFilterProps) {
-  const router = useRouter();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const hasActiveFilter = dateFrom || dateTo;
@@ -33,11 +33,18 @@ export default function DateRangeFilter({
   // Solo mostrar botón si el usuario cambió las fechas (NO es el rango por defecto)
   const showClearButton = hasActiveFilter && !isDefaultRange;
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    if (!onRefresh) return; // Fallback si no hay función de refresh
+
     setIsRefreshing(true);
-    router.refresh();
-    // Reset after animation
-    setTimeout(() => setIsRefreshing(false), 1000);
+    try {
+      await onRefresh(); // ✅ Fetch real de Supabase
+    } catch (error) {
+      console.error('Error al actualizar:', error);
+    } finally {
+      // Reset after animation
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
   };
 
   return (

@@ -3860,14 +3860,203 @@ const filteredLeads = useMemo(() => {
 
 ---
 
+### **Sesión 17 - 19 Octubre 2025**
+**Objetivo:** ANÁLISIS CRÍTICO - Investigar Funcionalidad del Botón de Actualizar
+
+#### Contexto:
+- Sistema en producción (Vercel)
+- Usuario reportó sospecha de que botón de actualizar NO funciona correctamente
+- Objetivo: Traer nuevos leads sin recargar página completa
+
+#### Acciones Realizadas:
+
+**ANÁLISIS EXHAUSTIVO DEL SISTEMA DE REFETCH**
+
+**A) Ubicación del Botón (ENCONTRADO):**
+- ✅ Componente: `DateRangeFilter.tsx` (líneas 93-101)
+- ✅ Ubicación visual: Lado derecho del filtro de fechas
+- ✅ Presente en ambas páginas: `/` y `/operativo`
+- ✅ Icono: RefreshCw (Lucide React) con animación de spin
+- ✅ Estado: `isRefreshing` para feedback visual
+
+**B) Código Actual del Refetch (PROBLEMA CRÍTICO IDENTIFICADO):**
+```typescript
+// DateRangeFilter.tsx (líneas 36-41)
+const handleRefresh = () => {
+  setIsRefreshing(true);
+  router.refresh(); // ❌ PROBLEMA: Solo re-valida Server Components
+  setTimeout(() => setIsRefreshing(false), 1000);
+};
+```
+
+**C) Root Cause Analysis (3 problemas encontrados):**
+
+**PROBLEMA #1: ❌ CRITICAL - router.refresh() No Funciona con Client Components**
+- **Causa:** Sistema migró de Server Components a Client Components (`useEffect`)
+- **Comportamiento actual:** `router.refresh()` solo re-valida Server Components
+- **Consecuencia:** Botón muestra spinner pero NO trae nuevos datos de Supabase
+- **Evidencia:** Data fetching en `app/page.tsx` líneas 24-53 (useEffect client-side)
+
+**PROBLEMA #2: ⚠️ MEDIUM - Prop onRefresh Existe Pero No Se Usa**
+- **Función refetchLeads:** ✅ Implementada correctamente en `app/page.tsx` (líneas 56-69)
+- **Prop onRefresh:** ✅ Definida en `DashboardClient` interface (línea 21)
+- **Paso a DateRangeFilter:** ❌ NO se pasa (línea 209-217)
+- **Uso actual:** Solo se llama en `handleAssignLead` (después de asignar lead)
+- **Consecuencia:** Botón de actualizar NO ejecuta fetch real
+
+**PROBLEMA #3: ⚠️ LOW - refetchLeads Ignora Filtro de Fechas del Usuario**
+- **Código:** Calcula fechas hardcodeadas (últimos 30 días) en vez de usar state
+- **Consecuencia:** Si usuario filtró 7 días, refresh vuelve a 30 días
+- **Impact:** Usuario pierde su selección de rango custom
+
+**D) Verificación de Integración Multi-Proyecto:**
+- ✅ Función `refetchLeads` usa `selectedProyecto.id` correctamente
+- ✅ Guard clause contra `selectedProyecto` null implementada
+- ✅ Filtro de 30 días se aplica correctamente en fetch inicial
+- ⚠️ NO se usa filtro de fechas en refetch (usa 30 días hardcodeado)
+
+**E) Análisis de Handlers:**
+
+**handleAssignLead (DashboardClient.tsx líneas 163-204):**
+- ✅ **FUNCIONA CORRECTAMENTE**
+- Llama `onRefresh()` después de asignar lead
+- Usuario ve tabla actualizada inmediatamente
+- Sin stale data
+
+**handleRefresh (DateRangeFilter.tsx líneas 36-41):**
+- ❌ **NO FUNCIONA**
+- Solo ejecuta `router.refresh()`
+- NO llama a función de fetch real
+- Muestra spinner 1 segundo sin efecto
+
+**F) Problemas Adicionales Identificados:**
+
+**Error Handling Silencioso (lib/db.ts):**
+- Si Supabase falla, retorna array vacío sin notificación
+- Usuario ve tabla vacía sin explicación
+- Solo console logs disponibles
+
+#### Decisiones Técnicas:
+
+**Por qué router.refresh() dejó de funcionar:**
+1. **ANTES (Server Components):**
+   - Data fetching en Server Component (async page)
+   - `router.refresh()` re-ejecutaba Server Component
+   - Botón funcionaba perfectamente
+
+2. **AHORA (Client Components con useEffect):**
+   - Data fetching en `useEffect` client-side
+   - `router.refresh()` NO re-ejecuta `useEffect`
+   - Botón muestra spinner sin traer datos
+
+**Por qué existe onRefresh pero no se conectó:**
+- Prop agregada durante migración Server → Client
+- Se conectó a `handleAssignLead` (funcionalidad nueva)
+- NO se conectó a botón de actualizar (oversight)
+
+#### Archivos Analizados:
+- components/dashboard/DashboardHeader.tsx - NO tiene botón (descartado)
+- components/dashboard/DashboardClient.tsx - onRefresh prop existe
+- components/dashboard/OperativoClient.tsx - onRefresh prop existe
+- components/dashboard/DateRangeFilter.tsx - Botón usa router.refresh() (bug)
+- app/page.tsx - refetchLeads implementado correctamente
+- app/operativo/page.tsx - refetchLeads implementado correctamente
+- lib/db.ts - getAllLeads funciona correctamente
+
+#### Archivos Creados:
+- **ANALISIS_BOTON_ACTUALIZAR.md** - Informe técnico completo (400+ líneas):
+  - Resumen ejecutivo con veredicto
+  - Ubicación del botón y código actual
+  - Root cause analysis detallado
+  - Integración multi-proyecto verificada
+  - Análisis de handlers de actualización
+  - 7 problemas potenciales evaluados
+  - 3 fixes recomendados con prioridades
+  - Plan de acción step-by-step
+  - Testing checklist
+  - Preguntas para el usuario
+
+#### Hallazgos Principales:
+
+**✅ QUÉ FUNCIONA:**
+1. Función `refetchLeads()` hace fetch real a Supabase
+2. Integración multi-proyecto usa `selectedProyecto.id` correctamente
+3. `handleAssignLead` refetch automático después de asignar
+4. Guard clauses contra proyecto null
+5. Console logs para debugging
+6. Sintaxis async/await correcta
+
+**❌ QUÉ NO FUNCIONA:**
+1. **CRITICAL:** Botón de actualizar NO trae nuevos datos (usa `router.refresh()`)
+2. **MEDIUM:** `refetchLeads` ignora filtro de fechas del usuario (hardcoded 30 días)
+3. **LOW:** Errores de Supabase son silenciosos (usuario ve tabla vacía)
+
+#### Recomendaciones de Fix:
+
+**FIX 1 - CRITICAL (5 min):**
+- Agregar prop `onRefresh` a `DateRangeFilter` interface
+- Cambiar `handleRefresh` para llamar `onRefresh()` en vez de `router.refresh()`
+- Pasar prop desde `DashboardClient` y `OperativoClient`
+
+**Código sugerido:**
+```typescript
+// DateRangeFilter.tsx
+interface DateRangeFilterProps {
+  // ... existing
+  onRefresh?: () => Promise<void>; // NEW
+}
+
+const handleRefresh = async () => {
+  setIsRefreshing(true);
+  if (onRefresh) {
+    await onRefresh(); // ✅ Fetch real
+  }
+  setTimeout(() => setIsRefreshing(false), 500);
+};
+```
+
+**FIX 2 - MEDIUM (10 min):**
+- Refactorizar `refetchLeads` para recibir `dateFrom`/`dateTo` como params
+- O mover lógica de fetch completamente a `DashboardClient`
+- Mantener filtro de usuario después de refresh
+
+**FIX 3 - LOW (15 min, opcional):**
+- Agregar error state y mostrar toast/dialog si fetch falla
+- Mejor feedback visual para usuario
+
+#### Estado del Proyecto:
+- ✅ Análisis completo documentado
+- ✅ Root causes identificados con precisión
+- ✅ Fixes diseñados y documentados
+- ⏳ Pendiente: Usuario debe decidir si implementar fixes
+- ⏳ Pendiente: Implementación de fixes (Sesión 18)
+
+#### Resultados:
+- ✅ Bug crítico confirmado y documentado
+- ✅ Root cause identificado (migración Server → Client)
+- ✅ 3 fixes recomendados con prioridades
+- ✅ Informe técnico completo generado (ANALISIS_BOTON_ACTUALIZAR.md)
+- ✅ Testing checklist preparado
+- ✅ Sin implementación de código (solo análisis)
+
+#### Próximas Tareas Pendientes:
+- [ ] Usuario decide si implementar FIX 1 (critical)
+- [ ] Usuario decide si implementar FIX 2 (medium)
+- [ ] Usuario decide si implementar FIX 3 (low, opcional)
+- [ ] Implementar fixes seleccionados (Sesión 18)
+- [ ] Testing end-to-end después de fixes
+- [ ] Deployment de fixes a producción
+
+---
+
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 19 Octubre 2025
-**Sesión:** 16 (Documentación completada en Sesión 17)
-**Desarrollador:** Claude Code (Project Leader)
-**Estado:** ✅ **SISTEMA EN PRODUCCIÓN Y ESTABLE**
-**Deployment:** Vercel (exitoso)
-**Features Post-Launch:** Session freeze fix, Admin reassignment, Advanced filters
+**Sesión:** 17
+**Desarrollador:** Claude Code (Project Leader + FrontDev + BackDev coordination)
+**Estado:** ⚠️ **BUG CRÍTICO IDENTIFICADO** - Botón de actualizar NO funciona
+**Archivo Generado:** ANALISIS_BOTON_ACTUALIZAR.md (informe completo)
+**Próxima Acción:** Usuario debe decidir implementación de fixes
 
 ---
 

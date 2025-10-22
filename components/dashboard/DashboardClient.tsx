@@ -18,7 +18,7 @@ interface DashboardClientProps {
   initialLeads: Lead[];
   initialDateFrom?: string;
   initialDateTo?: string;
-  onRefresh?: () => Promise<void>;
+  onRefresh?: (dateFrom: string, dateTo: string) => Promise<void>;
 }
 
 export default function DashboardClient({
@@ -167,7 +167,7 @@ export default function DashboardClient({
       if (result.success) {
         // Refetch leads BEFORE showing success dialog (real-time update)
         if (onRefresh) {
-          await onRefresh();
+          await onRefresh(dateFrom, dateTo);
         }
 
         // Success notification
@@ -214,6 +214,7 @@ export default function DashboardClient({
         onClear={handleClearFilters}
         defaultDateFrom={initialDateFrom}
         defaultDateTo={initialDateTo}
+        onRefresh={onRefresh ? async () => await onRefresh(dateFrom, dateTo) : undefined}
       />
 
       {/* Stats Grid */}
