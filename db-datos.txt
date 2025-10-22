@@ -1,7 +1,0 @@
-ANON Key
-
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFzc2VmZWdmenh4dXJxYnpuZHJzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMjA2MTEsImV4cCI6MjA3NTY5NjYxMX0.O6GW7ODPKK4asqDpsnA5Ejn11r_bz3Eklp5qk-1QOiQ
-
-Supabase URL
-
-https://qssefegfzxxurqbzndrs.supabase.co/rest/v1/leads

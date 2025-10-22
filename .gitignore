@@ -44,4 +44,7 @@ next-env.d.ts
 Victoria*.json
 *-PROD-Whatsapp*.json
 
+# Carpeta de consultas y documentación temporal
+/consultas-leo/
+
 nul
