@@ -2,7 +2,7 @@
 
 import { Lead } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
-import { X, User, Phone, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck } from 'lucide-react';
+import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface LeadDetailPanelProps {
@@ -189,7 +189,7 @@ export default function LeadDetailPanel({ lead, isOpen, onClose }: LeadDetailPan
             <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-4 border-b border-gray-200 pb-2">
               Información de Contacto
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex items-start gap-3">
                 <User className="w-5 h-5 text-gray-400 mt-0.5" />
                 <div>
@@ -202,6 +202,13 @@ export default function LeadDetailPanel({ lead, isOpen, onClose }: LeadDetailPan
                 <div>
                   <p className="text-sm text-gray-500">Teléfono</p>
                   <p className="text-base font-medium text-gray-900">{lead.telefono}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Mail className="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-base font-medium text-gray-900">{lead.email || 'N/A'}</p>
                 </div>
               </div>
             </div>

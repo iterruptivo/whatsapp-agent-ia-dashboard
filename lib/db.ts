@@ -14,6 +14,7 @@ export interface Proyecto {
 export interface Lead {
   id: string;
   telefono: string;
+  email: string | null; // Email del lead (nullable)
   nombre: string | null;
   rubro: string | null;
   horario_visita: string | null;

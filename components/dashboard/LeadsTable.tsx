@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Lead, Vendedor } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
-import { Search, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Calendar, UserCheck } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Calendar, UserCheck, Mail } from 'lucide-react';
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -151,6 +151,12 @@ export default function LeadsTable({
                   Horario de Visita
                 </div>
               </th>
+              <th className="text-left py-3 px-4 text-gray-600 font-medium">
+                <div className="flex items-center gap-1">
+                  <Mail className="w-4 h-4" />
+                  Email
+                </div>
+              </th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Estado</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">
                 <div className="flex items-center gap-1">
@@ -205,6 +211,7 @@ export default function LeadsTable({
                     <span className="text-gray-600">{lead.horario_visita || '-'}</span>
                   )}
                 </td>
+                <td className="py-3 px-4 text-gray-600">{lead.email || 'N/A'}</td>
                 <td className="py-3 px-4">{getEstadoBadge(lead.estado)}</td>
                 <td className="py-3 px-4">
                   {userRole === 'admin' && vendedores && onAssignLead ? (
