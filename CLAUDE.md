@@ -6059,6 +6059,176 @@ N8N_WEBHOOK_LEAD_ASIGNADO=https://n8n-instance.com/webhook/lead-asignado
 
 ---
 
+## 📈 MEJORAS DE ESCALABILIDAD FUTURAS
+
+**Establecido:** Sesión 25 - 27 Octubre 2025
+**Estado Actual:** Sistema soporta 100-1000 asignaciones/día distribuidas ✅
+**Trigger para implementar:** Cuando necesitemos bulk assignments (50+ leads simultáneos)
+
+### **Análisis de Capacidad Actual:**
+
+**✅ LO QUE FUNCIONA BIEN:**
+- 100-1000 leads/día distribuidos durante horario laboral
+- Asignaciones normales por vendedor (gradual)
+- Dashboard responsive y estable
+- n8n workflow optimizado
+- Webhook non-blocking
+
+**⚠️ LIMITACIONES IDENTIFICADAS:**
+1. **WhatsApp API Rate Limit:** 15-20 msg/seg
+   - Problema: 100+ asignaciones simultáneas pueden exceder límite
+   - Síntoma: Algunos leads NO reciben notificación
+
+2. **Vercel Serverless Timeout:**
+   - Hobby Plan: 10s timeout
+   - Problema: Bulk assignments pueden exceder timeout
+
+3. **n8n Concurrency:**
+   - Depende de capacidad del servidor n8n
+   - Problema: 50+ webhooks simultáneos pueden saturar
+
+### **MEJORA 1: Rate Limiting Client-Side** 🟢 Simple
+
+**Cuando implementar:** Primeras asignaciones masivas (50+ leads de golpe)
+
+**Complejidad:** ⭐ Baja
+**Tiempo estimado:** 30-45 minutos
+**Impacto:** Medio (previene rate limit de WhatsApp)
+
+**Implementación:**
+```typescript
+// En DashboardClient.tsx o OperativoClient.tsx
+async function assignLeadsWithDelay(leads: Lead[], vendedorId: string) {
+  for (let i = 0; i < leads.length; i++) {
+    await assignLeadToVendedor(leads[i].id, vendedorId);
+
+    // Progress feedback
+    setProgress({ current: i + 1, total: leads.length });
+
+    // Delay entre asignaciones (evita rate limit)
+    if (i < leads.length - 1) {
+      await sleep(2000); // 2 segundos = 30 leads/min
+    }
+  }
+}
+```
+
+**UI Changes:**
+- Progress bar durante bulk assignment
+- "Asignando X de Y leads..."
+- Disable UI durante proceso
+- Success/error count al finalizar
+
+**Testing:**
+- Asignar 50 leads → verificar rate
+- Verificar todos reciben notificación
+- Verificar no hay timeouts
+
+---
+
+### **MEJORA 2: Queue System Server-Side** 🟡 Robusto
+
+**Cuando implementar:** Escala a 10k+ leads/día o 200+ asignaciones simultáneas frecuentes
+
+**Complejidad:** ⭐⭐⭐ Alta
+**Tiempo estimado:** 4-6 horas
+**Impacto:** Alto (sistema profesional y escalable)
+
+**Stack Recomendado:**
+- **Queue:** BullMQ (Redis-based) o Inngest (serverless)
+- **Worker:** Vercel Background Functions o servidor dedicado
+- **Dashboard:** UI para monitoreo de cola
+
+**Arquitectura:**
+```
+Dashboard → API Route (enqueue) → Redis Queue → Worker
+                                                    ↓
+                                            Process 5-10/min
+                                                    ↓
+                                            n8n Webhook
+```
+
+**Implementación (fases):**
+
+**Fase 1: Setup Infrastructure (1-2h)**
+- Install BullMQ o Inngest SDK
+- Setup Redis (Upstash para serverless)
+- Configurar worker
+
+**Fase 2: API Endpoints (1h)**
+- POST /api/queue/assign-lead (agregar a cola)
+- GET /api/queue/status (monitoreo)
+- DELETE /api/queue/cancel (cancelar job)
+
+**Fase 3: Worker Logic (1h)**
+- Procesar cola: 5-10 asignaciones/min
+- Retry automático (3 intentos)
+- Error handling y logging
+
+**Fase 4: UI Dashboard (1h)**
+- Progress bar en tiempo real
+- Lista de jobs pendientes
+- Historial de asignaciones
+- Estadísticas (success rate, avg time)
+
+**Fase 5: Testing (1-2h)**
+- Bulk assignment de 100 leads
+- Failure scenarios (n8n down, WhatsApp API error)
+- Concurrent queue operations
+
+**Beneficios:**
+- ✅ Sin rate limits (procesa gradualmente)
+- ✅ Retry automático
+- ✅ Monitoreo en tiempo real
+- ✅ Escalable a millones de leads
+- ✅ No bloquea UI del dashboard
+
+---
+
+### **DECISIÓN: Cuándo Implementar**
+
+**Implementar MEJORA 1 cuando:**
+- Usuario solicita bulk assignment feature
+- Se planea importar leads masivamente
+- Testing con 50+ leads simultáneos
+
+**Implementar MEJORA 2 cuando:**
+- MEJORA 1 no es suficiente
+- Volumen supera 5k leads/día
+- Se requiere monitoreo profesional
+- Múltiples admins asignando concurrentemente
+
+**NO implementar si:**
+- ✅ Uso actual (distribuido) funciona bien
+- ✅ No hay planes de bulk assignments
+- ✅ Volumen < 1k leads/día
+
+---
+
+### **Nota de Escalabilidad General:**
+
+**Estado Actual del Sistema:**
+- Database: Supabase soporta hasta 500k+ filas sin problemas
+- Auth: RLS policies eficientes
+- Frontend: Next.js con rendering optimizado
+- Backend: Server Actions escalables
+
+**Otros Cuellos de Botella Potenciales (futuro lejano):**
+1. **Supabase Free Tier:** 500MB storage, 2GB bandwidth/mes
+   - Trigger: ~50k leads con historial completo
+   - Solución: Upgrade a Pro ($25/mes)
+
+2. **Vercel Hobby Plan:** 100GB bandwidth/mes
+   - Trigger: ~100k visits/mes con dashboard pesado
+   - Solución: Upgrade a Pro ($20/mes)
+
+3. **n8n Executions:** Depende del plan
+   - Solución: Self-hosted n8n o plan empresarial
+
+**Todas estas son preocupaciones SOLO si el negocio crece 10x-100x.** 🚀
+
+---
+
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 27 Octubre 2025
