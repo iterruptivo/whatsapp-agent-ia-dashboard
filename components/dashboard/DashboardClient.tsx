@@ -10,9 +10,10 @@ import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
 import { Lead, Vendedor, getAllVendedores } from '@/lib/db';
 import { assignLeadToVendedor } from '@/lib/actions';
 import { useAuth } from '@/lib/auth-context';
-import { Users, CheckCircle, Clock, TrendingUp, AlertCircle } from 'lucide-react';
+import { Users, CheckCircle, Clock, TrendingUp, AlertCircle, Download } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
+import { exportLeadsToExcel } from '@/lib/exportToExcel';
 
 interface DashboardClientProps {
   initialLeads: Lead[];
@@ -42,6 +43,9 @@ export default function DashboardClient({
 
   // Estado filter (for both admin and vendedor)
   const [estadoFilter, setEstadoFilter] = useState<string>(''); // Filter by lead estado
+
+  // Export state
+  const [isExporting, setIsExporting] = useState(false);
 
   // Fetch vendedores on mount (only for assignment dropdown in table)
   useEffect(() => {
@@ -203,6 +207,23 @@ export default function DashboardClient({
     }
   };
 
+  // Handler: Export filtered leads to Excel
+  const handleExportToExcel = () => {
+    if (!user) return;
+
+    setIsExporting(true);
+    try {
+      // Export filtered leads (respects ALL active filters)
+      const proyectoNombre = initialLeads[0]?.proyecto_nombre || 'Dashboard';
+      exportLeadsToExcel(filteredLeads, proyectoNombre);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+    } finally {
+      // Reset loading state after a short delay (for UX feedback)
+      setTimeout(() => setIsExporting(false), 500);
+    }
+  };
+
   return (
     <>
       {/* Date Range Filter */}
@@ -309,6 +330,25 @@ export default function DashboardClient({
               <option value="en_conversacion">En Conversación</option>
               <option value="conversacion_abandonada">Conversación Abandonada</option>
             </select>
+          </div>
+
+          {/* Export to Excel Button */}
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              onClick={handleExportToExcel}
+              disabled={isExporting || filteredLeads.length === 0}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                isExporting || filteredLeads.length === 0
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-primary text-white hover:bg-primary/90 hover:shadow-md active:scale-95'
+              }`}
+              title={filteredLeads.length === 0 ? 'No hay leads para exportar' : 'Exportar leads filtrados a Excel'}
+            >
+              <Download className={`w-5 h-5 ${isExporting ? 'animate-bounce' : ''}`} />
+              <span className="hidden sm:inline">
+                {isExporting ? 'Exportando...' : 'Exportar a Excel'}
+              </span>
+            </button>
           </div>
         </div>
       )}
