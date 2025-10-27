@@ -5785,14 +5785,289 @@ git push origin main
 
 ---
 
+### **Sesión 25 - 27 Octubre 2025**
+**Objetivo:** Implementar Notificación Automática de Asignación de Leads vía WhatsApp (n8n + Victoria)
+
+#### Contexto:
+- Usuario necesita que Victoria (chatbot) notifique automáticamente al lead cuando un vendedor le es asignado
+- Nuevo workflow n8n con Switch por proyecto (San Gabriel, Trapiche, Callao)
+- Dashboard debe enviar webhook a n8n con datos del lead y vendedor asignado
+- Mensaje de WhatsApp personalizado: "¡Hola [Lead]! Tu asesor será [Vendedor]..."
+
+#### Problema Inicial Encontrado:
+
+**ERROR en n8n:** "JSON parameter needs to be valid JSON"
+
+**Root Cause:**
+- Nodos HTTP Request usaban **Specify Body: JSON (raw)**
+- Template de mensaje tenía saltos de línea literales en el string
+- n8n no podía parsear `{{ $json.mensaje }}` con saltos de línea dentro de JSON raw
+- Error ocurrió primero en HTTP Request San Gabriel, luego se replicó en los otros
+
+**Testing Iterativo:**
+1. Primera tentativa: Eliminar espacios al inicio de líneas → ❌ Falló
+2. Segunda tentativa: Usar `\n` explícitos en vez de template literals → ❌ Falló
+3. Tercera tentativa: Concatenar con `+` en una sola línea → ❌ Falló
+4. **ChatGPT Insight:** El error viene del HTTP Request (no del Code node)
+
+#### Acciones Realizadas:
+
+**FASE 1: SOLUCIÓN DEL ERROR JSON**
+
+**A) lib/actions.ts - Webhook a n8n (líneas 88-120)**
+- ✅ Agregada llamada a webhook n8n después de asignar lead
+- ✅ Variable de entorno: `N8N_WEBHOOK_LEAD_ASIGNADO`
+- ✅ **Non-blocking:** Si webhook falla, asignación sigue funcionando
+- ✅ Payload enviado:
+  ```json
+  {
+    "leadTelefono": "51922066907",
+    "leadNombre": "Juan Pérez",
+    "vendedorNombre": "Alonso Palacios",
+    "vendedorTelefono": "987654321",
+    "proyectoId": "uuid-proyecto",
+    "proyectoNombre": "Proyecto Trapiche"
+  }
+  ```
+- ✅ Flatten de `proyecto_nombre` (nested object → string)
+- ✅ Solo se envía si `vendedorId` existe (no cuando se libera lead)
+
+**B) n8n Workflow - Arquitectura Inicial (con error)**
+```
+Webhook → Switch (proyectoId) → Code (San Gabriel) → HTTP Request SG ❌
+                               → Code (Trapiche)    → HTTP Request Trapiche ❌
+                               → Code (Callao)      → HTTP Request Callao ❌
+```
+
+**C) Fix del Error - HTTP Request Configuration**
+
+**ANTES (con error):**
+```
+Specify Body: JSON (raw)
+JSON: {
+  "messaging_product": "whatsapp",
+  "to": "={{ $json.telefono }}",  ← Causa error con saltos de línea
+  "type": "text",
+  "text": {
+    "body": "={{ $json.mensaje }}"
+  }
+}
+```
+
+**DESPUÉS (correcto):**
+```
+Specify Body: Using Fields Below  ← ⚠️ CRÍTICO
+Body Parameters:
+  - messaging_product = whatsapp
+  - to = {{ $json.telefono }}
+  - type = text
+  - text.body = {{ $json.mensaje }}  ← Notación de punto crea objeto anidado
+```
+
+**Solución:** Usar **"Using Fields Below"** con **notación de punto** (`text.body`)
+- n8n crea automáticamente el objeto anidado
+- No intenta parsear JSON con saltos de línea
+- Funciona perfectamente con mensajes multi-línea
+
+---
+
+**FASE 2: REFACTOR - CODE NODE ÚNICO**
+
+**Observación del Usuario:** "¿Por qué 3 Code nodes si el código es idéntico?"
+
+**ANTES (redundante):**
+- 3 Code nodes con código duplicado (San Gabriel, Trapiche, Callao)
+- Mantenimiento: cambiar mensaje → editar 3 lugares
+- Riesgo de inconsistencia entre proyectos
+
+**DESPUÉS (optimizado):**
+```
+Webhook → Code (único) → Switch (proyectoId) → HTTP Request San Gabriel
+                                              → HTTP Request Trapiche
+                                              → HTTP Request Callao
+```
+
+**Code Único - Preparar Mensaje:**
+```javascript
+const b = $input.item.json.body || {};
+
+const leadTelefono     = String(b.leadTelefono || '').trim();
+const leadNombre       = String(b.leadNombre || '').trim();
+const vendedorNombre   = String(b.vendedorNombre || '').trim();
+const vendedorTelefono = String(b.vendedorTelefono || '').trim();
+const proyectoNombre   = String(b.proyectoNombre || '').trim();
+const proyectoId       = String(b.proyectoId || '').trim();
+
+let mensaje = `¡Hola ${leadNombre}! 👋
+
+Me da mucho gusto informarte que *${vendedorNombre}* será tu asesor(a) para coordinar tu visita a *${proyectoNombre}*. 🏡✨
+
+📱 Te recomiendo que lo(a) agregues a tus contactos:
+*${vendedorNombre}*
+${vendedorTelefono}
+
+${vendedorNombre} se pondrá en contacto contigo pronto para confirmar los detalles de tu visita. 😊
+
+¡Estamos emocionados de recibirte! 🙌`;
+
+mensaje = mensaje.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+
+return [{ json: { telefono: leadTelefono, mensaje: mensaje, proyectoId: proyectoId } }];
+```
+
+**Cambios en Switch:**
+- ANTES: `={{ $json.body.proyectoId }}`
+- DESPUÉS: `={{ $json.proyectoId }}` (lee del Code node)
+
+**Configuración HTTP Requests (3 nodos):**
+- San Gabriel: `https://graph.facebook.com/v21.0/767183043155248/messages`
+- Trapiche: `https://graph.facebook.com/v21.0/912500965269397/messages`
+- Callao: `https://graph.facebook.com/v21.0/771452262728711/messages`
+- Todos con credenciales WhatsApp específicas por proyecto
+
+---
+
+**FASE 3: TESTING Y DEPLOY**
+
+**Testing en n8n:**
+- ✅ San Gabriel: Lead recibe mensaje WhatsApp de Victoria ✅
+- ✅ Trapiche: Lead recibe mensaje WhatsApp ✅
+- ✅ Callao: Lead recibe mensaje WhatsApp ✅
+- ✅ Mensaje con formato correcto (saltos de línea visibles)
+- ✅ Información del vendedor completa
+
+**Environment Variable en Vercel:**
+```
+N8N_WEBHOOK_LEAD_ASIGNADO=https://n8n-instance.com/webhook/lead-asignado
+```
+
+**Git Commit & Push:**
+- Commit: `8a1d3c9`
+- Mensaje: "feat: Add automatic n8n webhook notification on lead assignment"
+- Push exitoso a GitHub main branch
+- Vercel auto-deploy triggered
+
+**Verificación en Producción:**
+- ✅ Variable de entorno configurada en Vercel
+- ✅ Testing con asignación real desde dashboard
+- ✅ n8n workflow ejecuta correctamente
+- ✅ Leads reciben notificaciones WhatsApp
+- ✅ Sin errores en logs de Vercel
+
+#### Decisiones Técnicas:
+
+1. **Using Fields Below vs JSON Raw:**
+   - Decisión: Using Fields Below con notación de punto
+   - Razón: Evita problemas de parsing con saltos de línea
+   - Ventaja: n8n maneja la serialización automáticamente
+
+2. **Notación de Punto (text.body):**
+   - Razón: Crea automáticamente objeto anidado sin configuración manual
+   - Alternativa descartada: Type Object (más complejo)
+   - Ventaja: Más simple y directo
+
+3. **Code Node Único:**
+   - Razón: Principio DRY (Don't Repeat Yourself)
+   - Ventaja: Cambio en mensaje → solo editar 1 lugar
+   - Mantenibilidad: Sin riesgo de inconsistencia entre proyectos
+
+4. **Non-blocking Webhook:**
+   - Razón: Asignación de lead es crítica, notificación es secundaria
+   - Implementación: Try-catch que no lanza error
+   - Ventaja: Dashboard sigue funcionando si n8n está caído
+
+5. **Switch por proyectoId:**
+   - Razón: Cada proyecto tiene diferente número de WhatsApp
+   - Ventaja: Mensajes desde el número correcto de Victoria
+   - Credenciales: Cada proyecto con su propio access token
+
+#### Archivos Modificados:
+- lib/actions.ts (líneas 88-120 agregadas)
+
+#### Archivos Sin Cambios en Dashboard:
+- components/dashboard/DashboardClient.tsx (sin cambios)
+- components/dashboard/OperativoClient.tsx (sin cambios)
+- lib/auth-context.tsx (sin cambios)
+- Todos los demás componentes
+
+#### Archivos Creados en consultas-leo/:
+- FIX_CODE_NODES_MENSAJE_LIMPIO.js (tentativa fallida)
+- FIX_CODE_NODES_SIN_SALTOS.js (tentativa fallida)
+- FIX_CODE_NODES_ARRAY_JOIN.js (tentativa fallida)
+- FIX_FINAL_CODE_NODES.js (código del Code único)
+- HTTP_REQUEST_CONFIG_SIMPLE.md (guía de solución exitosa)
+- HTTP_REQUEST_CONFIG_AVANZADA.md (alternativa con Type Object)
+- HTTP_REQUEST_FALLBACK_JSON_STRINGIFY.md (fallback si otras opciones fallan)
+- REFACTOR_CODE_UNICO.md (guía de refactor)
+
+#### n8n Workflow Creado:
+- Lead Asignado - Notificación Vendedor (Eco Plaza Proyectos Activos).json
+- Webhook: /webhook/lead-asignado
+- Active: ✅ Yes
+
+#### Características Implementadas:
+
+**DASHBOARD → n8n INTEGRATION:**
+1. ✅ Webhook automático al asignar lead
+2. ✅ Payload con datos completos (lead + vendedor + proyecto)
+3. ✅ Non-blocking (no afecta asignación si falla)
+4. ✅ Logging en console para debugging
+
+**n8n WORKFLOW:**
+1. ✅ Webhook node recibe datos del dashboard
+2. ✅ Code único prepara mensaje personalizado
+3. ✅ Switch enruta por proyectoId (3 salidas)
+4. ✅ HTTP Request envía WhatsApp vía Graph API
+5. ✅ Mensaje con formato WhatsApp (saltos de línea, negritas)
+
+**MENSAJE WHATSAPP:**
+1. ✅ Saludo personalizado con nombre del lead
+2. ✅ Nombre del vendedor asignado en negritas
+3. ✅ Nombre del proyecto
+4. ✅ Teléfono del vendedor para guardar en contactos
+5. ✅ Tono amigable y profesional
+
+**UX PARA EL LEAD:**
+- Lead recibe mensaje inmediato después de asignación
+- Lead sabe quién lo contactará (nombre + teléfono)
+- Lead puede guardar contacto del vendedor proactivamente
+- Primera impresión profesional y organizada
+
+#### Resultados:
+- ✅ Feature completa implementada y funcionando
+- ✅ Error JSON en n8n resuelto con "Using Fields Below"
+- ✅ Workflow refactorizado (3 Code → 1 Code único)
+- ✅ Testing exitoso en todos los proyectos
+- ✅ Deploy a producción completado
+- ✅ Variable de entorno configurada en Vercel
+- ✅ Verificación en producción exitosa
+- ✅ Sin errores en Vercel logs
+- ✅ 100% funcional para los 3 proyectos
+
+#### Estado del Proyecto:
+- ✅ lib/actions.ts con webhook a n8n
+- ✅ n8n workflow activo y funcionando
+- ✅ Vercel con variable de entorno configurada
+- ✅ Producción verificada y estable
+- ✅ Git commit pusheado (8a1d3c9)
+
+#### Próximas Tareas Pendientes:
+- [ ] Monitorear logs de n8n por posibles errores
+- [ ] Considerar agregar retry logic si webhook falla
+- [ ] Opcional: Dashboard para ver historial de notificaciones enviadas
+- [ ] Opcional: Personalizar mensaje por proyecto (actualmente es el mismo)
+
+---
+
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 27 Octubre 2025
-**Sesión:** 24
-**Desarrollador:** Claude Code - Project Leader + FrontDev Team
-**Estado:** 🚀 **DEPLOYED TO PRODUCTION** - Campo Email agregado al dashboard
-**Git Commit:** 4bfec2a
-**Vercel Status:** Auto-deploy en progreso (2-3 min estimado)
-**Próxima Acción:** Usuario verifica display de emails en producción
+**Sesión:** 25
+**Desarrollador:** Claude Code (Adan) - Project Leader + BackDev + Integration Specialist
+**Estado:** 🎉 **PRODUCCIÓN VERIFICADA** - Notificaciones automáticas vía WhatsApp funcionando
+**Git Commit:** 8a1d3c9
+**Feature:** Lead assignment → Automatic WhatsApp notification via Victoria
+**Testing:** ✅ San Gabriel, Trapiche, Callao - Todos funcionando correctamente
+**Próxima Acción:** Monitorear logs y considerar mejoras opcionales
 
 ---
