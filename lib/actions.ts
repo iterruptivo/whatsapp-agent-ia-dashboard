@@ -25,7 +25,7 @@ export async function assignLeadToVendedor(leadId: string, vendedorId: string) {
     if (vendedorId) {
       const { data: vendedorData, error: vendedorError } = await supabase
         .from('vendedores')
-        .select('id, nombre, activo')
+        .select('id, nombre, telefono, activo')
         .eq('id', vendedorId)
         .single();
 
@@ -47,10 +47,17 @@ export async function assignLeadToVendedor(leadId: string, vendedorId: string) {
       vendedor = vendedorData;
     }
 
-    // Step 2: Check if lead exists
+    // Step 2: Check if lead exists and get proyecto info
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('id, vendedor_asignado_id, nombre, telefono')
+      .select(`
+        id,
+        vendedor_asignado_id,
+        nombre,
+        telefono,
+        proyecto_id,
+        proyecto_nombre:proyectos(nombre)
+      `)
       .eq('id', leadId)
       .single();
 
@@ -78,7 +85,41 @@ export async function assignLeadToVendedor(leadId: string, vendedorId: string) {
       };
     }
 
-    // Step 4: Revalidate pages to refresh data
+    // Step 4: Send notification to lead via n8n webhook (only if assigning, not liberating)
+    if (vendedorId && vendedor) {
+      try {
+        const webhookUrl = process.env.N8N_WEBHOOK_LEAD_ASIGNADO || '';
+
+        if (webhookUrl) {
+          // Flatten proyecto_nombre (Supabase JOIN returns nested object)
+          const proyectoNombre = typeof lead.proyecto_nombre === 'object' && lead.proyecto_nombre !== null
+            ? (lead.proyecto_nombre as any).nombre
+            : lead.proyecto_nombre;
+
+          await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              leadTelefono: lead.telefono,
+              leadNombre: lead.nombre || 'Cliente',
+              vendedorNombre: vendedor.nombre,
+              vendedorTelefono: vendedor.telefono,
+              proyectoId: lead.proyecto_id,
+              proyectoNombre: proyectoNombre || 'EcoPlaza'
+            })
+          });
+
+          console.log('Webhook notification sent to n8n for lead assignment');
+        } else {
+          console.warn('N8N_WEBHOOK_LEAD_ASIGNADO not configured - skipping notification');
+        }
+      } catch (webhookError) {
+        // Non-blocking error - log but don't fail the assignment
+        console.error('Error sending webhook notification (non-blocking):', webhookError);
+      }
+    }
+
+    // Step 5: Revalidate pages to refresh data
     revalidatePath('/operativo');
     revalidatePath('/'); // Also revalidate admin dashboard
 
