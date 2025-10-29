@@ -1,10 +1,11 @@
 'use client';
 
 import { useAuth } from '@/lib/auth-context';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Menu } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
+import Sidebar from '@/components/shared/Sidebar';
 
 interface DashboardHeaderProps {
   title: string;
@@ -14,6 +15,7 @@ interface DashboardHeaderProps {
 export default function DashboardHeader({ title, subtitle }: DashboardHeaderProps) {
   const { user, signOut, loading } = useAuth();
   const [isClient, setIsClient] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { isOpen, config, showDialog, closeDialog } = useConfirmDialog();
 
   useEffect(() => {
@@ -41,14 +43,27 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
   }, [isClient, loading, user]);
 
   return (
-    <header className="bg-secondary shadow-md">
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="flex items-center justify-between">
-          {/* Title Section */}
-          <div>
-            <h1 className="text-3xl font-bold text-white">{title}</h1>
-            <p className="text-gray-300 mt-1">{subtitle}</p>
-          </div>
+    <>
+      <header className="bg-secondary shadow-md">
+        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
+            {/* Title Section with Menu Button */}
+            <div className="flex items-center gap-3">
+              {/* Menu Button */}
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                aria-label="Abrir menú"
+              >
+                <Menu className="w-6 h-6 text-white" />
+              </button>
+
+              {/* Title */}
+              <div>
+                <h1 className="text-3xl font-bold text-white">{title}</h1>
+                <p className="text-gray-300 mt-1">{subtitle}</p>
+              </div>
+            </div>
 
           {/* User Info & Logout Section */}
           {isClient ? (
@@ -101,6 +116,13 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
         cancelText={config.cancelText}
         showCancel={config.showCancel}
       />
-    </header>
+      </header>
+
+      {/* Sidebar Menu */}
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+    </>
   );
 }

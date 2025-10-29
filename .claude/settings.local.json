@@ -27,7 +27,8 @@
       "Bash(python3 -c \"import json; data = json.load(open(''V5B - Supabase - EcoPlaza Agente IA Whatsapp (Githup) (3).json'')); node = [n for n in data[''nodes''] if n.get(''name'') == ''OpenAI - Extract Data''][0]; print(json.dumps(node[''parameters''], indent=2))\")",
       "Bash(python3:*)",
       "Bash(git checkout -b feature/real-time-updates)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(npx next build)"
     ],
     "deny": [],
     "ask": []
