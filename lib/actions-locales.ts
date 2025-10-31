@@ -13,6 +13,7 @@ import {
   importLocalesQuery,
   deleteLocalQuery,
   updateMontoVentaQuery,
+  registerLeadTrackingQuery,
   type LocalImportRow,
 } from './locales';
 
@@ -158,5 +159,37 @@ export async function updateMontoVenta(
   } catch (error) {
     console.error('Error in updateMontoVenta:', error);
     return { success: false, message: 'Error inesperado al actualizar monto' };
+  }
+}
+
+// ============================================================================
+// REGISTER LEAD TRACKING
+// ============================================================================
+
+/**
+ * Registrar lead vinculado a local (tracking)
+ * @param localId ID del local
+ * @param telefono Teléfono del lead
+ * @param nombre Nombre del lead
+ * @param usuarioId ID del usuario (vendedor) que registra
+ * @returns Success/error
+ */
+export async function registerLeadTracking(
+  localId: string,
+  telefono: string,
+  nombre: string,
+  usuarioId?: string
+) {
+  try {
+    const result = await registerLeadTrackingQuery(localId, telefono, nombre, usuarioId);
+
+    if (result.success) {
+      revalidatePath('/locales');
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error in registerLeadTracking:', error);
+    return { success: false, message: 'Error inesperado al registrar tracking' };
   }
 }

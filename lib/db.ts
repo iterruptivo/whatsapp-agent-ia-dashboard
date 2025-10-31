@@ -222,3 +222,51 @@ export async function getChartData() {
     ];
   }
 }
+
+// ============================================================================
+// SEARCH LEAD BY PHONE (para tracking de locales)
+// ============================================================================
+
+/**
+ * Buscar lead por número de teléfono en todos los proyectos
+ * @param telefono Número de teléfono a buscar
+ * @returns Lead encontrado o null
+ */
+export async function searchLeadByPhone(telefono: string): Promise<Lead | null> {
+  try {
+    // Limpiar teléfono (remover espacios, guiones, paréntesis)
+    const cleanPhone = telefono.replace(/[\s\-\(\)]/g, '');
+
+    const { data, error } = await supabase
+      .from('leads')
+      .select(`
+        *,
+        proyecto:proyectos!leads_proyecto_id_fkey(nombre, color)
+      `)
+      .eq('telefono', cleanPhone)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No rows found
+        return null;
+      }
+      console.error('Error searching lead by phone:', error);
+      return null;
+    }
+
+    if (!data) return null;
+
+    // Map proyecto JOIN data
+    return {
+      ...data,
+      proyecto_nombre: data.proyecto?.nombre || null,
+      proyecto_color: data.proyecto?.color || null,
+    };
+  } catch (error) {
+    console.error('Error in searchLeadByPhone:', error);
+    return null;
+  }
+}

@@ -565,3 +565,57 @@ export async function updateMontoVentaQuery(
     return { success: false, message: 'Error inesperado' };
   }
 }
+
+// ============================================================================
+// REGISTER LEAD TRACKING
+// ============================================================================
+
+/**
+ * Registrar tracking de lead vinculado a local en historial
+ * @param localId ID del local
+ * @param telefono Teléfono del lead
+ * @param nombre Nombre del lead
+ * @param usuarioId ID del usuario (vendedor) que registra
+ * @returns Success/error
+ */
+export async function registerLeadTrackingQuery(
+  localId: string,
+  telefono: string,
+  nombre: string,
+  usuarioId?: string
+) {
+  try {
+    // Validar que local existe
+    const local = await getLocalById(localId);
+    if (!local) {
+      return { success: false, message: 'Local no encontrado' };
+    }
+
+    // Crear acción descriptiva
+    const accion = `Vinculó lead: ${nombre} (Tel: ${telefono})`;
+
+    // Insertar en historial (sin cambio de estado)
+    const { error } = await supabase
+      .from('locales_historial')
+      .insert({
+        local_id: localId,
+        usuario_id: usuarioId || null,
+        estado_anterior: local.estado,
+        estado_nuevo: local.estado, // No cambia estado, solo tracking
+        accion: accion,
+      });
+
+    if (error) {
+      console.error('Error insertando tracking en historial:', error);
+      return { success: false, message: 'Error al registrar tracking' };
+    }
+
+    return {
+      success: true,
+      message: 'Lead vinculado correctamente',
+    };
+  } catch (error) {
+    console.error('Error in registerLeadTrackingQuery:', error);
+    return { success: false, message: 'Error inesperado' };
+  }
+}

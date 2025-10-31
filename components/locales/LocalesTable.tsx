@@ -11,8 +11,9 @@ import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { updateLocalEstado, desbloquearLocal, updateMontoVenta } from '@/lib/actions-locales';
 import type { Local } from '@/lib/locales';
-import { ChevronLeft, ChevronRight, History, Lock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, History, Lock, Link2 } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import LocalTrackingModal from './LocalTrackingModal';
 
 interface LocalesTableProps {
   locales: Local[];
@@ -56,6 +57,9 @@ export default function LocalesTable({
   // State para edición de monto
   const [editingMontoLocalId, setEditingMontoLocalId] = useState<string | null>(null);
   const [tempMonto, setTempMonto] = useState<string>('');
+
+  // State para tracking modal
+  const [trackingLocal, setTrackingLocal] = useState<Local | null>(null);
 
   // ====== HELPER: Cambiar Estado con Confirmación ======
   const handleEstadoChange = (
@@ -487,6 +491,7 @@ export default function LocalesTable({
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Metraje</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Estado</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Monto Venta</th>
+              <th className="text-left py-3 px-4 text-gray-600 font-medium">Tracking</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Vendedor Actual</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Acciones</th>
             </tr>
@@ -494,7 +499,7 @@ export default function LocalesTable({
           <tbody>
             {locales.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">
+                <td colSpan={8} className="text-center py-8 text-gray-500">
                   No hay locales para mostrar
                 </td>
               </tr>
@@ -564,6 +569,22 @@ export default function LocalesTable({
                       )}
                     </td>
 
+                    {/* Tracking */}
+                    <td className="py-3 px-4">
+                      {(user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') ? (
+                        <button
+                          onClick={() => setTrackingLocal(local)}
+                          className="flex items-center gap-1 text-sm text-secondary hover:text-secondary/80"
+                          title="Vincular lead"
+                        >
+                          <Link2 className="w-4 h-4" />
+                          <span className="hidden sm:inline">Vincular</span>
+                        </button>
+                      ) : (
+                        <span className="text-gray-400 text-sm">-</span>
+                      )}
+                    </td>
+
                     {/* Vendedor Actual */}
                     <td className="py-3 px-4 text-gray-700">
                       {local.vendedor_actual_nombre || '-'}
@@ -602,6 +623,20 @@ export default function LocalesTable({
         onConfirm={handleConfirmModalAction}
         onCancel={handleCancelModal}
       />
+
+      {/* Tracking Modal */}
+      {trackingLocal && (
+        <LocalTrackingModal
+          local={trackingLocal}
+          isOpen={!!trackingLocal}
+          onClose={() => setTrackingLocal(null)}
+          onSuccess={() => {
+            // Opcional: Recargar o mostrar mensaje
+            setTrackingLocal(null);
+          }}
+          usuarioId={user?.id}
+        />
+      )}
     </div>
   );
 }
