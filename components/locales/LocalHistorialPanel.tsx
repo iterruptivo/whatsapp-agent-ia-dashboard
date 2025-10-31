@@ -84,6 +84,13 @@ export default function LocalHistorialPanel({
     return badges[estado as keyof typeof badges] || 'bg-gray-100 text-gray-800 border-gray-300';
   };
 
+  // ====== HELPER: Convertir S/ a $ en texto de acción ======
+  const formatAccion = (accion: string | null) => {
+    if (!accion) return null;
+    // Reemplazar S/ por $ en todo el texto
+    return accion.replace(/S\//g, '$');
+  };
+
   if (!isOpen) return null;
 
   // ====== RENDER ======
@@ -189,7 +196,7 @@ export default function LocalHistorialPanel({
 
                   {/* Acción */}
                   {item.accion && (
-                    <p className="text-sm text-gray-600 italic">{item.accion}</p>
+                    <p className="text-sm text-gray-600 italic">{formatAccion(item.accion)}</p>
                   )}
                 </div>
               ))}
