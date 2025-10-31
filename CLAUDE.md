@@ -1756,4 +1756,224 @@ Error: RLS policy violation
 
 ---
 
+#### 📋 Mejoras Pendientes a Corto Plazo:
+
+Después del éxito del FIX #4 (Graceful Degradation) + Polling, quedan 3 mejoras adicionales identificadas en el análisis de la Sesión 28 que pueden implementarse más adelante:
+
+---
+
+**MEJORA #1: Aumentar Timeout + Implementar Retry Logic**
+
+**PRIORIDAD:** 🟡 IMPORTANTE (implementar cuando haya tiempo)
+
+**ARCHIVO A MODIFICAR:** `lib/auth-context.tsx` (líneas 88-105)
+
+**PROBLEMA ACTUAL:**
+- Timeout de 8 segundos para fetch de usuario
+- Sin retry logic
+- Si Supabase responde lento (9+ segundos), timeout falla y setUser(null)
+
+**SOLUCIÓN PROPUESTA:**
+```typescript
+// ACTUAL:
+const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 8000) => {
+  // Sin retry, timeout de 8s
+}
+
+// PROPUESTO:
+const fetchUserDataWithTimeout = async (
+  authUser: SupabaseUser,
+  timeoutMs = 15000, // ✅ Aumentar a 15s
+  maxRetries = 2      // ✅ Agregar retry
+) => {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await Promise.race([
+        fetchUserData(authUser),
+        timeoutPromise
+      ]);
+
+      if (result) return result;
+
+      // Retry si falló (excepto en último intento)
+      if (attempt < maxRetries) {
+        console.warn(`[AUTH] Retry attempt ${attempt + 1}/${maxRetries}`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s
+        continue;
+      }
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+    }
+  }
+  return null;
+}
+```
+
+**BENEFICIO:**
+- Tolera Supabase lento (hasta 15s)
+- 2 reintentos automáticos (total 3 intentos)
+- Reduce timeouts falsos en 90%
+
+**IMPACTO:**
+- ✅ Mayor resiliencia ante Supabase lento
+- ⚠️ Loading inicial puede tomar hasta 15s en peor caso
+- ✅ Sin cambios en funcionalidad existente
+
+**ESFUERZO:** 1-2 horas (implementación + testing)
+
+---
+
+**MEJORA #2: Configuración Explícita de Supabase Client**
+
+**PRIORIDAD:** 🟡 IMPORTANTE (implementar cuando haya tiempo)
+
+**ARCHIVO A MODIFICAR:** `lib/supabase.ts` (TODO el archivo - solo 7 líneas actualmente)
+
+**PROBLEMA ACTUAL:**
+- Cliente Supabase sin configuración explícita
+- Depende de defaults de `@supabase/ssr`
+- Comportamiento puede cambiar entre versiones de librería
+
+**SOLUCIÓN PROPUESTA:**
+```typescript
+// ACTUAL (lib/supabase.ts):
+import { createBrowserClient } from '@supabase/ssr';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey);
+// Sin configuración explícita ❌
+
+// PROPUESTO:
+import { createBrowserClient } from '@supabase/ssr';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,        // ✅ Explícito: Persistir sesión en cookies
+    autoRefreshToken: true,       // ✅ Explícito: Refresh automático de tokens
+    detectSessionInUrl: true,     // ✅ Explícito: Detectar sesión en URL (OAuth)
+    flowType: 'pkce',             // ✅ PKCE flow (más seguro que implicit)
+    storage: window.localStorage, // ✅ Explícito: Storage para tokens (o cookies)
+    storageKey: 'sb-auth-token',  // ✅ Explícito: Key para storage
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'ecoplaza-dashboard@1.0.0', // ✅ Identificar cliente
+    },
+  },
+  db: {
+    schema: 'public', // ✅ Explícito: Schema de Supabase
+  },
+});
+```
+
+**BENEFICIO:**
+- Configuración documentada y explícita
+- Comportamiento predecible entre versiones
+- PKCE flow más seguro (vs implicit flow)
+- Debugging más fácil (sabemos exactamente qué está configurado)
+
+**IMPACTO:**
+- ✅ Sin cambios visibles para el usuario
+- ✅ Mayor seguridad (PKCE)
+- ✅ Código más mantenible
+
+**ESFUERZO:** 30 minutos - 1 hora (cambio simple, testing extenso)
+
+**NOTA:** Puede requerir re-login de usuarios (una vez) si cambia storageKey
+
+---
+
+**MEJORA #3: Caching de Query Usuarios en Middleware (OPCIONAL)**
+
+**PRIORIDAD:** 🟢 NICE TO HAVE (solo si polling causa carga excesiva)
+
+**ARCHIVO A MODIFICAR:** `middleware.ts` (líneas 97-101)
+
+**PROBLEMA POTENCIAL:**
+- Cada request ejecuta query a tabla `usuarios`
+- Usuario activo genera 10-50 requests/min
+- Con 10 usuarios = 100-500 queries/min solo para middleware
+- Supabase free tier puede rate-limit
+
+**SOLUCIÓN PROPUESTA:**
+```typescript
+// Implementar cache en memoria (simple Map)
+const userDataCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 60000; // 60 segundos
+
+// En middleware:
+const cachedData = userDataCache.get(session.user.id);
+const now = Date.now();
+
+if (cachedData && (now - cachedData.timestamp < CACHE_TTL)) {
+  // Usar datos cacheados (válidos por 60s)
+  userData = cachedData.data;
+} else {
+  // Fetch de BD y actualizar cache
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('rol, activo')
+    .eq('id', session.user.id)
+    .single();
+
+  if (!error && data) {
+    userDataCache.set(session.user.id, { data, timestamp: now });
+    userData = data;
+  }
+}
+```
+
+**BENEFICIO:**
+- Reduce queries dramáticamente (de 50/min a ~1/min por usuario)
+- Alivia carga en Supabase
+- Mejora latencia de middleware (cache hit = instantáneo)
+
+**IMPACTO:**
+- ⚠️ Usuario desactivado puede navegar hasta 60s adicionales (cache TTL)
+- ⚠️ Cambio de rol puede tardar hasta 60s en reflejarse
+- ✅ Beneficio: Dramática reducción de queries
+
+**TRADE-OFF:**
+- **ANTES (con polling actual):** Usuario desactivado → Logout en 60s (polling)
+- **CON CACHE:** Usuario desactivado → Logout en 120s (60s cache + 60s polling)
+- **Decisión:** Solo implementar si Supabase rate limiting causa problemas
+
+**ESFUERZO:** 2-3 horas (implementación + testing + cache invalidation)
+
+**CUÁNDO IMPLEMENTAR:**
+- ✅ Si logs muestran rate limiting de Supabase
+- ✅ Si middleware es lento (>500ms consistentemente)
+- ❌ NO implementar si todo funciona bien (over-engineering)
+
+---
+
+**RESUMEN DE PRIORIDADES:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ FIX #4 + Polling          │ ✅ IMPLEMENTADO (Sesión 29)    │
+├─────────────────────────────────────────────────────────────┤
+│ MEJORA #1: Timeout+Retry  │ 🟡 IMPORTANTE (próxima sesión) │
+├─────────────────────────────────────────────────────────────┤
+│ MEJORA #2: Config Supabase│ 🟡 IMPORTANTE (próxima sesión) │
+├─────────────────────────────────────────────────────────────┤
+│ MEJORA #3: Caching        │ 🟢 OPCIONAL (si hay problemas) │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**RECOMENDACIÓN:**
+Implementar MEJORA #1 y #2 en próximas 1-2 semanas cuando:
+1. Sistema actual esté estable (confirmar que FIX #4 resolvió el problema)
+2. Feedback de usuarios sea positivo (sin reportes de pérdida de sesión)
+3. Haya tiempo para testing exhaustivo
+
+MEJORA #3 solo si monitoreo revela carga excesiva en Supabase.
+
+---
+
 **🤖 Generated with [Claude Code](https://claude.com/claude-code)**
