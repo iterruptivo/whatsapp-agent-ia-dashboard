@@ -72,17 +72,23 @@ export default function LocalesTable({
     }
 
     // 🚫 RESTRICCIÓN: Admin NO puede cambiar estados (solo desbloquear)
-    if (user.rol === 'admin') {
-      // Permitir SOLO si es caso de desbloqueo (local ROJO + bloqueado)
-      const esDesbloqueo = local.estado === 'rojo' && local.bloqueado;
+    // Admin y Jefe Ventas: Restringir cambios de estado verde/amarillo/naranja
+    if (user.rol === 'admin' || user.rol === 'jefe_ventas') {
+      // Permitir SOLO si es caso de desbloqueo (local ROJO + bloqueado) para admin
+      const esDesbloqueoAdmin = local.estado === 'rojo' && local.bloqueado && user.rol === 'admin';
 
-      if (!esDesbloqueo) {
+      // Permitir bloquear (→ rojo) para admin y jefe_ventas
+      const esBloqueo = nuevoEstado === 'rojo';
+
+      if (!esDesbloqueoAdmin && !esBloqueo) {
         setConfirmModal({
           isOpen: true,
           local: null,
           nuevoEstado: null,
           title: 'Acción Restringida',
-          message: 'Los administradores solo pueden desbloquear locales vendidos.\n\nLos cambios de estado son exclusivos de los vendedores.',
+          message: user.rol === 'admin'
+            ? 'Los administradores solo pueden desbloquear locales vendidos.\n\nLos cambios de estado son exclusivos de los vendedores.'
+            : 'Los jefes de ventas solo pueden bloquear locales (vendido).\n\nLos cambios de estado son exclusivos de los vendedores.',
           variant: 'warning',
         });
         return;
@@ -261,47 +267,47 @@ export default function LocalesTable({
 
     return (
       <div className="flex items-center gap-2">
-        {/* Círculo Verde - Jefe de Ventas solo visualiza */}
+        {/* Círculo Verde */}
         <button
           onClick={() => handleEstadoChange(local, 'verde')}
-          disabled={isChanging || (isBlocked && user?.rol !== 'admin') || user?.rol === 'jefe_ventas'}
+          disabled={isChanging || (isBlocked && user?.rol !== 'admin')}
           className={`w-8 h-8 rounded-full border-2 transition-all ${
             local.estado === 'verde'
               ? 'bg-green-500 border-green-600 scale-110 shadow-lg'
               : 'bg-green-200 border-green-300 hover:scale-105 hover:bg-green-300'
-          } ${isChanging || (isBlocked && user?.rol !== 'admin') || user?.rol === 'jefe_ventas' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          title={local.estado === 'verde' ? 'Libre (actual)' : user?.rol === 'jefe_ventas' ? 'Solo visualización' : 'Cambiar a Libre'}
+          } ${isChanging || (isBlocked && user?.rol !== 'admin') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={local.estado === 'verde' ? 'Libre (actual)' : 'Cambiar a Libre'}
         />
 
-        {/* Círculo Amarillo - Jefe de Ventas solo visualiza */}
+        {/* Círculo Amarillo */}
         <button
           onClick={() => handleEstadoChange(local, 'amarillo')}
-          disabled={isChanging || (isBlocked && user?.rol !== 'admin') || user?.rol === 'jefe_ventas'}
+          disabled={isChanging || (isBlocked && user?.rol !== 'admin')}
           className={`w-8 h-8 rounded-full border-2 transition-all ${
             local.estado === 'amarillo'
               ? 'bg-yellow-500 border-yellow-600 scale-110 shadow-lg'
               : 'bg-yellow-200 border-yellow-300 hover:scale-105 hover:bg-yellow-300'
-          } ${isChanging || (isBlocked && user?.rol !== 'admin') || user?.rol === 'jefe_ventas' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          } ${isChanging || (isBlocked && user?.rol !== 'admin') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           title={
             local.estado === 'amarillo'
               ? `Negociando (${local.vendedor_actual_nombre || 'actual'})`
-              : user?.rol === 'jefe_ventas' ? 'Solo visualización' : 'Cambiar a Negociando'
+              : 'Cambiar a Negociando'
           }
         />
 
-        {/* Círculo Naranja - Jefe de Ventas solo visualiza */}
+        {/* Círculo Naranja */}
         <button
           onClick={() => handleEstadoChange(local, 'naranja')}
-          disabled={isChanging || (isBlocked && user?.rol !== 'admin') || user?.rol === 'jefe_ventas'}
+          disabled={isChanging || (isBlocked && user?.rol !== 'admin')}
           className={`w-8 h-8 rounded-full border-2 transition-all ${
             local.estado === 'naranja'
               ? 'bg-orange-500 border-orange-600 scale-110 shadow-lg'
               : 'bg-orange-200 border-orange-300 hover:scale-105 hover:bg-orange-300'
-          } ${isChanging || (isBlocked && user?.rol !== 'admin') || user?.rol === 'jefe_ventas' ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          } ${isChanging || (isBlocked && user?.rol !== 'admin') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           title={
             local.estado === 'naranja'
               ? `Confirmado (${local.vendedor_actual_nombre || 'actual'})`
-              : user?.rol === 'jefe_ventas' ? 'Solo visualización' : 'Cambiar a Confirmado'
+              : 'Cambiar a Confirmado'
           }
         />
 
