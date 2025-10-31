@@ -16,6 +16,7 @@ import LocalesTable from './LocalesTable';
 import LocalesFilters from './LocalesFilters';
 import LocalImportModal from './LocalImportModal';
 import LocalHistorialPanel from './LocalHistorialPanel';
+import { useAuth } from '@/lib/auth-context';
 import { RefreshCw, Upload } from 'lucide-react';
 
 interface LocalesClientProps {
@@ -37,6 +38,9 @@ export default function LocalesClient({
   proyectos,
   initialStats,
 }: LocalesClientProps) {
+  // ====== AUTH ======
+  const { user } = useAuth();
+
   // ====== STATE ======
   const [locales, setLocales] = useState<Local[]>(initialLocales);
   const [stats, setStats] = useState(initialStats);
@@ -283,15 +287,17 @@ export default function LocalesClient({
               <span className="hidden sm:inline">Actualizar</span>
             </button>
 
-            {/* Botón Importar */}
-            <button
-              onClick={() => setIsImportModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors"
-              title="Importar locales desde CSV/Excel"
-            >
-              <Upload className="w-4 h-4" />
-              <span className="hidden sm:inline">Importar CSV</span>
-            </button>
+            {/* Botón Importar - Solo Admin y Jefe Ventas */}
+            {(user?.rol === 'admin' || user?.rol === 'jefe_ventas') && (
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition-colors"
+                title="Importar locales desde CSV/Excel"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">Importar CSV</span>
+              </button>
+            )}
           </div>
         </div>
 
