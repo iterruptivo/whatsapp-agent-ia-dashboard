@@ -70,11 +70,23 @@ export default function LocalImportModal({
         complete: (results) => {
           try {
             const data = results.data as any[];
-            const locales: LocalImportRow[] = data.map((row) => ({
-              codigo: String(row.codigo || '').trim(),
-              proyecto: String(row.proyecto || '').trim().toLowerCase(),
-              metraje: parseFloat(row.metraje || '0'),
-            }));
+            const locales: LocalImportRow[] = data.map((row) => {
+              const local: LocalImportRow = {
+                codigo: String(row.codigo || '').trim(),
+                proyecto: String(row.proyecto || '').trim().toLowerCase(),
+                metraje: parseFloat(row.metraje || '0'),
+              };
+
+              // Columna estado opcional
+              if (row.estado) {
+                const estadoLower = String(row.estado).trim().toLowerCase();
+                if (['verde', 'amarillo', 'naranja', 'rojo'].includes(estadoLower)) {
+                  local.estado = estadoLower as 'verde' | 'amarillo' | 'naranja' | 'rojo';
+                }
+              }
+
+              return local;
+            });
             resolve(locales);
           } catch (error) {
             reject(error);
@@ -97,11 +109,23 @@ export default function LocalImportModal({
           const sheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(sheet) as any[];
 
-          const locales: LocalImportRow[] = jsonData.map((row) => ({
-            codigo: String(row.codigo || '').trim(),
-            proyecto: String(row.proyecto || '').trim().toLowerCase(),
-            metraje: parseFloat(row.metraje || '0'),
-          }));
+          const locales: LocalImportRow[] = jsonData.map((row) => {
+            const local: LocalImportRow = {
+              codigo: String(row.codigo || '').trim(),
+              proyecto: String(row.proyecto || '').trim().toLowerCase(),
+              metraje: parseFloat(row.metraje || '0'),
+            };
+
+            // Columna estado opcional
+            if (row.estado) {
+              const estadoLower = String(row.estado).trim().toLowerCase();
+              if (['verde', 'amarillo', 'naranja', 'rojo'].includes(estadoLower)) {
+                local.estado = estadoLower as 'verde' | 'amarillo' | 'naranja' | 'rojo';
+              }
+            }
+
+            return local;
+          });
 
           resolve(locales);
         } catch (error) {
@@ -148,11 +172,15 @@ export default function LocalImportModal({
 
       if (hasErrors) {
         alert(
-          '⚠️ Formato incorrecto. Asegúrate de que el archivo tenga las columnas:\n\n' +
-          'codigo, proyecto, metraje\n\n' +
-          'Ejemplo:\n' +
+          '⚠️ Formato incorrecto. Asegúrate de que el archivo tenga las columnas requeridas:\n\n' +
+          'REQUERIDAS: codigo, proyecto, metraje\n' +
+          'OPCIONAL: estado (verde/amarillo/naranja/rojo)\n\n' +
+          'Ejemplo SIN estado (default: verde):\n' +
           'LC-001,trapiche,4.5\n' +
-          'LC-002,callao,6.0'
+          'LC-002,callao,6.0\n\n' +
+          'Ejemplo CON estado:\n' +
+          'LC-001,trapiche,4.5,rojo\n' +
+          'LC-002,callao,6.0,verde'
         );
         setImporting(false);
         return;
@@ -221,9 +249,9 @@ export default function LocalImportModal({
                 Formato del Archivo
               </h3>
               <p className="text-sm text-blue-800 mb-2">
-                El archivo debe tener las siguientes columnas:
+                <strong>Columnas requeridas:</strong>
               </p>
-              <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
+              <ul className="text-sm text-blue-800 list-disc list-inside space-y-1 mb-3">
                 <li>
                   <strong>codigo:</strong> Código único del local (ej: LC-001)
                 </li>
@@ -232,6 +260,14 @@ export default function LocalImportModal({
                 </li>
                 <li>
                   <strong>metraje:</strong> Metros cuadrados (ej: 4.5, 6.0)
+                </li>
+              </ul>
+              <p className="text-sm text-blue-800 mb-2">
+                <strong>Columnas opcionales:</strong>
+              </p>
+              <ul className="text-sm text-blue-800 list-disc list-inside space-y-1">
+                <li>
+                  <strong>estado:</strong> verde, amarillo, naranja, o rojo (default: verde)
                 </li>
               </ul>
               <p className="text-xs text-blue-700 mt-2">

@@ -43,6 +43,7 @@ export interface LocalImportRow {
   codigo: string;
   proyecto: string; // slug del proyecto (trapiche, callao, san-gabriel)
   metraje: number;
+  estado?: 'verde' | 'amarillo' | 'naranja' | 'rojo'; // Opcional: default = 'verde'
 }
 
 // ============================================================================
@@ -384,6 +385,20 @@ export async function importLocalesQuery(locales: LocalImportRow[]) {
         continue;
       }
 
+      // Determinar estado (default: verde si no se especifica)
+      const estado = local.estado || 'verde';
+
+      // Validar estado
+      const estadosValidos = ['verde', 'amarillo', 'naranja', 'rojo'];
+      if (!estadosValidos.includes(estado)) {
+        errors.push(`Estado "${local.estado}" inválido para local ${local.codigo} (debe ser verde/amarillo/naranja/rojo)`);
+        skipped++;
+        continue;
+      }
+
+      // Si estado es rojo, el local debe estar bloqueado
+      const bloqueado = estado === 'rojo';
+
       // Insertar local
       const { error: insertError } = await supabase
         .from('locales')
@@ -391,8 +406,8 @@ export async function importLocalesQuery(locales: LocalImportRow[]) {
           codigo: local.codigo,
           proyecto_id: proyecto.id,
           metraje: local.metraje,
-          estado: 'verde', // Default
-          bloqueado: false,
+          estado: estado,
+          bloqueado: bloqueado,
         });
 
       if (insertError) {
