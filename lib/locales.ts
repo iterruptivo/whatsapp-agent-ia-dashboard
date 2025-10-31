@@ -295,6 +295,7 @@ export async function updateLocalEstadoQuery(
       updateData.bloqueado = false;
       updateData.vendedor_cerro_venta_id = null;
       updateData.fecha_cierre_venta = null;
+      updateData.monto_venta = null; // Limpiar monto (nueva negociación = nuevo monto)
     }
 
     // Ejecutar update
@@ -536,8 +537,8 @@ export async function updateMontoVentaQuery(
     // Registrar en historial (solo si cambió el monto y hay usuarioId)
     if (montoAnterior !== monto && usuarioId) {
       const accion = montoAnterior === null
-        ? `Estableció monto de venta: S/ ${monto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
-        : `Actualizó monto de S/ ${montoAnterior.toLocaleString('es-PE', { minimumFractionDigits: 2 })} a S/ ${monto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`;
+        ? `Estableció monto de venta: $ ${monto.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+        : `Actualizó monto de $ ${montoAnterior.toLocaleString('en-US', { minimumFractionDigits: 2 })} a $ ${monto.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
 
       const { error: historialError } = await supabase
         .from('locales_historial')
