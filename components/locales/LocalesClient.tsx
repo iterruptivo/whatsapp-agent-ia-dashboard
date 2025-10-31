@@ -201,6 +201,14 @@ export default function LocalesClient({
 
   const totalPages = Math.ceil(filteredLocales.length / itemsPerPage);
 
+  // ====== AUTO-RESET PAGE SI ESTÁ FUERA DE RANGO ======
+  useEffect(() => {
+    // Si currentPage está fuera del rango válido, resetear a página 1
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
+
   // ====== HANDLERS ======
 
   const handleRefresh = async () => {

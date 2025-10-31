@@ -410,6 +410,9 @@ export default function LocalesTable({
 
   // ====== HELPER: Paginación ======
   const renderPagination = () => {
+    // Protección: Si no hay páginas válidas, no renderizar
+    if (totalPages < 1) return null;
+
     const pages: (number | string)[] = [];
 
     if (totalPages <= 7) {
@@ -428,12 +431,22 @@ export default function LocalesTable({
       if (totalPages > 1) pages.push(totalPages);
     }
 
+    // Calcular rango de items mostrados
+    const startItem = Math.max(1, (currentPage - 1) * itemsPerPage + 1);
+    const endItem = Math.min(currentPage * itemsPerPage, totalLocales);
+    const showingCount = Math.max(0, endItem - startItem + 1);
+
     return (
       <div className="flex items-center justify-between mt-4">
         {/* Info */}
         <p className="text-sm text-gray-600">
-          Mostrando {(currentPage - 1) * itemsPerPage + 1}-
-          {Math.min(currentPage * itemsPerPage, totalLocales)} de {totalLocales} locales
+          {totalLocales > 0 ? (
+            <>
+              Mostrando {startItem}-{endItem} de {totalLocales} locales
+            </>
+          ) : (
+            'No hay locales'
+          )}
         </p>
 
         {/* Botones */}
@@ -610,7 +623,7 @@ export default function LocalesTable({
       </div>
 
       {/* Paginación */}
-      {totalPages > 1 && renderPagination()}
+      {(totalPages > 1 || totalLocales > itemsPerPage) && renderPagination()}
 
       {/* Modal de Confirmación */}
       <ConfirmModal
