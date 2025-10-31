@@ -293,7 +293,7 @@ export default function LocalesTable({
           local: null,
           nuevoEstado: null,
           title: 'Monto Actualizado',
-          message: `Monto establecido: S/ ${monto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`,
+          message: `Monto establecido: $ ${monto.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
           variant: 'info',
         });
       }
@@ -551,14 +551,14 @@ export default function LocalesTable({
                             className="text-sm text-primary hover:underline"
                           >
                             {local.monto_venta
-                              ? `S/ ${local.monto_venta.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+                              ? `$ ${local.monto_venta.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                               : 'Establecer monto'}
                           </button>
                         )
                       ) : (
                         <span className="text-sm text-gray-500">
                           {local.monto_venta
-                            ? `S/ ${local.monto_venta.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+                            ? `$ ${local.monto_venta.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                             : '-'}
                         </span>
                       )}
