@@ -333,6 +333,7 @@ export default function DashboardClient({
               <option value="lead_incompleto">Lead Incompleto</option>
               <option value="en_conversacion">En Conversación</option>
               <option value="conversacion_abandonada">Conversación Abandonada</option>
+              <option value="lead_manual">Lead Manual</option>
             </select>
           </div>
 

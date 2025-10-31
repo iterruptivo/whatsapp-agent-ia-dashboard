@@ -91,6 +91,7 @@ export default function LeadsTable({
       lead_incompleto: 'bg-accent text-secondary',
       en_conversacion: 'bg-secondary text-white',
       conversacion_abandonada: 'bg-gray-300 text-gray-700',
+      lead_manual: 'bg-purple-600 text-white',
     };
 
     const labels: Record<string, string> = {
@@ -98,6 +99,7 @@ export default function LeadsTable({
       lead_incompleto: 'Incompleto',
       en_conversacion: 'En Conversación',
       conversacion_abandonada: 'Abandonado',
+      lead_manual: 'Lead Manual',
     };
 
     const estadoKey = estado || 'conversacion_abandonada';
