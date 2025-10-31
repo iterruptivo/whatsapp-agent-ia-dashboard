@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { updateLocalEstado, desbloquearLocal } from '@/lib/actions-locales';
+import { updateLocalEstado, desbloquearLocal, updateMontoVenta } from '@/lib/actions-locales';
 import type { Local } from '@/lib/locales';
 import { ChevronLeft, ChevronRight, History, Lock } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
@@ -52,6 +52,10 @@ export default function LocalesTable({
     message: '',
     variant: 'info',
   });
+
+  // State para edición de monto
+  const [editingMontoLocalId, setEditingMontoLocalId] = useState<string | null>(null);
+  const [tempMonto, setTempMonto] = useState<string>('');
 
   // ====== HELPER: Cambiar Estado con Confirmación ======
   const handleEstadoChange = (
@@ -248,6 +252,34 @@ export default function LocalesTable({
     }
   };
 
+  // ====== HELPER: Actualizar Monto de Venta ======
+  const handleMontoBlur = async (local: Local) => {
+    if (!tempMonto || tempMonto === '') {
+      setEditingMontoLocalId(null);
+      return;
+    }
+
+    const monto = parseFloat(tempMonto);
+    if (isNaN(monto) || monto <= 0) {
+      alert('Por favor ingresa un monto válido');
+      return;
+    }
+
+    try {
+      const result = await updateMontoVenta(local.id, monto, user?.id);
+
+      if (!result.success) {
+        alert(result.message || 'Error al actualizar monto');
+      }
+    } catch (error) {
+      console.error('Error actualizando monto:', error);
+      alert('Error inesperado al actualizar monto');
+    } finally {
+      setEditingMontoLocalId(null);
+      setTempMonto('');
+    }
+  };
+
   // ====== HELPER: Cancelar Modal ======
   const handleCancelModal = () => {
     setConfirmModal({
@@ -421,6 +453,7 @@ export default function LocalesTable({
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Proyecto</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Metraje</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Estado</th>
+              <th className="text-left py-3 px-4 text-gray-600 font-medium">Monto Venta</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Vendedor Actual</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Acciones</th>
             </tr>
@@ -428,47 +461,95 @@ export default function LocalesTable({
           <tbody>
             {locales.length === 0 ? (
               <tr>
-                <td colSpan={6} className="text-center py-8 text-gray-500">
+                <td colSpan={7} className="text-center py-8 text-gray-500">
                   No hay locales para mostrar
                 </td>
               </tr>
             ) : (
-              locales.map((local) => (
-                <tr key={local.id} className="border-b hover:bg-gray-50">
-                  {/* Código */}
-                  <td className="py-3 px-4 font-mono font-medium text-gray-900">
-                    {local.codigo}
-                  </td>
+              locales.map((local) => {
+                const canEditMonto = (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') && local.estado === 'naranja';
+                const isEditingMonto = editingMontoLocalId === local.id;
 
-                  {/* Proyecto */}
-                  <td className="py-3 px-4 text-gray-700">
-                    {local.proyecto_nombre || 'N/A'}
-                  </td>
+                return (
+                  <tr key={local.id} className="border-b hover:bg-gray-50">
+                    {/* Código */}
+                    <td className="py-3 px-4 font-mono font-medium text-gray-900">
+                      {local.codigo}
+                    </td>
 
-                  {/* Metraje */}
-                  <td className="py-3 px-4 text-gray-700">{local.metraje} m²</td>
+                    {/* Proyecto */}
+                    <td className="py-3 px-4 text-gray-700">
+                      {local.proyecto_nombre || 'N/A'}
+                    </td>
 
-                  {/* Semáforo */}
-                  <td className="py-3 px-4">{renderSemaforo(local)}</td>
+                    {/* Metraje */}
+                    <td className="py-3 px-4 text-gray-700">{local.metraje} m²</td>
 
-                  {/* Vendedor Actual */}
-                  <td className="py-3 px-4 text-gray-700">
-                    {local.vendedor_actual_nombre || '-'}
-                  </td>
+                    {/* Semáforo */}
+                    <td className="py-3 px-4">{renderSemaforo(local)}</td>
 
-                  {/* Acciones */}
-                  <td className="py-3 px-4">
-                    <button
-                      onClick={() => onShowHistorial(local)}
-                      className="flex items-center gap-1 text-sm text-primary hover:text-primary/80"
-                      title="Ver historial"
-                    >
-                      <History className="w-4 h-4" />
-                      <span className="hidden sm:inline">Historial</span>
-                    </button>
-                  </td>
-                </tr>
-              ))
+                    {/* Monto Venta */}
+                    <td className="py-3 px-4">
+                      {canEditMonto ? (
+                        isEditingMonto ? (
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="Ingrese monto"
+                            value={tempMonto}
+                            onChange={(e) => setTempMonto(e.target.value)}
+                            onBlur={() => handleMontoBlur(local)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleMontoBlur(local);
+                              if (e.key === 'Escape') {
+                                setEditingMontoLocalId(null);
+                                setTempMonto('');
+                              }
+                            }}
+                            autoFocus
+                            className="w-32 px-2 py-1 border border-primary rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setEditingMontoLocalId(local.id);
+                              setTempMonto(local.monto_venta ? local.monto_venta.toString() : '');
+                            }}
+                            className="text-sm text-primary hover:underline"
+                          >
+                            {local.monto_venta
+                              ? `S/ ${local.monto_venta.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+                              : 'Establecer monto'}
+                          </button>
+                        )
+                      ) : (
+                        <span className="text-sm text-gray-500">
+                          {local.monto_venta
+                            ? `S/ ${local.monto_venta.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+                            : '-'}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Vendedor Actual */}
+                    <td className="py-3 px-4 text-gray-700">
+                      {local.vendedor_actual_nombre || '-'}
+                    </td>
+
+                    {/* Acciones */}
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => onShowHistorial(local)}
+                        className="flex items-center gap-1 text-sm text-primary hover:text-primary/80"
+                        title="Ver historial"
+                      >
+                        <History className="w-4 h-4" />
+                        <span className="hidden sm:inline">Historial</span>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

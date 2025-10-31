@@ -19,6 +19,7 @@ export interface Local {
   metraje: number; // 4.5, 6.0, etc.
   estado: 'verde' | 'amarillo' | 'naranja' | 'rojo';
   bloqueado: boolean;
+  monto_venta: number | null; // Monto propuesto por vendedor (solo editable en estado naranja)
   vendedor_actual_id: string | null;
   vendedor_actual_nombre?: string | null; // Via JOIN (opcional)
   vendedor_cerro_venta_id: string | null;
@@ -465,6 +466,91 @@ export async function deleteLocalQuery(localId: string) {
     return { success: true, message: 'Local eliminado correctamente' };
   } catch (error) {
     console.error('Error in deleteLocalQuery:', error);
+    return { success: false, message: 'Error inesperado' };
+  }
+}
+
+// ============================================================================
+// MUTATIONS - UPDATE MONTO VENTA
+// ============================================================================
+
+/**
+ * Actualizar monto de venta de un local
+ * IMPORTANTE: Solo vendedores pueden actualizar (en estado naranja)
+ * Registra cambio en historial
+ *
+ * @param localId ID del local
+ * @param monto Monto de venta propuesto
+ * @param usuarioId ID del usuario que actualiza
+ * @returns Success/error
+ */
+export async function updateMontoVentaQuery(
+  localId: string,
+  monto: number,
+  usuarioId?: string
+) {
+  try {
+    // Fetch local actual
+    const { data: local, error: fetchError } = await supabase
+      .from('locales')
+      .select('*')
+      .eq('id', localId)
+      .single();
+
+    if (fetchError || !local) {
+      return { success: false, message: 'Local no encontrado' };
+    }
+
+    // Validar que estado sea naranja
+    if (local.estado !== 'naranja') {
+      return {
+        success: false,
+        message: 'Solo se puede establecer monto en estado Confirmado (naranja)',
+      };
+    }
+
+    // Capturar monto anterior
+    const montoAnterior = local.monto_venta;
+
+    // Update monto_venta
+    const { error } = await supabase
+      .from('locales')
+      .update({ monto_venta: monto })
+      .eq('id', localId);
+
+    if (error) {
+      console.error('Error updating monto_venta:', error);
+      return { success: false, message: 'Error al actualizar monto' };
+    }
+
+    // Registrar en historial (solo si cambió el monto y hay usuarioId)
+    if (montoAnterior !== monto && usuarioId) {
+      const accion = montoAnterior === null
+        ? `Estableció monto de venta: S/ ${monto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+        : `Actualizó monto de S/ ${montoAnterior.toLocaleString('es-PE', { minimumFractionDigits: 2 })} a S/ ${monto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`;
+
+      const { error: historialError } = await supabase
+        .from('locales_historial')
+        .insert({
+          local_id: localId,
+          usuario_id: usuarioId,
+          estado_anterior: local.estado, // Estado no cambia, pero lo registramos
+          estado_nuevo: local.estado,
+          accion: accion,
+        });
+
+      if (historialError) {
+        console.error('Error insertando historial monto:', historialError);
+        // No fallar operación si solo falla historial
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Monto actualizado correctamente',
+    };
+  } catch (error) {
+    console.error('Error in updateMontoVentaQuery:', error);
     return { success: false, message: 'Error inesperado' };
   }
 }

@@ -12,6 +12,7 @@ import {
   updateLocalEstadoQuery,
   importLocalesQuery,
   deleteLocalQuery,
+  updateMontoVentaQuery,
   type LocalImportRow,
 } from './locales';
 
@@ -127,5 +128,35 @@ export async function desbloquearLocal(localId: string, usuarioId?: string) {
   } catch (error) {
     console.error('Error in desbloquearLocal:', error);
     return { success: false, message: 'Error inesperado al desbloquear local' };
+  }
+}
+
+// ============================================================================
+// UPDATE MONTO DE VENTA
+// ============================================================================
+
+/**
+ * Actualizar monto de venta de un local (solo vendedor/vendedor_caseta en estado naranja)
+ * @param localId ID del local
+ * @param monto Monto de venta propuesto
+ * @param usuarioId ID del usuario (vendedor) que establece el monto
+ * @returns Success/error
+ */
+export async function updateMontoVenta(
+  localId: string,
+  monto: number,
+  usuarioId?: string
+) {
+  try {
+    const result = await updateMontoVentaQuery(localId, monto, usuarioId);
+
+    if (result.success) {
+      revalidatePath('/locales');
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error in updateMontoVenta:', error);
+    return { success: false, message: 'Error inesperado al actualizar monto' };
   }
 }
