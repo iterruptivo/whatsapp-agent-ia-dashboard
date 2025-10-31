@@ -305,21 +305,23 @@ export default function LocalesTable({
           }
         />
 
-        {/* Círculo Rojo */}
-        <button
-          onClick={() => handleEstadoChange(local, 'rojo')}
-          disabled={isChanging || (isBlocked && user?.rol !== 'admin')}
-          className={`w-8 h-8 rounded-full border-2 transition-all ${
-            local.estado === 'rojo'
-              ? 'bg-red-500 border-red-600 scale-110 shadow-lg'
-              : 'bg-red-200 border-red-300 hover:scale-105 hover:bg-red-300'
-          } ${isChanging || (isBlocked && user?.rol !== 'admin') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          title={
-            local.estado === 'rojo'
-              ? `Vendido (${local.vendedor_cerro_venta_nombre || 'actual'})`
-              : 'Cambiar a Vendido'
-          }
-        />
+        {/* Círculo Rojo - Solo Admin y Jefe de Ventas pueden bloquear */}
+        {(user?.rol === 'admin' || user?.rol === 'jefe_ventas') && (
+          <button
+            onClick={() => handleEstadoChange(local, 'rojo')}
+            disabled={isChanging || (isBlocked && user?.rol !== 'admin')}
+            className={`w-8 h-8 rounded-full border-2 transition-all ${
+              local.estado === 'rojo'
+                ? 'bg-red-500 border-red-600 scale-110 shadow-lg'
+                : 'bg-red-200 border-red-300 hover:scale-105 hover:bg-red-300'
+            } ${isChanging || (isBlocked && user?.rol !== 'admin') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            title={
+              local.estado === 'rojo'
+                ? `Vendido (${local.vendedor_cerro_venta_nombre || 'actual'})`
+                : 'Cambiar a Vendido'
+            }
+          />
+        )}
 
         {/* Icono de bloqueado */}
         {isBlocked && (
