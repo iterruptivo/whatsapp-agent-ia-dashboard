@@ -150,3 +150,101 @@ export async function assignLeadToVendedor(leadId: string, vendedorId: string) {
     };
   }
 }
+
+/**
+ * Server Action: Import manual leads from CSV/Excel
+ *
+ * Business Rules:
+ * - Only admin can import manual leads
+ * - email_vendedor must exist and have role "vendedor" (not vendedor_caseta)
+ * - Duplicate phone numbers in same project are skipped
+ * - Estado is set to "lead_manual"
+ *
+ * @param proyectoId - UUID of the project to import leads into
+ * @param leads - Array of leads with nombre, telefono, email_vendedor, email?, rubro?
+ * @returns Success/error response with import summary
+ */
+export async function importManualLeads(
+  proyectoId: string,
+  leads: Array<{
+    nombre: string;
+    telefono: string;
+    email_vendedor: string;
+    email?: string;
+    rubro?: string;
+  }>
+) {
+  try {
+    let imported = 0;
+    const duplicates: Array<{ nombre: string; telefono: string }> = [];
+    const invalidVendors: Array<{ email: string; row: number }> = [];
+
+    // Validate each lead and collect vendedor IDs
+    for (let i = 0; i < leads.length; i++) {
+      const lead = leads[i];
+      const rowNum = i + 1;
+
+      // Validar que el vendedor existe y tenga rol "vendedor"
+      const { data: usuario, error: usuarioError } = await supabase
+        .from('usuarios')
+        .select('id, vendedor_id, rol')
+        .eq('email', lead.email_vendedor)
+        .single();
+
+      if (usuarioError || !usuario || usuario.rol !== 'vendedor' || !usuario.vendedor_id) {
+        invalidVendors.push({ email: lead.email_vendedor, row: rowNum });
+        continue;
+      }
+
+      // Verificar si ya existe un lead con ese teléfono en este proyecto
+      const { data: existingLead, error: checkError } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('proyecto_id', proyectoId)
+        .eq('telefono', lead.telefono)
+        .single();
+
+      if (existingLead) {
+        duplicates.push({ nombre: lead.nombre, telefono: lead.telefono });
+        continue;
+      }
+
+      // Insertar lead
+      const { error: insertError } = await supabase.from('leads').insert({
+        proyecto_id: proyectoId,
+        nombre: lead.nombre,
+        telefono: lead.telefono,
+        email: lead.email || null,
+        rubro: lead.rubro || null,
+        estado: 'lead_manual',
+        vendedor_asignado_id: usuario.vendedor_id,
+      });
+
+      if (insertError) {
+        console.error('Error inserting lead:', insertError);
+        continue;
+      }
+
+      imported++;
+    }
+
+    revalidatePath('/');
+
+    return {
+      success: true,
+      imported,
+      duplicates,
+      invalidVendors,
+      total: leads.length,
+    };
+  } catch (error) {
+    console.error('Unexpected error in importManualLeads:', error);
+    return {
+      success: false,
+      imported: 0,
+      duplicates: [],
+      invalidVendors: [],
+      total: leads.length,
+    };
+  }
+}
