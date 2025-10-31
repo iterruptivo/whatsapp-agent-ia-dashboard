@@ -5,12 +5,12 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 31 Octubre 2025, 12:30 AM
-**Sesión:** 29 - 🚀 CRITICAL FIX DEPLOYED - Session Loss Resolved
+**Fecha:** 31 Octubre 2025, 2:00 AM
+**Sesión:** 30 - ✅ PRODUCCIÓN - Monto de Venta + 2 Nuevos Roles
 **Desarrollador:** Claude Code (Adan) - Project Leader
-**Estado:** ✅ **PRODUCCIÓN** - Fix implementado y deployado
-**Fix:** Graceful degradation en middleware + polling de usuario activo
-**Próxima Acción:** Monitoreo activo primeras 48h + validación con usuarios
+**Estado:** ✅ **PRODUCCIÓN** - Feature deployado y funcionando
+**Features:** Campo monto_venta + Roles jefe_ventas/vendedor_caseta
+**Próxima Acción:** User testing con vendedores reales en estado naranja
 
 ---
 
@@ -23,6 +23,7 @@
 - **Deployment** (29 Oct, 2:09 AM) - Sesión 26 + 27 deployadas juntas
 - **Sesión 28** (31 Oct) - 🚨 CRITICAL BUG ANALYSIS: Session Loss (ANÁLISIS PROFUNDO)
 - **Sesión 29** (31 Oct) - ✅ CRITICAL FIX DEPLOYED: Session Loss Resolved (PRODUCCIÓN)
+- **Sesión 30** (31 Oct) - ✅ Monto de Venta + 2 Nuevos Roles (PRODUCCIÓN)
 
 ---
 
@@ -1713,19 +1714,432 @@ Error: RLS policy violation
 
 ---
 
+### **Sesión 30 - 31 Octubre 2025**
+**Objetivo:** Implementar Campo Monto de Venta + 2 Nuevos Roles (jefe_ventas, vendedor_caseta)
+
+#### Contexto:
+- EcoPlaza necesita tracking de montos de venta propuestos por vendedores
+- Expansión del equipo requiere 2 nuevos roles con permisos específicos
+- Jefe de Ventas: Solo monitoreo + bloqueo de locales (sin cambios de estado)
+- Vendedor Caseta: Similar a vendedor pero con acceso limitado
+- Presentación importante próxima, deploy directo a producción
+
+#### Roles Implementados:
+
+**NUEVOS ROLES:**
+
+1. **`jefe_ventas` (Jefe de Ventas)**
+   - **Acceso:** Solo /locales (NO acceso a /operativo)
+   - **Permisos:**
+     - Visualización en tiempo real de estados de locales
+     - Puede bloquear locales (cambiar a rojo)
+     - **NO puede cambiar estados** (verde/amarillo/naranja)
+     - Modal restrictivo igual que admin
+   - **Use Case:** Supervisión del equipo de ventas sin interferir en negociaciones
+
+2. **`vendedor_caseta` (Vendedor Caseta)**
+   - **Acceso:** Solo /locales (NO acceso a /operativo)
+   - **Permisos:**
+     - Cambio de estados (verde/amarillo/naranja)
+     - Establecer monto de venta en estado naranja
+     - **NO puede bloquear locales** (no puede cambiar a rojo)
+   - **Use Case:** Vendedor especializado en atención en caseta de ventas
+
+**PERMISOS ACTUALIZADOS POR ROL:**
+
+```
+┌──────────────────┬──────────┬──────────┬────────────┬───────────────┐
+│ Rol              │ /operativo│ /locales │ Cambiar    │ Bloquear/Rojo │
+│                  │           │          │ Estado     │               │
+├──────────────────┼──────────┼──────────┼────────────┼───────────────┤
+│ admin            │ ✅        │ ✅       │ ❌ (modal) │ ✅            │
+│ jefe_ventas      │ ❌        │ ✅       │ ❌ (modal) │ ✅            │
+│ vendedor         │ ✅        │ ✅       │ ✅         │ ❌            │
+│ vendedor_caseta  │ ❌        │ ✅       │ ✅         │ ❌            │
+└──────────────────┴──────────┴──────────┴────────────┴───────────────┘
+```
+
+**USUARIOS CREADOS:**
+- Leo Jefe Ventas (leojefeventas@ecoplaza.com) - rol: jefe_ventas
+- Leo Caseta (leocaseta@ecoplaza.com) - rol: vendedor_caseta
+- Ambos sin teléfono (no reciben notificaciones WhatsApp, pero dashboard funciona)
+
+#### Feature: Campo Monto de Venta
+
+**DATABASE CHANGES:**
+
+**Nueva Columna en `locales`:**
+```sql
+ALTER TABLE locales
+ADD COLUMN monto_venta NUMERIC(10, 2) NULL;
+-- NUMERIC(10, 2) = hasta 99,999,999.99 (suficiente para precios inmobiliarios)
+-- NULL = No establecido aún
+```
+
+**Características:**
+- Tipo: NUMERIC(10,2) - decimales precisos para montos
+- Nullable: Sí (puede ser NULL si no se ha establecido)
+- Display: Dólares ($) con formato en-US (ej: $ 25,000.00)
+
+**ARCHIVO SQL:** `consultas-leo/SQL_ADD_MONTO_VENTA_LOCALES.sql`
+
+#### Funcionalidad Implementada:
+
+**1. Inline Editing en LocalesTable:**
+
+**Lógica de Permisos:**
+```typescript
+const canEditMonto =
+  (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') &&
+  local.estado === 'naranja';
+```
+
+**Estados del Campo:**
+- **Verde/Amarillo:** Bloqueado (solo display, no editable)
+- **Naranja:** Editable por vendedor y vendedor_caseta
+- **Rojo:** Bloqueado (solo display)
+- **Admin/Jefe Ventas:** Solo visualización (nunca editable)
+
+**UX del Campo:**
+- Click para editar (input aparece con autofocus)
+- Enter para guardar
+- Escape para cancelar
+- Blur (click fuera) para guardar
+- Validación: Solo números positivos con decimales
+- Placeholder: "Ingrese monto"
+- Display cuando no establecido: "Establecer monto" (botón)
+- Display cuando establecido: "$ 25,000.00" (formato dólares)
+
+**2. Modal-Based Error Handling:**
+
+Reemplazó todos los `alert()` nativos con modales personalizados:
+
+**Modales Implementados:**
+- **Warning:** Monto inválido (<=0 o no numérico)
+- **Danger:** Error al actualizar (con mensaje específico)
+- **Info:** Monto establecido exitosamente
+- **Danger:** Error inesperado
+
+**Mensajes Mejorados:**
+- Error específico si columna no existe en BD
+- Muestra mensaje de error real de Supabase
+- Instrucciones claras para usuario
+
+**3. Historial Tracking:**
+
+**Registro Automático en locales_historial:**
+```typescript
+const accion = montoAnterior === null
+  ? `Estableció monto de venta: $ ${monto.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+  : `Actualizó monto de $ ${montoAnterior.toLocaleString('en-US', { minimumFractionDigits: 2 })} a $ ${monto.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+```
+
+**Información Capturada:**
+- Usuario que estableció/modificó el monto (nombre completo)
+- Monto anterior (si existía)
+- Monto nuevo
+- Timestamp del cambio
+- Acción descriptiva en dólares
+
+#### CSV Import Enhancement:
+
+**Nueva Funcionalidad: Columna Estado Opcional**
+
+**Formato CSV Actualizado:**
+```csv
+proyecto,codigo,metraje,estado
+Galilea,L-001,25.5,verde
+Galilea,L-002,30.0,amarillo
+Galilea,L-003,18.5,rojo
+```
+
+**Lógica:**
+- Columna `estado` es **opcional**
+- Si no se incluye: Default = 'verde' (disponible)
+- Si se incluye: Valida que sea uno de: verde, amarillo, naranja, rojo
+- Si estado = 'rojo': Local se crea bloqueado automáticamente
+
+**Use Case:**
+- Importar locales ya vendidos (estado rojo)
+- Importar locales en negociación (estado amarillo/naranja)
+- Bulk import con estados mixtos
+
+**Restricción de Acceso:**
+- Solo admin y jefe_ventas pueden importar locales
+- Botón de importación oculto para vendedor y vendedor_caseta
+
+#### Componentes Modificados:
+
+**1. components/locales/LocalesTable.tsx** (8 commits)
+- Agregado estado para editing: `editingMontoLocalId`, `tempMonto`
+- Función `handleMontoBlur` con validación y modal-based UX
+- Nueva columna "Monto Venta" en tabla
+- Inline editing UI con input number
+- Formateo en dólares ($ con en-US locale)
+- Permisos por rol para edición
+- Error handling mejorado
+- **Líneas modificadas:** 554, 561 (S/ → $, es-PE → en-US)
+
+**2. components/locales/LocalesClient.tsx** (1 commit)
+- Conditional rendering de botón "Importar CSV"
+- Solo visible para admin y jefe_ventas
+- useAuth hook para verificar rol
+
+**3. components/locales/LocalImportModal.tsx** (1 commit)
+- Soporte para columna opcional `estado` en CSV
+- Validación de valores de estado
+- Actualización de UI con instrucciones
+- Preview incluye columna estado si presente
+
+**4. components/shared/Sidebar.tsx** (1 commit)
+- Badge actualizado para mostrar 4 roles correctamente:
+  - "Administrador" (admin)
+  - "Jefe de Ventas" (jefe_ventas)
+  - "Vendedor" (vendedor)
+  - "Vendedor Caseta" (vendedor_caseta)
+
+**5. components/dashboard/DashboardHeader.tsx** (1 commit)
+- Badge actualizado igual que Sidebar
+- Diferenciación visual de los 4 roles
+
+**6. lib/locales.ts** (2 commits)
+- Interface `Local` actualizada: `monto_venta: number | null`
+- Interface `LocalImportRow` actualizada: `estado?: optional`
+- Nueva función: `updateMontoVentaQuery(localId, monto, usuarioId)`
+  - Valida que local esté en estado naranja
+  - Captura monto anterior
+  - Update de monto_venta
+  - Insert en historial con acción descriptiva
+  - Error handling específico para columna faltante
+- Mensajes de historial en dólares ($)
+
+**7. lib/actions-locales.ts** (1 commit)
+- Nueva Server Action: `updateMontoVenta(localId, monto, usuarioId)`
+- Revalidación de /locales después de update
+- Error handling consistente
+
+#### Archivos Creados:
+
+**1. consultas-leo/SQL_ADD_MONTO_VENTA_LOCALES.sql** (New)
+- SQL migration para agregar columna monto_venta
+- Comentarios explicativos
+- Testing scripts
+- Rollback instructions
+- **Contenido:** ALTER TABLE + verificación + testing
+
+#### Commits Deployados:
+
+**Total: 9 commits a producción**
+
+1. `430536d` - fix: Show correct role badge for all 4 roles
+2. `2c8fc25` - feat: Restrict local blocking to admin and jefe_ventas only
+3. `e5bb128` - feat: Refine jefe_ventas permissions (monitoring only)
+4. `e65c0e2` - feat: Add modal restriction for jefe_ventas (better UX)
+5. `fc17d68` - fix: Reduce top padding in historial panel
+6. `454c98a` - feat: Support optional estado column in CSV import
+7. `182d182` - feat: Restrict import button to admin and jefe_ventas
+8. `ab90bc4` - feat: Add monto_venta field with inline editing
+9. `bae8069` - fix: Replace alert() with modal-based UX + better errors
+10. `a07bce3` - feat: Convert currency display from soles (S/) to dollars ($)
+
+**Deploy Time:** 31 Octubre 2025, ~2:00 AM
+
+#### Decisiones Técnicas:
+
+**1. Inline Editing vs Modal:**
+- **Decisión:** Inline editing con input field
+- **Razón:** Más rápido, menos clicks, mejor UX para edición frecuente
+- **Ventaja:** Vendedor puede establecer monto sin abrir modal
+- **Pattern:** Click → Input con autofocus → Enter/Blur para guardar
+
+**2. NUMERIC(10,2) vs FLOAT:**
+- **Decisión:** NUMERIC(10,2)
+- **Razón:** Precisión exacta para montos (no aproximaciones)
+- **Ventaja:** Sin errores de redondeo (crucial para dinero)
+- **Trade-off:** Más espacio en BD, pero insignificante
+
+**3. Nullable Monto:**
+- **Decisión:** monto_venta NULL permitido
+- **Razón:** Locales nuevos no tienen monto establecido
+- **Ventaja:** No forzar monto dummy (0.00) en BD
+- **Display:** NULL = "Establecer monto", no NULL = "$ X,XXX.XX"
+
+**4. Solo Naranja Editable:**
+- **Decisión:** monto_venta solo editable en estado naranja
+- **Razón:** Naranja = cliente confirmó interés (negociación seria)
+- **Ventaja:** Previene montos prematuros en negociaciones tempranas
+- **Workflow:** Verde → Amarillo → Naranja (establecer monto) → Rojo
+
+**5. Modal-Based vs alert():**
+- **Decisión:** Reemplazar todos los alert() con modals
+- **Razón:** Mejor UX, más control visual, consistencia con resto del dashboard
+- **Ventaja:** Estilos personalizados, variants (danger/warning/info)
+- **Implementación:** Reutiliza ConfirmModal existente
+
+**6. Dólares ($) vs Soles (S/):**
+- **Decisión:** Display en dólares con locale en-US
+- **Razón:** Solicitado por cliente, precios inmobiliarios en dólares
+- **Formato:** $ 25,000.00 (coma como separador de miles, punto decimal)
+- **Historial:** También registra en dólares para consistencia
+
+**7. Jefe Ventas Modal Restriction:**
+- **Decisión:** Modal igual que admin (no botones disabled)
+- **Razón:** Mejor UX, estados visibles en color completo
+- **Ventaja:** Jefe de Ventas ve estados claramente para monitoreo
+- **Feedback:** Modal explica "Acción solo para vendedores"
+
+**8. CSV Estado Opcional:**
+- **Decisión:** Columna estado opcional, no requerida
+- **Razón:** Backwards compatibility con CSVs existentes
+- **Ventaja:** Usuarios pueden seguir importando sin estado
+- **Default:** verde (disponible) si no se especifica
+
+#### Testing Scenarios:
+
+**1. Monto de Venta - Vendedor:**
+- [✅] Login como vendedor
+- [✅] Cambiar local a naranja
+- [✅] Click en "Establecer monto"
+- [✅] Input aparece con autofocus
+- [✅] Ingresar 25000.50
+- [✅] Press Enter
+- [✅] Modal de confirmación aparece
+- [✅] Display muestra "$ 25,000.50"
+- [✅] Historial registra "Estableció monto de venta: $ 25,000.50"
+
+**2. Monto de Venta - Validación:**
+- [✅] Ingresar -100 → Modal warning "Monto debe ser positivo"
+- [✅] Ingresar 0 → Modal warning "Monto debe ser mayor a 0"
+- [✅] Ingresar texto → Modal warning "Ingrese un monto válido"
+- [✅] Press Escape → Input se cancela, vuelve a display
+
+**3. Monto de Venta - Actualización:**
+- [✅] Local con monto $ 25,000.00
+- [✅] Click para editar
+- [✅] Cambiar a 30000
+- [✅] Guardar
+- [✅] Historial registra "Actualizó monto de $ 25,000.00 a $ 30,000.00"
+
+**4. Monto de Venta - Restricciones:**
+- [✅] Local en verde: Campo bloqueado (solo display "-")
+- [✅] Local en amarillo: Campo bloqueado
+- [✅] Local en naranja: Campo editable ✅
+- [✅] Local en rojo: Campo bloqueado
+- [✅] Admin viendo local: Solo display (nunca editable)
+- [✅] Jefe Ventas viendo local: Solo display
+
+**5. Roles - Jefe Ventas:**
+- [✅] Login como jefe_ventas
+- [✅] /operativo → Redirect a /locales (no acceso)
+- [✅] Ver locales en tiempo real (colores completos)
+- [✅] Click en verde/amarillo/naranja → Modal restrictivo
+- [✅] Botón rojo disponible (puede bloquear)
+- [✅] Cambiar local a rojo exitosamente
+- [✅] Historial registra "Jefe de Ventas bloqueó local"
+
+**6. Roles - Vendedor Caseta:**
+- [✅] Login como vendedor_caseta
+- [✅] /operativo → Redirect a /locales (no acceso)
+- [✅] Cambiar estados verde/amarillo/naranja ✅
+- [✅] Botón rojo NO visible (no puede bloquear) ✅
+- [✅] En estado naranja: Puede establecer monto ✅
+- [✅] Badge muestra "Vendedor Caseta" (no solo "Vendedor")
+
+**7. CSV Import con Estado:**
+- [✅] Upload CSV con columna estado
+- [✅] Preview muestra estados correctamente
+- [✅] Import exitoso con estados mixtos
+- [✅] Locales en rojo se crean bloqueados
+- [✅] Upload CSV sin columna estado → Default verde
+
+**8. Import Restriction:**
+- [✅] Login como vendedor → Botón import NO visible ✅
+- [✅] Login como vendedor_caseta → Botón import NO visible ✅
+- [✅] Login como jefe_ventas → Botón import visible ✅
+- [✅] Login como admin → Botón import visible ✅
+
+#### Resultados Logrados:
+
+**FUNCIONALIDAD:**
+- ✅ Campo monto_venta con inline editing
+- ✅ 2 nuevos roles implementados (jefe_ventas, vendedor_caseta)
+- ✅ Permisos granulares por rol
+- ✅ Modal-based UX para todos los mensajes
+- ✅ CSV import con estado opcional
+- ✅ Restricción de import por rol
+- ✅ Display en dólares ($) consistente
+- ✅ Historial tracking de montos con usuario
+
+**CÓDIGO:**
+- ✅ 7 archivos modificados
+- ✅ 1 archivo SQL nuevo
+- ✅ TypeScript completo con 4 roles
+- ✅ Error handling mejorado
+- ✅ 10 commits deployados
+
+**UX/UI:**
+- ✅ Inline editing intuitivo
+- ✅ Formateo de moneda profesional
+- ✅ Modales con variants (danger/warning/info)
+- ✅ Badges diferenciados por rol
+- ✅ Estados visibles en colores completos para monitoreo
+
+**DATABASE:**
+- ✅ Columna monto_venta agregada (NUMERIC 10,2)
+- ✅ Historial registra cambios de monto
+- ✅ Nullable para compatibilidad
+
+#### Estado del Proyecto:
+- ✅ Implementación completa (code + database + UI)
+- ✅ Testing interno completado
+- ✅ Deployado a producción
+- ⏳ Pending: User testing con vendedores reales
+
+#### Próximas Tareas:
+- [ ] Validar monto_venta en producción con vendedores
+- [ ] Monitorear performance de inline editing
+- [ ] Recopilar feedback sobre permisos de jefe_ventas
+- [ ] Considerar agregar campo "observaciones" en cambios de monto
+- [ ] Evaluar si necesitamos más validaciones (rango min/max de monto)
+
+#### Lecciones Aprendidas:
+
+**PRODUCTO:**
+1. **Inline Editing > Modal:** Para ediciones frecuentes, inline es más rápido
+2. **Roles Granulares:** Permisos específicos mejoran workflow del equipo
+3. **Monitoreo sin Interferencia:** Jefe Ventas necesita ver sin poder cambiar
+4. **Currency Display Matters:** Cliente específico sobre formato ($ no S/)
+
+**DESARROLLO:**
+1. **Deploy Quirúrgico:** 10 commits pequeños mejor que 1 grande
+2. **Modal Reusable:** ConfirmModal con variants cubre todos los casos
+3. **TypeScript Safety:** 4 roles bien tipados previene errores
+4. **CSV Flexibility:** Columnas opcionales mantienen backwards compatibility
+
+**UX:**
+1. **Visual Feedback:** Modales > alerts nativos
+2. **Autofocus:** Input con autofocus mejora velocidad
+3. **Enter/Escape:** Shortcuts intuitivos para power users
+4. **Color-Coded Roles:** Badges diferenciados reducen confusión
+
+---
+
 #### Estado del Proyecto (Post-Deploy):
 
 **PRODUCCIÓN:**
 - ✅ Sistema de Gestión de Locales (Sesión 26)
 - ✅ Historial con usuario correcto (Sesión 27)
 - ✅ Session loss FIX deployado (Sesión 29)
+- ✅ Monto de Venta + 2 Nuevos Roles (Sesión 30)
 - ✅ RLS policies activas
 - ✅ Real-time funcionando
 - ✅ Polling de usuario activo
+- ✅ 4 roles implementados (admin, jefe_ventas, vendedor, vendedor_caseta)
 
 **PENDING:**
 - ⏳ Monitoreo 48h (en curso)
 - ⏳ Validación con usuarios reales
+- ⏳ User testing de monto_venta con vendedores
 - ⏳ Evaluación de métricas post-fix
 
 **HEALTH CHECK:**
