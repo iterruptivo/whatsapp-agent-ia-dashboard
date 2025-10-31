@@ -494,12 +494,12 @@ export default function LocalesTable({
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      {/* Paginación Superior (visible sin scroll) */}
-      {(totalPages > 1 || totalLocales > itemsPerPage) && (
+      {/* Paginación Superior - TEMPORALMENTE DESHABILITADA */}
+      {/* {(totalPages > 1 || totalLocales > itemsPerPage) && (
         <div className="p-4 border-b bg-gray-50">
           {renderPagination()}
         </div>
-      )}
+      )} */}
 
       {/* Tabla */}
       <div className="overflow-x-auto">
@@ -629,8 +629,8 @@ export default function LocalesTable({
         </table>
       </div>
 
-      {/* Paginación */}
-      {(totalPages > 1 || totalLocales > itemsPerPage) && renderPagination()}
+      {/* Paginación Inferior - TEMPORALMENTE DESHABILITADA */}
+      {/* {(totalPages > 1 || totalLocales > itemsPerPage) && renderPagination()} */}
 
       {/* Modal de Confirmación */}
       <ConfirmModal

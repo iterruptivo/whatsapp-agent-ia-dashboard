@@ -56,9 +56,9 @@ export default function LocalesClient({
   const [metrajeMax, setMetrajeMax] = useState<number | undefined>(undefined);
   const [searchCodigo, setSearchCodigo] = useState<string>('');
 
-  // Paginación
+  // Paginación (TEMPORALMENTE DESHABILITADA - mostrar todos)
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 100;
+  const itemsPerPage = 10000; // Mostrar todos los locales (sin paginación)
 
   // ====== FETCH VENDEDORES ON MOUNT ======
   useEffect(() => {
