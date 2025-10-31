@@ -2962,4 +2962,119 @@ const getEstadoBadge = (estado: Lead['estado']) => {
 
 ---
 
+#### Operaciones de Administración de Usuarios:
+
+**POST-DEPLOYMENT: Configuración de Equipo de Vendedores**
+
+Después del deploy de features, se realizaron operaciones de administración para configurar el equipo de vendedores caseta del cliente:
+
+**1. Actualización de Richard M. a vendedor_caseta:**
+```sql
+-- Usuario: richardm@ecoplaza.com
+-- ID: 91d341c8-eef2-411c-b014-ffa0b33fa545
+
+UPDATE usuarios
+SET rol = 'vendedor_caseta'
+WHERE id = '91d341c8-eef2-411c-b014-ffa0b33fa545';
+
+UPDATE vendedores
+SET telefono = '51955430063'
+WHERE id = '91d341c8-eef2-411c-b014-ffa0b33fa545';
+```
+**Razón:** Richard trabaja en caseta (punto de venta físico), requiere permisos diferenciados de vendedores regulares.
+
+---
+
+**2. Creación Masiva de 10 Vendedores Caseta:**
+
+Cliente proporcionó lista de 10 nuevos vendedores que trabajan en casetas de proyectos. Todos ingresados con rol `vendedor_caseta`.
+
+**SQL Ejecutado:**
+```sql
+-- INSERT en tabla vendedores (10 registros)
+INSERT INTO vendedores (id, nombre, telefono, activo) VALUES
+('7fe60e61-a93f-4985-9874-cb4a0d1fc5af', 'Arnold Castañeda Salinas', '51993000977', true),
+('57b2705c-1e58-4ddb-9887-c8a636b64703', 'Alejandro Mostacero Angulo', '51955177093', true),
+('d9f9f7dd-8682-46fb-9090-70d777a497ff', 'Jersy Anghelo Quispe Zelada', '51936419595', true),
+('05d51fd9-b88f-44a9-b837-fcf7dad4383e', 'Juan Carlos Leyva', '51950200754', true),
+('40c1758c-f504-457f-9b3a-4ceec71aa532', 'Darío Perez Paredes', '51967388063', true),
+('d589a705-9339-47a2-b195-a49a23c61d17', 'Antonella Sanchez Pachamango', '51931757389', true),
+('cb0ccae6-beed-4cef-900f-f8859e4b7c63', 'Adrián Cóndor Escalante', '51977473688', true),
+('2753cdd4-bf0c-4982-8170-26337265bd46', 'Angela Rosario Asto sinche', '51941462116', true),
+('0ac385f8-8f51-41f6-b3a0-ee7e519c94b8', 'Giovanna Huamán Hinostroza', '51979371021', true),
+('bcef1baf-289d-428e-ab92-1af33d8845a3', 'Humberto Oyola Cabrel', '51933379116', true);
+
+-- INSERT en tabla usuarios (10 registros con rol vendedor_caseta)
+INSERT INTO usuarios (id, email, nombre, rol, vendedor_id, activo) VALUES
+('7fe60e61-a93f-4985-9874-cb4a0d1fc5af', 'arnoldca@ecoplaza.com', 'Arnold Castañeda Salinas', 'vendedor_caseta', '7fe60e61-a93f-4985-9874-cb4a0d1fc5af', true),
+('57b2705c-1e58-4ddb-9887-c8a636b64703', 'alejandromo@ecoplaza.com', 'Alejandro Mostacero Angulo', 'vendedor_caseta', '57b2705c-1e58-4ddb-9887-c8a636b64703', true),
+('d9f9f7dd-8682-46fb-9090-70d777a497ff', 'jersyan@ecoplaza.com', 'Jersy Anghelo Quispe Zelada', 'vendedor_caseta', 'd9f9f7dd-8682-46fb-9090-70d777a497ff', true),
+('05d51fd9-b88f-44a9-b837-fcf7dad4383e', 'juancarlosle@ecoplaza.com', 'Juan Carlos Leyva', 'vendedor_caseta', '05d51fd9-b88f-44a9-b837-fcf7dad4383e', true),
+('40c1758c-f504-457f-9b3a-4ceec71aa532', 'dariope@ecoplaza.com', 'Darío Perez Paredes', 'vendedor_caseta', '40c1758c-f504-457f-9b3a-4ceec71aa532', true),
+('d589a705-9339-47a2-b195-a49a23c61d17', 'antosanchez@ecoplaza.com', 'Antonella Sanchez Pachamango', 'vendedor_caseta', 'd589a705-9339-47a2-b195-a49a23c61d17', true),
+('cb0ccae6-beed-4cef-900f-f8859e4b7c63', 'adrianco@ecoplaza.com', 'Adrián Cóndor Escalante', 'vendedor_caseta', 'cb0ccae6-beed-4cef-900f-f8859e4b7c63', true),
+('2753cdd4-bf0c-4982-8170-26337265bd46', 'angelaro@ecoplaza.com', 'Angela Rosario Asto sinche', 'vendedor_caseta', '2753cdd4-bf0c-4982-8170-26337265bd46', true),
+('0ac385f8-8f51-41f6-b3a0-ee7e519c94b8', 'ghuaman@ecoplaza.com', 'Giovanna Huamán Hinostroza', 'vendedor_caseta', '0ac385f8-8f51-41f6-b3a0-ee7e519c94b8', true),
+('bcef1baf-289d-428e-ab92-1af33d8845a3', 'hoyola@ecoplaza.com', 'Humberto Oyola Cabrel', 'vendedor_caseta', 'bcef1baf-289d-428e-ab92-1af33d8845a3', true);
+```
+
+**Pre-requisito:**
+- Usuarios ya creados en Supabase Auth (Authentication > Users) por el cliente
+- Solo faltaba crear registros en tablas `vendedores` y `usuarios`
+
+**Proceso:**
+1. Cliente creó 10 usuarios en Supabase Auth manualmente
+2. Cliente proporcionó: nombre completo, email, teléfono, UID de Supabase
+3. Ejecutamos SQL para crear registros en ambas tablas usando UIDs de Auth
+
+**Resultado:**
+- ✅ 10 nuevos vendedores caseta activos
+- ✅ Todos con teléfonos correctos
+- ✅ Vinculación correcta: usuarios.id = vendedores.id = auth.users.id
+- ✅ Listos para usar dashboard y gestionar locales
+
+---
+
+**ESTADO FINAL DEL EQUIPO:**
+
+**Total Usuarios Activos:**
+- 1 Admin (gerente@ecoplaza.com)
+- 1 Jefe Ventas
+- 7 Vendedores regulares
+- 11 Vendedores Caseta (1 actualizado + 10 nuevos) ← ACTUALIZADO
+- **Total: 20 usuarios**
+
+**Vendedores Caseta (11):**
+1. Leo Caseta (leocaseta@ecoplaza.com) - Ya existía
+2. Richard M. (richardm@ecoplaza.com) - Actualizado hoy
+3. Arnold Castañeda (arnoldca@ecoplaza.com) - Nuevo
+4. Alejandro Mostacero (alejandromo@ecoplaza.com) - Nuevo
+5. Jersy Quispe (jersyan@ecoplaza.com) - Nuevo
+6. Juan Carlos Leyva (juancarlosle@ecoplaza.com) - Nuevo
+7. Darío Perez (dariope@ecoplaza.com) - Nuevo
+8. Antonella Sanchez (antosanchez@ecoplaza.com) - Nuevo
+9. Adrián Cóndor (adrianco@ecoplaza.com) - Nuevo
+10. Angela Asto (angelaro@ecoplaza.com) - Nuevo
+11. Giovanna Huamán (ghuaman@ecoplaza.com) - Nuevo
+12. Humberto Oyola (hoyola@ecoplaza.com) - Nuevo
+
+**Permisos vendedor_caseta:**
+- ✅ Ver dashboard (leads asignados de su proyecto)
+- ✅ Gestionar locales (cambiar estados, capturar monto)
+- ✅ Tracking de leads en locales
+- ❌ NO puede importar leads manuales (solo admin)
+- ❌ NO puede exportar a Excel
+- ❌ NO puede gestionar usuarios
+
+---
+
+**Nota sobre Bulk User Creation:**
+Para futuras operaciones masivas de creación de usuarios, el proceso óptimo es:
+1. Cliente crea usuarios en Supabase Auth (UI o API)
+2. Proporciona lista con: email, nombre, teléfono, UID
+3. Ejecutamos SQL bulk INSERT en `vendedores` + `usuarios`
+4. Ventaja: 10+ usuarios en <1 minuto vs crear uno por uno
+
+---
+
 **🤖 Generated with [Claude Code](https://claude.com/claude-code)**
