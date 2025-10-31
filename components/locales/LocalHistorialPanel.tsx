@@ -139,7 +139,7 @@ export default function LocalHistorialPanel({
         </div>
 
         {/* Contenido */}
-        <div className="p-6">
+        <div className="px-6 pb-6 pt-4">
           {loading ? (
             <div className="text-center py-8 text-gray-500">
               <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-2"></div>
