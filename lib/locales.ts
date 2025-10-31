@@ -520,7 +520,17 @@ export async function updateMontoVentaQuery(
 
     if (error) {
       console.error('Error updating monto_venta:', error);
-      return { success: false, message: 'Error al actualizar monto' };
+      // Detectar error de columna inexistente
+      if (error.message?.includes('column') || error.message?.includes('monto_venta')) {
+        return {
+          success: false,
+          message: 'La columna monto_venta no existe en la base de datos. Ejecuta el SQL: ALTER TABLE locales ADD COLUMN monto_venta NUMERIC(10,2) NULL;',
+        };
+      }
+      return {
+        success: false,
+        message: `Error al actualizar monto: ${error.message || 'Error desconocido'}`,
+      };
     }
 
     // Registrar en historial (solo si cambió el monto y hay usuarioId)

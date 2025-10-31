@@ -261,7 +261,16 @@ export default function LocalesTable({
 
     const monto = parseFloat(tempMonto);
     if (isNaN(monto) || monto <= 0) {
-      alert('Por favor ingresa un monto válido');
+      setConfirmModal({
+        isOpen: true,
+        local: null,
+        nuevoEstado: null,
+        title: 'Monto Inválido',
+        message: 'Por favor ingresa un monto válido mayor a 0.',
+        variant: 'warning',
+      });
+      setEditingMontoLocalId(null);
+      setTempMonto('');
       return;
     }
 
@@ -269,11 +278,35 @@ export default function LocalesTable({
       const result = await updateMontoVenta(local.id, monto, user?.id);
 
       if (!result.success) {
-        alert(result.message || 'Error al actualizar monto');
+        setConfirmModal({
+          isOpen: true,
+          local: null,
+          nuevoEstado: null,
+          title: 'Error al Actualizar Monto',
+          message: result.message || 'No se pudo actualizar el monto. Verifica que la columna monto_venta exista en la base de datos.',
+          variant: 'danger',
+        });
+      } else {
+        // Éxito - mostrar confirmación
+        setConfirmModal({
+          isOpen: true,
+          local: null,
+          nuevoEstado: null,
+          title: 'Monto Actualizado',
+          message: `Monto establecido: S/ ${monto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`,
+          variant: 'info',
+        });
       }
     } catch (error) {
       console.error('Error actualizando monto:', error);
-      alert('Error inesperado al actualizar monto');
+      setConfirmModal({
+        isOpen: true,
+        local: null,
+        nuevoEstado: null,
+        title: 'Error Inesperado',
+        message: 'Ocurrió un error inesperado al actualizar el monto. Por favor intenta nuevamente.',
+        variant: 'danger',
+      });
     } finally {
       setEditingMontoLocalId(null);
       setTempMonto('');
