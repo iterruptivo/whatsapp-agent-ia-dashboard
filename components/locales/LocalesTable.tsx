@@ -494,6 +494,13 @@ export default function LocalesTable({
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Paginación Superior (visible sin scroll) */}
+      {(totalPages > 1 || totalLocales > itemsPerPage) && (
+        <div className="p-4 border-b bg-gray-50">
+          {renderPagination()}
+        </div>
+      )}
+
       {/* Tabla */}
       <div className="overflow-x-auto">
         <table className="w-full">
