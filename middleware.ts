@@ -77,6 +77,8 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/', req.url));
       } else if (userData?.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
+      } else if (userData?.rol === 'jefe_ventas' || userData?.rol === 'vendedor_caseta') {
+        return NextResponse.redirect(new URL('/locales', req.url));
       }
     }
     return res;
@@ -127,12 +129,16 @@ export async function middleware(req: NextRequest) {
 
   const isAdminRoute = pathname === '/';
   const isOperativoRoute = pathname.startsWith('/operativo');
+  const isLocalesRoute = pathname.startsWith('/locales');
 
   // ADMIN ROUTES (/)
   if (isAdminRoute) {
     if (userData.rol === 'vendedor') {
       // Vendedor trying to access admin dashboard - redirect to operativo
       return NextResponse.redirect(new URL('/operativo', req.url));
+    } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta') {
+      // Jefe/Caseta trying to access admin - redirect to locales
+      return NextResponse.redirect(new URL('/locales', req.url));
     }
     // Admin can access
     return res;
@@ -140,8 +146,20 @@ export async function middleware(req: NextRequest) {
 
   // OPERATIVO ROUTES (/operativo)
   if (isOperativoRoute) {
-    // Both admin and vendedor can access operativo
-    // Admin has full access, vendedor has filtered access (enforced in component)
+    // Admin and vendedor can access operativo
+    if (userData.rol === 'admin' || userData.rol === 'vendedor') {
+      return res;
+    }
+    // Jefe/Caseta trying to access operativo - redirect to locales
+    if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta') {
+      return NextResponse.redirect(new URL('/locales', req.url));
+    }
+    return res;
+  }
+
+  // LOCALES ROUTES (/locales)
+  if (isLocalesRoute) {
+    // ALL authenticated users can access locales (admin, vendedor, jefe_ventas, vendedor_caseta)
     return res;
   }
 

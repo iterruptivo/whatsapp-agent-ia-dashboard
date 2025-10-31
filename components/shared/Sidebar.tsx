@@ -23,16 +23,22 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user } = useAuth();
 
   // Menú items basado en rol
-  const menuItems = user?.rol === 'admin'
-    ? [
-        { href: '/', label: 'Dashboard Gerencial', icon: LayoutDashboard },
-        { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
-        { href: '/locales', label: 'Gestión de Locales', icon: Home },
-      ]
-    : [
-        { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
-        { href: '/locales', label: 'Gestión de Locales', icon: Home },
-      ];
+  const menuItems =
+    user?.rol === 'admin'
+      ? [
+          { href: '/', label: 'Dashboard Gerencial', icon: LayoutDashboard },
+          { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+          { href: '/locales', label: 'Gestión de Locales', icon: Home },
+        ]
+      : user?.rol === 'vendedor'
+      ? [
+          { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+          { href: '/locales', label: 'Gestión de Locales', icon: Home },
+        ]
+      : [
+          // jefe_ventas y vendedor_caseta solo ven Locales
+          { href: '/locales', label: 'Gestión de Locales', icon: Home },
+        ];
 
   // Close on ESC key
   useEffect(() => {
@@ -91,7 +97,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <p className="text-sm font-medium text-gray-900">{user?.nombre}</p>
           <p className="text-xs text-gray-500 mt-1">{user?.email}</p>
           <span className="inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full bg-primary text-white">
-            {user?.rol === 'admin' ? 'Administrador' : 'Vendedor'}
+            {user?.rol === 'admin'
+              ? 'Administrador'
+              : user?.rol === 'vendedor'
+              ? 'Vendedor'
+              : user?.rol === 'jefe_ventas'
+              ? 'Jefe de Ventas'
+              : 'Vendedor Caseta'}
           </span>
         </div>
 

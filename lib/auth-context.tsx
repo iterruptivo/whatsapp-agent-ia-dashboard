@@ -14,7 +14,7 @@ interface Usuario {
   id: string;
   email: string;
   nombre: string;
-  rol: 'admin' | 'vendedor';
+  rol: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta';
   vendedor_id: string | null;
   activo: boolean;
 }
@@ -301,6 +301,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push('/');
       } else if (userData.rol === 'vendedor') {
         router.push('/operativo');
+      } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta') {
+        router.push('/locales');
       }
 
       return { success: true };
@@ -370,7 +372,7 @@ export function useRequireAuth() {
   return { user, loading };
 }
 
-export function useRequireRole(requiredRole: 'admin' | 'vendedor') {
+export function useRequireRole(requiredRole: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta') {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -379,6 +381,10 @@ export function useRequireRole(requiredRole: 'admin' | 'vendedor') {
       // Redirect based on role
       if (user?.rol === 'vendedor' && requiredRole === 'admin') {
         router.push('/operativo'); // Vendedor trying to access admin
+      } else if ((user?.rol === 'jefe_ventas' || user?.rol === 'vendedor_caseta') && requiredRole === 'admin') {
+        router.push('/locales'); // Jefe/Caseta trying to access admin
+      } else if ((user?.rol === 'jefe_ventas' || user?.rol === 'vendedor_caseta') && requiredRole === 'vendedor') {
+        router.push('/locales'); // Jefe/Caseta trying to access vendedor routes
       } else {
         router.push('/login'); // Not authenticated
       }
