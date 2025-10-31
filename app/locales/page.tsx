@@ -15,13 +15,13 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader';
 export const dynamic = 'force-dynamic'; // Evitar cache agresivo de Next.js 15
 
 export default async function LocalesPage() {
-  // Fetch inicial de datos
+  // Fetch inicial de datos (TODOS los locales - sin paginación temporal)
   const [
     { data: locales, count: totalLocales },
     proyectos,
     stats
   ] = await Promise.all([
-    getAllLocales({ page: 1, pageSize: 50 }),
+    getAllLocales({ page: 1, pageSize: 10000 }), // Traer TODOS los locales
     getAllProyectos(),
     getLocalesStats(),
   ]);
