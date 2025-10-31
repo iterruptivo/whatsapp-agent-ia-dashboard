@@ -17,7 +17,7 @@ import LocalesFilters from './LocalesFilters';
 import LocalImportModal from './LocalImportModal';
 import LocalHistorialPanel from './LocalHistorialPanel';
 import { useAuth } from '@/lib/auth-context';
-import { RefreshCw, Upload } from 'lucide-react';
+import { RefreshCw, Upload, Search, X } from 'lucide-react';
 
 interface LocalesClientProps {
   initialLocales: Local[];
@@ -54,7 +54,8 @@ export default function LocalesClient({
   const [estadoFilter, setEstadoFilter] = useState<string>('');
   const [metrajeMin, setMetrajeMin] = useState<number | undefined>(undefined);
   const [metrajeMax, setMetrajeMax] = useState<number | undefined>(undefined);
-  const [searchCodigo, setSearchCodigo] = useState<string>('');
+  const [searchInput, setSearchInput] = useState<string>(''); // Lo que el usuario escribe
+  const [searchCodigo, setSearchCodigo] = useState<string>(''); // Filtro aplicado al hacer clic en Buscar
 
   // Paginación (TEMPORALMENTE DESHABILITADA - mostrar todos)
   const [currentPage, setCurrentPage] = useState(1);
@@ -162,10 +163,10 @@ export default function LocalesClient({
   const filteredLocales = useMemo(() => {
     let filtered = locales;
 
-    // Filtro por búsqueda de código
+    // Filtro por búsqueda de código (match exacto, case-insensitive)
     if (searchCodigo) {
       filtered = filtered.filter((local) =>
-        local.codigo.toLowerCase().includes(searchCodigo.toLowerCase())
+        local.codigo.toLowerCase() === searchCodigo.toLowerCase()
       );
     }
 
@@ -222,12 +223,30 @@ export default function LocalesClient({
   };
 
   const handleClearFilters = () => {
+    setSearchInput('');
     setSearchCodigo('');
     setProyectoFilter('');
     setEstadoFilter('');
     setMetrajeMin(undefined);
     setMetrajeMax(undefined);
     setCurrentPage(1);
+  };
+
+  const handleSearch = () => {
+    setSearchCodigo(searchInput.trim());
+    setCurrentPage(1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearchCodigo('');
+    setCurrentPage(1);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
   };
 
   const handleShowHistorial = (local: Local) => {
@@ -251,14 +270,31 @@ export default function LocalesClient({
           </div>
 
           {/* Buscador por Código */}
-          <div className="w-full max-w-md">
+          <div className="w-full max-w-md flex items-center gap-2">
             <input
               type="text"
-              placeholder="Buscar por código de local"
-              value={searchCodigo}
-              onChange={(e) => setSearchCodigo(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              placeholder="Buscar código exacto (ej: P-1)"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
             />
+            <button
+              onClick={handleSearch}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+              title="Buscar"
+            >
+              <Search className="w-4 h-4" />
+            </button>
+            {searchCodigo && (
+              <button
+                onClick={handleClearSearch}
+                className="px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                title="Limpiar búsqueda"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </div>
