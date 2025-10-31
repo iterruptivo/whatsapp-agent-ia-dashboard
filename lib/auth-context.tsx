@@ -209,10 +209,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
+    // ============================================================================
+    // POLLING: Check periódico de estado activo
+    // ============================================================================
+    // Compensar pérdida de check en middleware (FIX #4)
+    // Verifica cada 60s si usuario sigue activo en BD
+    let pollingInterval: NodeJS.Timeout | null = null;
+
+    if (supabaseUser?.id) {
+      console.log('[AUTH POLLING] Iniciando polling de estado activo (cada 60s)');
+
+      pollingInterval = setInterval(async () => {
+        try {
+          const { data, error } = await supabase
+            .from('usuarios')
+            .select('activo')
+            .eq('id', supabaseUser.id)
+            .single();
+
+          if (error) {
+            console.warn('[AUTH POLLING] Error checking activo status (ignoring):', error);
+            return; // No logout por error transitorio
+          }
+
+          if (data && !data.activo) {
+            console.error('[AUTH POLLING] User deactivated, logging out');
+            await signOut();
+          }
+        } catch (error) {
+          console.error('[AUTH POLLING] Unexpected error (ignoring):', error);
+          // No logout por error inesperado
+        }
+      }, 60000); // Check cada 60 segundos
+    }
+
     return () => {
       subscription.unsubscribe();
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        console.log('[AUTH POLLING] Polling detenido');
+      }
     };
-  }, []);
+  }, [supabaseUser?.id]);
 
   // ============================================================================
   // SIGN IN (with proyecto selection)

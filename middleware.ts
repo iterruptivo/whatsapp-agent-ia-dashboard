@@ -101,10 +101,15 @@ export async function middleware(req: NextRequest) {
     .single();
 
   // User not found in usuarios table or error fetching
+  // ============================================================================
+  // FIX #4: Graceful degradation - NO logout por errores transitorios
+  // ============================================================================
   if (error || !userData) {
-    console.error('Error fetching user data in middleware:', error);
-    await supabase.auth.signOut();
-    return NextResponse.redirect(new URL('/login', req.url));
+    console.warn('[MIDDLEWARE WARNING] Error fetching user data (allowing access):', error);
+    console.warn('[MIDDLEWARE] User will be protected by RLS policies');
+    // Permitir acceso - RLS policies + auth-context protegen
+    // NO hacer logout por errores transitorios de red/timeout
+    return res;
   }
 
   // User is deactivated
