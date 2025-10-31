@@ -175,6 +175,8 @@ export async function importManualLeads(
   }>
 ) {
   try {
+    console.log(`[IMPORT] Starting import of ${leads.length} leads to proyecto: ${proyectoId}`);
+
     let imported = 0;
     const duplicates: Array<{ nombre: string; telefono: string }> = [];
     const invalidVendors: Array<{ email: string; row: number }> = [];
@@ -192,9 +194,19 @@ export async function importManualLeads(
         .single();
 
       if (usuarioError || !usuario || usuario.rol !== 'vendedor' || !usuario.vendedor_id) {
+        console.log(`[IMPORT] Invalid vendor at row ${rowNum}:`, {
+          email: lead.email_vendedor,
+          error: usuarioError?.message,
+          usuario,
+        });
         invalidVendors.push({ email: lead.email_vendedor, row: rowNum });
         continue;
       }
+
+      console.log(`[IMPORT] Valid vendor found for row ${rowNum}:`, {
+        email: lead.email_vendedor,
+        vendedor_id: usuario.vendedor_id,
+      });
 
       // Verificar si ya existe un lead con ese teléfono en este proyecto
       const { data: existingLead, error: checkError } = await supabase
@@ -202,7 +214,7 @@ export async function importManualLeads(
         .select('id')
         .eq('proyecto_id', proyectoId)
         .eq('telefono', lead.telefono)
-        .single();
+        .maybeSingle(); // Use maybeSingle() instead of single() to avoid PGRST116 error
 
       if (existingLead) {
         duplicates.push({ nombre: lead.nombre, telefono: lead.telefono });
@@ -210,7 +222,7 @@ export async function importManualLeads(
       }
 
       // Insertar lead
-      const { error: insertError } = await supabase.from('leads').insert({
+      const leadData = {
         proyecto_id: proyectoId,
         nombre: lead.nombre,
         telefono: lead.telefono,
@@ -218,13 +230,18 @@ export async function importManualLeads(
         rubro: lead.rubro || null,
         estado: 'lead_manual',
         vendedor_asignado_id: usuario.vendedor_id,
-      });
+      };
+
+      console.log(`[IMPORT] Inserting lead at row ${rowNum}:`, leadData);
+
+      const { error: insertError } = await supabase.from('leads').insert(leadData);
 
       if (insertError) {
-        console.error('Error inserting lead:', insertError);
+        console.error(`[IMPORT] Error inserting lead at row ${rowNum}:`, insertError);
         continue;
       }
 
+      console.log(`[IMPORT] Successfully inserted lead at row ${rowNum}: ${lead.nombre}`);
       imported++;
     }
 
