@@ -125,7 +125,9 @@ export async function getAllLeads(dateFrom?: Date, dateTo?: Date, proyectoId?: s
       query = query.lte('fecha_captura', dateTo.toISOString());
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    const { data, error } = await query
+      .order('created_at', { ascending: false })
+      .limit(10000); // Fix: Supabase default limit is 1000, increase to 10k to show all leads
 
     if (error) {
       console.error('Error fetching leads:', error);
