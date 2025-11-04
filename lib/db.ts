@@ -98,53 +98,82 @@ export async function getAllVendedores(includeInactive = false): Promise<Vendedo
 }
 
 // Get all leads from Supabase with optional date range and proyecto filtering
-// Includes vendedor and proyecto info via LEFT JOINs for display purposes
+// FASE 1 FIX: Removed JOINs to avoid Supabase 1000-record limit on complex queries
+// Fetches vendedores and proyectos separately, then enriches data in application code
 export async function getAllLeads(dateFrom?: Date, dateTo?: Date, proyectoId?: string): Promise<Lead[]> {
   try {
-    // Use LEFT JOINs to include vendedor.nombre and proyecto info
-    let query = supabase
+    console.log('[DB] getAllLeads() - FASE 1: Fetching without JOINs');
+
+    // STEP 1: Fetch leads WITHOUT JOINs (simpler query to avoid 1000 limit)
+    let leadsQuery = supabase
       .from('leads')
-      .select(`
-        *,
-        vendedor_nombre:vendedores(nombre),
-        proyecto_nombre:proyectos(nombre),
-        proyecto_color:proyectos(color)
-      `);
+      .select('*');  // No JOINs - fetch only lead data
 
     // CRITICAL: Filter by proyecto_id if provided (for multi-proyecto support)
     if (proyectoId) {
-      query = query.eq('proyecto_id', proyectoId);
+      leadsQuery = leadsQuery.eq('proyecto_id', proyectoId);
     }
 
     // Apply date range filter if provided
     if (dateFrom) {
-      query = query.gte('fecha_captura', dateFrom.toISOString());
+      leadsQuery = leadsQuery.gte('fecha_captura', dateFrom.toISOString());
     }
 
     if (dateTo) {
-      query = query.lte('fecha_captura', dateTo.toISOString());
+      leadsQuery = leadsQuery.lte('fecha_captura', dateTo.toISOString());
     }
 
-    const { data, error } = await query
+    const { data: leadsData, error: leadsError } = await leadsQuery
       .order('created_at', { ascending: false })
-      .range(0, 9999); // Fix: Use range() instead of limit() for better compatibility with JOINs (10k records: 0-9999)
+      .range(0, 9999); // Should work better without JOINs
 
-    if (error) {
-      console.error('Error fetching leads:', error);
+    if (leadsError) {
+      console.error('[DB] Error fetching leads:', leadsError);
       return [];
     }
 
-    // Transform data to flatten nested objects from JOINs
-    const transformedData = (data || []).map(lead => ({
-      ...lead,
-      vendedor_nombre: lead.vendedor_nombre?.nombre || null,
-      proyecto_nombre: lead.proyecto_nombre?.nombre || null,
-      proyecto_color: lead.proyecto_color?.color || null,
-    }));
+    console.log('[DB] ✅ Leads fetched (no JOINs):', leadsData?.length || 0);
 
-    return transformedData as Lead[];
+    // STEP 2: Fetch vendedores separately (small table, cacheable)
+    const { data: vendedoresData, error: vendedoresError } = await supabase
+      .from('vendedores')
+      .select('id, nombre');
+
+    if (vendedoresError) {
+      console.warn('[DB] ⚠️ Error fetching vendedores (will proceed without):', vendedoresError);
+    }
+
+    console.log('[DB] ✅ Vendedores fetched:', vendedoresData?.length || 0);
+
+    // STEP 3: Fetch proyectos separately (small table, cacheable)
+    const { data: proyectosData, error: proyectosError } = await supabase
+      .from('proyectos')
+      .select('id, nombre, color');
+
+    if (proyectosError) {
+      console.warn('[DB] ⚠️ Error fetching proyectos (will proceed without):', proyectosError);
+    }
+
+    console.log('[DB] ✅ Proyectos fetched:', proyectosData?.length || 0);
+
+    // STEP 4: Enrich leads with vendedor/proyecto info (replaces JOIN logic)
+    const enrichedLeads = (leadsData || []).map(lead => {
+      const vendedor = vendedoresData?.find(v => v.id === lead.vendedor_asignado_id);
+      const proyecto = proyectosData?.find(p => p.id === lead.proyecto_id);
+
+      return {
+        ...lead,
+        vendedor_nombre: vendedor?.nombre || null,
+        proyecto_nombre: proyecto?.nombre || null,
+        proyecto_color: proyecto?.color || null,
+      };
+    });
+
+    console.log('[DB] ✅ getAllLeads() FINAL COUNT:', enrichedLeads.length);
+
+    return enrichedLeads as Lead[];
   } catch (error) {
-    console.error('Error in getAllLeads:', error);
+    console.error('[DB] ❌ Error in getAllLeads:', error);
     return [];
   }
 }

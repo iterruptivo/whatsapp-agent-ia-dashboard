@@ -3808,4 +3808,190 @@ Error:           0% - Datos completos
 
 ---
 
-**🤖 Generated with [Claude Code](https://claude.com/claude-code)**
+### **Sesión 33C - 3 Noviembre 2025 (2:45 PM)**
+**Objetivo:** FASE 1 IMPLEMENTADA - Remover JOINs para resolver límite de 1000 leads
+
+#### Contexto:
+- **Sesión 33B** implementó `.range()` pero persistió límite de 1000
+- **Análisis exhaustivo** (Backend + Frontend Dev) confirmó código correcto
+- **Consulta a ChatGPT** reveló que límite de 1000 es ABSOLUTO en PostgREST
+- **Decisión:** Implementar FASE 1 (remover JOINs) antes de paginar
+
+#### Solución Implementada:
+
+**ESTRATEGIA: Fetch Separado + Enriquecimiento en Código**
+
+**Cambios en `lib/db.ts` - Función `getAllLeads()`:**
+
+**ANTES (con JOINs):**
+```typescript
+let query = supabase
+  .from('leads')
+  .select(`
+    *,
+    vendedor_nombre:vendedores(nombre),
+    proyecto_nombre:proyectos(nombre),
+    proyecto_color:proyectos(color)
+  `)
+  .range(0, 9999); // ← Ignorado por Supabase con JOINs
+```
+
+**DESPUÉS (sin JOINs - FASE 1):**
+```typescript
+// STEP 1: Fetch leads sin JOINs (query simple)
+const { data: leadsData } = await supabase
+  .from('leads')
+  .select('*')  // ← Sin JOINs
+  .eq('proyecto_id', proyectoId)
+  .gte('fecha_captura', dateFrom)
+  .lte('fecha_captura', dateTo)
+  .order('created_at', { ascending: false })
+  .range(0, 9999); // ← Debería funcionar sin JOINs
+
+// STEP 2: Fetch vendedores por separado
+const { data: vendedoresData } = await supabase
+  .from('vendedores')
+  .select('id, nombre');
+
+// STEP 3: Fetch proyectos por separado
+const { data: proyectosData } = await supabase
+  .from('proyectos')
+  .select('id, nombre, color');
+
+// STEP 4: Enriquecer leads con vendedor/proyecto info
+const enrichedLeads = leadsData.map(lead => ({
+  ...lead,
+  vendedor_nombre: vendedoresData?.find(v => v.id === lead.vendedor_asignado_id)?.nombre || null,
+  proyecto_nombre: proyectosData?.find(p => p.id === lead.proyecto_id)?.nombre || null,
+  proyecto_color: proyectosData?.find(p => p.id === lead.proyecto_id)?.color || null,
+}));
+
+return enrichedLeads as Lead[];
+```
+
+#### Características del Fix:
+
+**1. Backward Compatibility (100%):**
+- ✅ Retorna EXACTAMENTE el mismo formato `Lead[]`
+- ✅ Mismas propiedades: `vendedor_nombre`, `proyecto_nombre`, `proyecto_color`
+- ✅ TypeScript compila sin errores
+- ✅ No requiere cambios en frontend
+
+**2. Ventajas:**
+- ✅ Query simple (sin JOINs) → Mayor probabilidad de respetar `.range()`
+- ✅ Vendedores/proyectos son tablas pequeñas (~20 registros)
+- ✅ Pattern probado: Sistema de Locales usa approach similar
+- ✅ Queries de vendedores/proyectos son cacheables (raramente cambian)
+
+**3. Console Logs de Debugging:**
+```typescript
+console.log('[DB] getAllLeads() - FASE 1: Fetching without JOINs');
+console.log('[DB] ✅ Leads fetched (no JOINs):', leadsData?.length || 0);
+console.log('[DB] ✅ Vendedores fetched:', vendedoresData?.length || 0);
+console.log('[DB] ✅ Proyectos fetched:', proyectosData?.length || 0);
+console.log('[DB] ✅ getAllLeads() FINAL COUNT:', enrichedLeads.length);
+```
+
+**Logs esperados en producción:**
+```
+[DB] getAllLeads() - FASE 1: Fetching without JOINs
+[DB] ✅ Leads fetched (no JOINs): 1417  ← KEY: Si muestra 1417, FASE 1 EXITOSA
+[DB] ✅ Vendedores fetched: 18
+[DB] ✅ Proyectos fetched: 3
+[DB] ✅ getAllLeads() FINAL COUNT: 1417
+```
+
+#### Archivos Modificados:
+
+**CODE CHANGES:**
+- `lib/db.ts` (líneas 100-179) - Función `getAllLeads()` refactorizada
+
+**DOCUMENTACIÓN:**
+- `CLAUDE.md` - Sesión 33C agregada
+
+**Total Líneas:** ~80 líneas modificadas
+
+#### Decisiones Técnicas:
+
+**1. FASE 1 vs FASE 2 (Paginación):**
+- **Decisión:** Implementar FASE 1 primero
+- **Razón:** Si funciona, ahorramos 1.5 horas vs paginación completa
+- **Probabilidad éxito:** 50% (depende si límite es absoluto o por complejidad)
+
+**2. 3 Queries vs 1 Query con JOINs:**
+- **Trade-off:** 3 roundtrips vs 1 roundtrip
+- **Justificación:** Vendedores/proyectos son tiny (< 50 registros cada uno)
+- **Performance:** Queries adicionales < 50ms cada uno, negligible
+
+**3. Error Handling Gracioso:**
+- Si fetch de vendedores/proyectos falla → Continúa sin ellos
+- Leads se muestran sin nombres (mostrarán IDs)
+- Prioridad: Mostrar leads > enriquecimiento completo
+
+#### Testing Plan (Post-Deploy):
+
+**CRITERIO DE ÉXITO (FASE 1):**
+
+**Escenario A: FASE 1 Exitosa** ✅
+```
+Console logs muestran:
+[DB] ✅ Leads fetched (no JOINs): 1417
+[DB] ✅ getAllLeads() FINAL COUNT: 1417
+
+Dashboard muestra: "Total: 1417 leads"
+
+→ PROBLEMA RESUELTO
+→ NO necesitamos FASE 2 (paginación)
+```
+
+**Escenario B: FASE 1 Falla** ❌
+```
+Console logs muestran:
+[DB] ✅ Leads fetched (no JOINs): 1000  ← Todavía truncado
+
+Dashboard muestra: "Total: 1000 leads"
+
+→ Límite de 1000 es ABSOLUTO (ChatGPT tiene razón)
+→ Proceder con FASE 2 (Keyset Pagination)
+```
+
+#### Próxima Acción:
+
+**DEPLOYMENT + VERIFICACIÓN:**
+1. Commit cambios
+2. Push a GitHub → Vercel auto-deploy
+3. Esperar 2-3 min (deployment)
+4. Hard refresh dashboard
+5. Revisar console logs (abrir DevTools)
+6. Verificar número de leads mostrados
+
+**Si Escenario A:**
+- ✅ Celebrar fix exitoso
+- ✅ Documentar pattern para futuros queries
+- ✅ Monitorear performance (3 queries vs 1)
+
+**Si Escenario B:**
+- ⚠️ Implementar FASE 2 (Keyset Pagination)
+- ⚠️ 2 horas adicionales de trabajo
+- ⚠️ Solución definitiva garantizada
+
+#### Estado del Proyecto:
+- ✅ FASE 1 implementada (remover JOINs)
+- ✅ TypeScript compila sin errores
+- ✅ Backward compatibility garantizada
+- ⏳ Pending: Commit y deploy
+- ⏳ Pending: Verificación en producción
+
+#### Lecciones Aprendadas (Anticipadas):
+
+**ARQUITECTURA:**
+1. **Queries simples > queries complejas:** JOINs pueden causar problemas inesperados
+2. **Enriquecimiento en código es viable:** Para tablas pequeñas (< 100 registros)
+3. **Testing incremental:** FASE 1 antes de FASE 2 ahorra tiempo
+
+**SUPABASE:**
+1. **Límite de 1000 puede ser absoluto:** Documentación no es clara
+2. **Queries con JOINs son más problemáticas:** Mayor complejidad = más restricciones
+3. **Alternativas existen:** Fetch separado + merge en código es válido
+
+---
