@@ -127,7 +127,7 @@ export async function getAllLeads(dateFrom?: Date, dateTo?: Date, proyectoId?: s
 
     const { data, error } = await query
       .order('created_at', { ascending: false })
-      .limit(10000); // Fix: Supabase default limit is 1000, increase to 10k to show all leads
+      .range(0, 9999); // Fix: Use range() instead of limit() for better compatibility with JOINs (10k records: 0-9999)
 
     if (error) {
       console.error('Error fetching leads:', error);
