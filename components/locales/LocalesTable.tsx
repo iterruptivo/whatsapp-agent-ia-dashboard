@@ -511,7 +511,7 @@ export default function LocalesTable({
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Metraje</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Estado</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Monto Venta</th>
-              <th className="text-left py-3 px-4 text-gray-600 font-medium">Tracking</th>
+              <th className="text-left py-3 px-4 text-gray-600 font-medium">Cell Cliente</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Vendedor Actual</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Acciones</th>
             </tr>
