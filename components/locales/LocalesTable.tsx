@@ -7,13 +7,15 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { updateLocalEstado, desbloquearLocal, updateMontoVenta } from '@/lib/actions-locales';
-import type { Local } from '@/lib/locales';
+import type { Local, VendedorActivo } from '@/lib/locales';
+import { getAllVendedoresActivos } from '@/lib/locales';
 import { ChevronLeft, ChevronRight, History, Lock, Link2 } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import LocalTrackingModal from './LocalTrackingModal';
+import VendedorSelectModal from './VendedorSelectModal';
 
 interface LocalesTableProps {
   locales: Local[];
@@ -61,6 +63,32 @@ export default function LocalesTable({
   // State para tracking modal
   const [trackingLocal, setTrackingLocal] = useState<Local | null>(null);
 
+  // State para vendedores activos (admin assignment)
+  const [vendedoresActivos, setVendedoresActivos] = useState<VendedorActivo[]>([]);
+
+  // State para modal de selección de vendedor (admin)
+  const [vendedorSelectModal, setVendedorSelectModal] = useState<{
+    isOpen: boolean;
+    local: Local | null;
+    nuevoEstado: 'amarillo' | 'naranja' | null;
+  }>({
+    isOpen: false,
+    local: null,
+    nuevoEstado: null,
+  });
+
+  // ====== EFFECT: Cargar vendedores activos si es admin ======
+  useEffect(() => {
+    if (user?.rol === 'admin') {
+      const loadVendedores = async () => {
+        const vendedores = await getAllVendedoresActivos();
+        setVendedoresActivos(vendedores);
+        console.log('[LocalesTable] Vendedores activos cargados:', vendedores.length);
+      };
+      loadVendedores();
+    }
+  }, [user?.rol]);
+
   // ====== HELPER: Cambiar Estado con Confirmación ======
   const handleEstadoChange = (
     local: Local,
@@ -79,24 +107,31 @@ export default function LocalesTable({
       return;
     }
 
-    // 🚫 RESTRICCIÓN: Admin NO puede cambiar estados (solo desbloquear)
-    // Admin y Jefe Ventas: Restringir cambios de estado verde/amarillo/naranja
-    if (user.rol === 'admin' || user.rol === 'jefe_ventas') {
-      // Permitir SOLO si es caso de desbloqueo (local ROJO + bloqueado) para admin
-      const esDesbloqueoAdmin = local.estado === 'rojo' && local.bloqueado && user.rol === 'admin';
+    // ✅ NUEVO: Admin puede cambiar estados pero debe asignar vendedor para amarillo/naranja
+    if (user.rol === 'admin') {
+      // Caso especial: Admin cambia a amarillo o naranja → Mostrar modal de asignación
+      if (nuevoEstado === 'amarillo' || nuevoEstado === 'naranja') {
+        setVendedorSelectModal({
+          isOpen: true,
+          local,
+          nuevoEstado,
+        });
+        return;
+      }
+      // Verde y Rojo siguen el flujo normal (verde = liberar, rojo = bloquear)
+    }
 
-      // Permitir bloquear (→ rojo) para admin y jefe_ventas
+    // 🚫 RESTRICCIÓN: Jefe Ventas solo puede bloquear (cambiar a rojo)
+    if (user.rol === 'jefe_ventas') {
       const esBloqueo = nuevoEstado === 'rojo';
 
-      if (!esDesbloqueoAdmin && !esBloqueo) {
+      if (!esBloqueo) {
         setConfirmModal({
           isOpen: true,
           local: null,
           nuevoEstado: null,
           title: 'Acción Restringida',
-          message: user.rol === 'admin'
-            ? 'Los administradores solo pueden desbloquear locales vendidos.\n\nLos cambios de estado son exclusivos de los vendedores.'
-            : 'Los jefes de ventas solo pueden bloquear locales (vendido).\n\nLos cambios de estado son exclusivos de los vendedores.',
+          message: 'Los jefes de ventas solo pueden bloquear locales (vendido).\n\nLos cambios de estado son exclusivos de los vendedores.',
           variant: 'warning',
         });
         return;
@@ -249,6 +284,65 @@ export default function LocalesTable({
         nuevoEstado: null,
         title: 'Error Inesperado',
         message: 'Ocurrió un error inesperado al desbloquear el local.',
+        variant: 'danger',
+      });
+    } finally {
+      setChangingLocalId(null);
+    }
+  };
+
+  // ====== HELPER: Admin Asigna Vendedor (Amarillo/Naranja) ======
+  const handleVendedorSelectConfirm = async (vendedorId: string) => {
+    if (!vendedorSelectModal.local || !vendedorSelectModal.nuevoEstado) {
+      console.error('[LocalesTable] Modal state invalid');
+      return;
+    }
+
+    const local = vendedorSelectModal.local;
+    const nuevoEstado = vendedorSelectModal.nuevoEstado;
+
+    // Cerrar modal
+    setVendedorSelectModal({ isOpen: false, local: null, nuevoEstado: null });
+
+    // Ejecutar cambio de estado con vendedor asignado
+    setChangingLocalId(local.id);
+
+    try {
+      const result = await updateLocalEstado(
+        local.id,
+        nuevoEstado,
+        vendedorId, // ✅ Vendedor seleccionado por admin
+        user?.id    // ✅ Admin que hace la acción
+      );
+
+      if (result.success) {
+        console.log(`[LocalesTable] Admin asignó local ${local.codigo} a vendedor con estado ${nuevoEstado}`);
+        setConfirmModal({
+          isOpen: true,
+          local: null,
+          nuevoEstado: null,
+          title: 'Estado Actualizado',
+          message: `Local ${local.codigo} asignado con estado ${nuevoEstado === 'amarillo' ? 'Amarillo' : 'Naranja'}.`,
+          variant: 'info',
+        });
+      } else {
+        setConfirmModal({
+          isOpen: true,
+          local: null,
+          nuevoEstado: null,
+          title: 'Error al Actualizar',
+          message: result.message || 'No se pudo cambiar el estado del local.',
+          variant: 'danger',
+        });
+      }
+    } catch (error) {
+      console.error('Error asignando vendedor:', error);
+      setConfirmModal({
+        isOpen: true,
+        local: null,
+        nuevoEstado: null,
+        title: 'Error Inesperado',
+        message: 'Ocurrió un error inesperado al asignar el vendedor.',
         variant: 'danger',
       });
     } finally {
@@ -642,6 +736,17 @@ export default function LocalesTable({
         cancelText="Cancelar"
         onConfirm={handleConfirmModalAction}
         onCancel={handleCancelModal}
+      />
+
+      {/* Modal de Selección de Vendedor (Admin asigna amarillo/naranja) */}
+      <VendedorSelectModal
+        isOpen={vendedorSelectModal.isOpen}
+        vendedores={vendedoresActivos}
+        estadoDestino={vendedorSelectModal.nuevoEstado || 'amarillo'}
+        localCodigo={vendedorSelectModal.local?.codigo || ''}
+        vendedorActualId={vendedorSelectModal.local?.vendedor_actual_id || null}
+        onConfirm={handleVendedorSelectConfirm}
+        onCancel={() => setVendedorSelectModal({ isOpen: false, local: null, nuevoEstado: null })}
       />
 
       {/* Tracking Modal */}

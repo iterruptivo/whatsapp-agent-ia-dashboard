@@ -312,12 +312,43 @@ export async function updateLocalEstadoQuery(
     // 📝 Insertar historial manualmente con usuario correcto
     // Solo si el estado realmente cambió y tenemos usuarioId
     if (estadoAnterior !== nuevoEstado && usuarioId) {
-      const accion =
-        nuevoEstado === 'rojo' ? 'Vendedor cerró venta' :
-        nuevoEstado === 'naranja' ? 'Cliente confirmó que tomará el local' :
-        nuevoEstado === 'amarillo' ? 'Vendedor inició negociación' :
-        nuevoEstado === 'verde' ? 'Local liberado' :
-        'Cambio de estado';
+      let accion = 'Cambio de estado';
+
+      // 🎯 CASO ESPECIAL: Admin asigna vendedor con amarillo/naranja
+      if (vendedorId && (nuevoEstado === 'amarillo' || nuevoEstado === 'naranja')) {
+        // Fetch admin name
+        const { data: adminData } = await supabase
+          .from('usuarios')
+          .select('nombre, rol')
+          .eq('id', usuarioId)
+          .single();
+
+        // Fetch vendedor name
+        const { data: vendedorData } = await supabase
+          .from('usuarios')
+          .select('nombre')
+          .eq('vendedor_id', vendedorId)
+          .single();
+
+        if (adminData?.rol === 'admin' && vendedorData?.nombre) {
+          // Formato especial para admin
+          const estadoTexto = nuevoEstado === 'amarillo' ? 'Amarillo' : 'Naranja';
+          accion = `Admin ${adminData.nombre} asignó local a ${vendedorData.nombre} con estado ${estadoTexto}`;
+        } else {
+          // Fallback si no se pudieron obtener los nombres
+          accion =
+            nuevoEstado === 'amarillo' ? 'Vendedor inició negociación' :
+            'Cliente confirmó que tomará el local';
+        }
+      } else {
+        // Mensajes normales para otros casos
+        accion =
+          nuevoEstado === 'rojo' ? 'Vendedor cerró venta' :
+          nuevoEstado === 'naranja' ? 'Cliente confirmó que tomará el local' :
+          nuevoEstado === 'amarillo' ? 'Vendedor inició negociación' :
+          nuevoEstado === 'verde' ? 'Local liberado' :
+          'Cambio de estado';
+      }
 
       const { error: historialError } = await supabase
         .from('locales_historial')
@@ -617,5 +648,41 @@ export async function registerLeadTrackingQuery(
   } catch (error) {
     console.error('Error in registerLeadTrackingQuery:', error);
     return { success: false, message: 'Error inesperado' };
+  }
+}
+
+// ============================================================================
+// GET ALL VENDEDORES ACTIVOS (para asignación de admin)
+// ============================================================================
+
+export interface VendedorActivo {
+  id: string;
+  nombre: string;
+  rol: 'vendedor' | 'vendedor_caseta';
+  vendedor_id: string;
+}
+
+/**
+ * Obtiene todos los vendedores activos (rol: vendedor + vendedor_caseta)
+ * Usado por admin para asignar locales
+ */
+export async function getAllVendedoresActivos(): Promise<VendedorActivo[]> {
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, nombre, rol, vendedor_id')
+      .in('rol', ['vendedor', 'vendedor_caseta'])
+      .eq('activo', true)
+      .order('nombre', { ascending: true });
+
+    if (error) {
+      console.error('[LOCALES] Error fetching vendedores activos:', error);
+      return [];
+    }
+
+    return (data || []) as VendedorActivo[];
+  } catch (error) {
+    console.error('[LOCALES] Error in getAllVendedoresActivos:', error);
+    return [];
   }
 }
