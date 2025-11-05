@@ -5,12 +5,12 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 3 Noviembre 2025, 1:50 PM
-**Sesión:** 33B - ✅ FIX CRÍTICO: .limit() → .range() (Persistencia del límite 1000)
+**Fecha:** 5 Noviembre 2025, 3:00 AM
+**Sesión:** 35B-ROLLBACK - 🔴 EMERGENCY ROLLBACK después de login bloqueado en producción
 **Desarrollador:** Claude Code (Adan) - Project Leader
-**Estado:** 🔄 **DEPLOYING** - Commit 9cdfd61 pushed, esperando Vercel
-**Features:** Cambio de .limit() a .range() para compatibilidad con JOINs en Supabase
-**Próxima Acción:** Verificar deployment muestre los 1406 leads completos
+**Estado:** ✅ **STABLE** - Rollback a commit 9c8cc7b (keyset pagination), login funciona
+**Acción Tomada:** Rollback completo de Session 35 (session loss fix) que rompió el login
+**Próxima Acción:** Mañana atacar session loss issue SIN romper login (ver INCIDENT_REPORT.md)
 
 ---
 
