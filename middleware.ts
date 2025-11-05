@@ -59,18 +59,39 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession();
 
+  // ============================================================================
+  // SECURITY FIX: Validate session with server (resolves Vercel warning)
+  // ============================================================================
+  // Session from getSession() comes from cookies and may not be authentic.
+  // We must validate it with getUser() which contacts Supabase Auth server.
+  let validatedUser = null;
+
+  if (session) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      // Session is invalid (expired, tampered, etc.) - treat as logged out
+      console.warn('[MIDDLEWARE] Session validation failed, treating as logged out:', userError?.message);
+      // Don't use this session
+      validatedUser = null;
+    } else {
+      // Session is valid and authenticated by server
+      validatedUser = user;
+    }
+  }
+
   const { pathname } = req.nextUrl;
 
   // ============================================================================
   // PUBLIC ROUTES - Allow without authentication
   // ============================================================================
   if (pathname === '/login') {
-    // If already logged in, redirect to appropriate dashboard
-    if (session) {
+    // If already logged in (and session is valid), redirect to appropriate dashboard
+    if (validatedUser) {
       const { data: userData } = await supabase
         .from('usuarios')
         .select('rol')
-        .eq('id', session.user.id)
+        .eq('id', validatedUser.id)
         .single();
 
       if (userData?.rol === 'admin') {
@@ -88,8 +109,8 @@ export async function middleware(req: NextRequest) {
   // PROTECTED ROUTES - Require authentication
   // ============================================================================
 
-  // No session - redirect to login
-  if (!session) {
+  // No validated user - redirect to login
+  if (!validatedUser) {
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
@@ -99,7 +120,7 @@ export async function middleware(req: NextRequest) {
   const { data: userData, error } = await supabase
     .from('usuarios')
     .select('rol, activo')
-    .eq('id', session.user.id)
+    .eq('id', validatedUser.id)
     .single();
 
   // User not found in usuarios table or error fetching
@@ -116,7 +137,7 @@ export async function middleware(req: NextRequest) {
 
   // User is deactivated
   if (!userData.activo) {
-    console.error('User is deactivated:', session.user.email);
+    console.error('User is deactivated:', validatedUser.email);
     await supabase.auth.signOut();
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('error', 'deactivated');
