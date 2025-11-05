@@ -98,41 +98,79 @@ export async function getAllVendedores(includeInactive = false): Promise<Vendedo
 }
 
 // Get all leads from Supabase with optional date range and proyecto filtering
-// FASE 1 FIX: Removed JOINs to avoid Supabase 1000-record limit on complex queries
-// Fetches vendedores and proyectos separately, then enriches data in application code
+// FASE 2 FIX: Keyset pagination with multiple fetches to bypass 1000-record limit
+// Fetches leads in batches of 1000 until all records are retrieved
 export async function getAllLeads(dateFrom?: Date, dateTo?: Date, proyectoId?: string): Promise<Lead[]> {
   try {
-    console.log('[DB] getAllLeads() - FASE 1: Fetching without JOINs');
+    console.log('[DB] getAllLeads() - FASE 2: Keyset pagination (multiple fetches)');
 
-    // STEP 1: Fetch leads WITHOUT JOINs (simpler query to avoid 1000 limit)
-    let leadsQuery = supabase
-      .from('leads')
-      .select('*');  // No JOINs - fetch only lead data
+    // STEP 1: Fetch ALL leads using keyset pagination (batches of 1000)
+    const allLeads: any[] = [];
+    let hasMore = true;
+    let lastCreatedAt: string | null = null;
+    let batchNumber = 0;
+    const BATCH_SIZE = 1000;
 
-    // CRITICAL: Filter by proyecto_id if provided (for multi-proyecto support)
-    if (proyectoId) {
-      leadsQuery = leadsQuery.eq('proyecto_id', proyectoId);
+    while (hasMore) {
+      batchNumber++;
+      console.log(`[DB] Fetching batch ${batchNumber}...`);
+
+      // Build query for current batch
+      let leadsQuery = supabase
+        .from('leads')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(0, BATCH_SIZE - 1); // 0-999 = 1000 records
+
+      // CRITICAL: Filter by proyecto_id if provided
+      if (proyectoId) {
+        leadsQuery = leadsQuery.eq('proyecto_id', proyectoId);
+      }
+
+      // Apply date range filters if provided
+      if (dateFrom) {
+        leadsQuery = leadsQuery.gte('fecha_captura', dateFrom.toISOString());
+      }
+
+      if (dateTo) {
+        leadsQuery = leadsQuery.lte('fecha_captura', dateTo.toISOString());
+      }
+
+      // Keyset pagination: fetch records after last created_at
+      if (lastCreatedAt) {
+        leadsQuery = leadsQuery.lt('created_at', lastCreatedAt);
+      }
+
+      const { data: batchData, error: batchError } = await leadsQuery;
+
+      if (batchError) {
+        console.error(`[DB] Error fetching batch ${batchNumber}:`, batchError);
+        break; // Stop on error but return what we have
+      }
+
+      const batchCount = batchData?.length || 0;
+      console.log(`[DB] ✅ Batch ${batchNumber} fetched: ${batchCount} leads`);
+
+      if (batchCount === 0) {
+        // No more records
+        hasMore = false;
+      } else {
+        allLeads.push(...batchData);
+
+        // Check if we got less than BATCH_SIZE (means we're done)
+        if (batchCount < BATCH_SIZE) {
+          hasMore = false;
+          console.log(`[DB] ✅ Last batch (${batchCount} < ${BATCH_SIZE})`);
+        } else {
+          // Update cursor for next batch
+          lastCreatedAt = batchData[batchData.length - 1].created_at;
+          console.log(`[DB] Next cursor: ${lastCreatedAt}`);
+        }
+      }
     }
 
-    // Apply date range filter if provided
-    if (dateFrom) {
-      leadsQuery = leadsQuery.gte('fecha_captura', dateFrom.toISOString());
-    }
-
-    if (dateTo) {
-      leadsQuery = leadsQuery.lte('fecha_captura', dateTo.toISOString());
-    }
-
-    const { data: leadsData, error: leadsError } = await leadsQuery
-      .order('created_at', { ascending: false })
-      .range(0, 9999); // Should work better without JOINs
-
-    if (leadsError) {
-      console.error('[DB] Error fetching leads:', leadsError);
-      return [];
-    }
-
-    console.log('[DB] ✅ Leads fetched (no JOINs):', leadsData?.length || 0);
+    const leadsData = allLeads;
+    console.log('[DB] ✅ TOTAL leads fetched:', leadsData.length);
 
     // STEP 2: Fetch vendedores separately (small table, cacheable)
     const { data: vendedoresData, error: vendedoresError } = await supabase
