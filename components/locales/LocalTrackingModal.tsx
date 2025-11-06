@@ -179,6 +179,9 @@ export default function LocalTrackingModal({
                 <p className="text-sm text-gray-600">
                   Busque un lead por número de teléfono para vincularlo a este local.
                 </p>
+                <p className="text-sm text-gray-700 font-bold italic">
+                  * Incluir código de país
+                </p>
 
                 {/* Phone Input */}
                 <div>
