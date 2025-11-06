@@ -8,10 +8,11 @@ import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
 import { Lead, Vendedor, getAllVendedores } from '@/lib/db';
 import { assignLeadToVendedor } from '@/lib/actions';
 import { useAuth } from '@/lib/auth-context';
-import { Download } from 'lucide-react';
+import { Download, Upload } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { exportLeadsToExcel } from '@/lib/exportToExcel';
+import LeadImportModal from '@/components/leads/LeadImportModal';
 
 interface OperativoClientProps {
   initialLeads: Lead[];
@@ -27,7 +28,7 @@ export default function OperativoClient({
   onRefresh,
 }: OperativoClientProps) {
   const router = useRouter();
-  const { user } = useAuth(); // Get authenticated user from context
+  const { user, selectedProyecto } = useAuth(); // Get authenticated user and proyecto from context
   const { isOpen, config, showDialog, closeDialog } = useConfirmDialog();
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
   const [dateTo, setDateTo] = useState(initialDateTo);
@@ -44,6 +45,9 @@ export default function OperativoClient({
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
+
+  // Import state
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // Fetch vendedores on mount (only for assignment dropdown in table)
   useEffect(() => {
@@ -266,8 +270,21 @@ export default function OperativoClient({
           </select>
         </div>
 
-        {/* Export to Excel Button */}
+        {/* Export & Import Buttons */}
         <div className="flex items-center gap-2 ml-auto">
+          {/* Import Button (Admin + Vendedor) */}
+          {(user?.rol === 'admin' || user?.rol === 'vendedor') && (
+            <button
+              onClick={() => setIsImportModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 hover:shadow-md active:scale-95 font-medium transition-all duration-200"
+              title="Importar leads manuales desde CSV/Excel"
+            >
+              <Upload className="w-5 h-5" />
+              <span className="hidden sm:inline">Importar Leads Manuales</span>
+            </button>
+          )}
+
+          {/* Export Button */}
           <button
             onClick={handleExportToExcel}
             disabled={isExporting || filteredLeads.length === 0}
@@ -313,6 +330,23 @@ export default function OperativoClient({
         cancelText={config.cancelText}
         showCancel={config.showCancel}
       />
+
+      {/* Import Modal (Admin + Vendedor) */}
+      {(user?.rol === 'admin' || user?.rol === 'vendedor') && selectedProyecto && (
+        <LeadImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          onSuccess={() => {
+            setIsImportModalOpen(false);
+            // Refresh leads after successful import
+            if (onRefresh) {
+              onRefresh(dateFrom, dateTo);
+            }
+          }}
+          proyectoId={selectedProyecto.id}
+          proyectoNombre={selectedProyecto.nombre}
+        />
+      )}
     </>
   );
 }

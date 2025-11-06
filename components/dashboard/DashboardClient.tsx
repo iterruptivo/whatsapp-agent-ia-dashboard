@@ -339,8 +339,8 @@ export default function DashboardClient({
 
           {/* Export & Import Buttons */}
           <div className="flex items-center gap-2 ml-auto">
-            {/* Import Button (Admin only) */}
-            {user?.rol === 'admin' && (
+            {/* Import Button (Admin + Vendedor) */}
+            {(user?.rol === 'admin' || user?.rol === 'vendedor') && (
               <button
                 onClick={() => setIsImportModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 hover:shadow-md active:scale-95 font-medium transition-all duration-200"
@@ -385,8 +385,8 @@ export default function DashboardClient({
       {/* Lead Detail Panel */}
       <LeadDetailPanel lead={selectedLead} isOpen={isPanelOpen} onClose={handleClosePanel} />
 
-      {/* Import Modal (Admin only) */}
-      {user?.rol === 'admin' && selectedProyecto && (
+      {/* Import Modal (Admin + Vendedor) */}
+      {(user?.rol === 'admin' || user?.rol === 'vendedor') && selectedProyecto && (
         <LeadImportModal
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
