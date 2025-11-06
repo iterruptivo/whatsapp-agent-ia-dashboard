@@ -193,7 +193,7 @@ export default function LocalTrackingModal({
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleSearch();
                       }}
-                      placeholder="Ej: 987654321"
+                      placeholder="Ej: 51987654321 (con código de país)"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                     />
                     <button
