@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // CRITICAL FIX: Wrapper with timeout to prevent infinite loading
-  const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 8000) => {
+  const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 30000) => {
     const timeoutPromise = new Promise<null>((resolve) =>
       setTimeout(() => {
         console.warn('[AUTH WARNING] Timeout fetching user data after', timeoutMs, 'ms');
