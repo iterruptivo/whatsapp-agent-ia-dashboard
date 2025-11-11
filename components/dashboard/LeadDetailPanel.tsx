@@ -2,7 +2,7 @@
 
 import { Lead } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
-import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck } from 'lucide-react';
+import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface LeadDetailPanelProps {
@@ -211,6 +211,24 @@ export default function LeadDetailPanel({ lead, isOpen, onClose }: LeadDetailPan
                 <div>
                   <p className="text-sm text-gray-500">Email</p>
                   <p className="text-base font-medium text-gray-900">{lead.email || 'N/A'}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <CalendarCheck className="w-5 h-5 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-sm text-gray-500">Asistió</p>
+                  <div className="mt-1">
+                    {lead.asistio ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                        <Check className="w-3 h-3" />
+                        Sí
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                        No
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

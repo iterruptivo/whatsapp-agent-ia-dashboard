@@ -35,6 +35,7 @@ export interface Lead {
   proyecto_id: string; // ID del proyecto (Trapiche, Callao, etc.)
   proyecto_nombre?: string | null; // Nombre del proyecto (obtenido via JOIN, opcional)
   proyecto_color?: string | null; // Color del proyecto (obtenido via JOIN, opcional)
+  asistio: boolean; // Indica si el lead visitó físicamente el proyecto (default: false)
 }
 
 // Vendedor interface matching Supabase vendedores table

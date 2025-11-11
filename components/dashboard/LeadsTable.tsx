@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Lead, Vendedor } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
-import { Search, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Calendar, UserCheck, Mail } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Calendar, UserCheck, Mail, Check } from 'lucide-react';
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -159,6 +159,7 @@ export default function LeadsTable({
                   Email
                 </div>
               </th>
+              <th className="text-left py-3 px-4 text-gray-600 font-medium">Asistió</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Estado</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">
                 <div className="flex items-center gap-1">
@@ -214,6 +215,18 @@ export default function LeadsTable({
                   )}
                 </td>
                 <td className="py-3 px-4 text-gray-600">{lead.email || 'N/A'}</td>
+                <td className="py-3 px-4">
+                  {lead.asistio ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                      <Check className="w-3 h-3" />
+                      Sí
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                      No
+                    </span>
+                  )}
+                </td>
                 <td className="py-3 px-4">{getEstadoBadge(lead.estado)}</td>
                 <td className="py-3 px-4">
                   {userRole === 'admin' && vendedores && onAssignLead ? (

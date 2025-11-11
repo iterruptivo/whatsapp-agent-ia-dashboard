@@ -641,6 +641,21 @@ export async function registerLeadTrackingQuery(
       return { success: false, message: 'Error al registrar tracking' };
     }
 
+    // ✅ NUEVO: Marcar que el lead asistió al proyecto
+    // Buscar lead por teléfono y actualizar asistio = true
+    const { error: asistioError } = await supabase
+      .from('leads')
+      .update({ asistio: true })
+      .eq('telefono', telefono);
+
+    if (asistioError) {
+      console.warn('[TRACKING] Error actualizando asistio para tel:', telefono, asistioError);
+      // No fallar toda la operación si solo falla el update de asistio
+      // El historial ya se registró exitosamente
+    } else {
+      console.log('[TRACKING] ✅ Lead marcado como asistido:', telefono);
+    }
+
     return {
       success: true,
       message: 'Lead vinculado correctamente',
