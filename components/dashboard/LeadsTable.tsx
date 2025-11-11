@@ -282,7 +282,7 @@ export default function LeadsTable({
                   )}
                 </td>
                 <td className="py-3 px-4 text-gray-600">
-                  {new Date(lead.fecha_captura).toLocaleDateString('es-PE')}
+                  {new Date(lead.created_at).toLocaleDateString('es-PE')}
                 </td>
                 {onLeadClick && (
                   <td className="py-3 px-4">
