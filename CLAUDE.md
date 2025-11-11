@@ -6,10 +6,10 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 10 Noviembre 2025
-**Sesión:** 41B - ✅ Columna "Fecha" Corregida (created_at) (PRODUCCIÓN)
+**Sesión:** 42 - ✅ FIX CRÍTICO DEFINITIVO: Session Loss con Split useEffect (PRODUCCIÓN)
 **Desarrollador:** Claude Code (Adan)
-**Estado:** ✅ **DEPLOYED** - Cambio de fecha_captura → created_at
-**Próxima Acción:** Verificar en producción después de deploy
+**Estado:** ✅ **DEPLOYED** - Split useEffect + Fix Loading Timing + Log Cleanup
+**Próxima Acción:** Monitoreo 48h - Verificar eliminación de session loss
 
 ---
 
@@ -40,6 +40,7 @@
 - **Sesión 40D** (8 Nov) - ✅ Gestión de Usuarios: Teresa + Bryan (Nuevo Admin)
 - **Sesión 41** (8 Nov) - ✅ Columna "Asistió" en Tabla + Panel de Detalles (PRODUCCIÓN)
 - **Sesión 41B** (10 Nov) - ✅ Columna "Fecha" Corregida: fecha_captura → created_at (PRODUCCIÓN)
+- **Sesión 42** (10 Nov) - ✅ FIX CRÍTICO DEFINITIVO: Session Loss Split useEffect (PRODUCCIÓN)
 
 ---
 
