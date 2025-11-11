@@ -114,7 +114,6 @@ export async function getAllLeads(dateFrom?: Date, dateTo?: Date, proyectoId?: s
 
     while (hasMore) {
       batchNumber++;
-      console.log(`[DB] Fetching batch ${batchNumber}...`);
 
       // Build query for current batch
       let leadsQuery = supabase
@@ -150,7 +149,6 @@ export async function getAllLeads(dateFrom?: Date, dateTo?: Date, proyectoId?: s
       }
 
       const batchCount = batchData?.length || 0;
-      console.log(`[DB] ✅ Batch ${batchNumber} fetched: ${batchCount} leads`);
 
       if (batchCount === 0) {
         // No more records
@@ -161,17 +159,14 @@ export async function getAllLeads(dateFrom?: Date, dateTo?: Date, proyectoId?: s
         // Check if we got less than BATCH_SIZE (means we're done)
         if (batchCount < BATCH_SIZE) {
           hasMore = false;
-          console.log(`[DB] ✅ Last batch (${batchCount} < ${BATCH_SIZE})`);
         } else {
           // Update cursor for next batch
           lastCreatedAt = batchData[batchData.length - 1].created_at;
-          console.log(`[DB] Next cursor: ${lastCreatedAt}`);
         }
       }
     }
 
     const leadsData = allLeads;
-    console.log('[DB] ✅ TOTAL leads fetched:', leadsData.length);
 
     // STEP 2: Fetch vendedores separately (small table, cacheable)
     const { data: vendedoresData, error: vendedoresError } = await supabase
@@ -182,8 +177,6 @@ export async function getAllLeads(dateFrom?: Date, dateTo?: Date, proyectoId?: s
       console.warn('[DB] ⚠️ Error fetching vendedores (will proceed without):', vendedoresError);
     }
 
-    console.log('[DB] ✅ Vendedores fetched:', vendedoresData?.length || 0);
-
     // STEP 3: Fetch proyectos separately (small table, cacheable)
     const { data: proyectosData, error: proyectosError } = await supabase
       .from('proyectos')
@@ -192,8 +185,6 @@ export async function getAllLeads(dateFrom?: Date, dateTo?: Date, proyectoId?: s
     if (proyectosError) {
       console.warn('[DB] ⚠️ Error fetching proyectos (will proceed without):', proyectosError);
     }
-
-    console.log('[DB] ✅ Proyectos fetched:', proyectosData?.length || 0);
 
     // STEP 4: Enrich leads with vendedor/proyecto info (replaces JOIN logic)
     const enrichedLeads = (leadsData || []).map(lead => {
@@ -207,8 +198,6 @@ export async function getAllLeads(dateFrom?: Date, dateTo?: Date, proyectoId?: s
         proyecto_color: proyecto?.color || null,
       };
     });
-
-    console.log('[DB] ✅ getAllLeads() FINAL COUNT:', enrichedLeads.length);
 
     return enrichedLeads as Lead[];
   } catch (error) {

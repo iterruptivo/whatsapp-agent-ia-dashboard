@@ -35,13 +35,6 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
     });
   };
 
-  // Debug logging
-  useEffect(() => {
-    if (isClient) {
-      console.log('[DashboardHeader] State:', { isClient, loading, hasUser: !!user, userName: user?.nombre });
-    }
-  }, [isClient, loading, user]);
-
   return (
     <>
       <header className="bg-secondary shadow-md">

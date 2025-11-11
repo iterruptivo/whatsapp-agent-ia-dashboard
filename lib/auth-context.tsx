@@ -50,15 +50,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ============================================================================
   const fetchUserData = async (authUser: SupabaseUser) => {
     try {
-      console.log('[AUTH DEBUG] Fetching user data for ID:', authUser.id);
-
       const { data, error } = await supabase
         .from('usuarios')
         .select('*')
         .eq('id', authUser.id)
         .single();
-
-      console.log('[AUTH DEBUG] Query result:', { data, error });
 
       if (error) {
         console.error('[AUTH ERROR] Error fetching user data:', error);
@@ -76,7 +72,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null;
       }
 
-      console.log('[AUTH SUCCESS] User data fetched:', data);
       return data as Usuario;
     } catch (error) {
       console.error('[AUTH ERROR] Unexpected error fetching user data:', error);
@@ -134,123 +129,99 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ============================================================================
-  // INITIALIZE SESSION ON MOUNT
+  // FIX CRÍTICO: Split useEffect para prevenir doble subscription
   // ============================================================================
+  // useEffect #1: Initialize auth system ONCE (no dependency)
   useEffect(() => {
+    console.log('[AUTH] Initializing auth system...');
+
     const initializeAuth = async () => {
       try {
-        // Step 1: Check if session exists (fast, from cookies)
         const { data: { session } } = await supabase.auth.getSession();
 
-        if (!session) {
-          // No session - user is not logged in
-          setLoading(false);
-          return;
+        if (session?.user) {
+          setSupabaseUser(session.user);
+          const userData = await fetchUserDataWithTimeout(session.user, 30000);
+          setUser(userData);
         }
 
-        // Step 2: SECURITY FIX - Verify session with server using getUser()
-        const { data: { user: authUser }, error } = await supabase.auth.getUser();
-
-        if (error || !authUser) {
-          console.error('[AUTH ERROR] Session validation failed:', error);
-          // Session is invalid - clear it
-          await supabase.auth.signOut();
-          setLoading(false);
-          return;
-        }
-
-        // Session is valid and verified
-        setSupabaseUser(authUser);
-        const userData = await fetchUserDataWithTimeout(authUser, 8000);
-        setUser(userData);
-
-        // MULTI-PROYECTO: Restore selected proyecto from sessionStorage
-        const savedProyectoId = sessionStorage.getItem('selected_proyecto_id');
-        if (savedProyectoId && userData) {
-          const proyectoData = await fetchProyectoData(savedProyectoId);
-          setSelectedProyecto(proyectoData);
-        }
+        setLoading(false);
       } catch (error) {
         console.error('[AUTH ERROR] Error initializing auth:', error);
-      } finally {
         setLoading(false);
       }
     };
 
     initializeAuth();
 
-    // Listen for auth state changes
+    // Subscribe to auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('[AUTH] State changed:', event);
 
-        // CRITICAL FIX: Only re-fetch user data on SIGN_IN or USER_UPDATED
-        // Token refresh events should NOT trigger expensive DB queries
-        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-          if (session?.user) {
-            setSupabaseUser(session.user);
-            // Use timeout wrapper to prevent infinite loading
-            const userData = await fetchUserDataWithTimeout(session.user, 8000);
-            setUser(userData);
-          }
-        } else if (event === 'TOKEN_REFRESHED') {
-          // Token refresh: only update session, keep existing user data
-          console.log('[AUTH] Token refreshed, keeping current user data');
-          if (session?.user) {
-            setSupabaseUser(session.user);
-            // user state unchanged - no DB fetch needed
-          }
-        } else if (event === 'SIGNED_OUT') {
-          setSupabaseUser(null);
+        if (event === 'SIGNED_OUT') {
           setUser(null);
+          setSupabaseUser(null);
+          setLoading(false);
+          return;
         }
 
-        setLoading(false);
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          setSupabaseUser(session?.user || null);
+
+          if (session?.user) {
+            // SOLUCIÓN #2: Fetch ANTES de setLoading(false)
+            const userData = await fetchUserDataWithTimeout(session.user, 30000);
+            setUser(userData);
+            setLoading(false); // ← Después de fetch completo
+          } else {
+            setLoading(false);
+          }
+        }
       }
     );
 
-    // ============================================================================
-    // POLLING: Check periódico de estado activo
-    // ============================================================================
-    // Compensar pérdida de check en middleware (FIX #4)
-    // Verifica cada 60s si usuario sigue activo en BD
-    let pollingInterval: NodeJS.Timeout | null = null;
+    return () => {
+      console.log('[AUTH] Cleaning up auth subscription');
+      subscription.unsubscribe();
+    };
+  }, []); // ← Empty dependency array (ejecuta solo 1 vez)
 
-    if (supabaseUser?.id) {
-      console.log('[AUTH POLLING] Iniciando polling de estado activo (cada 60s)');
+  // ============================================================================
+  // useEffect #2: Polling de usuario activo (depende de supabaseUser?.id)
+  // ============================================================================
+  useEffect(() => {
+    if (!supabaseUser?.id) return;
 
-      pollingInterval = setInterval(async () => {
-        try {
-          const { data, error } = await supabase
-            .from('usuarios')
-            .select('activo')
-            .eq('id', supabaseUser.id)
-            .single();
+    console.log('[AUTH POLLING] Iniciando polling de estado activo (cada 60s)');
 
-          if (error) {
-            console.warn('[AUTH POLLING] Error checking activo status (ignoring):', error);
-            return; // No logout por error transitorio
-          }
+    const pollingInterval = setInterval(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('usuarios')
+          .select('activo')
+          .eq('id', supabaseUser.id)
+          .single();
 
-          if (data && !data.activo) {
-            console.error('[AUTH POLLING] User deactivated, logging out');
-            await signOut();
-          }
-        } catch (error) {
-          console.error('[AUTH POLLING] Unexpected error (ignoring):', error);
-          // No logout por error inesperado
+        if (error) {
+          console.warn('[AUTH POLLING] Error checking activo status (ignoring):', error);
+          return;
         }
-      }, 60000); // Check cada 60 segundos
-    }
+
+        if (data && !data.activo) {
+          console.error('[AUTH POLLING] User deactivated, logging out');
+          await signOut();
+        }
+      } catch (error) {
+        console.error('[AUTH POLLING] Unexpected error (ignoring):', error);
+      }
+    }, 60000);
 
     return () => {
-      subscription.unsubscribe();
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        console.log('[AUTH POLLING] Polling detenido');
-      }
+      console.log('[AUTH POLLING] Polling detenido');
+      clearInterval(pollingInterval);
     };
-  }, [supabaseUser?.id]);
+  }, [supabaseUser?.id]); // ← Dependency solo para polling
 
   // ============================================================================
   // SIGN IN (with proyecto selection)

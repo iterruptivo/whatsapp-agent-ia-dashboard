@@ -56,12 +56,6 @@ export default function DashboardClient({
     getAllVendedores().then(setVendedores);
   }, []);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('[DashboardClient] Received initialLeads:', initialLeads.length);
-    console.log('[DashboardClient] First 3 leads:', initialLeads.slice(0, 3));
-  }, [initialLeads]);
-
   // Filter leads by date range AND vendedor (admin only)
   const filteredLeads = useMemo(() => {
     let filtered = initialLeads;

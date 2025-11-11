@@ -38,13 +38,9 @@ export default function Home() {
         dateFrom.setUTCDate(dateFrom.getUTCDate() - 30);
         dateFrom.setUTCHours(0, 0, 0, 0);
 
-        console.log('[CLIENT] Fetching leads for proyecto:', proyecto.nombre);
-        console.log('[CLIENT] Proyecto ID:', proyecto.id);
-
         // MULTI-PROYECTO: Fetch leads filtered by proyecto
         const data = await getAllLeads(dateFrom, dateTo, proyecto.id);
 
-        console.log('[CLIENT] Fetched leads count:', data.length);
         setLeads(data);
         setLoading(false);
       }
