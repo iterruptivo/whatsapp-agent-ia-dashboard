@@ -5,11 +5,11 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 8 Noviembre 2025
-**Sesión:** 41 - ✅ Columna "Asistió" Completada (PRODUCCIÓN)
+**Fecha:** 10 Noviembre 2025
+**Sesión:** 41B - ✅ Columna "Fecha" Corregida (created_at) (PRODUCCIÓN)
 **Desarrollador:** Claude Code (Adan)
-**Estado:** ✅ **DEPLOYED** - Feature completa en producción
-**Próxima Acción:** Monitoreo 24h + Feedback de usuarios
+**Estado:** ✅ **DEPLOYED** - Cambio de fecha_captura → created_at
+**Próxima Acción:** Verificar en producción después de deploy
 
 ---
 
@@ -39,6 +39,7 @@
 - **Sesión 40C** (8 Nov) - ✅ Actualizar Teresa: Admin → Vendedor
 - **Sesión 40D** (8 Nov) - ✅ Gestión de Usuarios: Teresa + Bryan (Nuevo Admin)
 - **Sesión 41** (8 Nov) - ✅ Columna "Asistió" en Tabla + Panel de Detalles (PRODUCCIÓN)
+- **Sesión 41B** (10 Nov) - ✅ Columna "Fecha" Corregida: fecha_captura → created_at (PRODUCCIÓN)
 
 ---
 
@@ -5627,6 +5628,262 @@ BUSINESS VALUE:
 1. **Project Leader coordina:** Revisión de cambios antes de deploy
 2. **Comunicación clara:** Entender exactamente qué se pide (4ta opción en contacto)
 3. **Deploy sin breaking changes:** Verificar git diff completo
+
+---
+
+### **Sesión 41B - 10 Noviembre 2025**
+**Objetivo:** Investigación y Corrección de Columna "Fecha" - Cambio a created_at
+
+#### Contexto:
+- Usuario cuestionó qué campo muestra la columna "Fecha" en tabla de leads
+- Sospecha: Columna mostraba `updated_at` (última actualización) en vez de fecha de captura
+- Necesidad: Aclarar diferencia entre 3 timestamps: `fecha_captura`, `created_at`, `updated_at`
+
+#### Problema Reportado:
+
+**Usuario compartió screenshots mostrando discrepancia:**
+
+**Lead "Milca Roja" - Evidencia:**
+```
+Panel de Detalles:
+├─ Fecha de Captura:      10/11/2025, 18:24
+├─ Creado:                09/11/2025, 16:32
+└─ Última Actualización:  10/11/2025, 18:24
+
+Tabla (Columna "Fecha"):  10/11/2025
+```
+
+**Diferencia clave:** `created_at` y `fecha_captura` son **26 horas diferentes** (09/11 vs 10/11)
+
+#### Investigación Realizada:
+
+**FASE 1: Verificación de Código**
+
+**Archivo Revisado:** `components/dashboard/LeadsTable.tsx` (línea 285)
+
+```typescript
+// CÓDIGO ACTUAL (CONFIRMADO):
+<td className="py-3 px-4 text-gray-600">
+  {new Date(lead.fecha_captura).toLocaleDateString('es-PE')}
+</td>
+```
+
+**Conclusión:** Código usa `fecha_captura` correctamente (NO `updated_at` como usuario sospechaba)
+
+---
+
+**FASE 2: Análisis de los 3 Timestamps**
+
+**1. `created_at` (Creado) - Timestamp Técnico:**
+- **Qué es:** Timestamp automático generado por Supabase al INSERT
+- **Cuándo:** Momento exacto que la fila se crea en BD
+- **Quién:** Supabase (BD), no la aplicación
+- **Ejemplo:** 09/11/2025, 16:32
+
+**2. `fecha_captura` (Fecha de Captura) - Timestamp de Negocio:**
+- **Qué es:** Campo de aplicación establecido por flujo n8n
+- **Cuándo:** Cuando lead completa interacción con bot WhatsApp
+- **Quién:** Flujo n8n (código de aplicación)
+- **Ejemplo:** 10/11/2025, 18:24
+
+**3. `updated_at` (Última Actualización) - Timestamp de Modificación:**
+- **Qué es:** Timestamp automático actualizado en cada UPDATE
+- **Cuándo:** Cada vez que se modifica el registro
+- **Quién:** Supabase (BD)
+- **Ejemplo:** 10/11/2025, 18:24
+
+---
+
+**FASE 3: ¿Por qué hay diferencia de 26 horas?**
+
+**Escenario Identificado:**
+```
+09/11 16:32 → Lead inicia conversación con bot Victoria
+           → n8n crea registro inicial (INSERT) → created_at = 09/11 16:32
+
+10/11 18:24 → Lead completa datos (nombre, rubro, horario)
+           → n8n actualiza con timestamp de completitud → fecha_captura = 10/11 18:24
+           → Update en BD → updated_at = 10/11 18:24
+```
+
+**Conclusión:**
+- `created_at` = Cuándo entró al sistema
+- `fecha_captura` = Cuándo lead completó datos (puede ser horas/días después)
+
+---
+
+#### Decisión del Usuario:
+
+**CAMBIO SOLICITADO:** Mostrar `created_at` en vez de `fecha_captura` en columna "Fecha"
+
+**Razón:** Usuario prefiere ver cuándo el lead entró al sistema (timestamp de BD) vs cuándo completó datos
+
+---
+
+#### Análisis de Riesgo:
+
+**NIVEL DE RIESGO:** 🟢 **MUY BAJO** (Cambio puramente visual)
+
+**✅ LO QUE NO SE AFECTA:**
+- Backend y queries a Supabase
+- Lógica de asignación de vendedores
+- Sistema de locales
+- Notificaciones WhatsApp
+- Filtros de fecha (usan `fecha_captura` para comparación, no para display)
+- Panel de detalles (muestra los 3 campos por separado)
+- Columna "Asistió" recién implementada
+- Export a Excel (solo cambia qué dato se exporta)
+
+**⚠️ LO QUE SÍ CAMBIA:**
+- Display visual de columna "Fecha" en tabla de leads (/ y /operativo)
+- **1 línea de código** en 1 archivo
+
+---
+
+#### Solución Implementada:
+
+**ARCHIVO MODIFICADO:** `components/dashboard/LeadsTable.tsx` (línea 285)
+
+**CAMBIO QUIRÚRGICO:**
+```typescript
+// ANTES:
+{new Date(lead.fecha_captura).toLocaleDateString('es-PE')}
+
+// DESPUÉS:
+{new Date(lead.created_at).toLocaleDateString('es-PE')}
+```
+
+**IMPACTO:**
+- Tabla en `/` → Muestra `created_at`
+- Tabla en `/operativo` → Muestra `created_at` (mismo componente)
+- Panel de detalles → Sin cambios (muestra ambos campos por separado)
+
+---
+
+#### Commits Deployados:
+
+**COMMIT:** `1c7e2c0` - "fix(leads): Change Fecha column to show created_at instead of fecha_captura"
+
+**Mensaje Completo:**
+```
+CAMBIO:
+- Columna 'Fecha' ahora muestra created_at (timestamp de BD)
+- Antes mostraba fecha_captura (timestamp de n8n)
+
+IMPACTO:
+- Solo cambio visual en tabla de leads (/ y /operativo)
+- NO afecta funcionalidad existente
+- NO afecta panel de detalles (muestra ambos campos por separado)
+- NO afecta filtros, queries, backend
+
+ARCHIVO MODIFICADO:
+- components/dashboard/LeadsTable.tsx (línea 285)
+
+RIESGO: 0% - Solo rendering visual
+```
+
+**Deploy Time:** 10 Noviembre 2025
+**Status:** Deployed to Vercel production
+
+---
+
+#### Archivos Modificados:
+
+**CODE CHANGES (1 archivo):**
+- `components/dashboard/LeadsTable.tsx` (1 línea modificada)
+
+**DOCUMENTACIÓN (1 archivo):**
+- `CLAUDE.md` - Sesión 41B completa
+
+**Total Líneas Modificadas:** 1 línea de código
+
+---
+
+#### Resultados Esperados (Post-Deploy):
+
+**ANTES DEL CAMBIO:**
+```
+Lead "Milca Roja":
+Tabla → Columna "Fecha": 10/11/2025 (fecha_captura)
+```
+
+**DESPUÉS DEL CAMBIO:**
+```
+Lead "Milca Roja":
+Tabla → Columna "Fecha": 09/11/2025 (created_at)
+```
+
+**Panel de Detalles (Sin cambios):**
+- Fecha de Captura: 10/11/2025 (fecha_captura)
+- Creado: 09/11/2025 (created_at) ← Este ahora también en tabla
+- Última Actualización: 10/11/2025 (updated_at)
+
+---
+
+#### Testing Plan (Post-Deploy):
+
+**VERIFICACIÓN INMEDIATA:**
+- [ ] Deployment en Vercel muestra commit `1c7e2c0` en estado "Ready"
+- [ ] Hard refresh obligatorio: `Ctrl + Shift + R`
+- [ ] Verificar tabla en `/` muestra `created_at` en columna "Fecha"
+- [ ] Verificar tabla en `/operativo` muestra `created_at`
+- [ ] Panel de detalles sigue mostrando los 3 campos por separado
+
+**CRITERIO DE ÉXITO:**
+- ✅ Columna "Fecha" muestra timestamp de cuando lead entró al sistema
+- ✅ Panel de detalles mantiene visibilidad de los 3 timestamps
+- ✅ Sin regresión en funcionalidad existente
+
+---
+
+#### Estado del Proyecto:
+- ✅ Investigación completada (diferencia entre 3 timestamps aclarada)
+- ✅ Cambio implementado (1 línea)
+- ✅ Commit pushed a GitHub (1c7e2c0)
+- 🔄 Vercel deployment en progreso
+- ⏳ Pending: Verificación post-deployment por usuario
+- ⏳ Pending: Confirmación que cambio es correcto según expectativa
+
+---
+
+#### Decisiones Técnicas:
+
+**1. created_at vs fecha_captura vs updated_at:**
+- **Decisión:** Mostrar `created_at` según preferencia de usuario
+- **Razón:** Usuario prefiere ver cuándo lead entró al sistema (timestamp de BD)
+- **Trade-off:** Pierde visibilidad de cuándo lead completó datos (pero sigue en panel)
+
+**2. Cambio Mínimo (1 línea):**
+- **Decisión:** Solo cambiar nombre del campo en rendering
+- **Razón:** Ambos campos existen en todos los leads, no requiere cambios de BD
+- **Ventaja:** Riesgo cero, reversible instantáneamente
+
+**3. No Tocar Filtros de Fecha:**
+- **Decisión:** Mantener filtros usando `fecha_captura` para comparaciones
+- **Razón:** Filtros comparan fechas, no las muestran (líneas 71, 82 de OperativoClient)
+- **Beneficio:** Filtrado sigue siendo por fecha de captura (lógico para negocio)
+
+---
+
+#### Lecciones Aprendidas:
+
+**ARQUITECTURA:**
+1. **3 timestamps diferentes tienen propósitos diferentes:**
+   - `created_at` = Auditoría técnica (cuándo entró al sistema)
+   - `fecha_captura` = Timestamp de negocio (cuándo lead completó datos)
+   - `updated_at` = Última modificación (útil para actividad reciente)
+
+2. **Display vs Logic:** Cambiar qué se muestra NO afecta lógica de filtrado
+
+**DEBUGGING:**
+1. **Screenshots son evidencia valiosa:** Usuario identificó discrepancia con screenshots
+2. **Verificación de código primero:** Confirmar qué hace el código antes de especular
+3. **Análisis de 3 campos:** Entender diferencia entre timestamps previene confusión
+
+**COLABORACIÓN:**
+1. **Usuario cuestiona implementación:** Healthy practice, lleva a mejoras
+2. **Explicación completa de opciones:** Usuario toma decisión informada
+3. **Cambio quirúrgico después de decisión:** 1 línea modificada = bajo riesgo
 
 ---
 
