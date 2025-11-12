@@ -8,9 +8,9 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 10 Noviembre 2025
-**Sesión:** 42 - ✅ FIX CRÍTICO: Session Loss con Split useEffect
+**Sesión:** 43 - ✅ RAG Update: Rubro Opcional en Callao
 **Estado:** ✅ **SISTEMA ESTABLE EN PRODUCCIÓN**
-**Commit:** [Deployed successfully]
+**Documentación:** [SESION_43_RUBRO_OPCIONAL_CALLAO.md](consultas-leo/SESION_43_RUBRO_OPCIONAL_CALLAO.md)
 
 ---
 
@@ -69,7 +69,7 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: OPERATIVO (7 proyectos)
 
 - **[Integraciones](docs/modulos/integraciones.md)** - n8n, webhooks, WhatsApp
-  - Última sesión: 40B (Apertura San Gabriel)
+  - Última sesión: 43 (Rubro opcional Callao)
   - Estado: OPERATIVO (3 flujos activos)
 
 ---
@@ -85,13 +85,14 @@ Documentación cronológica completa de todas las sesiones.
   - Búsqueda Exacta + Import Manual (31)
   - Actualización n8n Callao (32)
 
-- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-42
+- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-43
   - Fix Límite 1000 Leads (33-33C) ✅
   - Emergency Rollback (35B) 🔴
   - Middleware Security (36) ✅
   - Timeout 30s (39) ✅
   - Columna Asistió (41) ✅
   - Split useEffect (42) ✅
+  - Rubro Opcional Callao (43) ✅
 
 ---
 
@@ -140,6 +141,15 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
 
+### **Sesión 43** (10 Nov) - ✅ RAG Update: Rubro Opcional en Callao
+**Cambio:** Campo "rubro" ya no es requerido para lead_completo
+**Requerido ahora:** Solo nombre + fecha y hora de visita
+**n8n Code2:** 2 líneas modificadas (if validation)
+**Template:** Documentación para replicar en Galilea y San Gabriel
+**[Ver detalles →](consultas-leo/SESION_43_RUBRO_OPCIONAL_CALLAO.md)**
+
+---
+
 ### **Sesión 42** (10 Nov) - ✅ FIX CRÍTICO: Split useEffect
 **Problema:** Session loss con "loading" infinito
 **Root Cause:** useEffect único con 2 responsabilidades + dependency que causaba loop
@@ -171,14 +181,6 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 - Teresa cambió de admin → vendedor
 - Sistema queda con 2 admins activos
 **[Ver detalles →](docs/modulos/usuarios.md#sesion-40d)**
-
----
-
-### **Sesión 39** (6 Nov) - ✅ Timeout 8s→30s
-**MEJORA #1 FASE 1:** Aumentar timeout de fetchUserDataWithTimeout
-**Cambio:** 8000ms → 30000ms (3.75x más tolerancia)
-**Beneficio:** Mayor resiliencia a Supabase lento o red inestable
-**[Ver detalles →](docs/modulos/auth.md#sesion-39)**
 
 ---
 
