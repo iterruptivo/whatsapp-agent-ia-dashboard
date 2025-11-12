@@ -99,6 +99,12 @@ Documentación cronológica completa de todas las sesiones.
 
 Optimizaciones y features futuras identificadas pero no implementadas.
 
+- **[Roadmap Sistema de Documentación](docs/ROADMAP_MEJORAS_DOCUMENTACION.md)** 📋
+  - Solución #1: Reestructuración Modular ✅ IMPLEMENTADA (10 Nov 2025)
+  - Solución #2: Python CLI Knowledge Navigator (3-6 meses)
+  - Solución #3: Embeddings + Semantic Search (8-12 meses)
+  - Solución #4: AI-Powered Project Assistant (12+ meses)
+
 - **[Auth Improvements](docs/mejoras-pendientes/auth-improvements.md)**
   - Mejora #1: Retry logic con backoff (FASE 1 completada - timeout 30s)
   - Mejora #2: Configuración explícita Supabase client
