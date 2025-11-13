@@ -83,10 +83,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // SESIÓN 45D: Wrapper with timeout + detailed logging
-  const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 10000) => {
+  // SESIÓN 45F: Cache en localStorage + timeout aumentado
+  const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 30000) => {
     console.log(`[AUTH] Starting fetch user data for ${authUser.email} with ${timeoutMs}ms timeout`);
 
+    // SESIÓN 45F: Intentar leer de cache primero
+    try {
+      const cacheKey = `user_data_${authUser.id}`;
+      const cached = localStorage.getItem(cacheKey);
+
+      if (cached) {
+        const cachedData = JSON.parse(cached);
+        const cacheAge = Date.now() - cachedData.timestamp;
+
+        // Cache válido por 5 minutos
+        if (cacheAge < 5 * 60 * 1000) {
+          console.log('[AUTH] Using cached user data (age:', Math.round(cacheAge / 1000), 'seconds)');
+          return cachedData.user as Usuario;
+        } else {
+          console.log('[AUTH] Cache expired, fetching fresh data');
+        }
+      }
+    } catch (error) {
+      console.warn('[AUTH] Error reading cache:', error);
+    }
+
+    // SESIÓN 45F: Fetch de BD con timeout aumentado a 30s
     const timeoutPromise = new Promise<null>((resolve) =>
       setTimeout(() => {
         console.warn('[AUTH WARNING] Timeout fetching user data after', timeoutMs, 'ms');
@@ -104,6 +126,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.error('[AUTH] fetchUserDataWithTimeout returned null (timeout or DB error)');
       } else {
         console.log('[AUTH] fetchUserDataWithTimeout completed successfully');
+
+        // SESIÓN 45F: Guardar en cache
+        try {
+          const cacheKey = `user_data_${authUser.id}`;
+          localStorage.setItem(cacheKey, JSON.stringify({
+            user: result,
+            timestamp: Date.now()
+          }));
+          console.log('[AUTH] User data cached successfully');
+        } catch (error) {
+          console.warn('[AUTH] Error saving cache:', error);
+        }
       }
 
       return result;

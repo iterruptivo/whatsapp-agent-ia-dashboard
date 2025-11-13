@@ -28,7 +28,14 @@
       "Bash(python3:*)",
       "Bash(git checkout -b feature/real-time-updates)",
       "Bash(git rm:*)",
-      "Bash(npx next build)"
+      "Bash(npx next build)",
+      "Bash(node:*)",
+      "Bash(npm run build:*)",
+      "Bash(\"E:\\Iterruptivo\\Proyectos-Clientes\\EcoPlaza\\AgenteIA-Whatsapp\\dashboard\\consultas-leo\\temp_code2_escaped.txt\")",
+      "Bash(git log:*)",
+      "Bash(npm run lint)",
+      "Bash(git mv:*)",
+      "Bash(npx supabase:*)"
     ],
     "deny": [],
     "ask": []
