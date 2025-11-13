@@ -46,6 +46,16 @@ export interface Vendedor {
   activo: boolean;
 }
 
+// Usuario interface matching Supabase usuarios table
+export interface Usuario {
+  id: string;
+  email: string;
+  nombre: string;
+  rol: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta';
+  vendedor_id: string | null;
+  activo: boolean;
+}
+
 // Get all proyectos from Supabase (only active ones by default)
 export async function getAllProyectos(includeInactive = false): Promise<Proyecto[]> {
   try {
@@ -94,6 +104,32 @@ export async function getAllVendedores(includeInactive = false): Promise<Vendedo
     return data || [];
   } catch (error) {
     console.error('Error in getAllVendedores:', error);
+    return [];
+  }
+}
+
+// Get all usuarios from Supabase (only active ones by default)
+export async function getAllUsuarios(includeInactive = false): Promise<Usuario[]> {
+  try {
+    let query = supabase
+      .from('usuarios')
+      .select('id, email, nombre, rol, vendedor_id, activo');
+
+    // Filter by active status unless includeInactive is true
+    if (!includeInactive) {
+      query = query.eq('activo', true);
+    }
+
+    const { data, error } = await query.order('nombre', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching usuarios:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('Error in getAllUsuarios:', error);
     return [];
   }
 }

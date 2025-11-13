@@ -7,14 +7,15 @@ import PieChartComponent from '@/components/dashboard/PieChart';
 import LeadsTable from '@/components/dashboard/LeadsTable';
 import DateRangeFilter from '@/components/dashboard/DateRangeFilter';
 import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
-import { Lead, Vendedor, getAllVendedores } from '@/lib/db';
+import { Lead, Vendedor, Usuario, getAllVendedores, getAllUsuarios } from '@/lib/db';
 import { assignLeadToVendedor } from '@/lib/actions';
 import { useAuth } from '@/lib/auth-context';
-import { Users, CheckCircle, Clock, TrendingUp, AlertCircle, Download, Upload } from 'lucide-react';
+import { Users, CheckCircle, Clock, TrendingUp, AlertCircle, Download, Upload, Plus, ChevronDown } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { exportLeadsToExcel } from '@/lib/exportToExcel';
 import LeadImportModal from '@/components/leads/LeadImportModal';
+import ManualLeadPanel from '@/components/leads/ManualLeadPanel';
 
 interface DashboardClientProps {
   initialLeads: Lead[];
@@ -39,6 +40,9 @@ export default function DashboardClient({
 
   // Vendedor state (for admin - fetches all vendedores for assignment dropdown)
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
+
+  // Usuarios state (for manual lead panel - fetches all usuarios with email)
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [selectedVendedorFilter, setSelectedVendedorFilter] = useState<string>(''); // Admin-only: filter by specific vendedor
   const [assignmentFilter, setAssignmentFilter] = useState<'todos' | 'sin_asignar'>('todos'); // Admin-only: assignment filter
 
@@ -51,9 +55,16 @@ export default function DashboardClient({
   // Import state (admin only)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
+  // Manual Lead Panel state (admin + vendedor)
+  const [isManualPanelOpen, setIsManualPanelOpen] = useState(false);
+
+  // Dropdown state for import options
+  const [isImportDropdownOpen, setIsImportDropdownOpen] = useState(false);
+
   // Fetch vendedores on mount (only for assignment dropdown in table)
   useEffect(() => {
     getAllVendedores().then(setVendedores);
+    getAllUsuarios().then(setUsuarios);
   }, []);
 
   // Filter leads by date range AND vendedor (admin only)
@@ -236,6 +247,7 @@ export default function DashboardClient({
         onRefresh={onRefresh ? async () => await onRefresh(dateFrom, dateTo) : undefined}
       />
 
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <StatsCard title="Total Leads" value={stats.total} icon={Users} color="primary" />
@@ -333,16 +345,63 @@ export default function DashboardClient({
 
           {/* Export & Import Buttons */}
           <div className="flex items-center gap-2 ml-auto">
-            {/* Import Button (Admin + Vendedor) */}
+            {/* Import Dropdown (Admin + Vendedor) */}
             {(user?.rol === 'admin' || user?.rol === 'vendedor') && (
-              <button
-                onClick={() => setIsImportModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 hover:shadow-md active:scale-95 font-medium transition-all duration-200"
-                title="Importar leads manuales desde CSV/Excel"
-              >
-                <Upload className="w-5 h-5" />
-                <span className="hidden sm:inline">Importar Leads Manuales</span>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setIsImportDropdownOpen(!isImportDropdownOpen)}
+                  className="flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 hover:shadow-md active:scale-95 font-medium transition-all duration-200"
+                  title="Opciones para importar leads manuales"
+                >
+                  <Upload className="w-5 h-5" />
+                  <span className="hidden sm:inline">Importar Leads Manuales</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isImportDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Dropdown Menu */}
+                {isImportDropdownOpen && (
+                  <>
+                    {/* Backdrop to close dropdown */}
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setIsImportDropdownOpen(false)}
+                    />
+
+                    {/* Dropdown Content */}
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-20 overflow-hidden">
+                      <button
+                        onClick={() => {
+                          setIsManualPanelOpen(true);
+                          setIsImportDropdownOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors group"
+                      >
+                        <Plus className="w-5 h-5 text-accent group-hover:scale-110 transition-transform" />
+                        <div>
+                          <p className="font-medium text-gray-900">Agregar Lead</p>
+                          <p className="text-xs text-gray-500">Formulario visual paso a paso</p>
+                        </div>
+                      </button>
+
+                      <div className="border-t border-gray-100" />
+
+                      <button
+                        onClick={() => {
+                          setIsImportModalOpen(true);
+                          setIsImportDropdownOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors group"
+                      >
+                        <Upload className="w-5 h-5 text-secondary group-hover:scale-110 transition-transform" />
+                        <div>
+                          <p className="font-medium text-gray-900">Importar CSV/Excel</p>
+                          <p className="text-xs text-gray-500">Subir archivo con múltiples leads</p>
+                        </div>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
 
             {/* Export Button */}
@@ -378,6 +437,24 @@ export default function DashboardClient({
 
       {/* Lead Detail Panel */}
       <LeadDetailPanel lead={selectedLead} isOpen={isPanelOpen} onClose={handleClosePanel} />
+
+      {/* Manual Lead Panel (Admin + Vendedor) */}
+      {(user?.rol === 'admin' || user?.rol === 'vendedor') && selectedProyecto && (
+        <ManualLeadPanel
+          isOpen={isManualPanelOpen}
+          onClose={() => setIsManualPanelOpen(false)}
+          onSuccess={() => {
+            setIsManualPanelOpen(false);
+            // Refresh leads after successful import
+            if (onRefresh) {
+              onRefresh(dateFrom, dateTo);
+            }
+          }}
+          proyectoId={selectedProyecto.id}
+          proyectoNombre={selectedProyecto.nombre}
+          usuarios={usuarios}
+        />
+      )}
 
       {/* Import Modal (Admin + Vendedor) */}
       {(user?.rol === 'admin' || user?.rol === 'vendedor') && selectedProyecto && (

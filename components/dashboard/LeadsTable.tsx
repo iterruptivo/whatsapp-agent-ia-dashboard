@@ -105,7 +105,7 @@ export default function LeadsTable({
     const estadoKey = estado || 'conversacion_abandonada';
 
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${styles[estadoKey] || styles.conversacion_abandonada}`}>
+      <span className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${styles[estadoKey] || styles.conversacion_abandonada}`}>
         {labels[estadoKey] || 'Desconocido'}
       </span>
     );
@@ -142,41 +142,43 @@ export default function LeadsTable({
 
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-200">
-              <th className="text-left py-3 px-4 text-gray-600 font-medium">Nombre</th>
-              <th className="text-left py-3 px-4 text-gray-600 font-medium">Teléfono</th>
-              <th className="text-left py-3 px-4 text-gray-600 font-medium">Rubro</th>
-              <th className="text-left py-3 px-4 text-gray-600 font-medium">
+          <thead className="bg-primary">
+            <tr className="border-b border-primary">
+              <th className="text-left py-3 px-4 text-white font-medium">Nombre</th>
+              <th className="text-left py-3 px-4 text-white font-medium">Teléfono</th>
+              <th className="text-left py-3 px-4 text-white font-medium">Rubro</th>
+              <th className="text-left py-3 px-4 text-white font-medium">
                 <div className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
                   Horario de Visita
                 </div>
               </th>
-              <th className="text-left py-3 px-4 text-gray-600 font-medium">
+              <th className="text-left py-3 px-4 text-white font-medium">
                 <div className="flex items-center gap-1">
                   <Mail className="w-4 h-4" />
                   Email
                 </div>
               </th>
-              <th className="text-left py-3 px-4 text-gray-600 font-medium">Asistió</th>
-              <th className="text-left py-3 px-4 text-gray-600 font-medium">Estado</th>
-              <th className="text-left py-3 px-4 text-gray-600 font-medium">
+              <th className="text-left py-3 px-4 text-white font-medium">Asistió</th>
+              <th className="text-left py-3 px-4 text-white font-medium">Estado</th>
+              <th className="text-left py-3 px-4 text-white font-medium">
                 <div className="flex items-center gap-1">
                   <UserCheck className="w-4 h-4" />
                   Vendedor Asignado
                 </div>
               </th>
-              <th className="text-left py-3 px-4 text-gray-600 font-medium">Fecha</th>
+              <th className="text-left py-3 px-4 text-white font-medium">Fecha</th>
               {onLeadClick && <th className="w-8"></th>}
             </tr>
           </thead>
           <tbody>
-            {paginatedLeads.map((lead) => (
+            {paginatedLeads.map((lead, index) => (
               <tr
                 key={lead.id}
                 onClick={() => onLeadClick?.(lead)}
                 className={`border-b border-gray-100 transition-colors ${
+                  index % 2 === 0 ? 'bg-white' : 'bg-[#f4f4f4]'
+                } ${
                   onLeadClick ? 'hover:bg-gray-50 cursor-pointer' : ''
                 }`}
               >
