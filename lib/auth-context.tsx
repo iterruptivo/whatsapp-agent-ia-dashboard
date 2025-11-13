@@ -245,11 +245,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ============================================================================
-  // SESIÓN 45C: FIX LOOP INFINITO - Promise compartida previene race conditions
+  // SESIÓN 45E: FIX DEFINITIVO - Solo validar en login, confiar en cookies
   // ============================================================================
   // useEffect #1: Initialize auth system ONCE (no dependency)
   useEffect(() => {
-    // SESIÓN 45C: Prevenir múltiples inicializaciones
+    // SESIÓN 45E: Prevenir múltiples inicializaciones
     if (hasInitialized.current) {
       console.log('[AUTH] Already initialized, skipping...');
       return;
@@ -260,11 +260,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        // SESIÓN 45C FIX: Skip logout en carga inicial (no hay sesión todavía)
-        const userData = await validateAndFetchUserData(10000, true);
+        // SESIÓN 45E: Leer sesión de cookies (NO validar con servidor)
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[AUTH] Session from cookies:', session ? 'exists' : 'none');
 
-        if (userData) {
-          setUser(userData);
+        if (session?.user) {
+          setSupabaseUser(session.user);
+
+          // Fetch user data directamente (confiar en la sesión)
+          const userData = await fetchUserDataWithTimeout(session.user, 10000);
+
+          if (userData) {
+            setUser(userData);
+          } else {
+            // Si falla fetch de datos, logout
+            console.error('[AUTH] Failed to fetch user data on init, logging out');
+            await supabase.auth.signOut();
+          }
         }
 
         setLoading(false);
@@ -281,55 +293,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('[AUTH] State changed:', event);
 
-        // SESIÓN 45 FIX: Manejar SIGNED_OUT explícitamente
+        // SESIÓN 45E: Manejar SIGNED_OUT explícitamente
         if (event === 'SIGNED_OUT') {
+          console.log('[AUTH] SIGNED_OUT detected');
           setUser(null);
           setSupabaseUser(null);
           setLoading(false);
           return;
         }
 
-        // SESIÓN 45C FIX: Manejar INITIAL_SESSION (espera validación si está en progreso)
+        // SESIÓN 45E: INITIAL_SESSION - Solo actualizar si tenemos datos
         if (event === 'INITIAL_SESSION') {
           console.log('[AUTH] INITIAL_SESSION detected');
-
-          if (session?.user) {
-            console.log('[AUTH] INITIAL_SESSION with valid session, validating...');
-            // SESIÓN 45C: Si initializeAuth ya está validando, esto esperará el resultado
-            const userData = await validateAndFetchUserData(10000, true);
-            if (userData) {
-              setUser(userData);
-            }
-          } else {
-            console.log('[AUTH] INITIAL_SESSION without session, waiting for SIGNED_IN event...');
-          }
-
+          // initializeAuth ya manejó esto, no hacer nada
           setLoading(false);
           return;
         }
 
-        // SESIÓN 45D FIX: SIGNED_IN y USER_UPDATED (validación inteligente)
+        // SESIÓN 45E: SIGNED_IN - Fetch datos SOLO si usuario cambió (NO validar con servidor)
         if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-          if (session?.user) {
-            // SESIÓN 45D: Solo validar si NO tenemos usuario O si cambió el ID
-            const needsValidation = !user || user.id !== session.user.id;
-            const hasValidationInProgress = validationPromise.current !== null;
+          console.log(`[AUTH] ${event} detected`);
 
-            if (needsValidation && !hasValidationInProgress) {
-              console.log('[AUTH] New session detected, validating...');
-              const userData = await validateAndFetchUserData(10000);
+          if (session?.user) {
+            // Solo fetch si no tenemos usuario O si cambió el ID
+            if (!user || user.id !== session.user.id) {
+              console.log('[AUTH] New user detected, fetching data...');
+              setSupabaseUser(session.user);
+
+              // Fetch datos directamente (NO validar con servidor)
+              const userData = await fetchUserDataWithTimeout(session.user, 10000);
+
               if (userData) {
                 setUser(userData);
-              }
-            } else if (needsValidation && hasValidationInProgress) {
-              console.log('[AUTH] New session but validation in progress, waiting...');
-              // Esperar la validación en progreso
-              const userData = await validateAndFetchUserData(10000);
-              if (userData) {
-                setUser(userData);
+              } else {
+                console.error('[AUTH] Failed to fetch user data, logging out');
+                await supabase.auth.signOut();
               }
             } else {
-              console.log('[AUTH] Session event but user already validated, skipping...');
+              console.log('[AUTH] Same user, skipping fetch');
             }
             setLoading(false);
           } else {
