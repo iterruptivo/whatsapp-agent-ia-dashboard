@@ -7,10 +7,10 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 10 Noviembre 2025
-**Sesión:** 43 - ✅ RAG Update: Rubro Opcional en Callao
+**Fecha:** 12 Noviembre 2025
+**Sesión:** 44 - ✅ Panel de Entrada Manual de Leads + UX Improvements
 **Estado:** ✅ **SISTEMA ESTABLE EN PRODUCCIÓN**
-**Documentación:** [SESION_43_RUBRO_OPCIONAL_CALLAO.md](consultas-leo/SESION_43_RUBRO_OPCIONAL_CALLAO.md)
+**Documentación:** [SESION_44_MANUAL_LEAD_PANEL.md](consultas-leo/SESION_44_MANUAL_LEAD_PANEL.md)
 
 ---
 
@@ -20,7 +20,7 @@
 | Módulo | Estado | Última Actualización | Métricas |
 |--------|--------|---------------------|----------|
 | [Autenticación](docs/modulos/auth.md) | ✅ ESTABLE | Sesión 42 (10 Nov) | Uptime: 99.9% |
-| [Leads](docs/modulos/leads.md) | ✅ OPERATIVO | Sesión 41B (10 Nov) | 1,417 leads |
+| [Leads](docs/modulos/leads.md) | ✅ OPERATIVO | Sesión 44 (12 Nov) | 1,417 leads |
 | [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | Sesión 38 (5 Nov) | 823 locales |
 | [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | Sesión 40D (8 Nov) | 22 usuarios |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
@@ -53,7 +53,7 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: ESTABLE (session loss eliminado)
 
 - **[Leads](docs/modulos/leads.md)** - Captura, gestión, import manual
-  - Última sesión: 41B (Columna Fecha: created_at)
+  - Última sesión: 44 (Panel entrada manual + UX improvements)
   - Estado: OPERATIVO (1,417 leads con keyset pagination)
 
 - **[Locales](docs/modulos/locales.md)** - Semáforo, monto de venta, tracking
@@ -85,7 +85,7 @@ Documentación cronológica completa de todas las sesiones.
   - Búsqueda Exacta + Import Manual (31)
   - Actualización n8n Callao (32)
 
-- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-43
+- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-44
   - Fix Límite 1000 Leads (33-33C) ✅
   - Emergency Rollback (35B) 🔴
   - Middleware Security (36) ✅
@@ -93,6 +93,7 @@ Documentación cronológica completa de todas las sesiones.
   - Columna Asistió (41) ✅
   - Split useEffect (42) ✅
   - Rubro Opcional Callao (43) ✅
+  - Panel Entrada Manual Leads (44) ✅
 
 ---
 
@@ -141,6 +142,16 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
 
+### **Sesión 44** (12 Nov) - ✅ Panel Entrada Manual de Leads + UX Improvements
+**Feature:** Panel lateral para agregar leads uno por uno (alternativa a CSV)
+**Validaciones:** Phone internacional, email, vendedor, nombre (100% consistente)
+**UX:** Dropdown "Importar Leads Manuales", tabla con header verde, zebra striping
+**UI:** Border rojo + mensaje de error para todos los campos
+**Archivos:** ManualLeadPanel.tsx (nuevo, 620 líneas), LeadsTable.tsx, DashboardClient.tsx
+**[Ver detalles →](consultas-leo/SESION_44_MANUAL_LEAD_PANEL.md)**
+
+---
+
 ### **Sesión 43** (10 Nov) - ✅ RAG Update: Rubro Opcional en Callao
 **Cambio:** Campo "rubro" ya no es requerido para lead_completo
 **Requerido ahora:** Solo nombre + fecha y hora de visita
@@ -175,21 +186,13 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ---
 
-### **Sesión 40D** (8 Nov) - ✅ Nuevo Admin: Bryan
-**Gestión de usuarios:**
-- Nuevo admin: Bryan Alvarez Laguna
-- Teresa cambió de admin → vendedor
-- Sistema queda con 2 admins activos
-**[Ver detalles →](docs/modulos/usuarios.md#sesion-40d)**
-
----
-
 ## 🚀 FEATURES PRINCIPALES
 
 ### **Dashboard Admin**
 - ✅ Ver todos los leads de todos los proyectos
 - ✅ Asignar/reasignar vendedores
-- ✅ Importar leads manuales (CSV/Excel)
+- ✅ Importar leads manuales (formulario visual uno por uno)
+- ✅ Importar leads masivos (CSV/Excel)
 - ✅ Importar locales (CSV)
 - ✅ Exportar leads a Excel
 - ✅ Gestionar usuarios (CRUD)
@@ -198,6 +201,7 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ### **Dashboard Vendedor**
 - ✅ Ver solo leads asignados
+- ✅ Agregar leads manuales (formulario visual uno por uno)
 - ✅ Gestionar locales (semáforo 4 estados)
 - ✅ Capturar monto de venta en estado naranja
 - ✅ Tracking de leads en locales
