@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { useRouter } from 'next/navigation';
@@ -44,6 +44,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Usuario | null>(null);
   const [selectedProyecto, setSelectedProyecto] = useState<Proyecto | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // SESIÓN 45B: Prevenir validaciones simultáneas
+  const isValidating = useRef(false);
+  const hasInitialized = useRef(false);
 
   // ============================================================================
   // FETCH USER DATA FROM USUARIOS TABLE (WITH TIMEOUT)
@@ -100,9 +104,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ============================================================================
-  // SESIÓN 45 FIX: Validar JWT con servidor ANTES de fetch
+  // SESIÓN 45B FIX: Validar JWT con servidor ANTES de fetch (con protección contra llamadas simultáneas)
   // ============================================================================
-  const validateAndFetchUserData = async (timeoutMs = 10000): Promise<Usuario | null> => {
+  const validateAndFetchUserData = async (timeoutMs = 10000, skipLogoutOnError = false): Promise<Usuario | null> => {
+    // Prevenir validaciones simultáneas
+    if (isValidating.current) {
+      console.log('[AUTH] Validation already in progress, skipping...');
+      return null;
+    }
+
+    isValidating.current = true;
+
     try {
       console.log('[AUTH] Validating session with server...');
 
@@ -111,6 +123,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (userError || !validatedUser) {
         console.error('[AUTH] Session validation failed:', userError?.message);
+
+        // SESIÓN 45B: NO hacer logout si estamos en inicialización y no hay sesión (es normal)
+        if (skipLogoutOnError) {
+          console.log('[AUTH] No session found, but skipping logout (initial load)');
+          isValidating.current = false;
+          return null;
+        }
+
         console.log('[AUTH] Forcing logout (invalid/expired session)');
 
         // JWT inválido/expirado → Logout automático
@@ -119,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setLoading(false);
         router.push('/login');
+        isValidating.current = false;
         return null;
       }
 
@@ -135,17 +156,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setLoading(false);
         router.push('/login');
+        isValidating.current = false;
         return null;
       }
 
+      isValidating.current = false;
       return userData;
     } catch (error) {
       console.error('[AUTH ERROR] Unexpected error in validateAndFetchUserData:', error);
-      await supabase.auth.signOut();
-      setSupabaseUser(null);
-      setUser(null);
-      setLoading(false);
-      router.push('/login');
+
+      if (!skipLogoutOnError) {
+        await supabase.auth.signOut();
+        setSupabaseUser(null);
+        setUser(null);
+        setLoading(false);
+        router.push('/login');
+      }
+
+      isValidating.current = false;
       return null;
     }
   };
@@ -180,16 +208,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ============================================================================
-  // SESIÓN 45: FIX LOOP INFINITO - Validar antes de fetch
+  // SESIÓN 45B: FIX LOOP INFINITO - Validar antes de fetch (con protección contra re-inicializaciones)
   // ============================================================================
   // useEffect #1: Initialize auth system ONCE (no dependency)
   useEffect(() => {
+    // SESIÓN 45B: Prevenir múltiples inicializaciones
+    if (hasInitialized.current) {
+      console.log('[AUTH] Already initialized, skipping...');
+      return;
+    }
+
     console.log('[AUTH] Initializing auth system...');
+    hasInitialized.current = true;
 
     const initializeAuth = async () => {
       try {
-        // SESIÓN 45 FIX: Usar validateAndFetchUserData en vez de getSession
-        const userData = await validateAndFetchUserData(10000);
+        // SESIÓN 45B FIX: Skip logout en carga inicial (no hay sesión todavía)
+        const userData = await validateAndFetchUserData(10000, true);
 
         if (userData) {
           setUser(userData);
@@ -217,29 +252,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // SESIÓN 45 FIX: Manejar INITIAL_SESSION explícitamente
+        // SESIÓN 45B FIX: Manejar INITIAL_SESSION explícitamente (solo si hay sesión)
         if (event === 'INITIAL_SESSION') {
-          console.log('[AUTH] INITIAL_SESSION detected, validating...');
+          console.log('[AUTH] INITIAL_SESSION detected');
 
           if (session?.user) {
-            // Validar antes de fetch
-            const userData = await validateAndFetchUserData(10000);
+            console.log('[AUTH] INITIAL_SESSION with valid session, validating...');
+            // Validar con skipLogoutOnError porque podría estar recuperando sesión
+            const userData = await validateAndFetchUserData(10000, true);
             if (userData) {
               setUser(userData);
             }
+          } else {
+            console.log('[AUTH] INITIAL_SESSION without session, waiting for SIGNED_IN event...');
           }
 
           setLoading(false);
           return;
         }
 
-        // SESIÓN 45 FIX: SIGNED_IN y USER_UPDATED
+        // SESIÓN 45B FIX: SIGNED_IN y USER_UPDATED (solo validar si NO estamos ya validados)
         if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           if (session?.user) {
-            // Validar antes de fetch
-            const userData = await validateAndFetchUserData(10000);
-            if (userData) {
-              setUser(userData);
+            // Solo validar si no tenemos usuario todavía o si cambió el ID
+            if (!user || user.id !== session.user.id) {
+              console.log('[AUTH] New session detected, validating...');
+              const userData = await validateAndFetchUserData(10000);
+              if (userData) {
+                setUser(userData);
+              }
+            } else {
+              console.log('[AUTH] Session event but user already validated, skipping...');
             }
             setLoading(false);
           } else {
