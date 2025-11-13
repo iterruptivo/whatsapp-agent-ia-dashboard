@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // CRITICAL FIX: Wrapper with timeout to prevent infinite loading
-  const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 30000) => {
+  const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 10000) => {
     const timeoutPromise = new Promise<null>((resolve) =>
       setTimeout(() => {
         console.warn('[AUTH WARNING] Timeout fetching user data after', timeoutMs, 'ms');
@@ -95,6 +95,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ]);
     } catch (error) {
       console.error('[AUTH ERROR] Error in fetchUserDataWithTimeout:', error);
+      return null;
+    }
+  };
+
+  // ============================================================================
+  // SESIÓN 45 FIX: Validar JWT con servidor ANTES de fetch
+  // ============================================================================
+  const validateAndFetchUserData = async (timeoutMs = 10000): Promise<Usuario | null> => {
+    try {
+      console.log('[AUTH] Validating session with server...');
+
+      // PASO 1: Validar JWT con servidor (NO cookies)
+      const { data: { user: validatedUser }, error: userError } = await supabase.auth.getUser();
+
+      if (userError || !validatedUser) {
+        console.error('[AUTH] Session validation failed:', userError?.message);
+        console.log('[AUTH] Forcing logout (invalid/expired session)');
+
+        // JWT inválido/expirado → Logout automático
+        await supabase.auth.signOut();
+        setSupabaseUser(null);
+        setUser(null);
+        setLoading(false);
+        router.push('/login');
+        return null;
+      }
+
+      console.log('[AUTH] Session validated successfully for:', validatedUser.email);
+
+      // PASO 2: Fetch user data SOLO si JWT es válido
+      setSupabaseUser(validatedUser);
+      const userData = await fetchUserDataWithTimeout(validatedUser, timeoutMs);
+
+      if (!userData) {
+        console.error('[AUTH] Failed to fetch user data, forcing logout');
+        await supabase.auth.signOut();
+        setSupabaseUser(null);
+        setUser(null);
+        setLoading(false);
+        router.push('/login');
+        return null;
+      }
+
+      return userData;
+    } catch (error) {
+      console.error('[AUTH ERROR] Unexpected error in validateAndFetchUserData:', error);
+      await supabase.auth.signOut();
+      setSupabaseUser(null);
+      setUser(null);
+      setLoading(false);
+      router.push('/login');
       return null;
     }
   };
@@ -129,7 +180,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ============================================================================
-  // FIX CRÍTICO: Split useEffect para prevenir doble subscription
+  // SESIÓN 45: FIX LOOP INFINITO - Validar antes de fetch
   // ============================================================================
   // useEffect #1: Initialize auth system ONCE (no dependency)
   useEffect(() => {
@@ -137,11 +188,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        // SESIÓN 45 FIX: Usar validateAndFetchUserData en vez de getSession
+        const userData = await validateAndFetchUserData(10000);
 
-        if (session?.user) {
-          setSupabaseUser(session.user);
-          const userData = await fetchUserDataWithTimeout(session.user, 30000);
+        if (userData) {
           setUser(userData);
         }
 
@@ -159,6 +209,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       async (event, session) => {
         console.log('[AUTH] State changed:', event);
 
+        // SESIÓN 45 FIX: Manejar SIGNED_OUT explícitamente
         if (event === 'SIGNED_OUT') {
           setUser(null);
           setSupabaseUser(null);
@@ -166,17 +217,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-          setSupabaseUser(session?.user || null);
+        // SESIÓN 45 FIX: Manejar INITIAL_SESSION explícitamente
+        if (event === 'INITIAL_SESSION') {
+          console.log('[AUTH] INITIAL_SESSION detected, validating...');
 
           if (session?.user) {
-            // SOLUCIÓN #2: Fetch ANTES de setLoading(false)
-            const userData = await fetchUserDataWithTimeout(session.user, 30000);
-            setUser(userData);
-            setLoading(false); // ← Después de fetch completo
+            // Validar antes de fetch
+            const userData = await validateAndFetchUserData(10000);
+            if (userData) {
+              setUser(userData);
+            }
+          }
+
+          setLoading(false);
+          return;
+        }
+
+        // SESIÓN 45 FIX: SIGNED_IN y USER_UPDATED
+        if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          if (session?.user) {
+            // Validar antes de fetch
+            const userData = await validateAndFetchUserData(10000);
+            if (userData) {
+              setUser(userData);
+            }
+            setLoading(false);
           } else {
             setLoading(false);
           }
+        }
+
+        // SESIÓN 45 FIX: TOKEN_REFRESHED (nuevo evento)
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('[AUTH] Token refreshed successfully');
+          // No hacer nada, el token se refrescó automáticamente
+          // El usuario ya está logueado, no necesitamos re-fetch
         }
       }
     );
