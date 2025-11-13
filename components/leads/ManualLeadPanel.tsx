@@ -65,6 +65,9 @@ export default function ManualLeadPanel({
   const [vendedorSearch, setVendedorSearch] = useState('');
   const vendedorDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Validación de nombre
+  const [nombreError, setNombreError] = useState('');
+
   // Validación de teléfono
   const [phoneError, setPhoneError] = useState('');
 
@@ -104,13 +107,14 @@ export default function ManualLeadPanel({
   // 1. Agregar lead a la lista
   const handleAddLead = () => {
     // Reset errors
+    setNombreError('');
     setPhoneError('');
     setEmailError('');
     setVendedorError('');
 
     // Validar campos requeridos
     if (!currentForm.nombre.trim()) {
-      alert('El nombre es requerido');
+      setNombreError('El nombre es requerido');
       return;
     }
     if (!currentForm.telefono.trim()) {
@@ -150,6 +154,7 @@ export default function ManualLeadPanel({
 
     // Limpiar formulario y errores
     setCurrentForm(EMPTY_FORM);
+    setNombreError('');
     setPhoneError('');
     setEmailError('');
     setVendedorError('');
@@ -222,6 +227,7 @@ export default function ManualLeadPanel({
   const handleCancelEdit = () => {
     setCurrentForm(EMPTY_FORM);
     setEditingIndex(null);
+    setNombreError('');
     setPhoneError('');
     setEmailError('');
     setVendedorError('');
@@ -337,11 +343,23 @@ export default function ManualLeadPanel({
                   type="text"
                   placeholder="Ej: Juan Pérez García"
                   value={currentForm.nombre}
-                  onChange={(e) =>
-                    setCurrentForm({ ...currentForm, nombre: e.target.value })
-                  }
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+                  onChange={(e) => {
+                    setCurrentForm({ ...currentForm, nombre: e.target.value });
+                    // Limpiar error al empezar a escribir
+                    if (nombreError) setNombreError('');
+                  }}
+                  className={`w-full px-4 py-2.5 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:border-transparent outline-none transition-all ${
+                    nombreError
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-primary'
+                  }`}
                 />
+                {nombreError && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {nombreError}
+                  </p>
+                )}
               </div>
 
               {/* Input: Teléfono */}
