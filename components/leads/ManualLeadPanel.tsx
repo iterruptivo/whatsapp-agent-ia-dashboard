@@ -71,6 +71,9 @@ export default function ManualLeadPanel({
   // Validación de email
   const [emailError, setEmailError] = useState('');
 
+  // Validación de vendedor
+  const [vendedorError, setVendedorError] = useState('');
+
   // ====== VALIDATION FUNCTIONS ======
 
   // Validar teléfono internacional
@@ -103,6 +106,7 @@ export default function ManualLeadPanel({
     // Reset errors
     setPhoneError('');
     setEmailError('');
+    setVendedorError('');
 
     // Validar campos requeridos
     if (!currentForm.nombre.trim()) {
@@ -129,7 +133,7 @@ export default function ManualLeadPanel({
     }
 
     if (!currentForm.email_vendedor) {
-      alert('Debes seleccionar un vendedor');
+      setVendedorError('Debes seleccionar un vendedor');
       return;
     }
 
@@ -148,6 +152,7 @@ export default function ManualLeadPanel({
     setCurrentForm(EMPTY_FORM);
     setPhoneError('');
     setEmailError('');
+    setVendedorError('');
   };
 
   // 2. Editar lead de la lista
@@ -219,6 +224,7 @@ export default function ManualLeadPanel({
     setEditingIndex(null);
     setPhoneError('');
     setEmailError('');
+    setVendedorError('');
   };
 
   // 8. Seleccionar vendedor
@@ -226,6 +232,8 @@ export default function ManualLeadPanel({
     setCurrentForm({ ...currentForm, email_vendedor: email });
     setIsVendedorDropdownOpen(false);
     setVendedorSearch('');
+    // Limpiar error al seleccionar vendedor
+    if (vendedorError) setVendedorError('');
   };
 
   // Close dropdown when clicking outside
@@ -377,7 +385,11 @@ export default function ManualLeadPanel({
                   <button
                     type="button"
                     onClick={() => setIsVendedorDropdownOpen(!isVendedorDropdownOpen)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all text-left flex items-center justify-between"
+                    className={`w-full px-4 py-2.5 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:border-transparent outline-none transition-all text-left flex items-center justify-between ${
+                      vendedorError
+                        ? 'border-red-500 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-primary'
+                    }`}
                   >
                     <span className={currentForm.email_vendedor ? 'text-gray-900' : 'text-gray-400'}>
                       {currentForm.email_vendedor
@@ -438,6 +450,13 @@ export default function ManualLeadPanel({
                     </div>
                   )}
                 </div>
+                {/* Error message */}
+                {vendedorError && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {vendedorError}
+                  </p>
+                )}
               </div>
 
               {/* Input: Email (opcional) */}
