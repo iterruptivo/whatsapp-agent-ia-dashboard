@@ -83,8 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // CRITICAL FIX: Wrapper with timeout to prevent infinite loading
+  // SESIÓN 45D: Wrapper with timeout + detailed logging
   const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 10000) => {
+    console.log(`[AUTH] Starting fetch user data for ${authUser.email} with ${timeoutMs}ms timeout`);
+
     const timeoutPromise = new Promise<null>((resolve) =>
       setTimeout(() => {
         console.warn('[AUTH WARNING] Timeout fetching user data after', timeoutMs, 'ms');
@@ -93,10 +95,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     try {
-      return await Promise.race([
+      const result = await Promise.race([
         fetchUserData(authUser),
         timeoutPromise
       ]);
+
+      if (result === null) {
+        console.error('[AUTH] fetchUserDataWithTimeout returned null (timeout or DB error)');
+      } else {
+        console.log('[AUTH] fetchUserDataWithTimeout completed successfully');
+      }
+
+      return result;
     } catch (error) {
       console.error('[AUTH ERROR] Error in fetchUserDataWithTimeout:', error);
       return null;
@@ -104,13 +114,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ============================================================================
-  // SESIÓN 45C FIX: Validar JWT con servidor ANTES de fetch (Promise compartida)
+  // SESIÓN 45D FIX: Promise compartida con timeout de seguridad
   // ============================================================================
   const validateAndFetchUserData = async (timeoutMs = 10000, skipLogoutOnError = false): Promise<Usuario | null> => {
-    // Si hay una validación en progreso, ESPERAR a que termine (no skip)
+    // Si hay una validación en progreso, ESPERAR a que termine con timeout de seguridad
     if (validationPromise.current) {
       console.log('[AUTH] Validation already in progress, waiting for result...');
-      return validationPromise.current;
+
+      // SESIÓN 45D: Timeout de seguridad - si la Promise no resuelve en 12s, limpiar y continuar
+      const safetyTimeout = new Promise<Usuario | null>((resolve) => {
+        setTimeout(() => {
+          console.warn('[AUTH] Shared promise timeout, cleaning up and retrying...');
+          validationPromise.current = null;
+          resolve(null);
+        }, 12000); // 12s > 10s (timeout de fetch)
+      });
+
+      const result = await Promise.race([
+        validationPromise.current,
+        safetyTimeout
+      ]);
+
+      // Si el timeout ganó, result será null y validationPromise.current ya está limpia
+      if (result === null && validationPromise.current === null) {
+        console.log('[AUTH] Retrying validation after shared promise timeout...');
+        // Reintentar sin el shared promise
+        return validateAndFetchUserData(timeoutMs, skipLogoutOnError);
+      }
+
+      return result;
     }
 
     // Crear nueva Promise y guardarla
@@ -124,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (userError || !validatedUser) {
           console.error('[AUTH] Session validation failed:', userError?.message);
 
-          // SESIÓN 45C: NO hacer logout si estamos en inicialización y no hay sesión (es normal)
+          // SESIÓN 45D: NO hacer logout si estamos en inicialización y no hay sesión (es normal)
           if (skipLogoutOnError) {
             console.log('[AUTH] No session found, but skipping logout (initial load)');
             return null;
@@ -157,6 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return null;
         }
 
+        console.log('[AUTH] User data fetched successfully');
         return userData;
       } catch (error) {
         console.error('[AUTH ERROR] Unexpected error in validateAndFetchUserData:', error);
@@ -172,6 +205,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return null;
       } finally {
         // Limpiar Promise cuando termine (éxito o error)
+        console.log('[AUTH] Cleaning up shared promise');
         validationPromise.current = null;
       }
     })();
@@ -274,13 +308,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // SESIÓN 45C FIX: SIGNED_IN y USER_UPDATED (solo validar si NO estamos ya validados)
+        // SESIÓN 45D FIX: SIGNED_IN y USER_UPDATED (validación inteligente)
         if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           if (session?.user) {
-            // Solo validar si no tenemos usuario todavía o si cambió el ID
-            if (!user || user.id !== session.user.id) {
+            // SESIÓN 45D: Solo validar si NO tenemos usuario O si cambió el ID
+            const needsValidation = !user || user.id !== session.user.id;
+            const hasValidationInProgress = validationPromise.current !== null;
+
+            if (needsValidation && !hasValidationInProgress) {
               console.log('[AUTH] New session detected, validating...');
-              // SESIÓN 45C: Si hay validación en progreso, esperará el resultado
+              const userData = await validateAndFetchUserData(10000);
+              if (userData) {
+                setUser(userData);
+              }
+            } else if (needsValidation && hasValidationInProgress) {
+              console.log('[AUTH] New session but validation in progress, waiting...');
+              // Esperar la validación en progreso
               const userData = await validateAndFetchUserData(10000);
               if (userData) {
                 setUser(userData);
