@@ -52,6 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // SESIÓN 45G: Flag para prevenir loop de eventos durante inicialización
   const isInitializing = useRef(false);
 
+  // SESIÓN 45H: Timestamp para ignorar eventos inmediatamente después de init
+  const ignoreEventsUntil = useRef<number>(0);
+
   // ============================================================================
   // FETCH USER DATA FROM USUARIOS TABLE (WITH TIMEOUT)
   // ============================================================================
@@ -326,7 +329,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } finally {
         // SESIÓN 45G: Inicialización completa, permitir que eventos se procesen
         isInitializing.current = false;
-        console.log('[AUTH] Initialization complete, events can now be processed');
+
+        // SESIÓN 45H: Ignorar eventos por 2 segundos después de init (previene loop)
+        ignoreEventsUntil.current = Date.now() + 2000;
+        console.log('[AUTH] Initialization complete, ignoring events for 2s to prevent loop');
       }
     };
 
@@ -340,6 +346,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // SESIÓN 45G: IGNORAR eventos durante inicialización (previene loop)
         if (isInitializing.current) {
           console.log('[AUTH] ⏸️ Ignoring event during initialization:', event);
+          return;
+        }
+
+        // SESIÓN 45H: IGNORAR eventos inmediatamente después de init (previene loop)
+        if (Date.now() < ignoreEventsUntil.current) {
+          console.log('[AUTH] ⏸️ Ignoring event after initialization (cooldown period):', event);
           return;
         }
 
@@ -491,6 +503,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta') {
         router.push('/locales');
       }
+
+      // SESIÓN 45H: Resetear cooldown para que eventos de login se procesen
+      ignoreEventsUntil.current = 0;
 
       return { success: true };
     } catch (error) {
