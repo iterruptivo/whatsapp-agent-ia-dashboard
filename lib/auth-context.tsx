@@ -385,39 +385,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // SESIÓN 45E: SIGNED_IN - Fetch datos SOLO si usuario cambió (NO validar con servidor)
+        // SESIÓN 45I: TOKEN_REFRESHED - Auto-refresh de JWT cada ~55min (NO hacer fetch)
+        if (event === 'TOKEN_REFRESHED') {
+          console.log('[AUTH] ✅ Token refreshed successfully (auto-refresh every ~55min)');
+          // No hacer nada - el token se refrescó automáticamente
+          // El usuario ya está logueado, NO necesitamos re-fetch ni re-validar
+          return;
+        }
+
+        // SESIÓN 45I: SIGNED_IN - Solo fetch si es LOGIN REAL (no token refresh)
         if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           console.log(`[AUTH] ${event} detected`);
 
           if (session?.user) {
-            // Solo fetch si no tenemos usuario O si cambió el ID
-            if (!user || user.id !== session.user.id) {
-              console.log('[AUTH] New user detected, fetching data...');
+            // SESIÓN 45I: Solo fetch si NO hay usuario previo (es login real)
+            if (!user) {
+              console.log('[AUTH] New login detected, fetching user data...');
               setSupabaseUser(session.user);
 
-              // Fetch datos directamente (NO validar con servidor)
-              const userData = await fetchUserDataWithTimeout(session.user, 10000);
+              // SESIÓN 45I: Timeout aumentado a 30s (plan gratuito puede tardar)
+              const userData = await fetchUserDataWithTimeout(session.user, 30000);
 
               if (userData) {
                 setUser(userData);
               } else {
-                console.error('[AUTH] Failed to fetch user data, logging out');
+                console.error('[AUTH] Failed to fetch user data on login, logging out');
+                await supabase.auth.signOut();
+              }
+            } else if (user.id !== session.user.id) {
+              // Usuario diferente (edge case: cambio de cuenta)
+              console.log('[AUTH] Different user detected, fetching new user data...');
+              setSupabaseUser(session.user);
+              const userData = await fetchUserDataWithTimeout(session.user, 30000);
+              if (userData) {
+                setUser(userData);
+              } else {
+                console.error('[AUTH] Failed to fetch new user data, logging out');
                 await supabase.auth.signOut();
               }
             } else {
-              console.log('[AUTH] Same user, skipping fetch');
+              // Mismo usuario - evento de token refresh (ignorar)
+              console.log('[AUTH] Same user, skipping fetch (token refresh)');
             }
             setLoading(false);
           } else {
             setLoading(false);
           }
-        }
-
-        // SESIÓN 45 FIX: TOKEN_REFRESHED (nuevo evento)
-        if (event === 'TOKEN_REFRESHED') {
-          console.log('[AUTH] Token refreshed successfully');
-          // No hacer nada, el token se refrescó automáticamente
-          // El usuario ya está logueado, no necesitamos re-fetch
         }
       }
     );
