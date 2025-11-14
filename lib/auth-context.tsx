@@ -315,6 +315,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (userData) {
             setUser(userData);
+
+            // SESIÓN 45H: Recuperar proyecto de sessionStorage (FIX loading infinito)
+            const savedProyectoId = sessionStorage.getItem('selected_proyecto_id');
+            if (savedProyectoId) {
+              console.log('[AUTH] Restoring proyecto from sessionStorage:', savedProyectoId);
+              const proyectoData = await fetchProyectoData(savedProyectoId);
+              if (proyectoData) {
+                setSelectedProyecto(proyectoData);
+              } else {
+                console.warn('[AUTH] Proyecto not found, clearing sessionStorage');
+                sessionStorage.removeItem('selected_proyecto_id');
+              }
+            }
           } else {
             // Si falla fetch de datos, logout
             console.error('[AUTH] Failed to fetch user data on init, logging out');
