@@ -49,6 +49,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const validationPromise = useRef<Promise<Usuario | null> | null>(null);
   const hasInitialized = useRef(false);
 
+  // SESIÓN 45G: Flag para prevenir loop de eventos durante inicialización
+  const isInitializing = useRef(false);
+
   // ============================================================================
   // FETCH USER DATA FROM USUARIOS TABLE (WITH TIMEOUT)
   // ============================================================================
@@ -293,6 +296,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hasInitialized.current = true;
 
     const initializeAuth = async () => {
+      // SESIÓN 45G: Marcar que estamos inicializando (previene loop de eventos)
+      isInitializing.current = true;
+
       try {
         // SESIÓN 45E: Leer sesión de cookies (NO validar con servidor)
         const { data: { session } } = await supabase.auth.getSession();
@@ -317,6 +323,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('[AUTH ERROR] Error initializing auth:', error);
         setLoading(false);
+      } finally {
+        // SESIÓN 45G: Inicialización completa, permitir que eventos se procesen
+        isInitializing.current = false;
+        console.log('[AUTH] Initialization complete, events can now be processed');
       }
     };
 
@@ -326,6 +336,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('[AUTH] State changed:', event);
+
+        // SESIÓN 45G: IGNORAR eventos durante inicialización (previene loop)
+        if (isInitializing.current) {
+          console.log('[AUTH] ⏸️ Ignoring event during initialization:', event);
+          return;
+        }
 
         // SESIÓN 45E: Manejar SIGNED_OUT explícitamente
         if (event === 'SIGNED_OUT') {
