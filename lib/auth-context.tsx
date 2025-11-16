@@ -394,12 +394,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // SESIÓN 45I: SIGNED_IN - Solo fetch si es LOGIN REAL (no token refresh)
+        // SESIÓN 46: FIX Chrome duplicate SIGNED_IN event
         if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           console.log(`[AUTH] ${event} detected`);
 
           if (session?.user) {
-            // SESIÓN 45I: Solo fetch si NO hay usuario previo (es login real)
-            if (!user) {
+            // SESIÓN 46: FIX - Verificar AMBOS estados (user Y supabaseUser)
+            // Previene fetch duplicado cuando Chrome dispara SIGNED_IN extra
+            if (!user && !supabaseUser) {
               console.log('[AUTH] New login detected, fetching user data...');
               setSupabaseUser(session.user);
 
@@ -412,7 +414,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.error('[AUTH] Failed to fetch user data on login, logging out');
                 await supabase.auth.signOut();
               }
-            } else if (user.id !== session.user.id) {
+            } else if (user && user.id !== session.user.id) {
               // Usuario diferente (edge case: cambio de cuenta)
               console.log('[AUTH] Different user detected, fetching new user data...');
               setSupabaseUser(session.user);
@@ -424,8 +426,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 await supabase.auth.signOut();
               }
             } else {
-              // Mismo usuario - evento de token refresh (ignorar)
-              console.log('[AUTH] Same user, skipping fetch (token refresh)');
+              // SESIÓN 46: Usuario ya autenticado - ignorar evento duplicado
+              console.log('[AUTH] ✅ User already authenticated, ignoring duplicate SIGNED_IN event');
             }
             setLoading(false);
           } else {
