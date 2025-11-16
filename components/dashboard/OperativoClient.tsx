@@ -343,22 +343,24 @@ export default function OperativoClient({
             </div>
           )}
 
-          {/* Export Button */}
-          <button
-            onClick={handleExportToExcel}
-            disabled={isExporting || filteredLeads.length === 0}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-              isExporting || filteredLeads.length === 0
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-primary text-white hover:bg-primary/90 hover:shadow-md active:scale-95'
-            }`}
-            title={filteredLeads.length === 0 ? 'No hay leads para exportar' : 'Exportar leads filtrados a Excel'}
-          >
-            <Download className={`w-5 h-5 ${isExporting ? 'animate-bounce' : ''}`} />
-            <span className="hidden sm:inline">
-              {isExporting ? 'Exportando...' : 'Exportar a Excel'}
-            </span>
-          </button>
+          {/* Export Button - Solo admin y jefe_ventas */}
+          {(user?.rol === 'admin' || user?.rol === 'jefe_ventas') && (
+            <button
+              onClick={handleExportToExcel}
+              disabled={isExporting || filteredLeads.length === 0}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                isExporting || filteredLeads.length === 0
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-primary text-white hover:bg-primary/90 hover:shadow-md active:scale-95'
+              }`}
+              title={filteredLeads.length === 0 ? 'No hay leads para exportar' : 'Exportar leads filtrados a Excel'}
+            >
+              <Download className={`w-5 h-5 ${isExporting ? 'animate-bounce' : ''}`} />
+              <span className="hidden sm:inline">
+                {isExporting ? 'Exportando...' : 'Exportar a Excel'}
+              </span>
+            </button>
+          )}
         </div>
       </div>
 
