@@ -147,6 +147,7 @@ export default function LeadsTable({
               <th className="text-left py-3 px-4 text-white font-medium">Nombre</th>
               <th className="text-left py-3 px-4 text-white font-medium">Teléfono</th>
               <th className="text-left py-3 px-4 text-white font-medium">Rubro</th>
+              <th className="text-left py-3 px-4 text-white font-medium">UTM</th>
               <th className="text-left py-3 px-4 text-white font-medium">
                 <div className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
@@ -185,6 +186,7 @@ export default function LeadsTable({
                 <td className="py-3 px-4 text-gray-800">{lead.nombre || '-'}</td>
                 <td className="py-3 px-4 text-gray-600">{lead.telefono}</td>
                 <td className="py-3 px-4 text-gray-600">{lead.rubro || '-'}</td>
+                <td className="py-3 px-4 text-gray-600">{lead.utm || 'victoria'}</td>
                 <td className="py-3 px-4">
                   {lead.horario_visita_timestamp ? (
                     <div className="space-y-1">

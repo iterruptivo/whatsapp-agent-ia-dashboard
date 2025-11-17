@@ -448,11 +448,20 @@ export default function LeadDetailPanel({ lead, isOpen, onClose }: LeadDetailPan
               Información Adicional
             </h3>
             <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-sm text-gray-500">Fecha de Captura</p>
-                  <p className="text-base font-medium text-gray-900">{formatDate(lead.fecha_captura)}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">Fecha de Captura</p>
+                    <p className="text-base font-medium text-gray-900">{formatDate(lead.fecha_captura)}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Info className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="text-sm text-gray-500">UTM</p>
+                    <p className="text-base font-medium text-gray-900">{lead.utm || 'victoria'}</p>
+                  </div>
                 </div>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
