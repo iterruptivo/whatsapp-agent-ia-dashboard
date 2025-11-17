@@ -205,28 +205,26 @@ export async function importManualLeads(
         original: lead.email_vendedor,
       });
 
-      const { data: usuario, error: usuarioError } = await supabase
+      // BUGFIX: Use .limit(1) instead of .single() to handle duplicate emails
+      // .single() throws PGRST116 error if there are multiple rows
+      const { data: usuarios, error: usuarioError } = await supabase
         .from('usuarios')
         .select('id, vendedor_id, rol, email, activo')
-        .eq('email', emailVendedor)  // CHANGED: .ilike() → .eq() for exact match
-        .single();
+        .eq('email', emailVendedor)
+        .eq('activo', true)  // Only active users
+        .not('vendedor_id', 'is', null)  // Must have vendedor_id
+        .in('rol', ['vendedor', 'vendedor_caseta'])  // Only valid roles
+        .limit(1);
 
-      if (
-        usuarioError ||
-        !usuario ||
-        (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta') ||
-        !usuario.vendedor_id
-      ) {
+      const usuario = usuarios?.[0];
+
+      if (usuarioError || !usuario) {
         // Determinar razón específica del fallo
         let failReason = 'desconocido';
         if (usuarioError) {
           failReason = `Error DB: ${usuarioError.message}`;
         } else if (!usuario) {
-          failReason = 'Usuario no existe en BD';
-        } else if (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta') {
-          failReason = `Rol inválido: ${usuario.rol}`;
-        } else if (!usuario.vendedor_id) {
-          failReason = 'Sin vendedor_id';
+          failReason = 'Usuario no encontrado (inactivo, sin vendedor_id, o rol inválido)';
         }
 
         console.log(`[IMPORT] ❌ Invalid vendor at row ${rowNum}:`, {
