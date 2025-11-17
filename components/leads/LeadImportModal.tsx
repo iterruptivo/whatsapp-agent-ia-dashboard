@@ -2,7 +2,7 @@
 // COMPONENT: LeadImportModal
 // ============================================================================
 // Descripción: Modal para importar leads manuales desde CSV o Excel
-// Formato: nombre,telefono,email_vendedor,email,rubro
+// Formato: nombre,telefono,email_vendedor,utm,email,rubro
 // Acceso: Solo Admin
 // ============================================================================
 
@@ -26,6 +26,7 @@ interface ParsedLead {
   nombre: string;
   telefono: string;
   email_vendedor: string;
+  utm: string; // REQUERIDO para leads manuales
   email?: string;
   rubro?: string;
 }
@@ -45,6 +46,7 @@ export default function LeadImportModal({
     imported: number;
     duplicates: Array<{ nombre: string; telefono: string }>;
     invalidVendors: Array<{ email: string; row: number }>;
+    missingUtm: Array<{ nombre: string; row: number }>;
     total: number;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -93,6 +95,7 @@ export default function LeadImportModal({
               nombre: row.nombre || '',
               telefono: row.telefono || '',
               email_vendedor: row.email_vendedor || '',
+              utm: row.utm || '', // REQUERIDO
               email: row.email || '',
               rubro: row.rubro || '',
             }));
@@ -110,6 +113,7 @@ export default function LeadImportModal({
           nombre: row.nombre || '',
           telefono: row.telefono || '',
           email_vendedor: row.email_vendedor || '',
+          utm: row.utm || '', // REQUERIDO
           email: row.email || '',
           rubro: row.rubro || '',
         }));
@@ -131,14 +135,14 @@ export default function LeadImportModal({
       return;
     }
 
-    // Validar que todos tengan nombre, telefono, email_vendedor
+    // Validar que todos tengan nombre, telefono, email_vendedor, utm
     const hasInvalidRows = parsedData.some(
-      (lead) => !lead.nombre || !lead.telefono || !lead.email_vendedor
+      (lead) => !lead.nombre || !lead.telefono || !lead.email_vendedor || !lead.utm
     );
 
     if (hasInvalidRows) {
       alert(
-        'Todos los leads deben tener: nombre, telefono, email_vendedor. Por favor revisa el archivo.'
+        'Todos los leads deben tener: nombre, telefono, email_vendedor, utm. Por favor revisa el archivo.'
       );
       return;
     }
@@ -181,7 +185,7 @@ export default function LeadImportModal({
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Importar Leads Manuales</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Formato CSV: nombre, telefono, email_vendedor, email, rubro
+              Formato CSV: nombre, telefono, email_vendedor, utm, email, rubro
             </p>
           </div>
           <button
@@ -263,6 +267,7 @@ export default function LeadImportModal({
                         <th className="text-left py-2 px-3 text-gray-600 font-medium">
                           Email Vendedor
                         </th>
+                        <th className="text-left py-2 px-3 text-gray-600 font-medium">UTM</th>
                         <th className="text-left py-2 px-3 text-gray-600 font-medium">Email</th>
                         <th className="text-left py-2 px-3 text-gray-600 font-medium">Rubro</th>
                       </tr>
@@ -274,13 +279,14 @@ export default function LeadImportModal({
                           <td className="py-2 px-3 text-gray-900">{lead.nombre}</td>
                           <td className="py-2 px-3 text-gray-900">{lead.telefono}</td>
                           <td className="py-2 px-3 text-gray-900">{lead.email_vendedor}</td>
+                          <td className="py-2 px-3 text-gray-900">{lead.utm}</td>
                           <td className="py-2 px-3 text-gray-600">{lead.email || '-'}</td>
                           <td className="py-2 px-3 text-gray-600">{lead.rubro || '-'}</td>
                         </tr>
                       ))}
                       {parsedData.length > 5 && (
                         <tr className="border-t border-gray-200 bg-gray-50">
-                          <td colSpan={6} className="py-2 px-3 text-center text-sm text-gray-500">
+                          <td colSpan={7} className="py-2 px-3 text-center text-sm text-gray-500">
                             ... y {parsedData.length - 5} leads más
                           </td>
                         </tr>
@@ -360,6 +366,22 @@ export default function LeadImportModal({
                     {result.invalidVendors.map((inv, idx) => (
                       <p key={idx} className="text-sm text-red-800">
                         • Fila {inv.row}: {inv.email} (no existe o no es vendedor)
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Missing UTM */}
+              {result.missingUtm && result.missingUtm.length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <p className="text-sm text-red-900 font-medium mb-2">
+                    Leads sin UTM (no importados):
+                  </p>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {result.missingUtm.map((missing, idx) => (
+                      <p key={idx} className="text-sm text-red-800">
+                        • Fila {missing.row}: {missing.nombre} (UTM vacío o faltante)
                       </p>
                     ))}
                   </div>
