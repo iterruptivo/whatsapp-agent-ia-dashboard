@@ -27,6 +27,7 @@ interface PendingLead {
   nombre: string;
   telefono: string;
   email_vendedor: string;
+  utm: string; // REQUERIDO para leads manuales
   email?: string;
   rubro?: string;
 }
@@ -35,6 +36,7 @@ const EMPTY_FORM: PendingLead = {
   nombre: '',
   telefono: '',
   email_vendedor: '',
+  utm: '', // REQUERIDO
   email: '',
   rubro: '',
 };
@@ -77,6 +79,9 @@ export default function ManualLeadPanel({
   // Validación de vendedor
   const [vendedorError, setVendedorError] = useState('');
 
+  // Validación de UTM
+  const [utmError, setUtmError] = useState('');
+
   // ====== VALIDATION FUNCTIONS ======
 
   // Validar teléfono internacional
@@ -111,6 +116,7 @@ export default function ManualLeadPanel({
     setPhoneError('');
     setEmailError('');
     setVendedorError('');
+    setUtmError('');
 
     // Validar campos requeridos
     if (!currentForm.nombre.trim()) {
@@ -141,6 +147,12 @@ export default function ManualLeadPanel({
       return;
     }
 
+    // Validar UTM (REQUERIDO para leads manuales)
+    if (!currentForm.utm.trim()) {
+      setUtmError('El UTM es requerido');
+      return;
+    }
+
     if (editingIndex !== null) {
       // Actualizar lead existente
       const updated = [...pendingLeads];
@@ -158,6 +170,7 @@ export default function ManualLeadPanel({
     setPhoneError('');
     setEmailError('');
     setVendedorError('');
+    setUtmError('');
   };
 
   // 2. Editar lead de la lista
@@ -501,6 +514,34 @@ export default function ManualLeadPanel({
                   <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
                     {emailError}
+                  </p>
+                )}
+              </div>
+
+              {/* Input: UTM (REQUERIDO) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  UTM <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: facebook, google, referido"
+                  value={currentForm.utm}
+                  onChange={(e) => {
+                    setCurrentForm({ ...currentForm, utm: e.target.value });
+                    // Limpiar error al empezar a escribir
+                    if (utmError) setUtmError('');
+                  }}
+                  className={`w-full px-4 py-2.5 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:border-transparent outline-none transition-all ${
+                    utmError
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-primary'
+                  }`}
+                />
+                {utmError && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {utmError}
                   </p>
                 )}
               </div>

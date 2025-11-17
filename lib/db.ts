@@ -36,6 +36,7 @@ export interface Lead {
   proyecto_nombre?: string | null; // Nombre del proyecto (obtenido via JOIN, opcional)
   proyecto_color?: string | null; // Color del proyecto (obtenido via JOIN, opcional)
   asistio: boolean; // Indica si el lead visitó físicamente el proyecto (default: false)
+  utm: string; // Origen del lead (victoria, facebook, google, referido, etc.) - default: 'victoria'
 }
 
 // Vendedor interface matching Supabase vendedores table

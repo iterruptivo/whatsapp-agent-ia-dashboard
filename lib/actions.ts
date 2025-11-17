@@ -159,9 +159,10 @@ export async function assignLeadToVendedor(leadId: string, vendedorId: string) {
  * - email_vendedor must exist and have role "vendedor" (not vendedor_caseta)
  * - Duplicate phone numbers in same project are skipped
  * - Estado is set to "lead_manual"
+ * - UTM is REQUIRED for manual leads
  *
  * @param proyectoId - UUID of the project to import leads into
- * @param leads - Array of leads with nombre, telefono, email_vendedor, email?, rubro?
+ * @param leads - Array of leads with nombre, telefono, email_vendedor, utm, email?, rubro?
  * @returns Success/error response with import summary
  */
 export async function importManualLeads(
@@ -170,6 +171,7 @@ export async function importManualLeads(
     nombre: string;
     telefono: string;
     email_vendedor: string;
+    utm: string; // REQUERIDO para leads manuales
     email?: string;
     rubro?: string;
   }>
@@ -180,11 +182,19 @@ export async function importManualLeads(
     let imported = 0;
     const duplicates: Array<{ nombre: string; telefono: string }> = [];
     const invalidVendors: Array<{ email: string; row: number }> = [];
+    const missingUtm: Array<{ nombre: string; row: number }> = [];
 
     // Validate each lead and collect vendedor IDs
     for (let i = 0; i < leads.length; i++) {
       const lead = leads[i];
       const rowNum = i + 1;
+
+      // VALIDACIÓN UTM: Requerido para leads manuales
+      if (!lead.utm || lead.utm.trim() === '') {
+        console.log(`[IMPORT] Missing UTM at row ${rowNum}:`, lead.nombre);
+        missingUtm.push({ nombre: lead.nombre, row: rowNum });
+        continue;
+      }
 
       // Validar que el vendedor existe y tenga rol "vendedor"
       const { data: usuario, error: usuarioError } = await supabase
@@ -230,6 +240,7 @@ export async function importManualLeads(
         rubro: lead.rubro || null,
         estado: 'lead_manual',
         vendedor_asignado_id: usuario.vendedor_id,
+        utm: lead.utm.trim(), // UTM requerido para leads manuales
       };
 
       console.log(`[IMPORT] Inserting lead at row ${rowNum}:`, leadData);
@@ -252,6 +263,7 @@ export async function importManualLeads(
       imported,
       duplicates,
       invalidVendors,
+      missingUtm, // Leads sin UTM (REQUERIDO)
       total: leads.length,
     };
   } catch (error) {
@@ -261,6 +273,7 @@ export async function importManualLeads(
       imported: 0,
       duplicates: [],
       invalidVendors: [],
+      missingUtm: [],
       total: leads.length,
     };
   }
