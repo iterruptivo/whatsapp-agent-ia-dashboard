@@ -28,6 +28,8 @@ export interface Local {
   // SESIÓN 48: Timer 120 horas para NARANJA + Exclusividad
   naranja_timestamp: string | null; // Timestamp cuando local pasó a NARANJA (para timer de 120 horas)
   naranja_vendedor_id: string | null; // ID del vendedor que puso en NARANJA (para exclusividad)
+  // SESIÓN 48D: Contador de vendedores negociando (estado AMARILLO)
+  vendedores_negociando_ids: string[]; // Array de UUIDs de vendedores negociando
   created_at: string;
   updated_at: string;
 }
@@ -49,6 +51,34 @@ export interface LocalImportRow {
   proyecto: string; // slug del proyecto (trapiche, callao, san-gabriel)
   metraje: number;
   estado?: 'verde' | 'amarillo' | 'naranja' | 'rojo'; // Opcional: default = 'verde'
+}
+
+// ============================================================================
+// HELPERS - GESTIÓN DE ARRAY VENDEDORES NEGOCIANDO (SESIÓN 48D)
+// ============================================================================
+
+/**
+ * SESIÓN 48D: Agregar vendedor al array de negociando
+ * Si vendedor ya está en el array, no lo duplica
+ */
+export function agregarVendedorNegociando(
+  vendedoresActuales: string[],
+  vendedorId: string
+): string[] {
+  if (vendedoresActuales.includes(vendedorId)) {
+    return vendedoresActuales; // Ya está, no duplicar
+  }
+  return [...vendedoresActuales, vendedorId];
+}
+
+/**
+ * SESIÓN 48D: Remover vendedor del array de negociando
+ */
+export function removerVendedorNegociando(
+  vendedoresActuales: string[],
+  vendedorId: string
+): string[] {
+  return vendedoresActuales.filter(id => id !== vendedorId);
 }
 
 // ============================================================================
@@ -80,6 +110,7 @@ export async function getAllLocales(options?: {
       .from('locales')
       .select(`
         *,
+        vendedores_negociando_ids,
         proyecto:proyectos!proyecto_id(nombre),
         vendedor_actual:vendedores!vendedor_actual_id(nombre),
         vendedor_cerro_venta:vendedores!vendedor_cerro_venta_id(nombre)
@@ -140,6 +171,7 @@ export async function getLocalById(localId: string) {
       .from('locales')
       .select(`
         *,
+        vendedores_negociando_ids,
         proyecto:proyectos!proyecto_id(nombre),
         vendedor_actual:vendedores!vendedor_actual_id(nombre),
         vendedor_cerro_venta:vendedores!vendedor_cerro_venta_id(nombre)
@@ -312,10 +344,25 @@ export async function updateLocalEstadoQuery(
       // La validación real está en lib/actions-locales.ts
     }
 
+    // ============================================================================
+    // SESIÓN 48D: GESTIONAR ARRAY vendedores_negociando_ids
+    // ============================================================================
+    let vendedoresNegociando = local.vendedores_negociando_ids || [];
+
+    if (nuevoEstado === 'amarillo' && vendedorId) {
+      // Agregar vendedor al array (si no está ya)
+      vendedoresNegociando = agregarVendedorNegociando(vendedoresNegociando, vendedorId);
+    } else if (estadoAnterior === 'amarillo' && nuevoEstado === 'verde' && vendedorId) {
+      // Vendedor sale de amarillo → remover del array
+      vendedoresNegociando = removerVendedorNegociando(vendedoresNegociando, vendedorId);
+    }
+    // Si nuevoEstado != 'amarillo' → trigger limpiará array automáticamente
+
     // Preparar update
     const updateData: any = {
       estado: nuevoEstado,
       vendedor_actual_id: vendedorId || null,
+      vendedores_negociando_ids: vendedoresNegociando, // ← NUEVO: Array de vendedores
     };
 
     // SESIÓN 48: Setear timestamp y vendedor cuando cambia a NARANJA

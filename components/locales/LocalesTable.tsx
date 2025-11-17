@@ -585,6 +585,10 @@ export default function LocalesTable({
       local.estado === 'naranja' &&
       (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta');
 
+    // SESIÓN 48D: Calcular cantidad de vendedores negociando
+    const cantidadNegociando = (local.vendedores_negociando_ids || []).length;
+    const mostrarContador = cantidadNegociando >= 2; // Solo si hay 2 o más
+
     return (
       <div className="flex items-center gap-2">
         {/* Círculo Verde */}
@@ -607,11 +611,11 @@ export default function LocalesTable({
           }
         />
 
-        {/* Círculo Amarillo */}
+        {/* Círculo Amarillo - CON CONTADOR */}
         <button
           onClick={() => handleEstadoChange(local, 'amarillo')}
           disabled={isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja}
-          className={`w-8 h-8 rounded-full border-2 transition-all ${
+          className={`w-8 h-8 rounded-full border-2 transition-all relative ${
             local.estado === 'amarillo'
               ? 'bg-yellow-500 border-yellow-600 scale-110 shadow-lg'
               : 'bg-yellow-200 border-yellow-300 hover:scale-105 hover:bg-yellow-300'
@@ -623,7 +627,14 @@ export default function LocalesTable({
               ? `Negociando (${local.vendedor_actual_nombre || 'actual'})`
               : 'Cambiar a Negociando'
           }
-        />
+        >
+          {/* SESIÓN 48D: Contador de vendedores negociando */}
+          {mostrarContador && (
+            <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-gray-800">
+              {cantidadNegociando}
+            </span>
+          )}
+        </button>
 
         {/* Círculo Naranja */}
         <button
