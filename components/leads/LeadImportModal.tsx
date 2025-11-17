@@ -45,7 +45,7 @@ export default function LeadImportModal({
     success: boolean;
     imported: number;
     duplicates: Array<{ nombre: string; telefono: string }>;
-    invalidVendors: Array<{ email: string; row: number }>;
+    invalidVendors: Array<{ email: string; row: number; reason?: string }>;
     missingUtm: Array<{ nombre: string; row: number }>;
     total: number;
   } | null>(null);
@@ -365,7 +365,7 @@ export default function LeadImportModal({
                   <div className="space-y-1 max-h-40 overflow-y-auto">
                     {result.invalidVendors.map((inv, idx) => (
                       <p key={idx} className="text-sm text-red-800">
-                        • Fila {inv.row}: {inv.email} (no existe o no es vendedor)
+                        • Fila {inv.row}: {inv.email} - {inv.reason || 'no existe o no es vendedor'}
                       </p>
                     ))}
                   </div>

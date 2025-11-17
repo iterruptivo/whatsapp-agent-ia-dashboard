@@ -181,7 +181,7 @@ export async function importManualLeads(
 
     let imported = 0;
     const duplicates: Array<{ nombre: string; telefono: string }> = [];
-    const invalidVendors: Array<{ email: string; row: number }> = [];
+    const invalidVendors: Array<{ email: string; row: number; reason?: string }> = [];
     const missingUtm: Array<{ nombre: string; row: number }> = [];
 
     // Validate each lead and collect vendedor IDs
@@ -217,6 +217,18 @@ export async function importManualLeads(
         (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta') ||
         !usuario.vendedor_id
       ) {
+        // Determinar razón específica del fallo
+        let failReason = 'desconocido';
+        if (usuarioError) {
+          failReason = `Error DB: ${usuarioError.message}`;
+        } else if (!usuario) {
+          failReason = 'Usuario no existe en BD';
+        } else if (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta') {
+          failReason = `Rol inválido: ${usuario.rol}`;
+        } else if (!usuario.vendedor_id) {
+          failReason = 'Sin vendedor_id';
+        }
+
         console.log(`[IMPORT] ❌ Invalid vendor at row ${rowNum}:`, {
           email: emailVendedor,
           originalEmail: lead.email_vendedor,
@@ -224,14 +236,9 @@ export async function importManualLeads(
           error: usuarioError?.message,
           errorCode: usuarioError?.code,
           usuario,
-          validationFailures: {
-            errorExists: !!usuarioError,
-            noUsuario: !usuario,
-            wrongRole: usuario && usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta',
-            noVendedorId: usuario && !usuario.vendedor_id,
-          }
+          failReason,
         });
-        invalidVendors.push({ email: emailVendedor, row: rowNum });
+        invalidVendors.push({ email: emailVendedor, row: rowNum, reason: failReason });
         continue;
       }
 
