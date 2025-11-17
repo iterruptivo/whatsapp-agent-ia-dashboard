@@ -197,53 +197,42 @@ export async function importManualLeads(
       }
 
       // Validar que el vendedor existe y tenga rol "vendedor" o "vendedor_caseta"
-      const emailVendedor = lead.email_vendedor.trim();
-      console.log(`[IMPORT] Validating vendor at row ${rowNum}:`, {
-        email: emailVendedor,
-        length: emailVendedor.length,
-        charCodes: emailVendedor.split('').map(c => c.charCodeAt(0)),
-        original: lead.email_vendedor,
-      });
-
-      // BUGFIX: Use .limit(1) instead of .single() to handle duplicate emails
-      // .single() throws PGRST116 error if there are multiple rows
-      const { data: usuarios, error: usuarioError } = await supabase
+      const { data: usuario, error: usuarioError } = await supabase
         .from('usuarios')
-        .select('id, vendedor_id, rol, email, activo')
-        .eq('email', emailVendedor)
-        .eq('activo', true)  // Only active users
-        .not('vendedor_id', 'is', null)  // Must have vendedor_id
-        .in('rol', ['vendedor', 'vendedor_caseta'])  // Only valid roles
-        .limit(1);
+        .select('id, vendedor_id, rol')
+        .eq('email', lead.email_vendedor)
+        .single();
 
-      const usuario = usuarios?.[0];
-
-      if (usuarioError || !usuario) {
+      if (
+        usuarioError ||
+        !usuario ||
+        (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta') ||
+        !usuario.vendedor_id
+      ) {
         // Determinar razón específica del fallo
         let failReason = 'desconocido';
         if (usuarioError) {
           failReason = `Error DB: ${usuarioError.message}`;
         } else if (!usuario) {
-          failReason = 'Usuario no encontrado (inactivo, sin vendedor_id, o rol inválido)';
+          failReason = 'Usuario no existe en BD';
+        } else if (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta') {
+          failReason = `Rol inválido: ${usuario.rol}`;
+        } else if (!usuario.vendedor_id) {
+          failReason = 'Sin vendedor_id';
         }
 
-        console.log(`[IMPORT] ❌ Invalid vendor at row ${rowNum}:`, {
-          email: emailVendedor,
-          originalEmail: lead.email_vendedor,
-          trimmedMatch: emailVendedor === lead.email_vendedor,
+        console.log(`[IMPORT] Invalid vendor at row ${rowNum}:`, {
+          email: lead.email_vendedor,
           error: usuarioError?.message,
-          errorCode: usuarioError?.code,
           usuario,
-          failReason,
         });
-        invalidVendors.push({ email: emailVendedor, row: rowNum, reason: failReason });
+        invalidVendors.push({ email: lead.email_vendedor, row: rowNum, reason: failReason });
         continue;
       }
 
       console.log(`[IMPORT] Valid vendor found for row ${rowNum}:`, {
-        email: emailVendedor,
+        email: lead.email_vendedor,
         vendedor_id: usuario.vendedor_id,
-        rol: usuario.rol,
       });
 
       // Verificar si ya existe un lead con ese teléfono en este proyecto
