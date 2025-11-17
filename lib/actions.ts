@@ -236,14 +236,15 @@ export async function importManualLeads(
       });
 
       // Verificar si ya existe un lead con ese teléfono en este proyecto
-      const { data: existingLead, error: checkError } = await supabase
+      // Usar .limit(1) en vez de .maybeSingle() para evitar PGRST116 cuando hay duplicados
+      const { data: existingLeads, error: checkError } = await supabase
         .from('leads')
         .select('id')
         .eq('proyecto_id', proyectoId)
         .eq('telefono', lead.telefono)
-        .maybeSingle(); // Use maybeSingle() instead of single() to avoid PGRST116 error
+        .limit(1);
 
-      if (existingLead) {
+      if (existingLeads && existingLeads.length > 0) {
         duplicates.push({ nombre: lead.nombre, telefono: lead.telefono });
         continue;
       }

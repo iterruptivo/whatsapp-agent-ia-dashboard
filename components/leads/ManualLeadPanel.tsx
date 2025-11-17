@@ -196,11 +196,7 @@ export default function ManualLeadPanel({
       return;
     }
 
-    console.log('[MANUAL LEAD PANEL] Importing leads:', pendingLeads.map(l => ({
-      nombre: l.nombre,
-      email_vendedor: l.email_vendedor,
-      email_vendedor_length: l.email_vendedor.length,
-    })));
+    console.log('[MANUAL LEAD PANEL] Importing leads (FULL OBJECT):', pendingLeads);
 
     setImporting(true);
     const importResult = await importManualLeads(proyectoId, pendingLeads);
