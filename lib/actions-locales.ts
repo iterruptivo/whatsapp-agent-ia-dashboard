@@ -106,14 +106,14 @@ export async function deleteLocal(localId: string) {
 }
 
 // ============================================================================
-// DESBLOQUEAR LOCAL (ADMIN ONLY)
+// DESBLOQUEAR LOCAL (ADMIN + JEFE VENTAS)
 // ============================================================================
 
 /**
- * Desbloquear un local bloqueado (solo admin)
+ * Desbloquear un local bloqueado (admin o jefe_ventas)
  * Setea estado a verde y bloqueado = false
  * @param localId ID del local a desbloquear
- * @param usuarioId ID del usuario (admin) que desbloquea
+ * @param usuarioId ID del usuario (admin o jefe_ventas) que desbloquea
  * @returns Success/error
  */
 export async function desbloquearLocal(localId: string, usuarioId?: string) {

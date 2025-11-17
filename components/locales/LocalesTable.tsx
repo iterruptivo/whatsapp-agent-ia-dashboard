@@ -121,25 +121,29 @@ export default function LocalesTable({
       // Verde y Rojo siguen el flujo normal (verde = liberar, rojo = bloquear)
     }
 
-    // 🚫 RESTRICCIÓN: Jefe Ventas solo puede bloquear (cambiar a rojo)
+    // 🚫 RESTRICCIÓN: Jefe Ventas solo puede bloquear (rojo) y desbloquear (rojo->verde)
     if (user.rol === 'jefe_ventas') {
       const esBloqueo = nuevoEstado === 'rojo';
+      const esDesbloqueo = local.estado === 'rojo' && local.bloqueado && nuevoEstado === 'verde';
 
-      if (!esBloqueo) {
+      // Permitir solo bloqueo (cambiar a rojo) o desbloqueo (rojo bloqueado -> verde)
+      if (!esBloqueo && !esDesbloqueo) {
         setConfirmModal({
           isOpen: true,
           local: null,
           nuevoEstado: null,
           title: 'Acción Restringida',
-          message: 'Los jefes de ventas solo pueden bloquear locales (vendido).\n\nLos cambios de estado son exclusivos de los vendedores.',
+          message: 'Los jefes de ventas solo pueden:\n\n• Bloquear locales (cambiar a VENDIDO)\n• Desbloquear locales bloqueados\n\nLos cambios de estado intermedios son exclusivos de los vendedores.',
           variant: 'warning',
         });
         return;
       }
+
+      // Si es desbloqueo, continuar con el flujo especial de desbloqueo abajo
     }
 
-    // 🔓 CASO ESPECIAL: Admin desbloquea local en ROJO
-    if (local.estado === 'rojo' && local.bloqueado && user.rol === 'admin') {
+    // 🔓 CASO ESPECIAL: Admin o Jefe de Ventas desbloquea local en ROJO
+    if (local.estado === 'rojo' && local.bloqueado && (user.rol === 'admin' || user.rol === 'jefe_ventas')) {
       setConfirmModal({
         isOpen: true,
         local,
@@ -151,14 +155,14 @@ export default function LocalesTable({
       return;
     }
 
-    // Validar que local no esté bloqueado (solo admin puede desbloquear)
-    if (local.bloqueado && user.rol !== 'admin') {
+    // Validar que local no esté bloqueado (solo admin y jefe_ventas pueden desbloquear)
+    if (local.bloqueado && user.rol !== 'admin' && user.rol !== 'jefe_ventas') {
       setConfirmModal({
         isOpen: true,
         local: null,
         nuevoEstado: null,
         title: 'Local Bloqueado',
-        message: 'Este local está bloqueado. Solo los administradores pueden desbloquearlo.',
+        message: 'Este local está bloqueado. Solo los administradores y jefes de ventas pueden desbloquearlo.',
         variant: 'info',
       });
       return;
@@ -427,30 +431,37 @@ export default function LocalesTable({
   const renderSemaforo = (local: Local) => {
     const isChanging = changingLocalId === local.id;
     const isBlocked = local.bloqueado;
+    const canUnblock = user?.rol === 'admin' || user?.rol === 'jefe_ventas';
 
     return (
       <div className="flex items-center gap-2">
         {/* Círculo Verde */}
         <button
           onClick={() => handleEstadoChange(local, 'verde')}
-          disabled={isChanging || (isBlocked && user?.rol !== 'admin')}
+          disabled={isChanging || (isBlocked && !canUnblock)}
           className={`w-8 h-8 rounded-full border-2 transition-all ${
             local.estado === 'verde'
               ? 'bg-green-500 border-green-600 scale-110 shadow-lg'
               : 'bg-green-200 border-green-300 hover:scale-105 hover:bg-green-300'
-          } ${isChanging || (isBlocked && user?.rol !== 'admin') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          title={local.estado === 'verde' ? 'Libre (actual)' : 'Cambiar a Libre'}
+          } ${isChanging || (isBlocked && !canUnblock) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          title={
+            local.estado === 'verde'
+              ? 'Libre (actual)'
+              : isBlocked && canUnblock
+              ? 'Desbloquear local'
+              : 'Cambiar a Libre'
+          }
         />
 
         {/* Círculo Amarillo */}
         <button
           onClick={() => handleEstadoChange(local, 'amarillo')}
-          disabled={isChanging || (isBlocked && user?.rol !== 'admin')}
+          disabled={isChanging || (isBlocked && !canUnblock)}
           className={`w-8 h-8 rounded-full border-2 transition-all ${
             local.estado === 'amarillo'
               ? 'bg-yellow-500 border-yellow-600 scale-110 shadow-lg'
               : 'bg-yellow-200 border-yellow-300 hover:scale-105 hover:bg-yellow-300'
-          } ${isChanging || (isBlocked && user?.rol !== 'admin') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          } ${isChanging || (isBlocked && !canUnblock) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           title={
             local.estado === 'amarillo'
               ? `Negociando (${local.vendedor_actual_nombre || 'actual'})`
@@ -461,12 +472,12 @@ export default function LocalesTable({
         {/* Círculo Naranja */}
         <button
           onClick={() => handleEstadoChange(local, 'naranja')}
-          disabled={isChanging || (isBlocked && user?.rol !== 'admin')}
+          disabled={isChanging || (isBlocked && !canUnblock)}
           className={`w-8 h-8 rounded-full border-2 transition-all ${
             local.estado === 'naranja'
               ? 'bg-orange-500 border-orange-600 scale-110 shadow-lg'
               : 'bg-orange-200 border-orange-300 hover:scale-105 hover:bg-orange-300'
-          } ${isChanging || (isBlocked && user?.rol !== 'admin') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          } ${isChanging || (isBlocked && !canUnblock) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           title={
             local.estado === 'naranja'
               ? `Confirmado (${local.vendedor_actual_nombre || 'actual'})`
@@ -478,12 +489,12 @@ export default function LocalesTable({
         {(user?.rol === 'admin' || user?.rol === 'jefe_ventas') && (
           <button
             onClick={() => handleEstadoChange(local, 'rojo')}
-            disabled={isChanging || (isBlocked && user?.rol !== 'admin')}
+            disabled={isChanging || (isBlocked && !canUnblock)}
             className={`w-8 h-8 rounded-full border-2 transition-all ${
               local.estado === 'rojo'
                 ? 'bg-red-500 border-red-600 scale-110 shadow-lg'
                 : 'bg-red-200 border-red-300 hover:scale-105 hover:bg-red-300'
-            } ${isChanging || (isBlocked && user?.rol !== 'admin') ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            } ${isChanging || (isBlocked && !canUnblock) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
             title={
               local.estado === 'rojo'
                 ? `Vendido (${local.vendedor_cerro_venta_nombre || 'actual'})`
