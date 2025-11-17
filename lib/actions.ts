@@ -197,10 +197,13 @@ export async function importManualLeads(
       }
 
       // Validar que el vendedor existe y tenga rol "vendedor" o "vendedor_caseta"
+      const emailVendedor = lead.email_vendedor.trim();
+      console.log(`[IMPORT] Validating vendor at row ${rowNum}:`, { email: emailVendedor });
+
       const { data: usuario, error: usuarioError } = await supabase
         .from('usuarios')
         .select('id, vendedor_id, rol')
-        .eq('email', lead.email_vendedor)
+        .ilike('email', emailVendedor)
         .single();
 
       if (
@@ -210,17 +213,19 @@ export async function importManualLeads(
         !usuario.vendedor_id
       ) {
         console.log(`[IMPORT] Invalid vendor at row ${rowNum}:`, {
-          email: lead.email_vendedor,
+          email: emailVendedor,
+          originalEmail: lead.email_vendedor,
           error: usuarioError?.message,
           usuario,
         });
-        invalidVendors.push({ email: lead.email_vendedor, row: rowNum });
+        invalidVendors.push({ email: emailVendedor, row: rowNum });
         continue;
       }
 
       console.log(`[IMPORT] Valid vendor found for row ${rowNum}:`, {
-        email: lead.email_vendedor,
+        email: emailVendedor,
         vendedor_id: usuario.vendedor_id,
+        rol: usuario.rol,
       });
 
       // Verificar si ya existe un lead con ese teléfono en este proyecto

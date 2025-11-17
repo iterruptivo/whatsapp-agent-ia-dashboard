@@ -624,6 +624,9 @@ export default function ManualLeadPanel({
                               ?.nombre
                           }
                         </p>
+                        <p className="text-sm text-gray-600 flex items-center gap-1">
+                          🏷️ {lead.utm}
+                        </p>
                         {lead.email && (
                           <p className="text-xs text-gray-500 mt-1">
                             ✉️ {lead.email}
