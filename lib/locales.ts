@@ -35,8 +35,9 @@ export interface Local {
 export interface LocalHistorial {
   id: string;
   local_id: string;
-  usuario_id: string;
+  usuario_id: string | null; // NULL cuando es acción del sistema
   usuario_nombre?: string; // Via JOIN (opcional)
+  usuario_rol?: string; // Via JOIN (opcional) - rol del usuario
   estado_anterior: 'verde' | 'amarillo' | 'naranja' | 'rojo';
   estado_nuevo: 'verde' | 'amarillo' | 'naranja' | 'rojo';
   accion: string | null;
@@ -181,7 +182,7 @@ export async function getLocalHistorial(localId: string) {
       .from('locales_historial')
       .select(`
         *,
-        usuario:usuarios!usuario_id(nombre)
+        usuario:usuarios!usuario_id(nombre, rol)
       `)
       .eq('local_id', localId)
       .order('created_at', { ascending: false });
@@ -194,7 +195,9 @@ export async function getLocalHistorial(localId: string) {
     // Transformar data
     const historial: LocalHistorial[] = (data || []).map((item: any) => ({
       ...item,
-      usuario_nombre: item.usuario?.nombre || 'Usuario desconocido',
+      // Si usuario_id es NULL → "Sistema", sino usar nombre del usuario
+      usuario_nombre: item.usuario_id === null ? 'Sistema' : (item.usuario?.nombre || 'Usuario desconocido'),
+      usuario_rol: item.usuario?.rol || null,
     }));
 
     return historial;

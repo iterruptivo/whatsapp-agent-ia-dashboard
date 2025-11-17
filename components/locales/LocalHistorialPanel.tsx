@@ -170,9 +170,12 @@ export default function LocalHistorialPanel({
                     <span>{formatFecha(item.created_at)}</span>
                   </div>
 
-                  {/* Usuario */}
+                  {/* Usuario con rol */}
                   <p className="text-sm font-medium text-gray-900 mb-2">
-                    {item.usuario_nombre || 'Usuario desconocido'}
+                    {item.usuario_nombre === 'Sistema'
+                      ? 'Sistema'
+                      : `${item.usuario_nombre || 'Usuario desconocido'}${item.usuario_rol ? ` (${item.usuario_rol})` : ''}`
+                    }
                   </p>
 
                   {/* Cambio de Estado */}

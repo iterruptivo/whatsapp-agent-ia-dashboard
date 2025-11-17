@@ -439,27 +439,30 @@ export default function LocalesTable({
 
     // Si ya expiró
     if (msRestantes <= 0) {
-      return { expired: true, text: 'Expirado', percent: 0, dias: 0, horas: 0 };
+      return { expired: true, text: 'Expirado', percent: 0, dias: 0, horas: 0, minutos: 0, segundos: 0 };
     }
 
-    // Calcular tiempo restante
-    const horasRestantes = msRestantes / (1000 * 60 * 60);
-    const diasRestantes = Math.floor(horasRestantes / 24);
-    const horasRestantesSinDias = Math.floor(horasRestantes % 24);
+    // Calcular tiempo restante con segundos
+    const segundosTotales = Math.floor(msRestantes / 1000);
+    const minutosTotales = Math.floor(segundosTotales / 60);
+    const horasTotales = Math.floor(minutosTotales / 60);
+
+    const diasRestantes = Math.floor(horasTotales / 24);
+    const horasRestantes = horasTotales % 24;
+    const minutosRestantes = minutosTotales % 60;
+    const segundosRestantes = segundosTotales % 60;
 
     // Porcentaje de timer (0-100%)
-    const porcentaje = (horasRestantes / 120) * 100;
+    const porcentaje = (horasTotales / 120) * 100;
 
-    // Texto para badge
+    // Texto para badge con segundos
     let text = '';
     if (diasRestantes > 0) {
-      text = `Quedan ${diasRestantes}d ${horasRestantesSinDias}h`;
-    } else if (horasRestantesSinDias > 0) {
-      text = `Quedan ${horasRestantesSinDias}h`;
+      text = `Quedan ${diasRestantes}d ${horasRestantes}h ${minutosRestantes}m ${segundosRestantes}s`;
+    } else if (horasRestantes > 0) {
+      text = `Quedan ${horasRestantes}h ${minutosRestantes}m ${segundosRestantes}s`;
     } else {
-      // Menos de 1 hora
-      const minutosRestantes = Math.floor((msRestantes / (1000 * 60)) % 60);
-      text = `Quedan ${minutosRestantes}m`;
+      text = `Quedan ${minutosRestantes}m ${segundosRestantes}s`;
     }
 
     return {
@@ -467,7 +470,9 @@ export default function LocalesTable({
       text,
       percent: porcentaje,
       dias: diasRestantes,
-      horas: horasRestantesSinDias,
+      horas: horasRestantes,
+      minutos: minutosRestantes,
+      segundos: segundosRestantes,
     };
   };
 
