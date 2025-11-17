@@ -24,17 +24,21 @@ import {
 // ============================================================================
 
 /**
+ * SESIÓN 48C: Actualizada para aceptar comentario opcional
  * Cambiar estado de un local (semáforo)
  * @param localId ID del local
  * @param nuevoEstado Nuevo estado (verde, amarillo, naranja, rojo)
  * @param vendedorId ID del vendedor que hace el cambio
+ * @param usuarioId ID del usuario que hace el cambio (para historial)
+ * @param comentario Comentario del vendedor (REQUERIDO para NARANJA desde vendedor)
  * @returns Success/error con mensaje
  */
 export async function updateLocalEstado(
   localId: string,
   nuevoEstado: 'verde' | 'amarillo' | 'naranja' | 'rojo',
   vendedorId?: string,
-  usuarioId?: string // ID del usuario que hace el cambio (para historial)
+  usuarioId?: string,
+  comentario?: string // ← NUEVO parámetro opcional
 ) {
   try {
     // ============================================================================
@@ -73,8 +77,17 @@ export async function updateLocalEstado(
       };
     }
 
+    // SESIÓN 48C: Validar comentario si viene desde vendedor a NARANJA
+    // (Frontend ya validó, esto es doble seguridad)
+    if (nuevoEstado === 'naranja' && comentario && comentario.trim().length < 10) {
+      return {
+        success: false,
+        message: 'El comentario debe tener al menos 10 caracteres',
+      };
+    }
+
     // Continuar con el flujo normal
-    const result = await updateLocalEstadoQuery(localId, nuevoEstado, vendedorId, usuarioId);
+    const result = await updateLocalEstadoQuery(localId, nuevoEstado, vendedorId, usuarioId, comentario);
 
     if (result.success) {
       // Revalidar página de locales para reflejar cambios

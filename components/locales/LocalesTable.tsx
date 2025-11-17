@@ -16,6 +16,7 @@ import { ChevronLeft, ChevronRight, History, Lock, Link2, Clock } from 'lucide-r
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import LocalTrackingModal from './LocalTrackingModal';
 import VendedorSelectModal from './VendedorSelectModal';
+import ComentarioNaranjaModal from './ComentarioNaranjaModal';
 
 interface LocalesTableProps {
   locales: Local[];
@@ -77,6 +78,15 @@ export default function LocalesTable({
     nuevoEstado: null,
   });
 
+  // SESIÓN 48C: State para modal de comentario NARANJA
+  const [comentarioNaranjaModal, setComentarioNaranjaModal] = useState<{
+    isOpen: boolean;
+    local: Local | null;
+  }>({
+    isOpen: false,
+    local: null,
+  });
+
   // SESIÓN 48B: State para actualizar timer cada segundo (cuenta regresiva en tiempo real)
   const [, setCurrentTime] = useState(Date.now());
 
@@ -117,6 +127,19 @@ export default function LocalesTable({
         variant: 'info',
       });
       return;
+    }
+
+    // SESIÓN 48C: Si es vendedor/vendedor_caseta cambiando a NARANJA → mostrar modal comentario
+    if (
+      nuevoEstado === 'naranja' &&
+      (user.rol === 'vendedor' || user.rol === 'vendedor_caseta')
+    ) {
+      // Abrir modal de comentario (NO cambiar estado todavía)
+      setComentarioNaranjaModal({
+        isOpen: true,
+        local: local,
+      });
+      return; // Detener flujo - modal manejará el cambio
     }
 
     // ✅ NUEVO: Admin puede cambiar estados pero debe asignar vendedor para amarillo/naranja
@@ -305,6 +328,42 @@ export default function LocalesTable({
     } finally {
       setChangingLocalId(null);
     }
+  };
+
+  // ====== SESIÓN 48C: HELPER - Confirmar NARANJA con Comentario ======
+  const handleConfirmarNaranjaConComentario = async (comentario: string) => {
+    if (!comentarioNaranjaModal.local) return;
+
+    const local = comentarioNaranjaModal.local;
+
+    try {
+      setChangingLocalId(local.id);
+
+      const result = await updateLocalEstado(
+        local.id,
+        'naranja',
+        user?.vendedor_id || undefined,
+        user?.id || undefined,
+        comentario // ✅ Pasar comentario
+      );
+
+      if (result.success) {
+        // Cerrar modal
+        setComentarioNaranjaModal({ isOpen: false, local: null });
+      } else {
+        alert(result.message || 'Error al cambiar estado');
+      }
+    } catch (error) {
+      console.error('Error confirmando NARANJA:', error);
+      alert('Error inesperado al confirmar el local');
+    } finally {
+      setChangingLocalId(null);
+    }
+  };
+
+  // ====== SESIÓN 48C: HELPER - Cancelar Modal Comentario NARANJA ======
+  const handleCancelarComentarioNaranja = () => {
+    setComentarioNaranjaModal({ isOpen: false, local: null });
   };
 
   // ====== HELPER: Admin Asigna Vendedor (Amarillo/Naranja) ======
@@ -875,6 +934,14 @@ export default function LocalesTable({
           usuarioId={user?.id}
         />
       )}
+
+      {/* SESIÓN 48C: Modal Comentario NARANJA */}
+      <ComentarioNaranjaModal
+        isOpen={comentarioNaranjaModal.isOpen}
+        local={comentarioNaranjaModal.local}
+        onConfirm={handleConfirmarNaranjaConComentario}
+        onCancel={handleCancelarComentarioNaranja}
+      />
     </div>
   );
 }

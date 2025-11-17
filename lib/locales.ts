@@ -254,6 +254,7 @@ export async function getLocalesStats(proyectoId?: string) {
 // ============================================================================
 
 /**
+ * SESIÓN 48C: Actualizada para aceptar comentario opcional
  * Actualizar estado de un local
  * IMPORTANTE: Esta función NO debe usarse directamente desde componentes
  * Usar Server Action updateLocalEstado() en lib/actions-locales.ts
@@ -261,13 +262,16 @@ export async function getLocalesStats(proyectoId?: string) {
  * @param localId ID del local
  * @param nuevoEstado Nuevo estado del local
  * @param vendedorId ID del vendedor que hace el cambio
+ * @param usuarioId ID del usuario que hace el cambio (para historial)
+ * @param comentario Comentario opcional (se guarda en locales_historial.accion)
  * @returns Success/error
  */
 export async function updateLocalEstadoQuery(
   localId: string,
   nuevoEstado: 'verde' | 'amarillo' | 'naranja' | 'rojo',
   vendedorId?: string,
-  usuarioId?: string // ID del usuario que hace el cambio (para historial)
+  usuarioId?: string,
+  comentario?: string // ← NUEVO parámetro opcional
 ) {
   try {
     // Obtener local actual
@@ -359,40 +363,45 @@ export async function updateLocalEstadoQuery(
     if (estadoAnterior !== nuevoEstado && usuarioId) {
       let accion = 'Cambio de estado';
 
-      // 🎯 CASO ESPECIAL: Admin asigna vendedor con amarillo/naranja
-      if (vendedorId && (nuevoEstado === 'amarillo' || nuevoEstado === 'naranja')) {
-        // Fetch admin name
-        const { data: adminData } = await supabase
-          .from('usuarios')
-          .select('nombre, rol')
-          .eq('id', usuarioId)
-          .single();
-
-        // Fetch vendedor name
-        const { data: vendedorData } = await supabase
-          .from('usuarios')
-          .select('nombre')
-          .eq('vendedor_id', vendedorId)
-          .single();
-
-        if (adminData?.rol === 'admin' && vendedorData?.nombre) {
-          // Formato especial para admin
-          const estadoTexto = nuevoEstado === 'amarillo' ? 'Amarillo' : 'Naranja';
-          accion = `Admin ${adminData.nombre} asignó local a ${vendedorData.nombre} con estado ${estadoTexto}`;
-        } else {
-          // Fallback si no se pudieron obtener los nombres
-          accion =
-            nuevoEstado === 'amarillo' ? 'Vendedor inició negociación' :
-            'Cliente confirmó que tomará el local';
-        }
+      // SESIÓN 48C: Si hay comentario, usarlo directamente
+      if (comentario && comentario.trim().length > 0) {
+        accion = comentario.trim();
       } else {
-        // Mensajes normales para otros casos
-        accion =
-          nuevoEstado === 'rojo' ? 'Vendedor cerró venta' :
-          nuevoEstado === 'naranja' ? 'Cliente confirmó que tomará el local' :
-          nuevoEstado === 'amarillo' ? 'Vendedor inició negociación' :
-          nuevoEstado === 'verde' ? 'Local liberado' :
-          'Cambio de estado';
+        // 🎯 CASO ESPECIAL: Admin asigna vendedor con amarillo/naranja
+        if (vendedorId && (nuevoEstado === 'amarillo' || nuevoEstado === 'naranja')) {
+          // Fetch admin name
+          const { data: adminData } = await supabase
+            .from('usuarios')
+            .select('nombre, rol')
+            .eq('id', usuarioId)
+            .single();
+
+          // Fetch vendedor name
+          const { data: vendedorData } = await supabase
+            .from('usuarios')
+            .select('nombre')
+            .eq('vendedor_id', vendedorId)
+            .single();
+
+          if (adminData?.rol === 'admin' && vendedorData?.nombre) {
+            // Formato especial para admin
+            const estadoTexto = nuevoEstado === 'amarillo' ? 'Amarillo' : 'Naranja';
+            accion = `Admin ${adminData.nombre} asignó local a ${vendedorData.nombre} con estado ${estadoTexto}`;
+          } else {
+            // Fallback si no se pudieron obtener los nombres
+            accion =
+              nuevoEstado === 'amarillo' ? 'Vendedor inició negociación' :
+              'Cliente confirmó que tomará el local';
+          }
+        } else {
+          // Mensajes normales para otros casos
+          accion =
+            nuevoEstado === 'rojo' ? 'Vendedor cerró venta' :
+            nuevoEstado === 'naranja' ? 'Cliente confirmó que tomará el local' :
+            nuevoEstado === 'amarillo' ? 'Vendedor inició negociación' :
+            nuevoEstado === 'verde' ? 'Local liberado' :
+            'Cambio de estado';
+        }
       }
 
       const { error: historialError } = await supabase
@@ -402,7 +411,7 @@ export async function updateLocalEstadoQuery(
           usuario_id: usuarioId, // ✅ Usuario correcto (no NULL)
           estado_anterior: estadoAnterior,
           estado_nuevo: nuevoEstado,
-          accion: accion,
+          accion: accion, // ← SESIÓN 48C: Comentario guardado aquí
         });
 
       if (historialError) {
