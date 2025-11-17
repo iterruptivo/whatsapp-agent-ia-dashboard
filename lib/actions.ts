@@ -182,7 +182,7 @@ export async function importManualLeads(
     console.log(`[IMPORT] Starting import of ${leads.length} leads to proyecto: ${proyectoId}`);
 
     // Create server-side Supabase client with cookies (authenticated role)
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const supabaseServer = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
