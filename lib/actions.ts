@@ -196,14 +196,19 @@ export async function importManualLeads(
         continue;
       }
 
-      // Validar que el vendedor existe y tenga rol "vendedor"
+      // Validar que el vendedor existe y tenga rol "vendedor" o "vendedor_caseta"
       const { data: usuario, error: usuarioError } = await supabase
         .from('usuarios')
         .select('id, vendedor_id, rol')
         .eq('email', lead.email_vendedor)
         .single();
 
-      if (usuarioError || !usuario || usuario.rol !== 'vendedor' || !usuario.vendedor_id) {
+      if (
+        usuarioError ||
+        !usuario ||
+        (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta') ||
+        !usuario.vendedor_id
+      ) {
         console.log(`[IMPORT] Invalid vendor at row ${rowNum}:`, {
           email: lead.email_vendedor,
           error: usuarioError?.message,
