@@ -360,3 +360,109 @@ export async function autoLiberarLocalesExpirados() {
     return { liberados: 0, errores: 1 };
   }
 }
+
+// ============================================================================
+// SESIÓN 48E: SALIR DE NEGOCIACIÓN (AMARILLO)
+// ============================================================================
+
+/**
+ * Remover vendedor de la negociación de un local en AMARILLO
+ * Si es el último vendedor, el local vuelve automáticamente a VERDE
+ *
+ * Flujo:
+ * 1. Verificar que el local esté en AMARILLO
+ * 2. Verificar que el vendedor esté en el array vendedores_negociando_ids
+ * 3. Remover vendedor del array
+ * 4. Si array queda vacío → cambiar local a VERDE + historial
+ * 5. Si array tiene vendedores → solo actualizar array (local sigue AMARILLO)
+ *
+ * @param localId ID del local
+ * @param vendedorId ID del vendedor que sale de la negociación
+ * @param usuarioId ID del usuario (para historial)
+ * @returns Success/error con mensaje
+ */
+export async function salirDeNegociacion(
+  localId: string,
+  vendedorId: string,
+  usuarioId?: string
+) {
+  try {
+    // PASO 1: Obtener local actual
+    const local = await getLocalById(localId);
+    if (!local) {
+      return { success: false, message: 'Local no encontrado' };
+    }
+
+    // PASO 2: Validar que esté en AMARILLO
+    if (local.estado !== 'amarillo') {
+      return {
+        success: false,
+        message: 'Solo puedes salir de la negociación de locales en estado AMARILLO',
+      };
+    }
+
+    // PASO 3: Verificar que el vendedor esté en el array
+    const vendedoresActuales = local.vendedores_negociando_ids || [];
+    if (!vendedoresActuales.includes(vendedorId)) {
+      return {
+        success: false,
+        message: 'No estás en la negociación de este local',
+      };
+    }
+
+    // PASO 4: Remover vendedor del array
+    const vendedoresNuevos = vendedoresActuales.filter((id) => id !== vendedorId);
+
+    // PASO 5: Decidir si el local vuelve a VERDE o se mantiene AMARILLO
+    const nuevoEstado = vendedoresNuevos.length === 0 ? 'verde' : 'amarillo';
+
+    // PASO 6: Actualizar local
+    const { error: updateError } = await supabase
+      .from('locales')
+      .update({
+        estado: nuevoEstado,
+        vendedores_negociando_ids: vendedoresNuevos,
+        // Si vuelve a VERDE, limpiar vendedor_actual_id
+        ...(nuevoEstado === 'verde' && { vendedor_actual_id: null }),
+      })
+      .eq('id', localId);
+
+    if (updateError) {
+      console.error('[SALIR NEGOCIACIÓN] ❌ Error actualizando local:', updateError);
+      return { success: false, message: 'Error al salir de la negociación' };
+    }
+
+    // PASO 7: Registrar en historial
+    const { error: historialError } = await supabase
+      .from('locales_historial')
+      .insert({
+        local_id: localId,
+        usuario_id: usuarioId || null,
+        estado_anterior: 'amarillo',
+        estado_nuevo: nuevoEstado,
+        accion:
+          nuevoEstado === 'verde'
+            ? 'Vendedor salió de la negociación (último vendedor, local liberado)'
+            : `Vendedor salió de la negociación (${vendedoresNuevos.length} vendedor(es) restante(s))`,
+      });
+
+    if (historialError) {
+      console.error('[SALIR NEGOCIACIÓN] ⚠️ Error registrando historial:', historialError);
+      // No fallar la operación si solo falla el historial
+    }
+
+    // PASO 8: Revalidar página
+    revalidatePath('/locales');
+
+    return {
+      success: true,
+      message:
+        nuevoEstado === 'verde'
+          ? 'Saliste de la negociación. El local volvió a estado VERDE.'
+          : `Saliste de la negociación. ${vendedoresNuevos.length} vendedor(es) aún negociando.`,
+    };
+  } catch (error) {
+    console.error('[SALIR NEGOCIACIÓN] ❌ Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al salir de la negociación' };
+  }
+}

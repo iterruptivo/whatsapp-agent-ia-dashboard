@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { updateLocalEstado, desbloquearLocal, updateMontoVenta, autoLiberarLocalesExpirados } from '@/lib/actions-locales';
+import { updateLocalEstado, desbloquearLocal, updateMontoVenta, autoLiberarLocalesExpirados, salirDeNegociacion } from '@/lib/actions-locales';
 import type { Local, VendedorActivo } from '@/lib/locales';
 import { getAllVendedoresActivos } from '@/lib/locales';
 import { ChevronLeft, ChevronRight, History, Lock, Link2, Clock } from 'lucide-react';
@@ -127,6 +127,28 @@ export default function LocalesTable({
         variant: 'info',
       });
       return;
+    }
+
+    // SESIÓN 48E: BLOQUEAR cambio directo a VERDE si hay 2+ vendedores negociando
+    if (
+      nuevoEstado === 'verde' &&
+      local.estado === 'amarillo' &&
+      (local.vendedores_negociando_ids || []).length >= 2
+    ) {
+      const vendedorId = user.vendedor_id || '';
+      const estaEnNegociacion = (local.vendedores_negociando_ids || []).includes(vendedorId);
+
+      if (estaEnNegociacion) {
+        setConfirmModal({
+          isOpen: true,
+          local: null,
+          nuevoEstado: null,
+          title: 'Acción Bloqueada',
+          message: `Hay ${(local.vendedores_negociando_ids || []).length} vendedores negociando este local.\n\nUsa el enlace "Salir de la negociación" debajo del semáforo para abandonar tu negociación sin afectar a los demás.`,
+          variant: 'warning',
+        });
+        return;
+      }
     }
 
     // SESIÓN 48C: Si es vendedor/vendedor_caseta cambiando a NARANJA → mostrar modal comentario
@@ -364,6 +386,44 @@ export default function LocalesTable({
   // ====== SESIÓN 48C: HELPER - Cancelar Modal Comentario NARANJA ======
   const handleCancelarComentarioNaranja = () => {
     setComentarioNaranjaModal({ isOpen: false, local: null });
+  };
+
+  // ====== SESIÓN 48E: HELPER - Salir de Negociación ======
+  const handleSalirNegociacion = async (local: Local) => {
+    if (!user || !user.vendedor_id) {
+      alert('No tienes un vendedor asignado');
+      return;
+    }
+
+    // Confirmar acción
+    const confirm = window.confirm(
+      `¿Deseas salir de la negociación de este local?\n\n` +
+      `${(local.vendedores_negociando_ids || []).length === 1
+        ? 'Como eres el único vendedor negociando, el local volverá a estado VERDE (libre).'
+        : `Quedarán ${(local.vendedores_negociando_ids || []).length - 1} vendedor(es) negociando.`
+      }`
+    );
+
+    if (!confirm) return;
+
+    setChangingLocalId(local.id);
+
+    try {
+      const result = await salirDeNegociacion(
+        local.id,
+        user.vendedor_id,
+        user.id || undefined
+      );
+
+      if (!result.success) {
+        alert(result.message || 'Error al salir de la negociación');
+      }
+    } catch (error) {
+      console.error('Error saliendo de negociación:', error);
+      alert('Error inesperado al salir de la negociación');
+    } finally {
+      setChangingLocalId(null);
+    }
   };
 
   // ====== HELPER: Admin Asigna Vendedor (Amarillo/Naranja) ======
@@ -682,6 +742,37 @@ export default function LocalesTable({
     );
   };
 
+  // ====== SESIÓN 48E: HELPER - Render Link "Salir de la negociación" ======
+  const renderSalirNegociacion = (local: Local) => {
+    // Solo mostrar si:
+    // 1. Local está en AMARILLO
+    // 2. Usuario tiene vendedor_id
+    // 3. Usuario está en el array vendedores_negociando_ids
+    if (
+      local.estado !== 'amarillo' ||
+      !user?.vendedor_id ||
+      !(local.vendedores_negociando_ids || []).includes(user.vendedor_id)
+    ) {
+      return null;
+    }
+
+    const isChanging = changingLocalId === local.id;
+
+    return (
+      <div className="mt-2">
+        <button
+          onClick={() => handleSalirNegociacion(local)}
+          disabled={isChanging}
+          className={`text-xs text-blue-600 hover:text-blue-800 hover:underline ${
+            isChanging ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+          }`}
+        >
+          Salir de la negociación
+        </button>
+      </div>
+    );
+  };
+
   // ====== HELPER: Paginación ======
   const renderPagination = () => {
     // Protección: Si no hay páginas válidas, no renderizar
@@ -817,9 +908,10 @@ export default function LocalesTable({
                     {/* Metraje */}
                     <td className="py-3 px-4 text-gray-700">{local.metraje} m²</td>
 
-                    {/* Semáforo + Timer NARANJA */}
+                    {/* Semáforo + Timer NARANJA + Link Salir Negociación */}
                     <td className="py-3 px-4">
                       {renderSemaforo(local)}
+                      {renderSalirNegociacion(local)}
                       {renderTimer(local)}
                     </td>
 
