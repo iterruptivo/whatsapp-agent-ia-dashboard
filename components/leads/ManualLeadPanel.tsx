@@ -203,13 +203,7 @@ export default function ManualLeadPanel({
     setImporting(false);
     setResult(importResult);
 
-    if (importResult.success && importResult.imported > 0) {
-      // Esperar 2 segundos antes de llamar onSuccess
-      setTimeout(() => {
-        onSuccess();
-        handleReset();
-      }, 2000);
-    }
+    // NO auto-refresh: usuario controla cuándo actualizar dashboard
   };
 
   // 5. Reset completo
@@ -220,7 +214,16 @@ export default function ManualLeadPanel({
     setResult(null);
   };
 
-  // 6. Cerrar panel
+  // 6. Cerrar panel con refresh condicional
+  const handleCloseWithRefresh = () => {
+    if (result && result.success && result.imported > 0) {
+      onSuccess(); // Refresh datos del dashboard
+    }
+    handleReset(); // Limpiar estado del panel
+    onClose(); // Cerrar panel
+  };
+
+  // 7. Cerrar panel (para casos donde NO queremos auto-refresh)
   const handleClose = () => {
     if (pendingLeads.length > 0 && !result) {
       // Confirmar si tiene leads sin importar
@@ -233,12 +236,11 @@ export default function ManualLeadPanel({
         onClose();
       }
     } else {
-      handleReset();
-      onClose();
+      handleCloseWithRefresh();
     }
   };
 
-  // 7. Cancelar edición
+  // 8. Cancelar edición
   const handleCancelEdit = () => {
     setCurrentForm(EMPTY_FORM);
     setEditingIndex(null);
@@ -248,7 +250,7 @@ export default function ManualLeadPanel({
     setVendedorError('');
   };
 
-  // 8. Seleccionar vendedor
+  // 9. Seleccionar vendedor
   const handleSelectVendedor = (email: string) => {
     console.log('[MANUAL LEAD PANEL] Vendedor seleccionado:', {
       email,
@@ -316,7 +318,7 @@ export default function ManualLeadPanel({
               </p>
             </div>
             <button
-              onClick={handleClose}
+              onClick={handleCloseWithRefresh}
               className="text-gray-500 hover:text-gray-700 transition-colors p-2 hover:bg-gray-100 rounded-full"
               title="Cerrar panel"
             >
@@ -731,15 +733,12 @@ export default function ManualLeadPanel({
                 </div>
               )}
 
-              {/* Close Button */}
+              {/* Close/Update Button */}
               <button
-                onClick={() => {
-                  handleReset();
-                  onClose();
-                }}
+                onClick={handleCloseWithRefresh}
                 className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
               >
-                Cerrar
+                {result.success && result.imported > 0 ? 'Actualizar dashboard' : 'Cerrar'}
               </button>
             </div>
           )}
