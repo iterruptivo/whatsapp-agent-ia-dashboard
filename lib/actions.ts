@@ -1,21 +1,9 @@
 'use server';
 
 import { supabase } from './supabase';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-
-// Admin client with Service Role Key to bypass RLS
-// Used only for validating usuarios table during manual lead import
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  }
-);
 
 /**
  * Server Action: Assign or reassign a lead to a vendedor
@@ -193,6 +181,20 @@ export async function importManualLeads(
   try {
     console.log(`[IMPORT] Starting import of ${leads.length} leads to proyecto: ${proyectoId}`);
 
+    // Create server-side Supabase client with cookies (authenticated role)
+    const cookieStore = cookies();
+    const supabaseServer = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          }
+        }
+      }
+    );
+
     let imported = 0;
     const duplicates: Array<{ nombre: string; telefono: string }> = [];
     const invalidVendors: Array<{ email: string; row: number; reason?: string }> = [];
@@ -211,8 +213,8 @@ export async function importManualLeads(
       }
 
       // Validar que el vendedor existe y tenga rol "vendedor" o "vendedor_caseta"
-      // Use supabaseAdmin to bypass RLS policies on usuarios table
-      const { data: usuarios, error: usuarioError } = await supabaseAdmin
+      // Use server client with cookies (authenticated role) - RLS allows access
+      const { data: usuarios, error: usuarioError } = await supabaseServer
         .from('usuarios')
         .select('id, vendedor_id, rol')
         .eq('email', lead.email_vendedor)
