@@ -196,8 +196,6 @@ export default function ManualLeadPanel({
       return;
     }
 
-    console.log('[MANUAL LEAD PANEL] Importing leads (FULL OBJECT):', pendingLeads);
-
     setImporting(true);
     const importResult = await importManualLeads(proyectoId, pendingLeads);
     setImporting(false);
@@ -252,11 +250,6 @@ export default function ManualLeadPanel({
 
   // 9. Seleccionar vendedor
   const handleSelectVendedor = (email: string) => {
-    console.log('[MANUAL LEAD PANEL] Vendedor seleccionado:', {
-      email,
-      length: email.length,
-      charCodes: email.split('').map(c => c.charCodeAt(0)),
-    });
     setCurrentForm({ ...currentForm, email_vendedor: email });
     setIsVendedorDropdownOpen(false);
     setVendedorSearch('');

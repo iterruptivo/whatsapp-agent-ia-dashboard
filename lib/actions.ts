@@ -179,8 +179,6 @@ export async function importManualLeads(
   }>
 ) {
   try {
-    console.log(`[IMPORT] Starting import of ${leads.length} leads to proyecto: ${proyectoId}`);
-
     // Create server-side Supabase client with cookies (authenticated role)
     const cookieStore = await cookies();
     const supabaseServer = createServerClient(
@@ -207,7 +205,6 @@ export async function importManualLeads(
 
       // VALIDACIÓN UTM: Requerido para leads manuales
       if (!lead.utm || lead.utm.trim() === '') {
-        console.log(`[IMPORT] Missing UTM at row ${rowNum}:`, lead.nombre);
         missingUtm.push({ nombre: lead.nombre, row: rowNum });
         continue;
       }
@@ -240,19 +237,13 @@ export async function importManualLeads(
           failReason = 'Sin vendedor_id';
         }
 
-        console.log(`[IMPORT] Invalid vendor at row ${rowNum}:`, {
+        console.error(`[IMPORT] Invalid vendor at row ${rowNum}:`, {
           email: lead.email_vendedor,
-          error: usuarioError?.message,
-          usuario,
+          reason: failReason,
         });
         invalidVendors.push({ email: lead.email_vendedor, row: rowNum, reason: failReason });
         continue;
       }
-
-      console.log(`[IMPORT] Valid vendor found for row ${rowNum}:`, {
-        email: lead.email_vendedor,
-        vendedor_id: usuario.vendedor_id,
-      });
 
       // Verificar si ya existe un lead con ese teléfono en este proyecto
       // Usar .limit(1) en vez de .maybeSingle() para evitar PGRST116 cuando hay duplicados
@@ -280,8 +271,6 @@ export async function importManualLeads(
         utm: lead.utm.trim(), // UTM requerido para leads manuales
       };
 
-      console.log(`[IMPORT] Inserting lead at row ${rowNum}:`, leadData);
-
       const { error: insertError } = await supabase.from('leads').insert(leadData);
 
       if (insertError) {
@@ -289,7 +278,6 @@ export async function importManualLeads(
         continue;
       }
 
-      console.log(`[IMPORT] Successfully inserted lead at row ${rowNum}: ${lead.nombre}`);
       imported++;
     }
 
