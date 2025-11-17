@@ -48,6 +48,7 @@ export default function LocalesTable({
     title: string;
     message: string;
     variant: 'danger' | 'warning' | 'info';
+    actionType?: 'desbloquear' | 'salir_negociacion'; // SESIÓN 48E: Identificar tipo de acción
   }>({
     isOpen: false,
     local: null,
@@ -204,7 +205,8 @@ export default function LocalesTable({
       setConfirmModal({
         isOpen: true,
         local,
-        nuevoEstado: null, // null indica que es desbloqueo, no cambio de estado
+        nuevoEstado: null,
+        actionType: 'desbloquear', // SESIÓN 48E: Identificar tipo de acción
         title: 'Desbloquear Local',
         message: `¿Deseas desbloquear este local?\n\nEl local volverá a estar disponible para cambios de estado.`,
         variant: 'warning',
@@ -300,8 +302,11 @@ export default function LocalesTable({
   // ====== HELPER: Manejar Confirmación del Modal ======
   const handleConfirmModalAction = async () => {
     if (confirmModal.local) {
-      // Si nuevoEstado es null, es un desbloqueo
-      if (confirmModal.nuevoEstado === null) {
+      // SESIÓN 48E: Detectar tipo de acción
+      if (confirmModal.actionType === 'salir_negociacion') {
+        await executeSalirNegociacion(confirmModal.local);
+      } else if (confirmModal.actionType === 'desbloquear' || confirmModal.nuevoEstado === null) {
+        // Si actionType es 'desbloquear' o nuevoEstado es null (legacy), es un desbloqueo
         await handleDesbloquearLocal(confirmModal.local);
       } else {
         // Si hay nuevoEstado, es un cambio de estado normal
@@ -388,23 +393,40 @@ export default function LocalesTable({
     setComentarioNaranjaModal({ isOpen: false, local: null });
   };
 
-  // ====== SESIÓN 48E: HELPER - Salir de Negociación ======
-  const handleSalirNegociacion = async (local: Local) => {
+  // ====== SESIÓN 48E: HELPER - Salir de Negociación (Abrir Modal) ======
+  const handleSalirNegociacion = (local: Local) => {
     if (!user || !user.vendedor_id) {
-      alert('No tienes un vendedor asignado');
+      setConfirmModal({
+        isOpen: true,
+        local: null,
+        nuevoEstado: null,
+        title: 'Error',
+        message: 'No tienes un vendedor asignado',
+        variant: 'danger',
+      });
       return;
     }
 
-    // Confirmar acción
-    const confirm = window.confirm(
-      `¿Deseas salir de la negociación de este local?\n\n` +
-      `${(local.vendedores_negociando_ids || []).length === 1
-        ? 'Como eres el único vendedor negociando, el local volverá a estado VERDE (libre).'
-        : `Quedarán ${(local.vendedores_negociando_ids || []).length - 1} vendedor(es) negociando.`
-      }`
-    );
+    const cantidadNegociando = (local.vendedores_negociando_ids || []).length;
+    const esUnico = cantidadNegociando === 1;
 
-    if (!confirm) return;
+    // Abrir modal de confirmación
+    setConfirmModal({
+      isOpen: true,
+      local,
+      nuevoEstado: null,
+      actionType: 'salir_negociacion',
+      title: 'Salir de la Negociación',
+      message: esUnico
+        ? 'Como eres el único vendedor negociando, el local volverá a estado VERDE (libre).\n\n¿Deseas continuar?'
+        : `Quedarán ${cantidadNegociando - 1} vendedor(es) negociando este local.\n\n¿Deseas salir de la negociación?`,
+      variant: 'warning',
+    });
+  };
+
+  // ====== SESIÓN 48E: HELPER - Ejecutar Salir de Negociación ======
+  const executeSalirNegociacion = async (local: Local) => {
+    if (!user?.vendedor_id) return;
 
     setChangingLocalId(local.id);
 
@@ -416,11 +438,25 @@ export default function LocalesTable({
       );
 
       if (!result.success) {
-        alert(result.message || 'Error al salir de la negociación');
+        setConfirmModal({
+          isOpen: true,
+          local: null,
+          nuevoEstado: null,
+          title: 'Error',
+          message: result.message || 'Error al salir de la negociación',
+          variant: 'danger',
+        });
       }
     } catch (error) {
       console.error('Error saliendo de negociación:', error);
-      alert('Error inesperado al salir de la negociación');
+      setConfirmModal({
+        isOpen: true,
+        local: null,
+        nuevoEstado: null,
+        title: 'Error Inesperado',
+        message: 'Error inesperado al salir de la negociación',
+        variant: 'danger',
+      });
     } finally {
       setChangingLocalId(null);
     }
