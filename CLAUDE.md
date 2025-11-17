@@ -8,8 +8,8 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 16 Noviembre 2025
-**Sesión:** 46 - ✅ **FIX PGRST116: Import Manual de Leads**
-**Estado:** ✅ **LISTO PARA TESTING**
+**Sesión:** 46B - ✅ **UX Improvement: Usuario controla cuándo actualizar dashboard**
+**Estado:** ✅ **DEPLOYED - TESTING**
 **Documentación:** Ver resumen abajo
 
 ---
@@ -53,7 +53,7 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: **100% ESTABLE** (session loss eliminado, auto-refresh JWT sin logout, cache localStorage)
 
 - **[Leads](docs/modulos/leads.md)** - Captura, gestión, import manual
-  - Última sesión: **46 (Fix PGRST116 en import manual)**
+  - Última sesión: **46B (UX: Usuario controla actualización dashboard)**
   - Estado: OPERATIVO (1,417 leads con keyset pagination)
 
 - **[Locales](docs/modulos/locales.md)** - Semáforo, monto de venta, tracking
@@ -95,7 +95,7 @@ Documentación cronológica completa de todas las sesiones.
   - Rubro Opcional Callao (43) ✅
   - Panel Entrada Manual Leads (44) ✅
   - **Sistema Auth 100% Estable (45A-45I)** ✅ 🎯
-  - **Fix PGRST116 Import Manual (46)** ✅
+  - **Fix PGRST116 Import Manual + UX (46A-46B)** ✅
 
 ---
 
@@ -144,32 +144,39 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
 
-### **Sesión 46** (16 Nov) - ✅ **FIX PGRST116: Import Manual de Leads**
+### **Sesión 46 (A-B)** (16 Nov) - ✅ **FIX PGRST116 + UX Improvement**
+
+#### **Sesión 46A: Fix PGRST116 en Import Manual**
 **Problema crítico:** Error PGRST116 al intentar agregar lead manual con email leo@ecoplaza.com
 **Síntoma:** "Cannot coerce the result to a single JSON object"
 **Root Cause:** `.maybeSingle()` falla cuando encuentra duplicados en la DB (2+ leads con mismo teléfono)
-
-**Análisis exhaustivo:**
-- Log de consola mostraba objeto incompleto (solo 3 campos), pero era SOLO para debug
-- Objeto real `pendingLeads` enviado SÍ tenía todos los campos (nombre, telefono, email_vendedor, utm, email, rubro)
-- Error venía de línea 244 de `actions.ts` al verificar duplicados
-- `.maybeSingle()` espera 0 o 1 resultado, falla con múltiples filas
 
 **Solución quirúrgica (1 línea modificada):**
 - Cambiar `.maybeSingle()` por `.limit(1)` en verificación de duplicados
 - `.limit(1)` solo verifica "¿existe al menos uno?" sin fallar con duplicados
 - Mejorar logging: mostrar objeto completo en vez de solo 3 campos
 
-**Archivos modificados:**
-- `lib/actions.ts` (líneas 238-250): `.maybeSingle()` → `.limit(1)`
-- `ManualLeadPanel.tsx` (línea 199): log completo del objeto
-
-**Testing requerido:**
-1. Agregar lead "Leo D Leon" con email leo@ecoplaza.com
-2. Verificar que no falle con PGRST116
-3. Confirmar que duplicados se detectan correctamente
-
+**Archivos:** `lib/actions.ts`, `ManualLeadPanel.tsx`
 **Commit:** `7fe69cf` - fix: PGRST116 en import manual - usar .limit(1) en vez de .maybeSingle()
+
+#### **Sesión 46B: UX - Usuario controla cuándo actualizar dashboard**
+**Problema UX:** Panel se auto-cerraba con timeout 2s, dashboard se actualizaba automáticamente
+**Solución:** Aplicar mismo patrón que LeadImportModal (Sesión 46A)
+
+**Mejoras implementadas:**
+1. Eliminado auto-refresh después de importación exitosa
+2. Botón "Cerrar" cambia a "Actualizar dashboard" cuando hay imports exitosos
+3. Ícono X también actualiza dashboard cuando corresponde
+4. Panel permanece abierto - usuario ve confirmación con calma
+
+**Comportamiento final:**
+- Usuario agrega lead → Click "Importar 1 Lead" → Panel permanece abierto mostrando éxito
+- Usuario controla cuándo cerrar: click "Actualizar dashboard" o X
+- Dashboard solo se refresca cuando usuario lo solicita
+- **Consistencia:** LeadImportModal (CSV/Excel) y ManualLeadPanel (uno por uno) tienen la MISMA UX
+
+**Archivos:** `ManualLeadPanel.tsx` (handleImportAll, handleCloseWithRefresh, X icon, botón result)
+**Commit:** `242bacb` - feat: UX manual leads - Usuario controla cuándo actualizar dashboard
 
 ---
 
