@@ -12,7 +12,7 @@ import { useState, useRef } from 'react';
 import { importManualLeads } from '@/lib/actions';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { X, Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Upload, FileText, AlertCircle, CheckCircle, Download } from 'lucide-react';
 
 interface LeadImportModalProps {
   isOpen: boolean;
@@ -172,6 +172,37 @@ export default function LeadImportModal({
     }
   };
 
+  // ====== DOWNLOAD TEMPLATE ======
+  const handleDownloadTemplate = () => {
+    // Datos de ejemplo para la plantilla
+    const templateData = [
+      {
+        nombre: 'Juan Pérez',
+        telefono: '+51987654321',
+        email_vendedor: 'leo@ecoplaza.com',
+        utm: 'facebook',
+        email: 'juan.perez@ejemplo.com',
+        rubro: 'Restaurante',
+      },
+      {
+        nombre: 'María García',
+        telefono: '+51912345678',
+        email_vendedor: 'leo@ecoplaza.com',
+        utm: 'instagram',
+        email: 'maria.garcia@ejemplo.com',
+        rubro: 'Retail',
+      },
+    ];
+
+    // Crear workbook
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Leads');
+
+    // Descargar archivo
+    XLSX.writeFile(workbook, 'plantilla_leads_manuales.xlsx');
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -181,19 +212,60 @@ export default function LeadImportModal({
     >
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div>
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-gray-900">Importar Leads Manuales</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Formato CSV: nombre, telefono, email_vendedor, utm, email, rubro
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          {/* Formato Ejemplo */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-700">Formato ejemplo:</p>
+              <button
+                onClick={handleDownloadTemplate}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Descargar plantilla
+              </button>
+            </div>
+
+            {/* Tabla de ejemplo */}
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-primary text-white">
+                  <tr>
+                    <th className="text-left py-2 px-3 font-medium">nombre</th>
+                    <th className="text-left py-2 px-3 font-medium">telefono</th>
+                    <th className="text-left py-2 px-3 font-medium">email_vendedor</th>
+                    <th className="text-left py-2 px-3 font-medium">utm</th>
+                    <th className="text-left py-2 px-3 font-medium">email</th>
+                    <th className="text-left py-2 px-3 font-medium">rubro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-t border-gray-200 bg-white">
+                    <td className="py-2 px-3 text-gray-900">Juan Pérez</td>
+                    <td className="py-2 px-3 text-gray-900">+51987654321</td>
+                    <td className="py-2 px-3 text-gray-900">leo@ecoplaza.com</td>
+                    <td className="py-2 px-3 text-gray-900">facebook</td>
+                    <td className="py-2 px-3 text-gray-600">juan.perez@ejemplo.com</td>
+                    <td className="py-2 px-3 text-gray-600">Restaurante</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs text-gray-500">
+              <span className="font-medium">Campos requeridos:</span> nombre, telefono,
+              email_vendedor, utm | <span className="font-medium">Opcionales:</span> email, rubro
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
         </div>
 
         {/* Body */}
