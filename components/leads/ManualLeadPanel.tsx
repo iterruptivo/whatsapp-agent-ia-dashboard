@@ -490,34 +490,6 @@ export default function ManualLeadPanel({
                 )}
               </div>
 
-              {/* Input: Email (opcional) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email del lead <span className="text-gray-400">(opcional)</span>
-                </label>
-                <input
-                  type="email"
-                  placeholder="Ej: juan.perez@ejemplo.com"
-                  value={currentForm.email || ''}
-                  onChange={(e) => {
-                    setCurrentForm({ ...currentForm, email: e.target.value });
-                    // Limpiar error al empezar a escribir
-                    if (emailError) setEmailError('');
-                  }}
-                  className={`w-full px-4 py-2.5 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:border-transparent outline-none transition-all ${
-                    emailError
-                      ? 'border-red-500 focus:ring-red-500'
-                      : 'border-gray-300 focus:ring-primary'
-                  }`}
-                />
-                {emailError && (
-                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {emailError}
-                  </p>
-                )}
-              </div>
-
               {/* Input: UTM (REQUERIDO) */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -542,6 +514,34 @@ export default function ManualLeadPanel({
                   <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
                     <AlertCircle className="w-3 h-3" />
                     {utmError}
+                  </p>
+                )}
+              </div>
+
+              {/* Input: Email (opcional) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email del lead <span className="text-gray-400">(opcional)</span>
+                </label>
+                <input
+                  type="email"
+                  placeholder="Ej: juan.perez@ejemplo.com"
+                  value={currentForm.email || ''}
+                  onChange={(e) => {
+                    setCurrentForm({ ...currentForm, email: e.target.value });
+                    // Limpiar error al empezar a escribir
+                    if (emailError) setEmailError('');
+                  }}
+                  className={`w-full px-4 py-2.5 border rounded-lg bg-white text-gray-900 focus:ring-2 focus:border-transparent outline-none transition-all ${
+                    emailError
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-primary'
+                  }`}
+                />
+                {emailError && (
+                  <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    {emailError}
                   </p>
                 )}
               </div>
