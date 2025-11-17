@@ -1,7 +1,21 @@
 'use server';
 
 import { supabase } from './supabase';
+import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
+
+// Admin client with Service Role Key to bypass RLS
+// Used only for validating usuarios table during manual lead import
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  }
+);
 
 /**
  * Server Action: Assign or reassign a lead to a vendedor
@@ -197,7 +211,8 @@ export async function importManualLeads(
       }
 
       // Validar que el vendedor existe y tenga rol "vendedor" o "vendedor_caseta"
-      const { data: usuarios, error: usuarioError } = await supabase
+      // Use supabaseAdmin to bypass RLS policies on usuarios table
+      const { data: usuarios, error: usuarioError } = await supabaseAdmin
         .from('usuarios')
         .select('id, vendedor_id, rol')
         .eq('email', lead.email_vendedor)
