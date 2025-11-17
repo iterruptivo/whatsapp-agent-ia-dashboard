@@ -13,7 +13,7 @@
 
 ## 🔄 Estado Actual
 
-**SISTEMA OPERATIVO** - Última actualización: Sesión 41B (10 Nov 2025)
+**SISTEMA OPERATIVO** - Última actualización: Sesión 46 (16 Nov 2025)
 
 ### Métricas Actuales:
 - **Total Leads:** 1,417 (Proyecto Callao)
@@ -87,6 +87,52 @@
 **Usuario prefiere:** `created_at` (cuando entró al sistema)
 **Cambio:** 1 línea modificada en LeadsTable.tsx
 **Diferencia:** created_at puede ser 26 horas antes de fecha_captura
+
+### **Sesión 46** (16 Nov) - ✅ **FIX CRÍTICO: PGRST116 en Import Manual**
+**Problema:** Error PGRST116 al agregar lead manual con email leo@ecoplaza.com
+**Síntoma:** "Cannot coerce the result to a single JSON object"
+**Root Cause:** `.maybeSingle()` falla cuando encuentra duplicados en la DB (2+ leads con mismo teléfono)
+
+**Análisis exhaustivo:**
+- Log de consola mostraba objeto incompleto (solo 3 campos), pero era SOLO para debug
+- Objeto real `pendingLeads` enviado SÍ tenía todos los campos
+- Error venía de línea 244 de `actions.ts` al verificar duplicados
+- `.maybeSingle()` espera 0 o 1 resultado, falla con múltiples filas
+
+**Solución quirúrgica:**
+```typescript
+// ANTES (fallaba con duplicados)
+const { data: existingLead } = await supabase
+  .from('leads')
+  .select('id')
+  .eq('proyecto_id', proyectoId)
+  .eq('telefono', lead.telefono)
+  .maybeSingle(); // ❌ Falla si hay 2+ resultados
+
+// DESPUÉS (maneja duplicados correctamente)
+const { data: existingLeads } = await supabase
+  .from('leads')
+  .select('id')
+  .eq('proyecto_id', proyectoId)
+  .eq('telefono', lead.telefono)
+  .limit(1); // ✅ Solo pregunta "¿existe al menos uno?"
+```
+
+**Archivos modificados:**
+- `lib/actions.ts` (líneas 238-250): `.maybeSingle()` → `.limit(1)`
+- `ManualLeadPanel.tsx` (línea 199): log completo del objeto
+
+**Testing requerido:**
+1. Agregar lead "Leo D Leon" con email leo@ecoplaza.com
+2. Verificar que no falle con PGRST116
+3. Confirmar que duplicados se detectan correctamente
+
+**Lección aprendida:**
+- `.maybeSingle()` es sensible a duplicados en la DB
+- `.limit(1)` es más robusto para verificaciones de existencia
+- Siempre usar `.limit(1)` cuando solo importa "¿existe?" (no "¿cuántos hay?")
+
+**Commit:** `7fe69cf` - fix: PGRST116 en import manual - usar .limit(1) en vez de .maybeSingle()
 
 ---
 
