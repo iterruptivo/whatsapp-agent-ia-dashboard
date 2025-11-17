@@ -7,10 +7,10 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 16 Noviembre 2025
-**Sesión:** 46B - ✅ **UX Improvement: Usuario controla cuándo actualizar dashboard**
-**Estado:** ✅ **DEPLOYED - TESTING**
-**Documentación:** Ver resumen abajo
+**Fecha:** 17 Noviembre 2025
+**Sesión:** 48C - ✅ **Modal Comentario Obligatorio al Cambiar a NARANJA**
+**Estado:** ✅ **IMPLEMENTADO - PENDING TESTING**
+**Documentación:** [SESION_48C_COMENTARIO_OBLIGATORIO_NARANJA.md](consultas-leo/SESION_48C_COMENTARIO_OBLIGATORIO_NARANJA.md)
 
 ---
 
@@ -21,7 +21,7 @@
 |--------|--------|---------------------|----------|
 | [Autenticación](docs/modulos/auth.md) | ✅ **100% ESTABLE** | **Sesión 45I (13 Nov)** | **Uptime: 100% • 2+ hrs sesión** |
 | [Leads](docs/modulos/leads.md) | ✅ OPERATIVO | Sesión 44 (12 Nov) | 1,417 leads |
-| [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | Sesión 38 (5 Nov) | 823 locales |
+| [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 48C (17 Nov)** | 823 locales |
 | [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | Sesión 40D (8 Nov) | 22 usuarios |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
@@ -57,8 +57,8 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: OPERATIVO (1,417 leads con keyset pagination)
 
 - **[Locales](docs/modulos/locales.md)** - Semáforo, monto de venta, tracking
-  - Última sesión: 38 (UX mejoras modal)
-  - Estado: OPERATIVO (823 locales con real-time)
+  - Última sesión: **48C (Modal comentario obligatorio NARANJA)**
+  - Estado: OPERATIVO (823 locales con real-time + comentarios obligatorios)
 
 - **[Usuarios](docs/modulos/usuarios.md)** - Roles, permisos, CRUD
   - Última sesión: 40D (Nuevo admin Bryan)
@@ -85,7 +85,7 @@ Documentación cronológica completa de todas las sesiones.
   - Búsqueda Exacta + Import Manual (31)
   - Actualización n8n Callao (32)
 
-- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-46
+- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-48C
   - Fix Límite 1000 Leads (33-33C) ✅
   - Emergency Rollback (35B) 🔴
   - Middleware Security (36) ✅
@@ -96,6 +96,7 @@ Documentación cronológica completa de todas las sesiones.
   - Panel Entrada Manual Leads (44) ✅
   - **Sistema Auth 100% Estable (45A-45I)** ✅ 🎯
   - **Fix PGRST116 Import Manual + UX (46A-46B)** ✅
+  - **Modal Comentario Obligatorio NARANJA (48C)** ✅
 
 ---
 
@@ -143,6 +144,36 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 48C** (17 Nov) - ✅ **Modal Comentario Obligatorio al Cambiar a NARANJA**
+**Feature:** Vendedores deben agregar comentario obligatorio al pasar local a NARANJA
+**Problema resuelto:** Admin no sabía por qué vendedores cambiaban locales a confirmado
+**Restricciones:** Solo vendedor/vendedor_caseta ven modal (admin/jefe_ventas flujo normal)
+
+**Flujo completo:**
+1. Vendedor click botón NARANJA 🟠
+2. Modal aparece: "Confirmar Local - Estado NARANJA"
+3. Textarea obligatorio (mínimo 10 caracteres)
+4. Click "Confirmar local" → cambio a NARANJA + timer inicia
+5. Comentario se guarda en `locales_historial.accion`
+6. Historial muestra: "Cliente confirmó compra, pidió enviar contrato por email"
+
+**Componente nuevo:**
+- `ComentarioNaranjaModal.tsx` (142 líneas)
+  - Validación en tiempo real
+  - Error message dinámico
+  - Botón disabled si comentario < 10 chars
+
+**Cambios backend:**
+- `updateLocalEstado()` acepta parámetro `comentario` opcional
+- Validación server-side (doble seguridad)
+- Comentario se guarda en `locales_historial.accion`
+
+**Beneficio:** Mayor control y auditoría sobre uso de estado NARANJA
+**Archivos:** ComentarioNaranjaModal.tsx (nuevo), LocalesTable.tsx (+67 líneas), actions-locales.ts (+17), locales.ts (+40)
+**[📖 Ver documentación completa →](consultas-leo/SESION_48C_COMENTARIO_OBLIGATORIO_NARANJA.md)**
+
+---
 
 ### **Sesión 46 (A-B)** (16 Nov) - ✅ **FIX PGRST116 + UX Improvement**
 
@@ -226,21 +257,7 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ---
 
-### **Sesión 42** (10 Nov) - ✅ FIX CRÍTICO: Split useEffect
-**Problema:** Session loss con "loading" infinito
-**Root Cause:** useEffect único con 2 responsabilidades + dependency que causaba loop
-**Solución:** Split en 2 useEffects independientes
-**Resultado:** Session loss reducido (mejorado en Sesión 45)
-**[Ver detalles →](docs/sesiones/2025-11-noviembre.md#sesión-42)**
-
----
-
-### **Sesión 41B** (10 Nov) - ✅ Columna "Fecha": created_at
-**Cambio:** Columna "Fecha" ahora muestra `created_at` (cuándo entró al sistema) en vez de `fecha_captura` (cuándo completó datos)
-**Impacto:** 1 línea modificada, solo cambio visual
-**[Ver detalles →](docs/modulos/leads.md#sesion-41b)**
-
----
+## 📈 PROGRESO DEL PROYECTO
 
 ## 🚀 FEATURES PRINCIPALES
 
