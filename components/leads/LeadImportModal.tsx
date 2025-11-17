@@ -51,10 +51,19 @@ export default function LeadImportModal({
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ====== CLOSE WITH REFRESH ======
+  const handleCloseWithRefresh = () => {
+    if (result && result.success && result.imported > 0) {
+      onSuccess(); // Refresh datos del dashboard
+    }
+    handleReset(); // Limpiar estado del modal
+    onClose(); // Cerrar modal
+  };
+
   // ====== ESC KEY TO CLOSE ======
   const handleEsc = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      onClose();
+      handleCloseWithRefresh();
     }
   };
 
@@ -154,12 +163,7 @@ export default function LeadImportModal({
     setImporting(false);
     setResult(importResult);
 
-    if (importResult.success && importResult.imported > 0) {
-      // Esperar 2 segundos antes de llamar onSuccess
-      setTimeout(() => {
-        onSuccess();
-      }, 2000);
-    }
+    // NO auto-refresh: usuario controla cuándo actualizar dashboard
   };
 
   // ====== RESET ======
@@ -216,7 +220,7 @@ export default function LeadImportModal({
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-gray-900">Importar Leads Manuales</h2>
             <button
-              onClick={onClose}
+              onClick={handleCloseWithRefresh}
               className="text-gray-500 hover:text-gray-700 transition-colors"
             >
               <X className="w-6 h-6" />
@@ -460,15 +464,12 @@ export default function LeadImportModal({
                 </div>
               )}
 
-              {/* Close Button */}
+              {/* Close/Update Button */}
               <button
-                onClick={() => {
-                  handleReset();
-                  onClose();
-                }}
+                onClick={handleCloseWithRefresh}
                 className="w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium"
               >
-                Cerrar
+                {result.success && result.imported > 0 ? 'Actualizar dashboard' : 'Cerrar'}
               </button>
             </div>
           )}
