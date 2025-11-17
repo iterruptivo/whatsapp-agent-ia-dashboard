@@ -198,12 +198,17 @@ export async function importManualLeads(
 
       // Validar que el vendedor existe y tenga rol "vendedor" o "vendedor_caseta"
       const emailVendedor = lead.email_vendedor.trim();
-      console.log(`[IMPORT] Validating vendor at row ${rowNum}:`, { email: emailVendedor });
+      console.log(`[IMPORT] Validating vendor at row ${rowNum}:`, {
+        email: emailVendedor,
+        length: emailVendedor.length,
+        charCodes: emailVendedor.split('').map(c => c.charCodeAt(0)),
+        original: lead.email_vendedor,
+      });
 
       const { data: usuario, error: usuarioError } = await supabase
         .from('usuarios')
-        .select('id, vendedor_id, rol')
-        .ilike('email', emailVendedor)
+        .select('id, vendedor_id, rol, email, activo')
+        .eq('email', emailVendedor)  // CHANGED: .ilike() → .eq() for exact match
         .single();
 
       if (
@@ -212,11 +217,19 @@ export async function importManualLeads(
         (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta') ||
         !usuario.vendedor_id
       ) {
-        console.log(`[IMPORT] Invalid vendor at row ${rowNum}:`, {
+        console.log(`[IMPORT] ❌ Invalid vendor at row ${rowNum}:`, {
           email: emailVendedor,
           originalEmail: lead.email_vendedor,
+          trimmedMatch: emailVendedor === lead.email_vendedor,
           error: usuarioError?.message,
+          errorCode: usuarioError?.code,
           usuario,
+          validationFailures: {
+            errorExists: !!usuarioError,
+            noUsuario: !usuario,
+            wrongRole: usuario && usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta',
+            noVendedorId: usuario && !usuario.vendedor_id,
+          }
         });
         invalidVendors.push({ email: emailVendedor, row: rowNum });
         continue;
