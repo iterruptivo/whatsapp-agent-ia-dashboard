@@ -55,6 +55,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // SESIÓN 45H: Timestamp para ignorar eventos inmediatamente después de init
   const ignoreEventsUntil = useRef<number>(0);
 
+  // SESIÓN 46: Timestamp de inicio de sesión (para tracking de cache expiration)
+  const loginTimestamp = useRef<number>(0);
+
   // ============================================================================
   // FETCH USER DATA FROM USUARIOS TABLE (WITH TIMEOUT)
   // ============================================================================
@@ -107,7 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('[AUTH] Using cached user data (age:', Math.round(cacheAge / 1000), 'seconds)');
           return cachedData.user as Usuario;
         } else {
-          console.log('[AUTH] Cache expired, fetching fresh data');
+          // SESIÓN 46: Mostrar tiempo desde login
+          const timeSinceLogin = Date.now() - loginTimestamp.current;
+          const minutes = Math.floor(timeSinceLogin / 60000);
+          const seconds = Math.floor((timeSinceLogin % 60000) / 1000);
+          console.log(`[AUTH] Cache expired, fetching fresh data (${minutes}m ${seconds}s desde login)`);
         }
       }
     } catch (error) {
@@ -315,6 +322,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (userData) {
             setUser(userData);
+            loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
 
             // SESIÓN 45H: Recuperar proyecto de sessionStorage (FIX loading infinito)
             const savedProyectoId = sessionStorage.getItem('selected_proyecto_id');
@@ -410,6 +418,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
               if (userData) {
                 setUser(userData);
+                loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
               } else {
                 console.error('[AUTH] Failed to fetch user data on login, logging out');
                 await supabase.auth.signOut();
@@ -421,6 +430,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               const userData = await fetchUserDataWithTimeout(session.user, 30000);
               if (userData) {
                 setUser(userData);
+                loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
               } else {
                 console.error('[AUTH] Failed to fetch new user data, logging out');
                 await supabase.auth.signOut();
