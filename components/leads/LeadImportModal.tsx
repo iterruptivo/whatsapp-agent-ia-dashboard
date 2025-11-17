@@ -297,11 +297,8 @@ export default function LeadImportModal({
           {!file && !result && (
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary transition-colors">
               <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-700 font-medium mb-2">
-                Arrastra un archivo CSV o Excel aquí
-              </p>
-              <p className="text-sm text-gray-500 mb-4">
-                o haz clic para seleccionar un archivo
+              <p className="text-gray-700 font-medium mb-4">
+                Seleccionar archivo Excel
               </p>
               <input
                 ref={fileInputRef}
