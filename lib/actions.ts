@@ -197,11 +197,13 @@ export async function importManualLeads(
       }
 
       // Validar que el vendedor existe y tenga rol "vendedor" o "vendedor_caseta"
-      const { data: usuario, error: usuarioError } = await supabase
+      const { data: usuarios, error: usuarioError } = await supabase
         .from('usuarios')
         .select('id, vendedor_id, rol')
         .eq('email', lead.email_vendedor)
-        .single();
+        .limit(1);
+
+      const usuario = usuarios?.[0];
 
       if (
         usuarioError ||
