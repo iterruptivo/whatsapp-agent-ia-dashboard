@@ -8,12 +8,14 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { supabase } from './supabase';
 import {
   updateLocalEstadoQuery,
   importLocalesQuery,
   deleteLocalQuery,
   updateMontoVentaQuery,
   registerLeadTrackingQuery,
+  getLocalById,
   type LocalImportRow,
 } from './locales';
 
@@ -35,6 +37,43 @@ export async function updateLocalEstado(
   usuarioId?: string // ID del usuario que hace el cambio (para historial)
 ) {
   try {
+    // ============================================================================
+    // SESIÓN 48: VALIDACIÓN - Vendedor NO puede cambiar desde NARANJA
+    // ============================================================================
+
+    // Obtener local actual para validar estado
+    const local = await getLocalById(localId);
+    if (!local) {
+      return { success: false, message: 'Local no encontrado' };
+    }
+
+    // Obtener rol del usuario si tenemos usuarioId
+    let userRole: string | null = null;
+    if (usuarioId) {
+      const { data: userData, error: userError } = await supabase
+        .from('usuarios')
+        .select('rol')
+        .eq('id', usuarioId)
+        .single();
+
+      if (!userError && userData) {
+        userRole = userData.rol;
+      }
+    }
+
+    // VALIDACIÓN CRÍTICA: Vendedor NO puede cambiar desde NARANJA
+    if (
+      local.estado === 'naranja' &&
+      userRole &&
+      (userRole === 'vendedor' || userRole === 'vendedor_caseta')
+    ) {
+      return {
+        success: false,
+        message: 'Solo jefes de ventas o administradores pueden cambiar el estado de un local confirmado (NARANJA)',
+      };
+    }
+
+    // Continuar con el flujo normal
     const result = await updateLocalEstadoQuery(localId, nuevoEstado, vendedorId, usuarioId);
 
     if (result.success) {
@@ -191,5 +230,120 @@ export async function registerLeadTracking(
   } catch (error) {
     console.error('Error in registerLeadTracking:', error);
     return { success: false, message: 'Error inesperado al registrar tracking' };
+  }
+}
+
+// ============================================================================
+// SESIÓN 48: AUTO-LIBERACIÓN DE LOCALES EXPIRADOS (TIMER 120 HORAS)
+// ============================================================================
+
+/**
+ * Liberar automáticamente locales en NARANJA que superaron 120 horas
+ * Se ejecuta cada vez que se carga la página de locales (polling cada 60s)
+ *
+ * Flujo:
+ * 1. Buscar locales en NARANJA con naranja_timestamp < (NOW - 120 horas)
+ * 2. Cambiar a VERDE automáticamente
+ * 3. Limpiar campos naranja_timestamp y naranja_vendedor_id
+ * 4. Registrar en historial: "Local liberado automáticamente por vencimiento de tiempo (120 horas)"
+ *
+ * @returns { liberados: number, errores: number } - Estadísticas de liberación
+ */
+export async function autoLiberarLocalesExpirados() {
+  try {
+    console.log('[AUTO-LIBERACIÓN] Iniciando verificación de locales expirados...');
+
+    // PASO 1: Calcular timestamp de hace 120 horas
+    const hace120horas = new Date();
+    hace120horas.setHours(hace120horas.getHours() - 120);
+    const timestamp120h = hace120horas.toISOString();
+
+    // PASO 2: Buscar locales en NARANJA que superaron 120 horas
+    const { data: localesExpirados, error: fetchError } = await supabase
+      .from('locales')
+      .select('id, codigo, naranja_timestamp, vendedor_actual_id')
+      .eq('estado', 'naranja')
+      .not('naranja_timestamp', 'is', null)
+      .lt('naranja_timestamp', timestamp120h);
+
+    if (fetchError) {
+      console.error('[AUTO-LIBERACIÓN] ❌ Error fetching locales expirados:', fetchError);
+      return { liberados: 0, errores: 1 };
+    }
+
+    if (!localesExpirados || localesExpirados.length === 0) {
+      // No hay locales expirados - todo OK
+      return { liberados: 0, errores: 0 };
+    }
+
+    console.log(`[AUTO-LIBERACIÓN] ⏰ Encontrados ${localesExpirados.length} locales expirados, liberando...`);
+
+    // PASO 3: Liberar cada local
+    let liberados = 0;
+    let errores = 0;
+
+    for (const local of localesExpirados) {
+      try {
+        // Calcular horas transcurridas (para logging)
+        const horasTranscurridas = local.naranja_timestamp
+          ? Math.floor((Date.now() - new Date(local.naranja_timestamp).getTime()) / (1000 * 60 * 60))
+          : 0;
+
+        console.log(`[AUTO-LIBERACIÓN] Local ${local.codigo} - Expirado hace ${horasTranscurridas}h (timestamp: ${local.naranja_timestamp})`);
+
+        // Cambiar a VERDE y limpiar campos
+        const { error: updateError } = await supabase
+          .from('locales')
+          .update({
+            estado: 'verde',
+            vendedor_actual_id: null,
+            naranja_timestamp: null,
+            naranja_vendedor_id: null,
+            bloqueado: false,
+            monto_venta: null, // Limpiar monto también (nueva negociación = nuevo monto)
+          })
+          .eq('id', local.id);
+
+        if (updateError) {
+          console.error(`[AUTO-LIBERACIÓN] ❌ Error liberando local ${local.codigo}:`, updateError);
+          errores++;
+          continue;
+        }
+
+        // Registrar en historial (usuario_id = NULL porque es automático)
+        const { error: historialError } = await supabase
+          .from('locales_historial')
+          .insert({
+            local_id: local.id,
+            usuario_id: null, // Sistema automático (no hay usuario)
+            estado_anterior: 'naranja',
+            estado_nuevo: 'verde',
+            accion: 'Local liberado automáticamente por vencimiento de tiempo (120 horas)',
+          });
+
+        if (historialError) {
+          console.error(`[AUTO-LIBERACIÓN] ⚠️ Error registrando historial para local ${local.codigo}:`, historialError);
+          // No fallar la operación si solo falla el historial
+        }
+
+        console.log(`[AUTO-LIBERACIÓN] ✅ Local ${local.codigo} liberado exitosamente`);
+        liberados++;
+      } catch (error) {
+        console.error(`[AUTO-LIBERACIÓN] ❌ Error inesperado liberando local ${local.codigo}:`, error);
+        errores++;
+      }
+    }
+
+    console.log(`[AUTO-LIBERACIÓN] ✅ Proceso completado - Liberados: ${liberados} | Errores: ${errores}`);
+
+    // Si hubo liberaciones, revalidar página
+    if (liberados > 0) {
+      revalidatePath('/locales');
+    }
+
+    return { liberados, errores };
+  } catch (error) {
+    console.error('[AUTO-LIBERACIÓN] ❌ Error inesperado en proceso de auto-liberación:', error);
+    return { liberados: 0, errores: 1 };
   }
 }

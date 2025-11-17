@@ -9,10 +9,10 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { updateLocalEstado, desbloquearLocal, updateMontoVenta } from '@/lib/actions-locales';
+import { updateLocalEstado, desbloquearLocal, updateMontoVenta, autoLiberarLocalesExpirados } from '@/lib/actions-locales';
 import type { Local, VendedorActivo } from '@/lib/locales';
 import { getAllVendedoresActivos } from '@/lib/locales';
-import { ChevronLeft, ChevronRight, History, Lock, Link2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, History, Lock, Link2, Clock } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import LocalTrackingModal from './LocalTrackingModal';
 import VendedorSelectModal from './VendedorSelectModal';
@@ -427,25 +427,103 @@ export default function LocalesTable({
     });
   };
 
+  // ====== SESIÓN 48: HELPER - Calcular Tiempo Restante Timer NARANJA ======
+  const calcularTiempoRestante = (naranjaTimestamp: string | null) => {
+    if (!naranjaTimestamp) return null;
+
+    const inicio = new Date(naranjaTimestamp);
+    const ahora = new Date();
+    const fin = new Date(inicio.getTime() + 120 * 60 * 60 * 1000); // +120 horas
+
+    const msRestantes = fin.getTime() - ahora.getTime();
+
+    // Si ya expiró
+    if (msRestantes <= 0) {
+      return { expired: true, text: 'Expirado', percent: 0, dias: 0, horas: 0 };
+    }
+
+    // Calcular tiempo restante
+    const horasRestantes = msRestantes / (1000 * 60 * 60);
+    const diasRestantes = Math.floor(horasRestantes / 24);
+    const horasRestantesSinDias = Math.floor(horasRestantes % 24);
+
+    // Porcentaje de timer (0-100%)
+    const porcentaje = (horasRestantes / 120) * 100;
+
+    // Texto para badge
+    let text = '';
+    if (diasRestantes > 0) {
+      text = `Quedan ${diasRestantes}d ${horasRestantesSinDias}h`;
+    } else if (horasRestantesSinDias > 0) {
+      text = `Quedan ${horasRestantesSinDias}h`;
+    } else {
+      // Menos de 1 hora
+      const minutosRestantes = Math.floor((msRestantes / (1000 * 60)) % 60);
+      text = `Quedan ${minutosRestantes}m`;
+    }
+
+    return {
+      expired: false,
+      text,
+      percent: porcentaje,
+      dias: diasRestantes,
+      horas: horasRestantesSinDias,
+    };
+  };
+
+  // ====== SESIÓN 48: HELPER - Render Timer con Progress Bar ======
+  const renderTimer = (local: Local) => {
+    // Solo mostrar timer si estado === 'naranja' y hay timestamp
+    if (local.estado !== 'naranja' || !local.naranja_timestamp) return null;
+
+    const tiempo = calcularTiempoRestante(local.naranja_timestamp);
+    if (!tiempo || tiempo.expired) return null;
+
+    return (
+      <div className="mt-2 space-y-1">
+        {/* Progress Bar Azul */}
+        <div className="w-full h-1.5 bg-gray-200 rounded-full border border-blue-300">
+          <div
+            className="h-full bg-blue-500 rounded-full transition-all duration-1000"
+            style={{ width: `${tiempo.percent}%` }}
+          />
+        </div>
+
+        {/* Badge con tiempo restante */}
+        <div className="flex items-center gap-1 text-xs text-blue-700">
+          <Clock className="w-3 h-3" />
+          <span className="font-medium">{tiempo.text}</span>
+        </div>
+      </div>
+    );
+  };
+
   // ====== HELPER: Render Semáforo ======
   const renderSemaforo = (local: Local) => {
     const isChanging = changingLocalId === local.id;
     const isBlocked = local.bloqueado;
     const canUnblock = user?.rol === 'admin' || user?.rol === 'jefe_ventas';
 
+    // SESIÓN 48: Validación UI - Vendedor NO puede cambiar desde NARANJA
+    const vendedorNoPuedeCambiarNaranja =
+      local.estado === 'naranja' &&
+      (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta');
+
     return (
       <div className="flex items-center gap-2">
         {/* Círculo Verde */}
         <button
           onClick={() => handleEstadoChange(local, 'verde')}
-          disabled={isChanging || (isBlocked && !canUnblock)}
+          disabled={isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja}
           className={`w-8 h-8 rounded-full border-2 transition-all ${
             local.estado === 'verde'
               ? 'bg-green-500 border-green-600 scale-110 shadow-lg'
               : 'bg-green-200 border-green-300 hover:scale-105 hover:bg-green-300'
-          } ${isChanging || (isBlocked && !canUnblock) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          } ${isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           title={
-            local.estado === 'verde'
+            vendedorNoPuedeCambiarNaranja
+              ? 'Solo jefes de ventas pueden cambiar locales confirmados'
+              : local.estado === 'verde'
               ? 'Libre (actual)'
               : isBlocked && canUnblock
               ? 'Desbloquear local'
@@ -456,14 +534,16 @@ export default function LocalesTable({
         {/* Círculo Amarillo */}
         <button
           onClick={() => handleEstadoChange(local, 'amarillo')}
-          disabled={isChanging || (isBlocked && !canUnblock)}
+          disabled={isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja}
           className={`w-8 h-8 rounded-full border-2 transition-all ${
             local.estado === 'amarillo'
               ? 'bg-yellow-500 border-yellow-600 scale-110 shadow-lg'
               : 'bg-yellow-200 border-yellow-300 hover:scale-105 hover:bg-yellow-300'
-          } ${isChanging || (isBlocked && !canUnblock) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          } ${isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           title={
-            local.estado === 'amarillo'
+            vendedorNoPuedeCambiarNaranja
+              ? 'Solo jefes de ventas pueden cambiar locales confirmados'
+              : local.estado === 'amarillo'
               ? `Negociando (${local.vendedor_actual_nombre || 'actual'})`
               : 'Cambiar a Negociando'
           }
@@ -472,14 +552,16 @@ export default function LocalesTable({
         {/* Círculo Naranja */}
         <button
           onClick={() => handleEstadoChange(local, 'naranja')}
-          disabled={isChanging || (isBlocked && !canUnblock)}
+          disabled={isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja}
           className={`w-8 h-8 rounded-full border-2 transition-all ${
             local.estado === 'naranja'
               ? 'bg-orange-500 border-orange-600 scale-110 shadow-lg'
               : 'bg-orange-200 border-orange-300 hover:scale-105 hover:bg-orange-300'
-          } ${isChanging || (isBlocked && !canUnblock) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          } ${isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           title={
-            local.estado === 'naranja'
+            vendedorNoPuedeCambiarNaranja
+              ? 'Solo jefes de ventas pueden cambiar locales confirmados'
+              : local.estado === 'naranja'
               ? `Confirmado (${local.vendedor_actual_nombre || 'actual'})`
               : 'Cambiar a Confirmado'
           }
@@ -648,8 +730,11 @@ export default function LocalesTable({
                     {/* Metraje */}
                     <td className="py-3 px-4 text-gray-700">{local.metraje} m²</td>
 
-                    {/* Semáforo */}
-                    <td className="py-3 px-4">{renderSemaforo(local)}</td>
+                    {/* Semáforo + Timer NARANJA */}
+                    <td className="py-3 px-4">
+                      {renderSemaforo(local)}
+                      {renderTimer(local)}
+                    </td>
 
                     {/* Monto Venta */}
                     <td className="py-3 px-4">

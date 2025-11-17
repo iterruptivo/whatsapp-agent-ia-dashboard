@@ -25,6 +25,9 @@ export interface Local {
   vendedor_cerro_venta_id: string | null;
   vendedor_cerro_venta_nombre?: string | null; // Via JOIN (opcional)
   fecha_cierre_venta: string | null;
+  // SESIÓN 48: Timer 120 horas para NARANJA + Exclusividad
+  naranja_timestamp: string | null; // Timestamp cuando local pasó a NARANJA (para timer de 120 horas)
+  naranja_vendedor_id: string | null; // ID del vendedor que puso en NARANJA (para exclusividad)
   created_at: string;
   updated_at: string;
 }
@@ -278,11 +281,47 @@ export async function updateLocalEstadoQuery(
       return { success: false, message: 'Local bloqueado. Solo admin puede desbloquear.' };
     }
 
+    // ============================================================================
+    // SESIÓN 48: VALIDACIONES TIMER 120H + EXCLUSIVIDAD NARANJA
+    // ============================================================================
+
+    // VALIDACIÓN 1: Solo UN vendedor puede tener local en NARANJA (exclusividad)
+    if (nuevoEstado === 'naranja') {
+      // Verificar si otro vendedor ya lo tiene en NARANJA
+      if (local.estado === 'naranja' && local.naranja_vendedor_id && local.naranja_vendedor_id !== vendedorId) {
+        return {
+          success: false,
+          message: 'Este local ya está confirmado (NARANJA) por otro vendedor. Solo el jefe de ventas o administrador puede cambiar el estado.',
+        };
+      }
+    }
+
+    // VALIDACIÓN 2: Vendedor NO puede cambiar desde NARANJA
+    // (Solo jefe_ventas o admin pueden cambiar desde NARANJA a otro estado)
+    if (estadoAnterior === 'naranja' && vendedorId && local.naranja_vendedor_id === vendedorId) {
+      // El vendedor que puso en NARANJA no puede cambiarlo a otro estado
+      // Esta validación se debe hacer desde el Server Action con el rol del usuario
+      // Aquí solo documentamos el comportamiento esperado
+      // La validación real está en lib/actions-locales.ts
+    }
+
     // Preparar update
     const updateData: any = {
       estado: nuevoEstado,
       vendedor_actual_id: vendedorId || null,
     };
+
+    // SESIÓN 48: Setear timestamp y vendedor cuando cambia a NARANJA
+    if (nuevoEstado === 'naranja') {
+      updateData.naranja_timestamp = new Date().toISOString();
+      updateData.naranja_vendedor_id = vendedorId || null;
+    }
+
+    // SESIÓN 48: Limpiar campos cuando SALE de NARANJA
+    if (estadoAnterior === 'naranja' && nuevoEstado !== 'naranja') {
+      updateData.naranja_timestamp = null;
+      updateData.naranja_vendedor_id = null;
+    }
 
     // Si pasa a rojo, guardar vendedor que cerró venta
     if (nuevoEstado === 'rojo') {
@@ -296,6 +335,9 @@ export async function updateLocalEstadoQuery(
       updateData.vendedor_cerro_venta_id = null;
       updateData.fecha_cierre_venta = null;
       updateData.monto_venta = null; // Limpiar monto (nueva negociación = nuevo monto)
+      // SESIÓN 48: Limpiar timer NARANJA también
+      updateData.naranja_timestamp = null;
+      updateData.naranja_vendedor_id = null;
     }
 
     // Ejecutar update

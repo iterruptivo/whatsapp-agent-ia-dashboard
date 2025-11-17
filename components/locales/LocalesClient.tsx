@@ -210,6 +210,33 @@ export default function LocalesClient({
     }
   }, [totalPages, currentPage]);
 
+  // ====== SESIÓN 48: POLLING AUTO-LIBERACIÓN LOCALES EXPIRADOS (TIMER 120H) ======
+  useEffect(() => {
+    // Importar la función de auto-liberación
+    const autoLiberar = async () => {
+      try {
+        const { autoLiberarLocalesExpirados } = await import('@/lib/actions-locales');
+        const result = await autoLiberarLocalesExpirados();
+
+        if (result.liberados > 0) {
+          console.log(`[AUTO-LIBERACIÓN] ✅ ${result.liberados} locales liberados automáticamente`);
+          // Realtime se encargará de actualizar la UI automáticamente
+        }
+      } catch (error) {
+        console.error('[AUTO-LIBERACIÓN] ❌ Error en polling:', error);
+      }
+    };
+
+    // Ejecutar inmediatamente al montar
+    autoLiberar();
+
+    // Luego ejecutar cada 60 segundos
+    const interval = setInterval(autoLiberar, 60000); // 60 segundos
+
+    // Cleanup al desmontar
+    return () => clearInterval(interval);
+  }, []); // Solo ejecutar una vez al montar
+
   // ====== HANDLERS ======
 
   const handleRefresh = async () => {
