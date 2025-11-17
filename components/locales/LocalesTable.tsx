@@ -77,6 +77,18 @@ export default function LocalesTable({
     nuevoEstado: null,
   });
 
+  // SESIÓN 48B: State para actualizar timer cada segundo (cuenta regresiva en tiempo real)
+  const [, setCurrentTime] = useState(Date.now());
+
+  // ====== EFFECT: Actualizar timer cada segundo para cuenta regresiva en tiempo real ======
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now()); // Forzar re-render cada segundo
+    }, 1000); // Actualizar cada 1 segundo
+
+    return () => clearInterval(interval);
+  }, []);
+
   // ====== EFFECT: Cargar vendedores activos si es admin ======
   useEffect(() => {
     if (user?.rol === 'admin') {
