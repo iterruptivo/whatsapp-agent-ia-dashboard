@@ -2,6 +2,18 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+// ============================================================================
+// FASE 1 CAMBIO 3: Cache de usuarios con TTL 5min
+// ============================================================================
+interface UserCacheEntry {
+  rol: string;
+  activo: boolean;
+  timestamp: number;
+}
+
+const userCache = new Map<string, UserCacheEntry>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
 export async function middleware(req: NextRequest) {
   let res = NextResponse.next({
     request: {
@@ -116,23 +128,52 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Fetch user data to get role
-  const { data: userData, error } = await supabase
-    .from('usuarios')
-    .select('rol, activo')
-    .eq('id', validatedUser.id)
-    .single();
+  // FASE 1 CAMBIO 3: Verificar cache antes de query a usuarios
+  let userData: { rol: string; activo: boolean } | null = null;
+  const cacheKey = validatedUser.id;
+  const cachedEntry = userCache.get(cacheKey);
 
-  // User not found in usuarios table or error fetching
-  // ============================================================================
-  // FIX #4: Graceful degradation - NO logout por errores transitorios
-  // ============================================================================
-  if (error || !userData) {
-    console.warn('[MIDDLEWARE WARNING] Error fetching user data (allowing access):', error);
-    console.warn('[MIDDLEWARE] User will be protected by RLS policies');
-    // Permitir acceso - RLS policies + auth-context protegen
-    // NO hacer logout por errores transitorios de red/timeout
-    return res;
+  if (cachedEntry) {
+    const cacheAge = Date.now() - cachedEntry.timestamp;
+    if (cacheAge < CACHE_TTL) {
+      console.log('[MIDDLEWARE] ✅ Using cached user data (age:', Math.round(cacheAge / 1000), 'seconds)');
+      userData = { rol: cachedEntry.rol, activo: cachedEntry.activo };
+    } else {
+      console.log('[MIDDLEWARE] Cache expired, removing stale entry');
+      userCache.delete(cacheKey);
+    }
+  }
+
+  // Si no hay cache válido, fetch de BD
+  if (!userData) {
+    console.log('[MIDDLEWARE] Cache miss, fetching from DB');
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('rol, activo')
+      .eq('id', validatedUser.id)
+      .single();
+
+    // User not found in usuarios table or error fetching
+    // ============================================================================
+    // FIX #4: Graceful degradation - NO logout por errores transitorios
+    // ============================================================================
+    if (error || !data) {
+      console.warn('[MIDDLEWARE WARNING] Error fetching user data (allowing access):', error);
+      console.warn('[MIDDLEWARE] User will be protected by RLS policies');
+      // Permitir acceso - RLS policies + auth-context protegen
+      // NO hacer logout por errores transitorios de red/timeout
+      return res;
+    }
+
+    userData = data;
+
+    // FASE 1 CAMBIO 3: Guardar en cache
+    userCache.set(cacheKey, {
+      rol: data.rol,
+      activo: data.activo,
+      timestamp: Date.now()
+    });
+    console.log('[MIDDLEWARE] ✅ User data cached successfully');
   }
 
   // User is deactivated
