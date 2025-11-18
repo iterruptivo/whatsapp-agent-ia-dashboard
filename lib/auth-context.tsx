@@ -46,7 +46,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   // SESIÓN 45C: Promise compartida para validaciones simultáneas
-  const validationPromise = useRef<Promise<Usuario | null> | null>(null);
+  // SESIÓN 50: Actualizar tipo para incluir isValid + user + userData
+  const validationPromise = useRef<Promise<{ isValid: boolean; user: SupabaseUser | null; userData: Usuario | null }> | null>(null);
   const hasInitialized = useRef(false);
 
   // SESIÓN 45G: Flag para prevenir loop de eventos durante inicialización
@@ -70,9 +71,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ============================================================================
   const fetchUserData = async (authUser: SupabaseUser) => {
     try {
+      // SESIÓN 50: Optimizar query - solo campos necesarios (reduce payload 80%)
       const { data, error } = await supabase
         .from('usuarios')
-        .select('*')
+        .select('id, email, nombre, rol, vendedor_id, activo')
         .eq('id', authUser.id)
         .single();
 
@@ -182,18 +184,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ============================================================================
   // SESIÓN 45D FIX: Promise compartida con timeout de seguridad
+  // SESIÓN 50: Modificar retorno para incluir isValid + user + userData
   // ============================================================================
-  const validateAndFetchUserData = async (timeoutMs = 10000, skipLogoutOnError = false): Promise<Usuario | null> => {
+  const validateAndFetchUserData = async (
+    timeoutMs = 10000,
+    skipLogoutOnError = false
+  ): Promise<{ isValid: boolean; user: SupabaseUser | null; userData: Usuario | null }> => {
     // Si hay una validación en progreso, ESPERAR a que termine con timeout de seguridad
     if (validationPromise.current) {
       console.log('[AUTH] Validation already in progress, waiting for result...');
 
       // SESIÓN 45D: Timeout de seguridad - si la Promise no resuelve en 12s, limpiar y continuar
-      const safetyTimeout = new Promise<Usuario | null>((resolve) => {
+      // SESIÓN 50: Actualizar tipo de retorno
+      const safetyTimeout = new Promise<{ isValid: boolean; user: SupabaseUser | null; userData: Usuario | null }>((resolve) => {
         setTimeout(() => {
           console.warn('[AUTH] Shared promise timeout, cleaning up and retrying...');
           validationPromise.current = null;
-          resolve(null);
+          resolve({ isValid: false, user: null, userData: null });
         }, 12000); // 12s > 10s (timeout de fetch)
       });
 
@@ -202,8 +209,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         safetyTimeout
       ]);
 
-      // Si el timeout ganó, result será null y validationPromise.current ya está limpia
-      if (result === null && validationPromise.current === null) {
+      // SESIÓN 50: Actualizar chequeo con nuevo formato
+      if (!result.isValid && validationPromise.current === null) {
         console.log('[AUTH] Retrying validation after shared promise timeout...');
         // Reintentar sin el shared promise
         return validateAndFetchUserData(timeoutMs, skipLogoutOnError);
@@ -226,7 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // SESIÓN 45D: NO hacer logout si estamos en inicialización y no hay sesión (es normal)
           if (skipLogoutOnError) {
             console.log('[AUTH] No session found, but skipping logout (initial load)');
-            return null;
+            return { isValid: false, user: null, userData: null }; // SESIÓN 50
           }
 
           console.log('[AUTH] Forcing logout (invalid/expired session)');
@@ -237,13 +244,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setLoading(false);
           router.push('/login');
-          return null;
+          return { isValid: false, user: null, userData: null }; // SESIÓN 50
         }
 
         console.log('[AUTH] Session validated successfully for:', validatedUser.email);
 
         // PASO 2: Fetch user data SOLO si JWT es válido
-        setSupabaseUser(validatedUser);
         const userData = await fetchUserDataWithTimeout(validatedUser, timeoutMs);
 
         if (!userData) {
@@ -253,11 +259,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setLoading(false);
           router.push('/login');
-          return null;
+          return { isValid: false, user: null, userData: null }; // SESIÓN 50
         }
 
         console.log('[AUTH] User data fetched successfully');
-        return userData;
+        return { isValid: true, user: validatedUser, userData }; // SESIÓN 50
       } catch (error) {
         console.error('[AUTH ERROR] Unexpected error in validateAndFetchUserData:', error);
 
@@ -269,7 +275,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           router.push('/login');
         }
 
-        return null;
+        return { isValid: false, user: null, userData: null }; // SESIÓN 50
       } finally {
         // Limpiar Promise cuando termine (éxito o error)
         console.log('[AUTH] Cleaning up shared promise');
@@ -326,41 +332,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hasInitialized.current = true;
 
     const initializeAuth = async () => {
+      console.log('[AUTH] Initializing auth system...');
       // SESIÓN 45G: Marcar que estamos inicializando (previene loop de eventos)
       isInitializing.current = true;
 
       try {
-        // SESIÓN 45E: Leer sesión de cookies (NO validar con servidor)
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log('[AUTH] Session from cookies:', session ? 'exists' : 'none');
+        // SESIÓN 50: Usar validateAndFetchUserData (server-side validation)
+        // Esta función ya hace getUser + validación + fetch optimizado
+        const { isValid, user: validatedUser, userData } = await validateAndFetchUserData(30000, true);
 
-        if (session?.user) {
-          setSupabaseUser(session.user);
+        if (isValid && validatedUser && userData) {
+          setSupabaseUser(validatedUser);
+          setUser(userData);
+          loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
 
-          // Fetch user data directamente (confiar en la sesión)
-          const userData = await fetchUserDataWithTimeout(session.user, 10000);
-
-          if (userData) {
-            setUser(userData);
-            loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
-
-            // SESIÓN 45H: Recuperar proyecto de sessionStorage (FIX loading infinito)
-            const savedProyectoId = sessionStorage.getItem('selected_proyecto_id');
-            if (savedProyectoId) {
-              console.log('[AUTH] Restoring proyecto from sessionStorage:', savedProyectoId);
-              const proyectoData = await fetchProyectoData(savedProyectoId);
-              if (proyectoData) {
-                setSelectedProyecto(proyectoData);
-              } else {
-                console.warn('[AUTH] Proyecto not found, clearing sessionStorage');
-                sessionStorage.removeItem('selected_proyecto_id');
-              }
+          // SESIÓN 45H: Recuperar proyecto de sessionStorage (FIX loading infinito)
+          const savedProyectoId = sessionStorage.getItem('selected_proyecto_id');
+          if (savedProyectoId) {
+            console.log('[AUTH] Restoring proyecto from sessionStorage:', savedProyectoId);
+            const proyectoData = await fetchProyectoData(savedProyectoId);
+            if (proyectoData) {
+              setSelectedProyecto(proyectoData);
+            } else {
+              console.warn('[AUTH] Proyecto not found, clearing sessionStorage');
+              sessionStorage.removeItem('selected_proyecto_id');
             }
-          } else {
-            // Si falla fetch de datos, logout
-            console.error('[AUTH] Failed to fetch user data on init, logging out');
-            await supabase.auth.signOut();
           }
+        } else {
+          console.error('[AUTH] Session validation failed on init, logging out');
+          await supabase.auth.signOut();
         }
 
         setLoading(false);
