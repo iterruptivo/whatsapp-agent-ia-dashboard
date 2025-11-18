@@ -58,6 +58,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // SESIÓN 46: Timestamp de inicio de sesión (para tracking de cache expiration)
   const loginTimestamp = useRef<number>(0);
 
+  // FASE 1 CAMBIO 4: Tab tracking para polling inteligente
+  const tabId = useRef<string>(`tab_${Date.now()}_${Math.random()}`);
+  const isActiveTab = useRef<boolean>(true);
+
   // ============================================================================
   // FETCH USER DATA FROM USUARIOS TABLE (WITH TIMEOUT)
   // ============================================================================
@@ -97,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log(`[AUTH] Starting fetch user data for ${authUser.email} with ${timeoutMs}ms timeout`);
 
     // SESIÓN 45F: Intentar leer de cache primero
+    let expiredCache: Usuario | null = null; // FASE 1 CAMBIO 1: Guardar referencia a cache expirado
     try {
       const cacheKey = `user_data_${authUser.id}`;
       const cached = localStorage.getItem(cacheKey);
@@ -110,6 +115,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('[AUTH] Using cached user data (age:', Math.round(cacheAge / 1000), 'seconds)');
           return cachedData.user as Usuario;
         } else {
+          // FASE 1 CAMBIO 1: Guardar cache expirado como fallback
+          expiredCache = cachedData.user as Usuario;
           // SESIÓN 46: Mostrar tiempo desde login
           const timeSinceLogin = Date.now() - loginTimestamp.current;
           const minutes = Math.floor(timeSinceLogin / 60000);
@@ -137,6 +144,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (result === null) {
         console.error('[AUTH] fetchUserDataWithTimeout returned null (timeout or DB error)');
+        // FASE 1 CAMBIO 1: Fallback a cache expirado si existe
+        if (expiredCache) {
+          console.log('[AUTH] ⚠️ Using expired cache as fallback (timeout detected)');
+          return expiredCache;
+        }
       } else {
         console.log('[AUTH] fetchUserDataWithTimeout completed successfully');
 
@@ -156,6 +168,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return result;
     } catch (error) {
       console.error('[AUTH ERROR] Error in fetchUserDataWithTimeout:', error);
+      // FASE 1 CAMBIO 1: Fallback a cache expirado en caso de error
+      if (expiredCache) {
+        console.log('[AUTH] ⚠️ Using expired cache as fallback (error detected)');
+        return expiredCache;
+      }
       return null;
     }
   };
@@ -454,14 +471,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []); // ← Empty dependency array (ejecuta solo 1 vez)
 
   // ============================================================================
-  // useEffect #2: Polling de usuario activo (depende de supabaseUser?.id)
+  // FASE 1 CAMBIO 4: useEffect #2A - Tab visibility tracking
+  // ============================================================================
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      isActiveTab.current = !document.hidden;
+      console.log('[AUTH TAB] Tab visibility changed:', isActiveTab.current ? 'visible' : 'hidden', '(tabId:', tabId.current, ')');
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    console.log('[AUTH TAB] Tab tracking initialized (tabId:', tabId.current, ')');
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      console.log('[AUTH TAB] Tab tracking cleanup');
+    };
+  }, []);
+
+  // ============================================================================
+  // useEffect #2B: Polling de usuario activo (depende de supabaseUser?.id)
   // ============================================================================
   useEffect(() => {
     if (!supabaseUser?.id) return;
 
-    console.log('[AUTH POLLING] Iniciando polling de estado activo (cada 60s)');
+    console.log('[AUTH POLLING] Iniciando polling de estado activo (cada 5min)'); // FASE 1 CAMBIO 2
 
     const pollingInterval = setInterval(async () => {
+      // FASE 1 CAMBIO 4: Solo ejecutar polling si tab está activo
+      if (!isActiveTab.current) {
+        console.log('[AUTH POLLING] ⏸️ Skipping polling (tab hidden, tabId:', tabId.current, ')');
+        return;
+      }
+
+      console.log('[AUTH POLLING] ▶️ Executing polling (tab active, tabId:', tabId.current, ')');
       try {
         const { data, error } = await supabase
           .from('usuarios')
@@ -481,7 +523,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('[AUTH POLLING] Unexpected error (ignoring):', error);
       }
-    }, 60000);
+    }, 300000); // FASE 1 CAMBIO 2: 60000 → 300000 (5 minutos)
 
     return () => {
       console.log('[AUTH POLLING] Polling detenido');
