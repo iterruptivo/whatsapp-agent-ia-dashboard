@@ -62,6 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const tabId = useRef<string>(`tab_${Date.now()}_${Math.random()}`);
   const isActiveTab = useRef<boolean>(true);
 
+  // SESIÓN 49: FIX BUG 2 - Prevenir múltiples intervalos activos
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
   // ============================================================================
   // FETCH USER DATA FROM USUARIOS TABLE (WITH TIMEOUT)
   // ============================================================================
@@ -420,13 +423,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // SESIÓN 45I: SIGNED_IN - Solo fetch si es LOGIN REAL (no token refresh)
         // SESIÓN 46: FIX Chrome duplicate SIGNED_IN event
+        // SESIÓN 49: FIX BUG 1 - Stale closure (usar session de Supabase, no estados React)
         if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           console.log(`[AUTH] ${event} detected`);
 
           if (session?.user) {
-            // SESIÓN 46: FIX - Verificar AMBOS estados (user Y supabaseUser)
-            // Previene fetch duplicado cuando Chrome dispara SIGNED_IN extra
-            if (!user && !supabaseUser) {
+            // SESIÓN 49: FIX BUG 1 - Leer sesión ACTUAL de Supabase en vez de estados React stale
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+
+            if (!currentSession?.user) {
+              // Caso 1: No hay sesión activa → Login nuevo
               console.log('[AUTH] New login detected, fetching user data...');
               setSupabaseUser(session.user);
 
@@ -440,8 +446,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 console.error('[AUTH] Failed to fetch user data on login, logging out');
                 await supabase.auth.signOut();
               }
-            } else if (user && user.id !== session.user.id) {
-              // Usuario diferente (edge case: cambio de cuenta)
+            } else if (currentSession.user.id !== session.user.id) {
+              // Caso 2: Usuario diferente (edge case: cambio de cuenta)
               console.log('[AUTH] Different user detected, fetching new user data...');
               setSupabaseUser(session.user);
               const userData = await fetchUserDataWithTimeout(session.user, 30000);
@@ -453,7 +459,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 await supabase.auth.signOut();
               }
             } else {
-              // SESIÓN 46: Usuario ya autenticado - ignorar evento duplicado
+              // Caso 3: Mismo usuario, evento duplicado (refresh, tab visibility)
               console.log('[AUTH] ✅ User already authenticated, ignoring duplicate SIGNED_IN event');
             }
             setLoading(false);
@@ -490,13 +496,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ============================================================================
   // useEffect #2B: Polling de usuario activo (depende de supabaseUser?.id)
+  // SESIÓN 49: FIX BUG 2 - Usar ref para prevenir múltiples intervalos activos
   // ============================================================================
   useEffect(() => {
-    if (!supabaseUser?.id) return;
+    if (!supabaseUser?.id) {
+      // Limpiar interval si usuario se desloguea
+      if (pollingIntervalRef.current) {
+        console.log('[AUTH POLLING] Limpiando polling (usuario deslogueado)');
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+      return;
+    }
 
-    console.log('[AUTH POLLING] Iniciando polling de estado activo (cada 5min)'); // FASE 1 CAMBIO 2
+    // SESIÓN 49: FIX BUG 2 - Solo crear interval si NO existe uno activo
+    if (pollingIntervalRef.current) {
+      console.log('[AUTH POLLING] ⏸️ Polling ya activo, skipping setup (userId:', supabaseUser.id, ')');
+      return;
+    }
 
-    const pollingInterval = setInterval(async () => {
+    console.log('[AUTH POLLING] Iniciando polling de estado activo (cada 5min, userId:', supabaseUser.id, ')'); // FASE 1 CAMBIO 2
+
+    pollingIntervalRef.current = setInterval(async () => {
       // FASE 1 CAMBIO 4: Solo ejecutar polling si tab está activo
       if (!isActiveTab.current) {
         console.log('[AUTH POLLING] ⏸️ Skipping polling (tab hidden, tabId:', tabId.current, ')');
@@ -527,7 +548,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       console.log('[AUTH POLLING] Polling detenido');
-      clearInterval(pollingInterval);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
     };
   }, [supabaseUser?.id]); // ← Dependency solo para polling
 
