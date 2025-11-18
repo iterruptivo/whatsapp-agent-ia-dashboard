@@ -58,6 +58,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // SESIÓN 46: Timestamp de inicio de sesión (para tracking de cache expiration)
   const loginTimestamp = useRef<number>(0);
 
+  // FIX STALE CLOSURE: Refs para acceder a valores actuales en callbacks
+  const userRef = useRef<Usuario | null>(null);
+  const supabaseUserRef = useRef<SupabaseUser | null>(null);
+  const selectedProyectoRef = useRef<Proyecto | null>(null);
+
+  // Sincronizar refs con state (previene stale closures)
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    supabaseUserRef.current = supabaseUser;
+  }, [supabaseUser]);
+
+  useEffect(() => {
+    selectedProyectoRef.current = selectedProyecto;
+  }, [selectedProyecto]);
+
   // ============================================================================
   // FETCH USER DATA FROM USUARIOS TABLE (WITH TIMEOUT)
   // ============================================================================
@@ -93,7 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // SESIÓN 45F: Cache en localStorage + timeout aumentado
-  const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 30000) => {
+  // FIX: Timeout default 60s (Plan Pro Supabase tiene mejor performance)
+  const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 60000) => {
     console.log(`[AUTH] Starting fetch user data for ${authUser.email} with ${timeoutMs}ms timeout`);
 
     // SESIÓN 45F: Intentar leer de cache primero
@@ -318,22 +337,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSupabaseUser(session.user);
 
           // Fetch user data directamente (confiar en la sesión)
-          const userData = await fetchUserDataWithTimeout(session.user, 10000);
+          // FIX: Timeout 60s en init también (Plan Pro)
+          const userData = await fetchUserDataWithTimeout(session.user, 60000);
 
           if (userData) {
             setUser(userData);
             loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
 
-            // SESIÓN 45H: Recuperar proyecto de sessionStorage (FIX loading infinito)
-            const savedProyectoId = sessionStorage.getItem('selected_proyecto_id');
+            // FIX MULTI-TAB: Recuperar proyecto de localStorage (compartido entre tabs)
+            const savedProyectoId = localStorage.getItem('selected_proyecto_id');
             if (savedProyectoId) {
-              console.log('[AUTH] Restoring proyecto from sessionStorage:', savedProyectoId);
+              console.log('[AUTH] Restoring proyecto from localStorage:', savedProyectoId);
               const proyectoData = await fetchProyectoData(savedProyectoId);
               if (proyectoData) {
                 setSelectedProyecto(proyectoData);
               } else {
-                console.warn('[AUTH] Proyecto not found, clearing sessionStorage');
-                sessionStorage.removeItem('selected_proyecto_id');
+                console.warn('[AUTH] Proyecto not found, clearing localStorage');
+                localStorage.removeItem('selected_proyecto_id');
               }
             }
           } else {
@@ -403,35 +423,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // SESIÓN 45I: SIGNED_IN - Solo fetch si es LOGIN REAL (no token refresh)
         // SESIÓN 46: FIX Chrome duplicate SIGNED_IN event
+        // FIX MULTI-TAB: Ignorar SIGNED_IN si usuario ya autenticado (previene logout spurious)
         if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           console.log(`[AUTH] ${event} detected`);
 
           if (session?.user) {
+            // FIX STALE CLOSURE: Verificar cache localStorage directamente
+            // (NO confiar en state 'user' porque puede ser stale closure)
+            const cacheKey = `user_data_${session.user.id}`;
+            const cached = localStorage.getItem(cacheKey);
+
+            if (cached) {
+              try {
+                const cachedData = JSON.parse(cached);
+                const cacheAge = Date.now() - cachedData.timestamp;
+
+                // Si cache es válido (< 5 min), usuario YA está logueado
+                if (cacheAge < 5 * 60 * 1000) {
+                  console.log('[AUTH] ✅ User already cached (age:', Math.round(cacheAge / 1000), 's), ignoring spurious event');
+
+                  // FIX STALE CLOSURE: Usar refs en vez de state para verificar
+                  if (!userRef.current) {
+                    console.log('[AUTH] Restoring user from cache');
+                    setUser(cachedData.user);
+                  }
+
+                  if (!supabaseUserRef.current) {
+                    setSupabaseUser(session.user);
+                  }
+
+                  // FIX: Restaurar selectedProyecto solo si NO está ya seteado
+                  if (!selectedProyectoRef.current) {
+                    const savedProyectoId = localStorage.getItem('selected_proyecto_id');
+                    if (savedProyectoId) {
+                      console.log('[AUTH] Restoring proyecto from localStorage:', savedProyectoId);
+                      fetchProyectoData(savedProyectoId).then(proyectoData => {
+                        if (proyectoData) {
+                          setSelectedProyecto(proyectoData);
+                        }
+                      });
+                    }
+                  }
+
+                  setLoading(false);
+                  return;
+                }
+              } catch (error) {
+                console.warn('[AUTH] Error parsing cache, proceeding with fetch:', error);
+              }
+            }
+
             // SESIÓN 46: FIX - Verificar AMBOS estados (user Y supabaseUser)
-            // Previene fetch duplicado cuando Chrome dispara SIGNED_IN extra
-            if (!user && !supabaseUser) {
+            // FIX STALE CLOSURE: Usar refs en vez de state
+            if (!userRef.current && !supabaseUserRef.current) {
               console.log('[AUTH] New login detected, fetching user data...');
               setSupabaseUser(session.user);
 
-              // SESIÓN 45I: Timeout aumentado a 30s (plan gratuito puede tardar)
-              const userData = await fetchUserDataWithTimeout(session.user, 30000);
+              // FIX: Timeout aumentado a 60s (Plan Pro Supabase)
+              const userData = await fetchUserDataWithTimeout(session.user, 60000);
 
               if (userData) {
                 setUser(userData);
                 loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
               } else {
-                console.error('[AUTH] Failed to fetch user data on login, logging out');
+                // FIX: Solo logout si es login NUEVO (no re-fetch de usuario existente)
+                console.error('[AUTH] Failed to fetch user data on NEW login, logging out');
                 await supabase.auth.signOut();
               }
-            } else if (user && user.id !== session.user.id) {
+            } else if (userRef.current && userRef.current.id !== session.user.id) {
               // Usuario diferente (edge case: cambio de cuenta)
               console.log('[AUTH] Different user detected, fetching new user data...');
               setSupabaseUser(session.user);
-              const userData = await fetchUserDataWithTimeout(session.user, 30000);
+              const userData = await fetchUserDataWithTimeout(session.user, 60000);
               if (userData) {
                 setUser(userData);
                 loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
               } else {
+                // Solo logout si es cambio de usuario (no re-fetch de usuario existente)
                 console.error('[AUTH] Failed to fetch new user data, logging out');
                 await supabase.auth.signOut();
               }
@@ -530,8 +598,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(userData);
       setSelectedProyecto(proyectoData);
 
-      // Save proyecto to sessionStorage for persistence
-      sessionStorage.setItem('selected_proyecto_id', proyectoId);
+      // FIX MULTI-TAB: Save proyecto to localStorage (compartido entre tabs)
+      localStorage.setItem('selected_proyecto_id', proyectoId);
 
       // Redirect based on role
       if (userData.rol === 'admin') {
@@ -561,7 +629,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSupabaseUser(null);
       setUser(null);
       setSelectedProyecto(null);
-      sessionStorage.removeItem('selected_proyecto_id');
+      // FIX MULTI-TAB: Limpiar proyecto de localStorage (compartido entre tabs)
+      localStorage.removeItem('selected_proyecto_id');
       router.push('/login');
     } catch (error) {
       console.error('Error signing out:', error);
