@@ -16,6 +16,7 @@ interface LocalesFiltersProps {
   estadosFilter: string[]; // Ahora es array
   metrajeMin: number | undefined;
   metrajeMax: number | undefined;
+  defaultProyectoId?: string; // Proyecto del login para comparar default
   onProyectoChange: (value: string) => void;
   onEstadosChange: (estados: string[]) => void; // Ahora recibe array
   onMetrajeMinChange: (value: number | undefined) => void;
@@ -29,6 +30,7 @@ export default function LocalesFilters({
   estadosFilter,
   metrajeMin,
   metrajeMax,
+  defaultProyectoId,
   onProyectoChange,
   onEstadosChange,
   onMetrajeMinChange,
@@ -41,7 +43,7 @@ export default function LocalesFilters({
   // Verificar si está en estado default
   const isDefaultState =
     JSON.stringify([...estadosFilter].sort()) === JSON.stringify([...defaults].sort()) &&
-    !proyectoFilter &&
+    proyectoFilter === (defaultProyectoId || '') && // Comparar con proyecto del login
     metrajeMin === undefined &&
     metrajeMax === undefined;
 

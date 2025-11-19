@@ -453,6 +453,7 @@ export default function LocalesClient({
               estadosFilter={estadosFilter}
               metrajeMin={metrajeMin}
               metrajeMax={metrajeMax}
+              defaultProyectoId={selectedProyecto?.id}
               onProyectoChange={setProyectoFilter}
               onEstadosChange={setEstadosFilter}
               onMetrajeMinChange={setMetrajeMin}
