@@ -35,7 +35,9 @@
       "Bash(git log:*)",
       "Bash(npm run lint)",
       "Bash(git mv:*)",
-      "Bash(npx supabase:*)"
+      "Bash(npx supabase:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []

@@ -46,8 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   // SESIÓN 45C: Promise compartida para validaciones simultáneas
-  // SESIÓN 50: Actualizar tipo para incluir isValid + user + userData
-  const validationPromise = useRef<Promise<{ isValid: boolean; user: SupabaseUser | null; userData: Usuario | null }> | null>(null);
+  const validationPromise = useRef<Promise<Usuario | null> | null>(null);
   const hasInitialized = useRef(false);
 
   // SESIÓN 45G: Flag para prevenir loop de eventos durante inicialización
@@ -59,22 +58,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // SESIÓN 46: Timestamp de inicio de sesión (para tracking de cache expiration)
   const loginTimestamp = useRef<number>(0);
 
-  // FASE 1 CAMBIO 4: Tab tracking para polling inteligente
-  const tabId = useRef<string>(`tab_${Date.now()}_${Math.random()}`);
-  const isActiveTab = useRef<boolean>(true);
+  // FIX STALE CLOSURE: Refs para acceder a valores actuales en callbacks
+  const userRef = useRef<Usuario | null>(null);
+  const supabaseUserRef = useRef<SupabaseUser | null>(null);
+  const selectedProyectoRef = useRef<Proyecto | null>(null);
 
-  // SESIÓN 49: FIX BUG 2 - Prevenir múltiples intervalos activos
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Sincronizar refs con state (previene stale closures)
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    supabaseUserRef.current = supabaseUser;
+  }, [supabaseUser]);
+
+  useEffect(() => {
+    selectedProyectoRef.current = selectedProyecto;
+  }, [selectedProyecto]);
 
   // ============================================================================
   // FETCH USER DATA FROM USUARIOS TABLE (WITH TIMEOUT)
   // ============================================================================
   const fetchUserData = async (authUser: SupabaseUser) => {
     try {
-      // SESIÓN 50: Optimizar query - solo campos necesarios (reduce payload 80%)
       const { data, error } = await supabase
         .from('usuarios')
-        .select('id, email, nombre, rol, vendedor_id, activo')
+        .select('*')
         .eq('id', authUser.id)
         .single();
 
@@ -102,11 +111,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // SESIÓN 45F: Cache en localStorage + timeout aumentado
-  const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 30000) => {
+  // FIX: Timeout default 60s (Plan Pro Supabase tiene mejor performance)
+  const fetchUserDataWithTimeout = async (authUser: SupabaseUser, timeoutMs = 60000) => {
     console.log(`[AUTH] Starting fetch user data for ${authUser.email} with ${timeoutMs}ms timeout`);
 
     // SESIÓN 45F: Intentar leer de cache primero
-    let expiredCache: Usuario | null = null; // FASE 1 CAMBIO 1: Guardar referencia a cache expirado
     try {
       const cacheKey = `user_data_${authUser.id}`;
       const cached = localStorage.getItem(cacheKey);
@@ -120,8 +129,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('[AUTH] Using cached user data (age:', Math.round(cacheAge / 1000), 'seconds)');
           return cachedData.user as Usuario;
         } else {
-          // FASE 1 CAMBIO 1: Guardar cache expirado como fallback
-          expiredCache = cachedData.user as Usuario;
           // SESIÓN 46: Mostrar tiempo desde login
           const timeSinceLogin = Date.now() - loginTimestamp.current;
           const minutes = Math.floor(timeSinceLogin / 60000);
@@ -149,11 +156,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (result === null) {
         console.error('[AUTH] fetchUserDataWithTimeout returned null (timeout or DB error)');
-        // FASE 1 CAMBIO 1: Fallback a cache expirado si existe
-        if (expiredCache) {
-          console.log('[AUTH] ⚠️ Using expired cache as fallback (timeout detected)');
-          return expiredCache;
-        }
       } else {
         console.log('[AUTH] fetchUserDataWithTimeout completed successfully');
 
@@ -173,34 +175,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return result;
     } catch (error) {
       console.error('[AUTH ERROR] Error in fetchUserDataWithTimeout:', error);
-      // FASE 1 CAMBIO 1: Fallback a cache expirado en caso de error
-      if (expiredCache) {
-        console.log('[AUTH] ⚠️ Using expired cache as fallback (error detected)');
-        return expiredCache;
-      }
       return null;
     }
   };
 
   // ============================================================================
   // SESIÓN 45D FIX: Promise compartida con timeout de seguridad
-  // SESIÓN 50: Modificar retorno para incluir isValid + user + userData
   // ============================================================================
-  const validateAndFetchUserData = async (
-    timeoutMs = 10000,
-    skipLogoutOnError = false
-  ): Promise<{ isValid: boolean; user: SupabaseUser | null; userData: Usuario | null }> => {
+  const validateAndFetchUserData = async (timeoutMs = 10000, skipLogoutOnError = false): Promise<Usuario | null> => {
     // Si hay una validación en progreso, ESPERAR a que termine con timeout de seguridad
     if (validationPromise.current) {
       console.log('[AUTH] Validation already in progress, waiting for result...');
 
       // SESIÓN 45D: Timeout de seguridad - si la Promise no resuelve en 12s, limpiar y continuar
-      // SESIÓN 50: Actualizar tipo de retorno
-      const safetyTimeout = new Promise<{ isValid: boolean; user: SupabaseUser | null; userData: Usuario | null }>((resolve) => {
+      const safetyTimeout = new Promise<Usuario | null>((resolve) => {
         setTimeout(() => {
           console.warn('[AUTH] Shared promise timeout, cleaning up and retrying...');
           validationPromise.current = null;
-          resolve({ isValid: false, user: null, userData: null });
+          resolve(null);
         }, 12000); // 12s > 10s (timeout de fetch)
       });
 
@@ -209,8 +201,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         safetyTimeout
       ]);
 
-      // SESIÓN 50: Actualizar chequeo con nuevo formato
-      if (!result.isValid && validationPromise.current === null) {
+      // Si el timeout ganó, result será null y validationPromise.current ya está limpia
+      if (result === null && validationPromise.current === null) {
         console.log('[AUTH] Retrying validation after shared promise timeout...');
         // Reintentar sin el shared promise
         return validateAndFetchUserData(timeoutMs, skipLogoutOnError);
@@ -233,7 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // SESIÓN 45D: NO hacer logout si estamos en inicialización y no hay sesión (es normal)
           if (skipLogoutOnError) {
             console.log('[AUTH] No session found, but skipping logout (initial load)');
-            return { isValid: false, user: null, userData: null }; // SESIÓN 50
+            return null;
           }
 
           console.log('[AUTH] Forcing logout (invalid/expired session)');
@@ -244,12 +236,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setLoading(false);
           router.push('/login');
-          return { isValid: false, user: null, userData: null }; // SESIÓN 50
+          return null;
         }
 
         console.log('[AUTH] Session validated successfully for:', validatedUser.email);
 
         // PASO 2: Fetch user data SOLO si JWT es válido
+        setSupabaseUser(validatedUser);
         const userData = await fetchUserDataWithTimeout(validatedUser, timeoutMs);
 
         if (!userData) {
@@ -259,11 +252,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(null);
           setLoading(false);
           router.push('/login');
-          return { isValid: false, user: null, userData: null }; // SESIÓN 50
+          return null;
         }
 
         console.log('[AUTH] User data fetched successfully');
-        return { isValid: true, user: validatedUser, userData }; // SESIÓN 50
+        return userData;
       } catch (error) {
         console.error('[AUTH ERROR] Unexpected error in validateAndFetchUserData:', error);
 
@@ -275,7 +268,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           router.push('/login');
         }
 
-        return { isValid: false, user: null, userData: null }; // SESIÓN 50
+        return null;
       } finally {
         // Limpiar Promise cuando termine (éxito o error)
         console.log('[AUTH] Cleaning up shared promise');
@@ -332,35 +325,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hasInitialized.current = true;
 
     const initializeAuth = async () => {
-      console.log('[AUTH] Initializing auth system...');
       // SESIÓN 45G: Marcar que estamos inicializando (previene loop de eventos)
       isInitializing.current = true;
 
       try {
-        // SESIÓN 50: Usar validateAndFetchUserData (server-side validation)
-        // Esta función ya hace getUser + validación + fetch optimizado
-        const { isValid, user: validatedUser, userData } = await validateAndFetchUserData(30000, true);
+        // SESIÓN 45E: Leer sesión de cookies (NO validar con servidor)
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('[AUTH] Session from cookies:', session ? 'exists' : 'none');
 
-        if (isValid && validatedUser && userData) {
-          setSupabaseUser(validatedUser);
-          setUser(userData);
-          loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
+        if (session?.user) {
+          setSupabaseUser(session.user);
 
-          // SESIÓN 45H: Recuperar proyecto de sessionStorage (FIX loading infinito)
-          const savedProyectoId = sessionStorage.getItem('selected_proyecto_id');
-          if (savedProyectoId) {
-            console.log('[AUTH] Restoring proyecto from sessionStorage:', savedProyectoId);
-            const proyectoData = await fetchProyectoData(savedProyectoId);
-            if (proyectoData) {
-              setSelectedProyecto(proyectoData);
-            } else {
-              console.warn('[AUTH] Proyecto not found, clearing sessionStorage');
-              sessionStorage.removeItem('selected_proyecto_id');
+          // Fetch user data directamente (confiar en la sesión)
+          // FIX: Timeout 60s en init también (Plan Pro)
+          const userData = await fetchUserDataWithTimeout(session.user, 60000);
+
+          if (userData) {
+            setUser(userData);
+            loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
+
+            // FIX MULTI-TAB: Recuperar proyecto de localStorage (compartido entre tabs)
+            const savedProyectoId = localStorage.getItem('selected_proyecto_id');
+            if (savedProyectoId) {
+              console.log('[AUTH] Restoring proyecto from localStorage:', savedProyectoId);
+              const proyectoData = await fetchProyectoData(savedProyectoId);
+              if (proyectoData) {
+                setSelectedProyecto(proyectoData);
+              } else {
+                console.warn('[AUTH] Proyecto not found, clearing localStorage');
+                localStorage.removeItem('selected_proyecto_id');
+              }
             }
+          } else {
+            // Si falla fetch de datos, logout
+            console.error('[AUTH] Failed to fetch user data on init, logging out');
+            await supabase.auth.signOut();
           }
-        } else {
-          console.error('[AUTH] Session validation failed on init, logging out');
-          await supabase.auth.signOut();
         }
 
         setLoading(false);
@@ -423,43 +423,88 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         // SESIÓN 45I: SIGNED_IN - Solo fetch si es LOGIN REAL (no token refresh)
         // SESIÓN 46: FIX Chrome duplicate SIGNED_IN event
-        // SESIÓN 49: FIX BUG 1 - Stale closure (usar session de Supabase, no estados React)
+        // FIX MULTI-TAB: Ignorar SIGNED_IN si usuario ya autenticado (previene logout spurious)
         if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
           console.log(`[AUTH] ${event} detected`);
 
           if (session?.user) {
-            // SESIÓN 49: FIX BUG 1 - Leer sesión ACTUAL de Supabase en vez de estados React stale
-            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            // FIX STALE CLOSURE: Verificar cache localStorage directamente
+            // (NO confiar en state 'user' porque puede ser stale closure)
+            const cacheKey = `user_data_${session.user.id}`;
+            const cached = localStorage.getItem(cacheKey);
 
-            if (!currentSession?.user) {
-              // Caso 1: No hay sesión activa → Login nuevo
+            if (cached) {
+              try {
+                const cachedData = JSON.parse(cached);
+                const cacheAge = Date.now() - cachedData.timestamp;
+
+                // Si cache es válido (< 5 min), usuario YA está logueado
+                if (cacheAge < 5 * 60 * 1000) {
+                  console.log('[AUTH] ✅ User already cached (age:', Math.round(cacheAge / 1000), 's), ignoring spurious event');
+
+                  // FIX STALE CLOSURE: Usar refs en vez de state para verificar
+                  if (!userRef.current) {
+                    console.log('[AUTH] Restoring user from cache');
+                    setUser(cachedData.user);
+                  }
+
+                  if (!supabaseUserRef.current) {
+                    setSupabaseUser(session.user);
+                  }
+
+                  // FIX: Restaurar selectedProyecto solo si NO está ya seteado
+                  if (!selectedProyectoRef.current) {
+                    const savedProyectoId = localStorage.getItem('selected_proyecto_id');
+                    if (savedProyectoId) {
+                      console.log('[AUTH] Restoring proyecto from localStorage:', savedProyectoId);
+                      fetchProyectoData(savedProyectoId).then(proyectoData => {
+                        if (proyectoData) {
+                          setSelectedProyecto(proyectoData);
+                        }
+                      });
+                    }
+                  }
+
+                  setLoading(false);
+                  return;
+                }
+              } catch (error) {
+                console.warn('[AUTH] Error parsing cache, proceeding with fetch:', error);
+              }
+            }
+
+            // SESIÓN 46: FIX - Verificar AMBOS estados (user Y supabaseUser)
+            // FIX STALE CLOSURE: Usar refs en vez de state
+            if (!userRef.current && !supabaseUserRef.current) {
               console.log('[AUTH] New login detected, fetching user data...');
               setSupabaseUser(session.user);
 
-              // SESIÓN 45I: Timeout aumentado a 30s (plan gratuito puede tardar)
-              const userData = await fetchUserDataWithTimeout(session.user, 30000);
+              // FIX: Timeout aumentado a 60s (Plan Pro Supabase)
+              const userData = await fetchUserDataWithTimeout(session.user, 60000);
 
               if (userData) {
                 setUser(userData);
                 loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
               } else {
-                console.error('[AUTH] Failed to fetch user data on login, logging out');
+                // FIX: Solo logout si es login NUEVO (no re-fetch de usuario existente)
+                console.error('[AUTH] Failed to fetch user data on NEW login, logging out');
                 await supabase.auth.signOut();
               }
-            } else if (currentSession.user.id !== session.user.id) {
-              // Caso 2: Usuario diferente (edge case: cambio de cuenta)
+            } else if (userRef.current && userRef.current.id !== session.user.id) {
+              // Usuario diferente (edge case: cambio de cuenta)
               console.log('[AUTH] Different user detected, fetching new user data...');
               setSupabaseUser(session.user);
-              const userData = await fetchUserDataWithTimeout(session.user, 30000);
+              const userData = await fetchUserDataWithTimeout(session.user, 60000);
               if (userData) {
                 setUser(userData);
                 loginTimestamp.current = Date.now(); // SESIÓN 46: Guardar timestamp de login
               } else {
+                // Solo logout si es cambio de usuario (no re-fetch de usuario existente)
                 console.error('[AUTH] Failed to fetch new user data, logging out');
                 await supabase.auth.signOut();
               }
             } else {
-              // Caso 3: Mismo usuario, evento duplicado (refresh, tab visibility)
+              // SESIÓN 46: Usuario ya autenticado - ignorar evento duplicado
               console.log('[AUTH] ✅ User already authenticated, ignoring duplicate SIGNED_IN event');
             }
             setLoading(false);
@@ -477,54 +522,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []); // ← Empty dependency array (ejecuta solo 1 vez)
 
   // ============================================================================
-  // FASE 1 CAMBIO 4: useEffect #2A - Tab visibility tracking
+  // useEffect #2: Polling de usuario activo (depende de supabaseUser?.id)
   // ============================================================================
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      isActiveTab.current = !document.hidden;
-      console.log('[AUTH TAB] Tab visibility changed:', isActiveTab.current ? 'visible' : 'hidden', '(tabId:', tabId.current, ')');
-    };
+    if (!supabaseUser?.id) return;
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    console.log('[AUTH TAB] Tab tracking initialized (tabId:', tabId.current, ')');
+    console.log('[AUTH POLLING] Iniciando polling de estado activo (cada 60s)');
 
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      console.log('[AUTH TAB] Tab tracking cleanup');
-    };
-  }, []);
-
-  // ============================================================================
-  // useEffect #2B: Polling de usuario activo (depende de supabaseUser?.id)
-  // SESIÓN 49: FIX BUG 2 - Usar ref para prevenir múltiples intervalos activos
-  // ============================================================================
-  useEffect(() => {
-    if (!supabaseUser?.id) {
-      // Limpiar interval si usuario se desloguea
-      if (pollingIntervalRef.current) {
-        console.log('[AUTH POLLING] Limpiando polling (usuario deslogueado)');
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
-      return;
-    }
-
-    // SESIÓN 49: FIX BUG 2 - Solo crear interval si NO existe uno activo
-    if (pollingIntervalRef.current) {
-      console.log('[AUTH POLLING] ⏸️ Polling ya activo, skipping setup (userId:', supabaseUser.id, ')');
-      return;
-    }
-
-    console.log('[AUTH POLLING] Iniciando polling de estado activo (cada 5min, userId:', supabaseUser.id, ')'); // FASE 1 CAMBIO 2
-
-    pollingIntervalRef.current = setInterval(async () => {
-      // FASE 1 CAMBIO 4: Solo ejecutar polling si tab está activo
-      if (!isActiveTab.current) {
-        console.log('[AUTH POLLING] ⏸️ Skipping polling (tab hidden, tabId:', tabId.current, ')');
-        return;
-      }
-
-      console.log('[AUTH POLLING] ▶️ Executing polling (tab active, tabId:', tabId.current, ')');
+    const pollingInterval = setInterval(async () => {
       try {
         const { data, error } = await supabase
           .from('usuarios')
@@ -544,14 +549,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('[AUTH POLLING] Unexpected error (ignoring):', error);
       }
-    }, 300000); // FASE 1 CAMBIO 2: 60000 → 300000 (5 minutos)
+    }, 60000);
 
     return () => {
       console.log('[AUTH POLLING] Polling detenido');
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
-      }
+      clearInterval(pollingInterval);
     };
   }, [supabaseUser?.id]); // ← Dependency solo para polling
 
@@ -596,8 +598,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(userData);
       setSelectedProyecto(proyectoData);
 
-      // Save proyecto to sessionStorage for persistence
-      sessionStorage.setItem('selected_proyecto_id', proyectoId);
+      // FIX MULTI-TAB: Save proyecto to localStorage (compartido entre tabs)
+      localStorage.setItem('selected_proyecto_id', proyectoId);
 
       // Redirect based on role
       if (userData.rol === 'admin') {
@@ -627,7 +629,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSupabaseUser(null);
       setUser(null);
       setSelectedProyecto(null);
-      sessionStorage.removeItem('selected_proyecto_id');
+      // FIX MULTI-TAB: Limpiar proyecto de localStorage (compartido entre tabs)
+      localStorage.removeItem('selected_proyecto_id');
       router.push('/login');
     } catch (error) {
       console.error('Error signing out:', error);
