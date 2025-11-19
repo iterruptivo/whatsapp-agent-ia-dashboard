@@ -333,6 +333,10 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
   - `SQL_ADD_PROYECTO_SAN_GABRIEL.sql` - Nuevo proyecto
   - `INCIDENT_REPORT_SESSION_35B.md` - Emergency rollback (500+ líneas)
 
+### **Análisis Históricos**
+- [consultas-leo/](consultas-leo/) - Análisis técnicos y debugging sesiones
+  - `ANALISIS_TOKEN_REFRESH_CHROME.md` (17 Nov 2025) - Análisis de fallo token refresh en Chrome. **NOTA:** Propuso FASE 1-5 de soluciones, pero commit `b6cde58` de Alonso (19 Nov) implementó solución más efectiva con refs anti-stale-closure. Documento conservado como referencia histórica.
+
 ### **Flujos n8n**
 - [consultas-leo/](consultas-leo/) - JSON exports de flujos n8n
   - Victoria - Eco - Callao - PROD
