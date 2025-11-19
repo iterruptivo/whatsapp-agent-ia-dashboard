@@ -42,7 +42,7 @@ export default function LocalesClient({
   initialStats,
 }: LocalesClientProps) {
   // ====== AUTH ======
-  const { user } = useAuth();
+  const { user, selectedProyecto } = useAuth();
 
   // ====== STATE ======
   const [locales, setLocales] = useState<Local[]>(initialLocales);
@@ -68,7 +68,7 @@ export default function LocalesClient({
   });
 
   // Filtros
-  const [proyectoFilter, setProyectoFilter] = useState<string>('');
+  const [proyectoFilter, setProyectoFilter] = useState<string>(selectedProyecto?.id || '');
   const [estadosFilter, setEstadosFilter] = useState<string[]>(['verde', 'amarillo', 'naranja']); // Array con defaults
   const [metrajeMin, setMetrajeMin] = useState<number | undefined>(undefined);
   const [metrajeMax, setMetrajeMax] = useState<number | undefined>(undefined);
@@ -368,7 +368,7 @@ export default function LocalesClient({
   const handleClearFilters = () => {
     setSearchInput('');
     setSearchCodigo('');
-    setProyectoFilter('');
+    setProyectoFilter(selectedProyecto?.id || ''); // Volver al proyecto del login
     setEstadosFilter(['verde', 'amarillo', 'naranja']); // Resetear a defaults
     setMetrajeMin(undefined);
     setMetrajeMax(undefined);
