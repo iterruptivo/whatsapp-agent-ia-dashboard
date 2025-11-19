@@ -14,7 +14,7 @@ import type { Proyecto } from '@/lib/db';
 import type { LocalImportRow } from '@/lib/locales';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { X, Upload, FileText, AlertCircle, CheckCircle, Download } from 'lucide-react';
+import { X, Upload, FileText, AlertCircle, CheckCircle, FileSpreadsheet } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 
 interface LocalImportModalProps {
@@ -282,10 +282,10 @@ export default function LocalImportModal({
                 </h2>
                 <button
                   onClick={handleDownloadTemplate}
-                  className="flex items-center gap-2 text-sm text-white/90 hover:text-white mt-2 transition-colors group"
+                  className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors mt-2 text-sm font-medium"
                 >
-                  <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  <span className="underline">Descargar plantilla</span>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Descargar plantilla</span>
                 </button>
               </div>
               <button
