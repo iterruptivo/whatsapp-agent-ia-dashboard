@@ -497,7 +497,7 @@ export default function ComentarioNaranjaModal({
           {/* Info Final */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-xs text-blue-800">
-              <strong>Importante:</strong> Ambos campos (comentario y vinculación) son obligatorios
+              <strong>Importante:</strong> Todos los campos son obligatorios
               y quedarán registrados en el historial del local.
             </p>
           </div>
