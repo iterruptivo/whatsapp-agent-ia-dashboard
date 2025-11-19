@@ -468,7 +468,7 @@ export async function registrarVisitaSinLocal(
   telefono: string,
   nombre: string,
   proyectoId: string,
-  vendedorId: string
+  vendedorId: string | null
 ) {
   try {
     // Validate required fields
@@ -479,12 +479,8 @@ export async function registrarVisitaSinLocal(
       };
     }
 
-    if (!vendedorId) {
-      return {
-        success: false,
-        message: 'El vendedor es requerido',
-      };
-    }
+    // Validar vendedor solo si viene (admin/jefe_ventas pueden crear sin vendedor)
+    // vendedor/vendedor_caseta siempre tendrán vendedor_id
 
     // PASO 1: Verificar si el lead ya existe por teléfono
     const { data: existingLead, error: checkError } = await supabase
@@ -548,18 +544,20 @@ export async function registrarVisitaSinLocal(
       };
     }
 
-    // Validar que el vendedor existe
-    const { data: vendedor, error: vendedorError } = await supabase
-      .from('vendedores')
-      .select('id, nombre')
-      .eq('id', vendedorId)
-      .single();
+    // Validar que el vendedor existe (solo si vendedorId viene)
+    if (vendedorId) {
+      const { data: vendedor, error: vendedorError } = await supabase
+        .from('vendedores')
+        .select('id, nombre')
+        .eq('id', vendedorId)
+        .single();
 
-    if (vendedorError || !vendedor) {
-      return {
-        success: false,
-        message: 'Vendedor no encontrado',
-      };
+      if (vendedorError || !vendedor) {
+        return {
+          success: false,
+          message: 'Vendedor no encontrado',
+        };
+      }
     }
 
     // Crear el nuevo lead con utm = "visita_proyecto" y asistio = true

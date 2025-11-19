@@ -329,7 +329,9 @@ export default function LocalesClient({
   };
 
   const handleRegistrarVisita = async (telefono: string, nombre: string, proyectoId: string) => {
-    if (!user?.vendedor_id) {
+    // Solo validar vendedor_id para roles vendedor/vendedor_caseta
+    // admin/jefe_ventas pueden crear leads sin vendedor asignado
+    if (!user?.vendedor_id && (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta')) {
       setConfirmModal({
         isOpen: true,
         variant: 'danger',
@@ -340,7 +342,7 @@ export default function LocalesClient({
       return;
     }
 
-    const result = await registrarVisitaSinLocal(telefono, nombre, proyectoId, user.vendedor_id);
+    const result = await registrarVisitaSinLocal(telefono, nombre, proyectoId, user?.vendedor_id || null);
 
     if (result.success) {
       setIsVisitaSinLocalModalOpen(false);
