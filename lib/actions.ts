@@ -303,3 +303,312 @@ export async function importManualLeads(
     };
   }
 }
+
+/**
+ * Server Action: Create a single manual lead (from vinculación in NARANJA modal)
+ *
+ * Business Rules:
+ * - Creates lead with estado "lead_manual"
+ * - asistio = true (since this is from local vinculación)
+ * - Assigned to vendedor who creates it (vendedorId)
+ * - Other fields (email, rubro, etc.) are NULL
+ *
+ * @param nombre - Name of the lead
+ * @param telefono - Phone number (should include country code)
+ * @param proyectoId - UUID of the project
+ * @param vendedorId - UUID of the vendedor creating the lead
+ * @returns Success/error response with leadId on success
+ */
+export async function createManualLead(
+  nombre: string,
+  telefono: string,
+  proyectoId: string,
+  vendedorId: string
+) {
+  try {
+    // Validate required fields
+    if (!nombre?.trim()) {
+      return {
+        success: false,
+        message: 'El nombre es requerido',
+      };
+    }
+
+    if (!telefono?.trim()) {
+      return {
+        success: false,
+        message: 'El teléfono es requerido',
+      };
+    }
+
+    if (!proyectoId) {
+      return {
+        success: false,
+        message: 'El proyecto es requerido',
+      };
+    }
+
+    if (!vendedorId) {
+      return {
+        success: false,
+        message: 'El vendedor es requerido',
+      };
+    }
+
+    // Check if lead with this phone already exists
+    const { data: existingLead } = await supabase
+      .from('leads')
+      .select('id, nombre, telefono')
+      .eq('telefono', telefono.trim())
+      .limit(1);
+
+    if (existingLead && existingLead.length > 0) {
+      return {
+        success: false,
+        message: `Ya existe un lead con el teléfono ${telefono}`,
+        leadId: existingLead[0].id,
+      };
+    }
+
+    // Validate proyecto exists
+    const { data: proyecto, error: proyectoError } = await supabase
+      .from('proyectos')
+      .select('id, nombre')
+      .eq('id', proyectoId)
+      .single();
+
+    if (proyectoError || !proyecto) {
+      return {
+        success: false,
+        message: 'Proyecto no encontrado',
+      };
+    }
+
+    // Validate vendedor exists
+    const { data: vendedor, error: vendedorError } = await supabase
+      .from('vendedores')
+      .select('id, nombre')
+      .eq('id', vendedorId)
+      .single();
+
+    if (vendedorError || !vendedor) {
+      return {
+        success: false,
+        message: 'Vendedor no encontrado',
+      };
+    }
+
+    // Create the lead
+    const { data: newLead, error: insertError } = await supabase
+      .from('leads')
+      .insert({
+        nombre: nombre.trim(),
+        telefono: telefono.trim(),
+        proyecto_id: proyectoId,
+        vendedor_asignado_id: vendedorId,
+        estado: 'lead_manual',
+        asistio: true,
+        utm: 'vinculacion_manual',
+        email: null,
+        rubro: null,
+        horario_visita: null,
+        horario_visita_timestamp: null,
+        estado_al_notificar: null,
+        historial_conversacion: null,
+        historial_reciente: null,
+        resumen_historial: null,
+        ultimo_mensaje: null,
+        intentos_bot: 0,
+        notificacion_enviada: false,
+      })
+      .select('id, nombre, telefono')
+      .single();
+
+    if (insertError) {
+      console.error('Error creating manual lead:', insertError);
+      return {
+        success: false,
+        message: 'Error al crear el lead',
+      };
+    }
+
+    revalidatePath('/');
+    revalidatePath('/locales');
+
+    return {
+      success: true,
+      message: `Lead "${newLead.nombre}" creado correctamente`,
+      leadId: newLead.id,
+    };
+  } catch (error) {
+    console.error('Unexpected error in createManualLead:', error);
+    return {
+      success: false,
+      message: 'Error inesperado al crear el lead',
+    };
+  }
+}
+
+/**
+ * Server Action: Registrar visita sin local (visitante de proyecto sin interés en local específico)
+ *
+ * Business Rules:
+ * - Si el lead existe (por teléfono): actualizar asistio = true
+ * - Si el lead NO existe: crear con utm = "visita_proyecto", asistio = true
+ * - NO crear duplicados (mismo teléfono)
+ * - Accesible para todos los roles (admin, jefe_ventas, vendedor, vendedor_caseta)
+ *
+ * @param telefono - Phone number (should include country code)
+ * @param nombre - Name of the visitor (solo si es nuevo lead)
+ * @param proyectoId - UUID of the project (solo si es nuevo lead)
+ * @param vendedorId - UUID of the vendedor registering the visit
+ * @returns Success/error response
+ */
+export async function registrarVisitaSinLocal(
+  telefono: string,
+  nombre: string,
+  proyectoId: string,
+  vendedorId: string
+) {
+  try {
+    // Validate required fields
+    if (!telefono?.trim()) {
+      return {
+        success: false,
+        message: 'El teléfono es requerido',
+      };
+    }
+
+    if (!vendedorId) {
+      return {
+        success: false,
+        message: 'El vendedor es requerido',
+      };
+    }
+
+    // PASO 1: Verificar si el lead ya existe por teléfono
+    const { data: existingLead, error: checkError } = await supabase
+      .from('leads')
+      .select('id, nombre, email, proyecto_id, asistio')
+      .eq('telefono', telefono.trim())
+      .limit(1)
+      .single();
+
+    // CASO A: Lead EXISTE → Actualizar asistio = true
+    if (existingLead && !checkError) {
+      const { error: updateError } = await supabase
+        .from('leads')
+        .update({ asistio: true })
+        .eq('id', existingLead.id);
+
+      if (updateError) {
+        console.error('Error updating asistio:', updateError);
+        return {
+          success: false,
+          message: 'Error al actualizar asistencia del lead',
+        };
+      }
+
+      revalidatePath('/locales');
+
+      return {
+        success: true,
+        message: `Lead "${existingLead.nombre}" actualizado. Campo "Asistió" marcado como "Sí"`,
+        leadId: existingLead.id,
+        leadExistia: true,
+      };
+    }
+
+    // CASO B: Lead NO EXISTE → Crear nuevo
+    if (!nombre?.trim()) {
+      return {
+        success: false,
+        message: 'El nombre es requerido para crear un nuevo lead',
+      };
+    }
+
+    if (!proyectoId) {
+      return {
+        success: false,
+        message: 'El proyecto es requerido para crear un nuevo lead',
+      };
+    }
+
+    // Validar que el proyecto existe
+    const { data: proyecto, error: proyectoError } = await supabase
+      .from('proyectos')
+      .select('id, nombre')
+      .eq('id', proyectoId)
+      .single();
+
+    if (proyectoError || !proyecto) {
+      return {
+        success: false,
+        message: 'Proyecto no encontrado',
+      };
+    }
+
+    // Validar que el vendedor existe
+    const { data: vendedor, error: vendedorError } = await supabase
+      .from('vendedores')
+      .select('id, nombre')
+      .eq('id', vendedorId)
+      .single();
+
+    if (vendedorError || !vendedor) {
+      return {
+        success: false,
+        message: 'Vendedor no encontrado',
+      };
+    }
+
+    // Crear el nuevo lead con utm = "visita_proyecto" y asistio = true
+    const { data: newLead, error: insertError } = await supabase
+      .from('leads')
+      .insert({
+        nombre: nombre.trim(),
+        telefono: telefono.trim(),
+        proyecto_id: proyectoId,
+        vendedor_asignado_id: vendedorId,
+        estado: 'lead_manual',
+        asistio: true,
+        utm: 'visita_proyecto', // ✅ Identificador especial para visitas sin local
+        email: null,
+        rubro: null,
+        horario_visita: null,
+        horario_visita_timestamp: null,
+        estado_al_notificar: null,
+        historial_conversacion: null,
+        historial_reciente: null,
+        resumen_historial: null,
+        ultimo_mensaje: null,
+        intentos_bot: 0,
+        notificacion_enviada: false,
+      })
+      .select('id, nombre, telefono')
+      .single();
+
+    if (insertError) {
+      console.error('Error creating lead (visita sin local):', insertError);
+      return {
+        success: false,
+        message: 'Error al crear el lead',
+      };
+    }
+
+    revalidatePath('/locales');
+
+    return {
+      success: true,
+      message: `Lead "${newLead.nombre}" creado correctamente (visita sin local)`,
+      leadId: newLead.id,
+      leadExistia: false,
+    };
+  } catch (error) {
+    console.error('Unexpected error in registrarVisitaSinLocal:', error);
+    return {
+      success: false,
+      message: 'Error inesperado al registrar visita',
+    };
+  }
+}

@@ -1,8 +1,9 @@
 // ============================================================================
 // COMPONENT: LocalImportModal
 // ============================================================================
-// Descripción: Modal para importar locales desde CSV o Excel
-// Formatos soportados: .csv, .xlsx
+// Descripción: Modal para importar locales desde Excel o CSV
+// Formatos soportados: .xlsx, .csv
+// Usuario selecciona proyecto en dropdown (ya no necesita columna proyecto)
 // ============================================================================
 
 'use client';
@@ -14,6 +15,7 @@ import type { LocalImportRow } from '@/lib/locales';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { X, Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 
 interface LocalImportModalProps {
   isOpen: boolean;
@@ -29,6 +31,7 @@ export default function LocalImportModal({
   proyectos,
 }: LocalImportModalProps) {
   const [file, setFile] = useState<File | null>(null);
+  const [selectedProyectoId, setSelectedProyectoId] = useState<string>('');
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -36,6 +39,12 @@ export default function LocalImportModal({
     skipped: number;
     total: number;
     errors: string[];
+  } | null>(null);
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'warning' | 'danger';
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -53,7 +62,12 @@ export default function LocalImportModal({
       // Validar extensión
       const extension = selectedFile.name.split('.').pop()?.toLowerCase();
       if (!['csv', 'xlsx', 'xls'].includes(extension || '')) {
-        alert('⚠️ Formato no válido. Solo se permiten archivos CSV o Excel (.xlsx, .xls)');
+        setAlertModal({
+          isOpen: true,
+          title: 'Formato no válido',
+          message: 'Solo se permiten archivos Excel (.xlsx, .xls) o CSV',
+          variant: 'warning',
+        });
         return;
       }
       setFile(selectedFile);
@@ -73,7 +87,6 @@ export default function LocalImportModal({
             const locales: LocalImportRow[] = data.map((row) => {
               const local: LocalImportRow = {
                 codigo: String(row.codigo || '').trim(),
-                proyecto: String(row.proyecto || '').trim().toLowerCase(),
                 metraje: parseFloat(row.metraje || '0'),
               };
 
@@ -112,7 +125,6 @@ export default function LocalImportModal({
           const locales: LocalImportRow[] = jsonData.map((row) => {
             const local: LocalImportRow = {
               codigo: String(row.codigo || '').trim(),
-              proyecto: String(row.proyecto || '').trim().toLowerCase(),
               metraje: parseFloat(row.metraje || '0'),
             };
 
@@ -140,7 +152,22 @@ export default function LocalImportModal({
   // ====== IMPORT ======
   const handleImport = async () => {
     if (!file) {
-      alert('⚠️ Por favor selecciona un archivo');
+      setAlertModal({
+        isOpen: true,
+        title: 'Archivo requerido',
+        message: 'Por favor selecciona un archivo para importar',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    if (!selectedProyectoId) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Proyecto requerido',
+        message: 'Por favor selecciona un proyecto antes de importar',
+        variant: 'warning',
+      });
       return;
     }
 
@@ -160,45 +187,54 @@ export default function LocalImportModal({
 
       // Validar datos
       if (locales.length === 0) {
-        alert('⚠️ El archivo está vacío o no tiene el formato correcto');
+        setAlertModal({
+          isOpen: true,
+          title: 'Archivo vacío',
+          message: 'El archivo está vacío o no tiene el formato correcto',
+          variant: 'warning',
+        });
         setImporting(false);
         return;
       }
 
       // Validar columnas requeridas
       const hasErrors = locales.some(
-        (local) => !local.codigo || !local.proyecto || !local.metraje
+        (local) => !local.codigo || !local.metraje
       );
 
       if (hasErrors) {
-        alert(
-          '⚠️ Formato incorrecto. Asegúrate de que el archivo tenga las columnas requeridas:\n\n' +
-          'REQUERIDAS: codigo, proyecto, metraje\n' +
-          'OPCIONAL: estado (verde/amarillo/naranja/rojo)\n\n' +
-          'Ejemplo SIN estado (default: verde):\n' +
-          'LC-001,trapiche,4.5\n' +
-          'LC-002,callao,6.0\n\n' +
-          'Ejemplo CON estado:\n' +
-          'LC-001,trapiche,4.5,rojo\n' +
-          'LC-002,callao,6.0,verde'
-        );
+        setAlertModal({
+          isOpen: true,
+          title: 'Formato incorrecto',
+          message:
+            'Asegúrate de que el archivo tenga las columnas requeridas:\n\n' +
+            'REQUERIDAS: codigo, metraje\n' +
+            'OPCIONAL: estado (verde/amarillo/naranja/rojo)\n\n' +
+            'Ejemplo básico (default: verde):\n' +
+            'LC-001,4.5\n' +
+            'LC-002,6.0\n\n' +
+            'Ejemplo con estado:\n' +
+            'LC-001,4.5,rojo\n' +
+            'LC-002,6.0,verde',
+          variant: 'warning',
+        });
         setImporting(false);
         return;
       }
 
-      // Llamar Server Action
-      const importResult = await importLocales(locales);
+      // Llamar Server Action con proyectoId
+      const importResult = await importLocales(locales, selectedProyectoId);
       setResult(importResult);
 
-      // Si todo se importó correctamente, cerrar modal
-      if (importResult.success && importResult.inserted > 0 && importResult.errors.length === 0) {
-        setTimeout(() => {
-          onSuccess();
-        }, 2000);
-      }
+      // Usuario controlará cuándo cerrar con botón "Terminar importación"
     } catch (error) {
       console.error('Error importing locales:', error);
-      alert('❌ Error al importar archivo. Verifica el formato y vuelve a intentar.');
+      setAlertModal({
+        isOpen: true,
+        title: 'Error al importar',
+        message: 'Error al importar archivo. Verifica el formato y vuelve a intentar.',
+        variant: 'danger',
+      });
     } finally {
       setImporting(false);
     }
@@ -228,7 +264,7 @@ export default function LocalImportModal({
                   Importar Locales
                 </h2>
                 <p className="text-sm text-white/80 mt-1">
-                  Carga masiva desde CSV o Excel
+                  Carga masiva desde Excel o CSV
                 </p>
               </div>
               <button
@@ -246,17 +282,14 @@ export default function LocalImportModal({
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                Formato del Archivo
+                Formato del Archivo Excel
               </h3>
               <p className="text-sm text-blue-800 mb-2">
                 <strong>Columnas requeridas:</strong>
               </p>
               <ul className="text-sm text-blue-800 list-disc list-inside space-y-1 mb-3">
                 <li>
-                  <strong>codigo:</strong> Código único del local (ej: LC-001)
-                </li>
-                <li>
-                  <strong>proyecto:</strong> Slug del proyecto (trapiche, callao, san-gabriel, etc.)
+                  <strong>codigo:</strong> Código único del local (ej: LC-001, BLV-045)
                 </li>
                 <li>
                   <strong>metraje:</strong> Metros cuadrados (ej: 4.5, 6.0)
@@ -271,14 +304,39 @@ export default function LocalImportModal({
                 </li>
               </ul>
               <p className="text-xs text-blue-700 mt-2">
-                💡 Proyectos disponibles: {proyectos.map((p) => p.slug).join(', ')}
+                💡 <strong>Importante:</strong> Ya no necesitas la columna "proyecto".
+                Selecciona el proyecto en el dropdown de abajo.
               </p>
+            </div>
+
+            {/* Dropdown Proyecto */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Seleccionar proyecto <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={selectedProyectoId}
+                onChange={(e) => setSelectedProyectoId(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
+              >
+                <option value="">-- Selecciona un proyecto --</option>
+                {proyectos.map((proyecto) => (
+                  <option key={proyecto.id} value={proyecto.id}>
+                    {proyecto.nombre}
+                  </option>
+                ))}
+              </select>
+              {selectedProyectoId && (
+                <p className="text-xs text-gray-600 mt-1">
+                  ✅ Todos los locales se asignarán a este proyecto
+                </p>
+              )}
             </div>
 
             {/* File Input */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Seleccionar archivo
+                Seleccionar archivo Excel <span className="text-red-500">*</span>
               </label>
               <input
                 ref={fileInputRef}
@@ -348,32 +406,60 @@ export default function LocalImportModal({
 
           {/* Footer */}
           <div className="bg-gray-50 p-4 rounded-b-lg flex gap-3 justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleImport}
-              disabled={!file || importing}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {importing ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Importando...
-                </>
-              ) : (
-                <>
-                  <Upload className="w-4 h-4" />
-                  Importar Locales
-                </>
-              )}
-            </button>
+            {result ? (
+              // Después de importación: solo botón "Terminar importación"
+              <button
+                onClick={onSuccess}
+                className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"
+              >
+                <CheckCircle className="w-4 h-4" />
+                Terminar importación
+              </button>
+            ) : (
+              // Antes de importación: botones "Cancelar" e "Importar Locales"
+              <>
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleImport}
+                  disabled={!file || !selectedProyectoId || importing}
+                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {importing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Importando...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-4 h-4" />
+                      Importar Locales
+                    </>
+                  )}
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Alert Modal */}
+      {alertModal && (
+        <ConfirmModal
+          isOpen={alertModal.isOpen}
+          title={alertModal.title}
+          message={alertModal.message}
+          variant={alertModal.variant}
+          confirmText="Cerrar"
+          cancelText=""
+          onConfirm={() => setAlertModal(null)}
+          onCancel={() => setAlertModal(null)}
+        />
+      )}
     </>
   );
 }

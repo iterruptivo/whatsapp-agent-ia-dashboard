@@ -15,22 +15,30 @@ import {
   deleteLocalQuery,
   updateMontoVentaQuery,
   registerLeadTrackingQuery,
+  registerLocalLeadRelation,
   getLocalById,
   type LocalImportRow,
 } from './locales';
+import { createManualLead } from './actions';
 
 // ============================================================================
 // UPDATE ESTADO DE LOCAL
 // ============================================================================
 
 /**
- * SESIÓN 48C: Actualizada para aceptar comentario opcional
+ * SESIÓN 48C: Actualizada para aceptar comentario opcional + monto de venta
  * Cambiar estado de un local (semáforo)
  * @param localId ID del local
  * @param nuevoEstado Nuevo estado (verde, amarillo, naranja, rojo)
  * @param vendedorId ID del vendedor que hace el cambio
  * @param usuarioId ID del usuario que hace el cambio (para historial)
  * @param comentario Comentario del vendedor (REQUERIDO para NARANJA desde vendedor)
+ * @param telefono Teléfono para vinculación (lead existente o nuevo)
+ * @param nombreCliente Nombre del cliente para vinculación
+ * @param montoVenta Monto de venta en USD (REQUERIDO para NARANJA)
+ * @param leadId ID del lead si existe (para actualizar asistio)
+ * @param proyectoId ID del proyecto (si se quiere crear lead manual)
+ * @param agregarComoLead Flag para crear o no el lead manual en la tabla leads
  * @returns Success/error con mensaje
  */
 export async function updateLocalEstado(
@@ -38,7 +46,13 @@ export async function updateLocalEstado(
   nuevoEstado: 'verde' | 'amarillo' | 'naranja' | 'rojo',
   vendedorId?: string,
   usuarioId?: string,
-  comentario?: string // ← NUEVO parámetro opcional
+  comentario?: string,
+  telefono?: string,
+  nombreCliente?: string,
+  montoVenta?: number, // ← NUEVO: monto de venta en USD
+  leadId?: string,
+  proyectoId?: string,
+  agregarComoLead?: boolean
 ) {
   try {
     // ============================================================================
@@ -86,10 +100,95 @@ export async function updateLocalEstado(
       };
     }
 
+    // GUARDAR ESTADO ANTERIOR antes de cambiar (para historial correcto)
+    const estadoAnterior = local.estado;
+
     // Continuar con el flujo normal
-    const result = await updateLocalEstadoQuery(localId, nuevoEstado, vendedorId, usuarioId, comentario);
+    const result = await updateLocalEstadoQuery(localId, nuevoEstado, vendedorId, usuarioId, comentario, montoVenta);
 
     if (result.success) {
+      // ============================================================================
+      // VINCULACIÓN OBLIGATORIA AL CAMBIAR A NARANJA
+      // ============================================================================
+      if (nuevoEstado === 'naranja' && telefono && nombreCliente) {
+        console.log('[NARANJA] Vinculando lead:', { telefono, nombreCliente, leadId, proyectoId, agregarComoLead, estadoAnterior });
+
+        // Variable para almacenar el leadId final (existente o recién creado)
+        let finalLeadId = leadId;
+
+        // ============================================================================
+        // CREAR LEAD MANUAL SI NO EXISTE Y CHECKBOX ESTÁ CHECKED
+        // ============================================================================
+        if (!leadId && agregarComoLead && proyectoId && vendedorId) {
+          console.log('[NARANJA] 🆕 Creando nuevo lead manual:', { nombre: nombreCliente, telefono, proyectoId });
+
+          const createResult = await createManualLead(
+            nombreCliente,
+            telefono,
+            proyectoId,
+            vendedorId
+          );
+
+          if (createResult.success && createResult.leadId) {
+            finalLeadId = createResult.leadId;
+            console.log('[NARANJA] ✅ Lead manual creado:', { leadId: finalLeadId });
+          } else {
+            console.error('[NARANJA] ⚠️ Error creando lead manual:', createResult.message);
+            // No bloqueamos el flujo, solo logueamos el error
+          }
+        }
+
+        // Registrar tracking en historial CON ESTADO ANTERIOR CORRECTO + MONTO
+        const trackingResult = await registerLeadTracking(
+          localId,
+          telefono,
+          nombreCliente,
+          usuarioId,
+          estadoAnterior,  // ✅ Pasar estado anterior (verde/amarillo)
+          nuevoEstado,     // ✅ Pasar estado nuevo (naranja)
+          montoVenta       // ✅ Pasar monto de venta en USD
+        );
+
+        if (trackingResult.success) {
+          console.log('[NARANJA] ✅ Lead vinculado correctamente en historial');
+
+          // ============================================================================
+          // REGISTRAR EN TABLA RELACIONAL locales_leads
+          // ============================================================================
+          const relationResult = await registerLocalLeadRelation(
+            localId,
+            telefono,
+            finalLeadId,  // leadId existente o recién creado (puede ser undefined)
+            vendedorId,
+            usuarioId,
+            montoVenta
+          );
+
+          if (relationResult.success) {
+            console.log('[NARANJA] ✅ Relación local-lead registrada en tabla locales_leads');
+          } else {
+            console.error('[NARANJA] ⚠️ Error registrando relación en locales_leads:', relationResult.message);
+            // No bloqueamos el flujo, solo logueamos el error
+          }
+
+          // Si existe finalLeadId (lead existente o recién creado), actualizar asistio='Si'
+          if (finalLeadId) {
+            const { error: asistioError } = await supabase
+              .from('leads')
+              .update({ asistio: true })
+              .eq('id', finalLeadId);
+
+            if (asistioError) {
+              console.error('[NARANJA] ⚠️ Error actualizando asistio:', asistioError);
+            } else {
+              console.log('[NARANJA] ✅ Campo asistio actualizado a "Sí" para leadId:', finalLeadId);
+            }
+          }
+        } else {
+          console.error('[NARANJA] ❌ Error al vincular lead en historial:', trackingResult.message);
+        }
+      }
+
       // Revalidar página de locales para reflejar cambios
       revalidatePath('/locales');
     }
@@ -108,11 +207,12 @@ export async function updateLocalEstado(
 /**
  * Importar múltiples locales desde CSV/Excel
  * @param locales Array de locales a importar
+ * @param proyectoId ID del proyecto al que se asignarán todos los locales
  * @returns Estadísticas de importación (inserted, skipped, errors)
  */
-export async function importLocales(locales: LocalImportRow[]) {
+export async function importLocales(locales: LocalImportRow[], proyectoId: string) {
   try {
-    const result = await importLocalesQuery(locales);
+    const result = await importLocalesQuery(locales, proyectoId);
 
     if (result.success && result.inserted > 0) {
       // Revalidar página de locales
@@ -224,16 +324,30 @@ export async function updateMontoVenta(
  * @param telefono Teléfono del lead
  * @param nombre Nombre del lead
  * @param usuarioId ID del usuario (vendedor) que registra
+ * @param estadoAnterior Estado anterior del local
+ * @param estadoNuevo Estado nuevo del local
+ * @param montoVenta Monto de venta en USD
  * @returns Success/error
  */
 export async function registerLeadTracking(
   localId: string,
   telefono: string,
   nombre: string,
-  usuarioId?: string
+  usuarioId?: string,
+  estadoAnterior?: string,
+  estadoNuevo?: string,
+  montoVenta?: number // ✅ NUEVO: Monto de venta en USD
 ) {
   try {
-    const result = await registerLeadTrackingQuery(localId, telefono, nombre, usuarioId);
+    const result = await registerLeadTrackingQuery(
+      localId,
+      telefono,
+      nombre,
+      usuarioId,
+      estadoAnterior,
+      estadoNuevo,
+      montoVenta
+    );
 
     if (result.success) {
       revalidatePath('/locales');

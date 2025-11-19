@@ -48,7 +48,6 @@ export interface LocalHistorial {
 
 export interface LocalImportRow {
   codigo: string;
-  proyecto: string; // slug del proyecto (trapiche, callao, san-gabriel)
   metraje: number;
   estado?: 'verde' | 'amarillo' | 'naranja' | 'rojo'; // Opcional: default = 'verde'
 }
@@ -286,7 +285,7 @@ export async function getLocalesStats(proyectoId?: string) {
 // ============================================================================
 
 /**
- * SESIÓN 48C: Actualizada para aceptar comentario opcional
+ * SESIÓN 48C: Actualizada para aceptar comentario opcional + monto de venta
  * Actualizar estado de un local
  * IMPORTANTE: Esta función NO debe usarse directamente desde componentes
  * Usar Server Action updateLocalEstado() en lib/actions-locales.ts
@@ -296,6 +295,7 @@ export async function getLocalesStats(proyectoId?: string) {
  * @param vendedorId ID del vendedor que hace el cambio
  * @param usuarioId ID del usuario que hace el cambio (para historial)
  * @param comentario Comentario opcional (se guarda en locales_historial.accion)
+ * @param montoVenta Monto de venta en USD (se guarda en locales.monto_venta)
  * @returns Success/error
  */
 export async function updateLocalEstadoQuery(
@@ -303,7 +303,8 @@ export async function updateLocalEstadoQuery(
   nuevoEstado: 'verde' | 'amarillo' | 'naranja' | 'rojo',
   vendedorId?: string,
   usuarioId?: string,
-  comentario?: string // ← NUEVO parámetro opcional
+  comentario?: string,
+  montoVenta?: number // ← NUEVO parámetro opcional
 ) {
   try {
     // Obtener local actual
@@ -365,10 +366,14 @@ export async function updateLocalEstadoQuery(
       vendedores_negociando_ids: vendedoresNegociando, // ← NUEVO: Array de vendedores
     };
 
-    // SESIÓN 48: Setear timestamp y vendedor cuando cambia a NARANJA
+    // SESIÓN 48: Setear timestamp, vendedor y monto cuando cambia a NARANJA
     if (nuevoEstado === 'naranja') {
       updateData.naranja_timestamp = new Date().toISOString();
       updateData.naranja_vendedor_id = vendedorId || null;
+      // Guardar monto de venta (REQUERIDO desde modal)
+      if (montoVenta !== undefined && montoVenta !== null) {
+        updateData.monto_venta = montoVenta;
+      }
     }
 
     // SESIÓN 48: Limpiar campos cuando SALE de NARANJA
@@ -484,37 +489,44 @@ export async function updateLocalEstadoQuery(
  * Usar Server Action importLocales() en lib/actions-locales.ts
  *
  * @param locales Array de locales a importar
+ * @param proyectoId ID del proyecto al que se asignarán todos los locales
  * @returns Success/error con estadísticas
  */
-export async function importLocalesQuery(locales: LocalImportRow[]) {
+export async function importLocalesQuery(locales: LocalImportRow[], proyectoId: string) {
   try {
     let inserted = 0;
     let skipped = 0;
     const errors: string[] = [];
 
+    // Validar que proyecto existe (una sola vez)
+    const { data: proyecto, error: proyectoError } = await supabase
+      .from('proyectos')
+      .select('id, nombre')
+      .eq('id', proyectoId)
+      .single();
+
+    if (proyectoError || !proyecto) {
+      return {
+        success: false,
+        inserted: 0,
+        skipped: locales.length,
+        total: locales.length,
+        errors: [`Proyecto no encontrado. Selecciona un proyecto válido.`],
+      };
+    }
+
     for (const local of locales) {
-      // Validar que proyecto existe
-      const { data: proyecto, error: proyectoError } = await supabase
-        .from('proyectos')
-        .select('id')
-        .eq('slug', local.proyecto)
-        .single();
 
-      if (proyectoError || !proyecto) {
-        errors.push(`Proyecto "${local.proyecto}" no encontrado para local ${local.codigo}`);
-        skipped++;
-        continue;
-      }
-
-      // Verificar si código ya existe
+      // Verificar si código ya existe EN ESTE PROYECTO
       const { data: existente } = await supabase
         .from('locales')
         .select('id')
         .eq('codigo', local.codigo)
-        .single();
+        .eq('proyecto_id', proyectoId)
+        .maybeSingle();
 
       if (existente) {
-        errors.push(`Local ${local.codigo} ya existe (skipped)`);
+        errors.push(`Local ${local.codigo} ya existe en proyecto ${proyecto.nombre} (skipped)`);
         skipped++;
         continue;
       }
@@ -538,7 +550,7 @@ export async function importLocalesQuery(locales: LocalImportRow[]) {
         .from('locales')
         .insert({
           codigo: local.codigo,
-          proyecto_id: proyecto.id,
+          proyecto_id: proyectoId,
           metraje: local.metraje,
           estado: estado,
           bloqueado: bloqueado,
@@ -708,13 +720,19 @@ export async function updateMontoVentaQuery(
  * @param telefono Teléfono del lead
  * @param nombre Nombre del lead
  * @param usuarioId ID del usuario (vendedor) que registra
+ * @param estadoAnterior Estado anterior del local
+ * @param estadoNuevo Estado nuevo del local
+ * @param montoVenta Monto de venta en USD
  * @returns Success/error
  */
 export async function registerLeadTrackingQuery(
   localId: string,
   telefono: string,
   nombre: string,
-  usuarioId?: string
+  usuarioId?: string,
+  estadoAnterior?: string,
+  estadoNuevo?: string,
+  montoVenta?: number // ✅ NUEVO: Monto de venta en USD
 ) {
   try {
     // Validar que local existe
@@ -723,17 +741,21 @@ export async function registerLeadTrackingQuery(
       return { success: false, message: 'Local no encontrado' };
     }
 
-    // Crear acción descriptiva
-    const accion = `Vinculó lead: ${nombre} (Tel: ${telefono})`;
+    // Crear acción descriptiva con formato de 2 líneas
+    // Línea 1: Vinculación del lead
+    // Línea 2: Monto de venta (con formato USD)
+    const montoFormateado = montoVenta ? `$ ${montoVenta.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '$ 0.00';
+    const accion = `Vinculó lead: ${nombre} (Tel: ${telefono})\nMonto de venta: ${montoFormateado}`;
 
-    // Insertar en historial (sin cambio de estado)
+    // Insertar en historial con estados correctos
     const { error } = await supabase
       .from('locales_historial')
       .insert({
         local_id: localId,
         usuario_id: usuarioId || null,
-        estado_anterior: local.estado,
-        estado_nuevo: local.estado, // No cambia estado, solo tracking
+        // ✅ FIX: Si vienen estados pasados, usar esos; si no, usar local.estado (backward compatibility)
+        estado_anterior: estadoAnterior || local.estado,
+        estado_nuevo: estadoNuevo || local.estado,
         accion: accion,
       });
 
@@ -764,6 +786,110 @@ export async function registerLeadTrackingQuery(
   } catch (error) {
     console.error('Error in registerLeadTrackingQuery:', error);
     return { success: false, message: 'Error inesperado' };
+  }
+}
+
+// ============================================================================
+// REGISTER LOCAL LEAD RELATION (Tabla Relacional)
+// ============================================================================
+
+export async function registerLocalLeadRelation(
+  localId: string,
+  leadTelefono: string,
+  leadId?: string,
+  vendedorId?: string,
+  usuarioId?: string,
+  montoVenta?: number
+) {
+  try {
+    const { error } = await supabase
+      .from('locales_leads')
+      .insert({
+        local_id: localId,
+        lead_telefono: leadTelefono,
+        lead_id: leadId || null,
+        vendedor_id: vendedorId || null,
+        usuario_id: usuarioId || null,
+        monto_venta: montoVenta || null,
+      });
+
+    if (error) {
+      console.error('[RELATION] Error inserting locales_leads:', error);
+      return { success: false, message: 'Error al registrar relación' };
+    }
+
+    console.log('[RELATION] ✅ Relación local-lead registrada:', { localId, leadTelefono });
+    return { success: true, message: 'Relación registrada correctamente' };
+  } catch (error) {
+    console.error('Error in registerLocalLeadRelation:', error);
+    return { success: false, message: 'Error inesperado' };
+  }
+}
+
+// ============================================================================
+// GET LOCAL LEADS (Obtener leads vinculados a un local)
+// ============================================================================
+
+export interface LocalLead {
+  id: string;
+  local_id: string;
+  lead_telefono: string;
+  lead_id: string | null;
+  vendedor_id: string | null;
+  usuario_id: string | null;
+  monto_venta: number | null;
+  created_at: string;
+  lead_nombre?: string | null;
+  lead_email?: string | null;
+  lead_asistio?: boolean | null;
+  vendedor_nombre?: string | null;
+  usuario_nombre?: string | null;
+}
+
+export async function getLocalLeads(localId: string): Promise<LocalLead[]> {
+  try {
+    const { data, error } = await supabase
+      .from('locales_leads')
+      .select(`
+        *,
+        leads:lead_id (
+          nombre,
+          email,
+          asistio
+        ),
+        vendedores:vendedor_id (
+          nombre
+        ),
+        usuarios:usuario_id (
+          nombre
+        )
+      `)
+      .eq('local_id', localId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching local leads:', error);
+      return [];
+    }
+
+    return (data || []).map((row: any) => ({
+      id: row.id,
+      local_id: row.local_id,
+      lead_telefono: row.lead_telefono,
+      lead_id: row.lead_id,
+      vendedor_id: row.vendedor_id,
+      usuario_id: row.usuario_id,
+      monto_venta: row.monto_venta,
+      created_at: row.created_at,
+      lead_nombre: row.leads?.nombre || null,
+      lead_email: row.leads?.email || null,
+      lead_asistio: row.leads?.asistio || null,
+      vendedor_nombre: row.vendedores?.nombre || null,
+      usuario_nombre: row.usuarios?.nombre || null,
+    }));
+  } catch (error) {
+    console.error('Error in getLocalLeads:', error);
+    return [];
   }
 }
 

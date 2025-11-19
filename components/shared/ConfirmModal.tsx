@@ -118,12 +118,14 @@ export default function ConfirmModal({
 
           {/* Footer */}
           <div className="bg-gray-50 px-6 py-4 rounded-b-lg flex gap-3 justify-end">
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              {cancelText}
-            </button>
+            {cancelText && (
+              <button
+                onClick={onCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                {cancelText}
+              </button>
+            )}
             <button
               onClick={onConfirm}
               className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${config.confirmBg}`}

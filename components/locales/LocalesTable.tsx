@@ -12,11 +12,11 @@ import { useAuth } from '@/lib/auth-context';
 import { updateLocalEstado, desbloquearLocal, updateMontoVenta, autoLiberarLocalesExpirados, salirDeNegociacion } from '@/lib/actions-locales';
 import type { Local, VendedorActivo } from '@/lib/locales';
 import { getAllVendedoresActivos } from '@/lib/locales';
-import { ChevronLeft, ChevronRight, History, Lock, Link2, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, History, Lock, Clock } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
-import LocalTrackingModal from './LocalTrackingModal';
 import VendedorSelectModal from './VendedorSelectModal';
 import ComentarioNaranjaModal from './ComentarioNaranjaModal';
+import TimerCountdown from './TimerCountdown'; // OPT: Componente separado para evitar re-render global
 
 interface LocalesTableProps {
   locales: Local[];
@@ -58,13 +58,6 @@ export default function LocalesTable({
     variant: 'info',
   });
 
-  // State para edición de monto
-  const [editingMontoLocalId, setEditingMontoLocalId] = useState<string | null>(null);
-  const [tempMonto, setTempMonto] = useState<string>('');
-
-  // State para tracking modal
-  const [trackingLocal, setTrackingLocal] = useState<Local | null>(null);
-
   // State para vendedores activos (admin assignment)
   const [vendedoresActivos, setVendedoresActivos] = useState<VendedorActivo[]>([]);
 
@@ -88,17 +81,7 @@ export default function LocalesTable({
     local: null,
   });
 
-  // SESIÓN 48B: State para actualizar timer cada segundo (cuenta regresiva en tiempo real)
-  const [, setCurrentTime] = useState(Date.now());
-
-  // ====== EFFECT: Actualizar timer cada segundo para cuenta regresiva en tiempo real ======
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(Date.now()); // Forzar re-render cada segundo
-    }, 1000); // Actualizar cada 1 segundo
-
-    return () => clearInterval(interval);
-  }, []);
+  // OPT: Timer ahora usa componente separado (TimerCountdown) que se re-renderiza solo
 
   // ====== EFFECT: Cargar vendedores activos si es admin ======
   useEffect(() => {
@@ -357,8 +340,16 @@ export default function LocalesTable({
     }
   };
 
-  // ====== SESIÓN 48C: HELPER - Confirmar NARANJA con Comentario ======
-  const handleConfirmarNaranjaConComentario = async (comentario: string) => {
+  // ====== SESIÓN 48C: HELPER - Confirmar NARANJA con Comentario + Vinculación ======
+  const handleConfirmarNaranjaConComentario = async (
+    comentario: string,
+    telefono: string,
+    nombreCliente: string,
+    montoVenta: number,
+    leadId?: string,
+    proyectoId?: string,
+    agregarComoLead?: boolean
+  ) => {
     if (!comentarioNaranjaModal.local) return;
 
     const local = comentarioNaranjaModal.local;
@@ -371,7 +362,13 @@ export default function LocalesTable({
         'naranja',
         user?.vendedor_id || undefined,
         user?.id || undefined,
-        comentario // ✅ Pasar comentario
+        comentario, // ✅ Comentario
+        telefono,   // ✅ Teléfono para vinculación
+        nombreCliente, // ✅ Nombre cliente
+        montoVenta, // ✅ Monto de venta
+        leadId, // ✅ ID del lead si existe (para actualizar asistio='Si')
+        proyectoId, // ✅ ID del proyecto (si se quiere crear lead manual)
+        agregarComoLead // ✅ Flag para crear o no el lead manual
       );
 
       if (result.success) {
@@ -521,67 +518,6 @@ export default function LocalesTable({
     }
   };
 
-  // ====== HELPER: Actualizar Monto de Venta ======
-  const handleMontoBlur = async (local: Local) => {
-    if (!tempMonto || tempMonto === '') {
-      setEditingMontoLocalId(null);
-      return;
-    }
-
-    const monto = parseFloat(tempMonto);
-    if (isNaN(monto) || monto <= 0) {
-      setConfirmModal({
-        isOpen: true,
-        local: null,
-        nuevoEstado: null,
-        title: 'Monto Inválido',
-        message: 'Por favor ingresa un monto válido mayor a 0.',
-        variant: 'warning',
-      });
-      setEditingMontoLocalId(null);
-      setTempMonto('');
-      return;
-    }
-
-    try {
-      const result = await updateMontoVenta(local.id, monto, user?.id);
-
-      if (!result.success) {
-        setConfirmModal({
-          isOpen: true,
-          local: null,
-          nuevoEstado: null,
-          title: 'Error al Actualizar Monto',
-          message: result.message || 'No se pudo actualizar el monto. Verifica que la columna monto_venta exista en la base de datos.',
-          variant: 'danger',
-        });
-      } else {
-        // Éxito - mostrar confirmación
-        setConfirmModal({
-          isOpen: true,
-          local: null,
-          nuevoEstado: null,
-          title: 'Monto Actualizado',
-          message: `Monto establecido: $ ${monto.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
-          variant: 'info',
-        });
-      }
-    } catch (error) {
-      console.error('Error actualizando monto:', error);
-      setConfirmModal({
-        isOpen: true,
-        local: null,
-        nuevoEstado: null,
-        title: 'Error Inesperado',
-        message: 'Ocurrió un error inesperado al actualizar el monto. Por favor intenta nuevamente.',
-        variant: 'danger',
-      });
-    } finally {
-      setEditingMontoLocalId(null);
-      setTempMonto('');
-    }
-  };
-
   // ====== HELPER: Cancelar Modal ======
   const handleCancelModal = () => {
     setConfirmModal({
@@ -594,81 +530,7 @@ export default function LocalesTable({
     });
   };
 
-  // ====== SESIÓN 48: HELPER - Calcular Tiempo Restante Timer NARANJA ======
-  const calcularTiempoRestante = (naranjaTimestamp: string | null) => {
-    if (!naranjaTimestamp) return null;
-
-    const inicio = new Date(naranjaTimestamp);
-    const ahora = new Date();
-    const fin = new Date(inicio.getTime() + 120 * 60 * 60 * 1000); // +120 horas
-
-    const msRestantes = fin.getTime() - ahora.getTime();
-
-    // Si ya expiró
-    if (msRestantes <= 0) {
-      return { expired: true, text: 'Expirado', percent: 0, dias: 0, horas: 0, minutos: 0, segundos: 0 };
-    }
-
-    // Calcular tiempo restante con segundos
-    const segundosTotales = Math.floor(msRestantes / 1000);
-    const minutosTotales = Math.floor(segundosTotales / 60);
-    const horasTotales = Math.floor(minutosTotales / 60);
-
-    const diasRestantes = Math.floor(horasTotales / 24);
-    const horasRestantes = horasTotales % 24;
-    const minutosRestantes = minutosTotales % 60;
-    const segundosRestantes = segundosTotales % 60;
-
-    // Porcentaje de timer (0-100%)
-    const porcentaje = (horasTotales / 120) * 100;
-
-    // Texto para badge con segundos
-    let text = '';
-    if (diasRestantes > 0) {
-      text = `Quedan ${diasRestantes}d ${horasRestantes}h ${minutosRestantes}m ${segundosRestantes}s`;
-    } else if (horasRestantes > 0) {
-      text = `Quedan ${horasRestantes}h ${minutosRestantes}m ${segundosRestantes}s`;
-    } else {
-      text = `Quedan ${minutosRestantes}m ${segundosRestantes}s`;
-    }
-
-    return {
-      expired: false,
-      text,
-      percent: porcentaje,
-      dias: diasRestantes,
-      horas: horasRestantes,
-      minutos: minutosRestantes,
-      segundos: segundosRestantes,
-    };
-  };
-
-  // ====== SESIÓN 48: HELPER - Render Timer con Progress Bar ======
-  const renderTimer = (local: Local) => {
-    // Solo mostrar timer si estado === 'naranja' y hay timestamp
-    if (local.estado !== 'naranja' || !local.naranja_timestamp) return null;
-
-    const tiempo = calcularTiempoRestante(local.naranja_timestamp);
-    if (!tiempo || tiempo.expired) return null;
-
-    return (
-      <div className="mt-2 space-y-1">
-        {/* Progress Bar Azul */}
-        <div className="w-full h-1.5 bg-gray-200 rounded-full border border-blue-300">
-          <div
-            className="h-full bg-blue-500 rounded-full transition-all duration-1000"
-            style={{ width: `${tiempo.percent}%` }}
-          />
-        </div>
-
-        {/* Badge con tiempo restante */}
-        <div className="flex items-center gap-1 text-xs text-blue-700">
-          <Clock className="w-3 h-3" />
-          <span className="font-medium">{tiempo.text}</span>
-        </div>
-      </div>
-    );
-  };
+  // OPT: Funciones de timer movidas a componente TimerCountdown separado
 
   // ====== HELPER: Render Semáforo ======
   const renderSemaforo = (local: Local) => {
@@ -713,7 +575,7 @@ export default function LocalesTable({
           disabled={isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja}
           className={`w-8 h-8 rounded-full border-2 transition-all relative ${
             local.estado === 'amarillo'
-              ? 'bg-yellow-500 border-yellow-600 scale-110 shadow-lg'
+              ? 'bg-yellow-200 border-yellow-600 scale-110 shadow-lg'
               : 'bg-yellow-200 border-yellow-300 hover:scale-105 hover:bg-yellow-300'
           } ${isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           title={
@@ -738,9 +600,15 @@ export default function LocalesTable({
           disabled={isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja}
           className={`w-8 h-8 rounded-full border-2 transition-all ${
             local.estado === 'naranja'
-              ? 'bg-orange-500 border-orange-600 scale-110 shadow-lg'
+              ? 'bg-orange-400 border-orange-600 scale-110 shadow-lg'
               : 'bg-orange-200 border-orange-300 hover:scale-105 hover:bg-orange-300'
-          } ${isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+          } ${
+            local.estado === 'naranja'
+              ? 'cursor-pointer' // Si está activo (naranja), no aplicar opacity
+              : (isChanging || (isBlocked && !canUnblock) || vendedorNoPuedeCambiarNaranja)
+                ? 'opacity-50 cursor-not-allowed'
+                : 'cursor-pointer'
+          }`}
           title={
             vendedorNoPuedeCambiarNaranja
               ? 'Solo jefes de ventas pueden cambiar locales confirmados'
@@ -838,7 +706,7 @@ export default function LocalesTable({
     const showingCount = Math.max(0, endItem - startItem + 1);
 
     return (
-      <div className="flex items-center justify-between mt-4">
+      <div className="flex items-center justify-between mt-4 p-4">
         {/* Info */}
         <p className="text-sm text-gray-600">
           {totalLocales > 0 ? (
@@ -895,12 +763,12 @@ export default function LocalesTable({
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      {/* Paginación Superior - TEMPORALMENTE DESHABILITADA */}
-      {/* {(totalPages > 1 || totalLocales > itemsPerPage) && (
+      {/* Paginación Superior - HABILITADA */}
+      {(totalPages > 1 || totalLocales > itemsPerPage) && (
         <div className="p-4 border-b bg-gray-50">
           {renderPagination()}
         </div>
-      )} */}
+      )}
 
       {/* Tabla */}
       <div className="overflow-x-auto">
@@ -912,7 +780,6 @@ export default function LocalesTable({
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Metraje</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Estado</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Monto Venta</th>
-              <th className="text-left py-3 px-4 text-gray-600 font-medium">Cell Cliente</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Vendedor Actual</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Acciones</th>
             </tr>
@@ -920,15 +787,12 @@ export default function LocalesTable({
           <tbody>
             {locales.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-gray-500">
+                <td colSpan={7} className="text-center py-8 text-gray-500">
                   No hay locales para mostrar
                 </td>
               </tr>
             ) : (
               locales.map((local) => {
-                const canEditMonto = (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') && local.estado === 'naranja';
-                const isEditingMonto = editingMontoLocalId === local.id;
-
                 return (
                   <tr key={local.id} className="border-b hover:bg-gray-50">
                     {/* Código */}
@@ -948,66 +812,17 @@ export default function LocalesTable({
                     <td className="py-3 px-4">
                       {renderSemaforo(local)}
                       {renderSalirNegociacion(local)}
-                      {renderTimer(local)}
+                      {/* OPT: Componente separado para timer (solo se re-renderiza él, no toda la tabla) */}
+                      {local.estado === 'naranja' && <TimerCountdown naranjaTimestamp={local.naranja_timestamp} />}
                     </td>
 
-                    {/* Monto Venta */}
+                    {/* Monto Venta - Solo lectura (se establece en modal NARANJA) */}
                     <td className="py-3 px-4">
-                      {canEditMonto ? (
-                        isEditingMonto ? (
-                          <input
-                            type="number"
-                            step="0.01"
-                            placeholder="Ingrese monto"
-                            value={tempMonto}
-                            onChange={(e) => setTempMonto(e.target.value)}
-                            onBlur={() => handleMontoBlur(local)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleMontoBlur(local);
-                              if (e.key === 'Escape') {
-                                setEditingMontoLocalId(null);
-                                setTempMonto('');
-                              }
-                            }}
-                            autoFocus
-                            className="w-32 px-2 py-1 border border-primary rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                          />
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setEditingMontoLocalId(local.id);
-                              setTempMonto(local.monto_venta ? local.monto_venta.toString() : '');
-                            }}
-                            className="text-sm text-primary hover:underline"
-                          >
-                            {local.monto_venta
-                              ? `$ ${local.monto_venta.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-                              : 'Establecer monto'}
-                          </button>
-                        )
-                      ) : (
-                        <span className="text-sm text-gray-500">
-                          {local.monto_venta
-                            ? `$ ${local.monto_venta.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-                            : '-'}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Tracking */}
-                    <td className="py-3 px-4">
-                      {(user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') ? (
-                        <button
-                          onClick={() => setTrackingLocal(local)}
-                          className="flex items-center gap-1 text-sm text-secondary hover:text-secondary/80"
-                          title="Vincular lead"
-                        >
-                          <Link2 className="w-4 h-4" />
-                          <span className="hidden sm:inline">Vincular</span>
-                        </button>
-                      ) : (
-                        <span className="text-gray-400 text-sm">-</span>
-                      )}
+                      <span className="text-sm text-gray-700">
+                        {local.monto_venta && local.monto_venta > 0
+                          ? `$ ${local.monto_venta.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : ''}
+                      </span>
                     </td>
 
                     {/* Vendedor Actual */}
@@ -1034,8 +849,8 @@ export default function LocalesTable({
         </table>
       </div>
 
-      {/* Paginación Inferior - TEMPORALMENTE DESHABILITADA */}
-      {/* {(totalPages > 1 || totalLocales > itemsPerPage) && renderPagination()} */}
+      {/* Paginación Inferior - HABILITADA */}
+      {(totalPages > 1 || totalLocales > itemsPerPage) && renderPagination()}
 
       {/* Modal de Confirmación */}
       <ConfirmModal
@@ -1060,21 +875,7 @@ export default function LocalesTable({
         onCancel={() => setVendedorSelectModal({ isOpen: false, local: null, nuevoEstado: null })}
       />
 
-      {/* Tracking Modal */}
-      {trackingLocal && (
-        <LocalTrackingModal
-          local={trackingLocal}
-          isOpen={!!trackingLocal}
-          onClose={() => setTrackingLocal(null)}
-          onSuccess={() => {
-            // Opcional: Recargar o mostrar mensaje
-            setTrackingLocal(null);
-          }}
-          usuarioId={user?.id}
-        />
-      )}
-
-      {/* SESIÓN 48C: Modal Comentario NARANJA */}
+      {/* SESIÓN 48C: Modal Comentario NARANJA (con vinculación integrada) */}
       <ComentarioNaranjaModal
         isOpen={comentarioNaranjaModal.isOpen}
         local={comentarioNaranjaModal.local}
