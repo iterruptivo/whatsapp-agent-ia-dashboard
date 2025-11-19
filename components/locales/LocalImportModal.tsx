@@ -14,7 +14,7 @@ import type { Proyecto } from '@/lib/db';
 import type { LocalImportRow } from '@/lib/locales';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { X, Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Upload, FileText, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 
 interface LocalImportModalProps {
@@ -149,6 +149,23 @@ export default function LocalImportModal({
     });
   };
 
+  // ====== DOWNLOAD TEMPLATE ======
+  const handleDownloadTemplate = () => {
+    // Datos de ejemplo con 2 filas, ambas estado=verde
+    const templateData = [
+      { codigo: 'A-101', metraje: 45.5, estado: 'verde' },
+      { codigo: 'B-205', metraje: 67.2, estado: 'verde' },
+    ];
+
+    // Crear workbook y worksheet
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Locales');
+
+    // Descargar archivo
+    XLSX.writeFile(workbook, 'plantilla_locales.xlsx');
+  };
+
   // ====== IMPORT ======
   const handleImport = async () => {
     if (!file) {
@@ -263,9 +280,13 @@ export default function LocalImportModal({
                   <Upload className="w-6 h-6" />
                   Importar Locales
                 </h2>
-                <p className="text-sm text-white/80 mt-1">
-                  Carga masiva desde Excel o CSV
-                </p>
+                <button
+                  onClick={handleDownloadTemplate}
+                  className="flex items-center gap-2 text-sm text-white/90 hover:text-white mt-2 transition-colors group"
+                >
+                  <Download className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  <span className="underline">Descargar plantilla</span>
+                </button>
               </div>
               <button
                 onClick={onClose}
