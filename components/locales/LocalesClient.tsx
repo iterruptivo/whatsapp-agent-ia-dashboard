@@ -107,6 +107,16 @@ export default function LocalesClient({
     console.log('[LocalesClient] Cache proyectos populated:', proyectosCache.current.size);
   }, [proyectos]);
 
+  // ====== SINCRONIZAR FILTRO PROYECTO CON SELECTED PROYECTO (después de reload) ======
+  useEffect(() => {
+    // Si el filtro está vacío y tenemos un proyecto seleccionado del login,
+    // actualizar el filtro (fix para después de window.location.reload())
+    if (!proyectoFilter && selectedProyecto?.id) {
+      console.log('[LocalesClient] Sincronizando filtro con proyecto del login:', selectedProyecto.nombre);
+      setProyectoFilter(selectedProyecto.id);
+    }
+  }, [selectedProyecto?.id, proyectoFilter]);
+
   // ====== SUPABASE REALTIME SUBSCRIPTION ======
   useEffect(() => {
     // Crear canal de Realtime
