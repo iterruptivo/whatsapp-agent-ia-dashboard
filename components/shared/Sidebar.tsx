@@ -2,19 +2,31 @@
 // COMPONENT: Sidebar Menu
 // ============================================================================
 // Descripción: Menú lateral responsive con navegación role-based
-// Features: Overlay, animación slide-in, ESC key, click outside
+// Features: Overlay, animación slide-in, ESC key, click outside, submenús
 // ============================================================================
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface MenuItem {
+  href: string;
+  label: string;
+  icon: any;
+}
+
+interface MenuCategory {
+  label: string;
+  icon: any;
+  items: MenuItem[];
 }
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
@@ -22,23 +34,52 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
 
-  // Menú items basado en rol
-  const menuItems =
-    user?.rol === 'admin'
-      ? [
+  // Estado para controlar qué categorías están expandidas
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['finanzas']);
+
+  // Toggle categoría expandida/colapsada
+  const toggleCategory = (categoryLabel: string) => {
+    setExpandedCategories((prev) =>
+      prev.includes(categoryLabel)
+        ? prev.filter((cat) => cat !== categoryLabel)
+        : [...prev, categoryLabel]
+    );
+  };
+
+  // Estructura de menú basado en rol
+  // Puede tener items directos O categorías con subitems
+  const getMenuStructure = () => {
+    const finanzasCategory: MenuCategory = {
+      label: 'Finanzas',
+      icon: DollarSign,
+      items: [{ href: '/locales', label: 'Gestión de Locales', icon: Home }],
+    };
+
+    if (user?.rol === 'admin') {
+      return {
+        directItems: [
           { href: '/', label: 'Dashboard Gerencial', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
-          { href: '/locales', label: 'Gestión de Locales', icon: Home },
-        ]
-      : user?.rol === 'vendedor'
-      ? [
-          { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
-          { href: '/locales', label: 'Gestión de Locales', icon: Home },
-        ]
-      : [
-          // jefe_ventas y vendedor_caseta solo ven Locales
-          { href: '/locales', label: 'Gestión de Locales', icon: Home },
-        ];
+        ],
+        categories: [finanzasCategory],
+      };
+    }
+
+    if (user?.rol === 'vendedor') {
+      return {
+        directItems: [{ href: '/operativo', label: 'Dashboard Operativo', icon: Users }],
+        categories: [finanzasCategory],
+      };
+    }
+
+    // jefe_ventas y vendedor_caseta solo ven Finanzas
+    return {
+      directItems: [],
+      categories: [finanzasCategory],
+    };
+  };
+
+  const menuStructure = getMenuStructure();
 
   // Close on ESC key
   useEffect(() => {
@@ -109,7 +150,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="p-4 space-y-2">
-          {menuItems.map((item) => {
+          {/* Items Directos (sin categoría) */}
+          {menuStructure.directItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
 
@@ -126,6 +168,62 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <Icon className="w-5 h-5" />
                 <span className="font-medium">{item.label}</span>
               </button>
+            );
+          })}
+
+          {/* Categorías con Submenús */}
+          {menuStructure.categories.map((category) => {
+            const CategoryIcon = category.icon;
+            const isExpanded = expandedCategories.includes(category.label.toLowerCase());
+            const hasActiveItem = category.items.some((item) => pathname === item.href);
+
+            return (
+              <div key={category.label} className="space-y-1">
+                {/* Category Header (Clickable para expandir/colapsar) */}
+                <button
+                  onClick={() => toggleCategory(category.label.toLowerCase())}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
+                    hasActiveItem && !isExpanded
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <CategoryIcon className="w-5 h-5" />
+                    <span className="font-medium">{category.label}</span>
+                  </div>
+                  {isExpanded ? (
+                    <ChevronDown className="w-4 h-4" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4" />
+                  )}
+                </button>
+
+                {/* Subitems (Visible cuando expandido) */}
+                {isExpanded && (
+                  <div className="ml-4 space-y-1 animate-fadeIn">
+                    {category.items.map((item) => {
+                      const ItemIcon = item.icon;
+                      const isActive = pathname === item.href;
+
+                      return (
+                        <button
+                          key={item.href}
+                          onClick={() => handleNavigate(item.href)}
+                          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all ${
+                            isActive
+                              ? 'bg-primary text-white shadow-md'
+                              : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          <ItemIcon className="w-4 h-4" />
+                          <span className="text-sm font-medium">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             );
           })}
         </nav>
