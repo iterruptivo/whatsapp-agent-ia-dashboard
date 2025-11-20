@@ -154,6 +154,11 @@ export default function DashboardClient({
         value: filteredLeads.filter((l) => l.estado === 'conversacion_abandonada').length,
         color: '#cbd5e1',
       },
+      {
+        name: 'Lead Manual',
+        value: filteredLeads.filter((l) => l.estado === 'lead_manual').length,
+        color: '#9333ea',
+      },
     ];
   }, [filteredLeads]);
 
@@ -376,7 +381,7 @@ export default function DashboardClient({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <PieChartComponent
           data={chartData}
-          title="Distribución de Estados al Notificar"
+          title="Distribución de Estados"
         />
         <PieChartComponent
           data={asistenciasData}
