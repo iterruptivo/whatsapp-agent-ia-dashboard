@@ -58,9 +58,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (user?.rol === 'admin') {
       return {
         directItems: [
-          { href: '/configuracion-proyecto', label: 'Configurar Proyecto', icon: Settings },
           { href: '/', label: 'Dashboard Gerencial', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+          { href: '/configuracion-proyecto', label: 'Configurar Proyecto', icon: Settings },
         ],
         categories: [finanzasCategory],
       };
