@@ -115,7 +115,9 @@ export default function LocalesClient({
       console.log('[LocalesClient] Sincronizando filtro con proyecto del login:', selectedProyecto.nombre);
       setProyectoFilter(selectedProyecto.id);
     }
-  }, [selectedProyecto?.id, proyectoFilter]);
+    // CRITICAL: Solo depender de selectedProyecto.id, NO de proyectoFilter
+    // Si incluimos proyectoFilter, se crea un loop que resetea el filtro cada vez que el usuario lo cambia
+  }, [selectedProyecto?.id]);
 
   // ====== SUPABASE REALTIME SUBSCRIPTION ======
   useEffect(() => {
