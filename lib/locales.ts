@@ -19,7 +19,8 @@ export interface Local {
   metraje: number; // 4.5, 6.0, etc.
   estado: 'verde' | 'amarillo' | 'naranja' | 'rojo';
   bloqueado: boolean;
-  monto_venta: number | null; // Monto propuesto por vendedor (solo editable en estado naranja)
+  monto_separacion: number | null; // Monto de separación (REQUERIDO al cambiar a NARANJA)
+  monto_venta: number | null; // Monto de venta (REQUERIDO al cambiar a NARANJA)
   vendedor_actual_id: string | null;
   vendedor_actual_nombre?: string | null; // Via JOIN (opcional)
   vendedor_cerro_venta_id: string | null;
@@ -304,7 +305,10 @@ export async function updateLocalEstadoQuery(
   vendedorId?: string,
   usuarioId?: string,
   comentario?: string,
-  montoVenta?: number // ← NUEVO parámetro opcional
+  montoSeparacion?: number, // ← NUEVO parámetro opcional
+  montoVenta?: number, // ← NUEVO parámetro opcional
+  telefono?: string, // ← NUEVO: para mostrar vinculación en historial
+  nombreCliente?: string // ← NUEVO: para mostrar vinculación en historial
 ) {
   try {
     // Obtener local actual
@@ -366,10 +370,14 @@ export async function updateLocalEstadoQuery(
       vendedores_negociando_ids: vendedoresNegociando, // ← NUEVO: Array de vendedores
     };
 
-    // SESIÓN 48: Setear timestamp, vendedor y monto cuando cambia a NARANJA
+    // SESIÓN 48: Setear timestamp, vendedor y montos cuando cambia a NARANJA
     if (nuevoEstado === 'naranja') {
       updateData.naranja_timestamp = new Date().toISOString();
       updateData.naranja_vendedor_id = vendedorId || null;
+      // Guardar monto de separación (REQUERIDO desde modal)
+      if (montoSeparacion !== undefined && montoSeparacion !== null) {
+        updateData.monto_separacion = montoSeparacion;
+      }
       // Guardar monto de venta (REQUERIDO desde modal)
       if (montoVenta !== undefined && montoVenta !== null) {
         updateData.monto_venta = montoVenta;
@@ -393,7 +401,8 @@ export async function updateLocalEstadoQuery(
       updateData.bloqueado = false;
       updateData.vendedor_cerro_venta_id = null;
       updateData.fecha_cierre_venta = null;
-      updateData.monto_venta = null; // Limpiar monto (nueva negociación = nuevo monto)
+      updateData.monto_separacion = null; // Limpiar monto de separación (nueva negociación = nuevo monto)
+      updateData.monto_venta = null; // Limpiar monto de venta (nueva negociación = nuevo monto)
       // SESIÓN 48: Limpiar timer NARANJA también
       updateData.naranja_timestamp = null;
       updateData.naranja_vendedor_id = null;
@@ -418,6 +427,19 @@ export async function updateLocalEstadoQuery(
       // SESIÓN 48C: Si hay comentario, usarlo directamente
       if (comentario && comentario.trim().length > 0) {
         accion = comentario.trim();
+
+        // Agregar vinculación del lead si viene (nombre + teléfono)
+        if (telefono && nombreCliente) {
+          accion += ` | Vinculó lead: ${nombreCliente} (Tel: ${telefono})`;
+        }
+
+        // Agregar montos al historial si vienen (formato: Comentario > vinculación > monto separación > monto venta)
+        if (montoSeparacion !== undefined && montoSeparacion !== null) {
+          accion += ` | Monto de Separación: $${montoSeparacion.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
+        if (montoVenta !== undefined && montoVenta !== null) {
+          accion += ` | Monto de Venta: $${montoVenta.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        }
       } else {
         // 🎯 CASO ESPECIAL: Admin asigna vendedor con amarillo/naranja
         if (vendedorId && (nuevoEstado === 'amarillo' || nuevoEstado === 'naranja')) {
@@ -799,6 +821,7 @@ export async function registerLocalLeadRelation(
   leadId?: string,
   vendedorId?: string,
   usuarioId?: string,
+  montoSeparacion?: number,
   montoVenta?: number
 ) {
   try {
@@ -810,6 +833,7 @@ export async function registerLocalLeadRelation(
         lead_id: leadId || null,
         vendedor_id: vendedorId || null,
         usuario_id: usuarioId || null,
+        monto_separacion: montoSeparacion || null,
         monto_venta: montoVenta || null,
       });
 
@@ -837,6 +861,7 @@ export interface LocalLead {
   lead_id: string | null;
   vendedor_id: string | null;
   usuario_id: string | null;
+  monto_separacion: number | null;
   monto_venta: number | null;
   created_at: string;
   lead_nombre?: string | null;

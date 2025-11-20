@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, UserPlus, Phone, User, MapPin, Search } from 'lucide-react';
+import { X, UserPlus, Phone, User, MapPin, Search, AlertCircle } from 'lucide-react';
 
 interface VisitaSinLocalModalProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ export default function VisitaSinLocalModal({
   proyectos,
 }: VisitaSinLocalModalProps) {
   const [telefono, setTelefono] = useState('');
+  const [telefonoError, setTelefonoError] = useState('');
   const [nombre, setNombre] = useState('');
   const [proyectoId, setProyectoId] = useState('');
   const [leadExistente, setLeadExistente] = useState<LeadExistente | null>(null);
@@ -37,6 +38,7 @@ export default function VisitaSinLocalModal({
   useEffect(() => {
     if (!isOpen) {
       setTelefono('');
+      setTelefonoError('');
       setNombre('');
       setProyectoId('');
       setLeadExistente(null);
@@ -46,15 +48,41 @@ export default function VisitaSinLocalModal({
     }
   }, [isOpen]);
 
+  // ====== VALIDACIÓN ======
+
+  // Validar teléfono internacional (E.164: código país + número)
+  // - Empieza con dígito 1-9 (código de país)
+  // - Total entre 10-15 dígitos
+  // Ejemplos válidos:
+  // - 51987654321 (Perú: 11 dígitos)
+  // - 12025551234 (USA: 11 dígitos)
+  // - 34612345678 (España: 11 dígitos)
+  const validarTelefonoInternacional = (phone: string): boolean => {
+    const cleaned = phone.replace(/\D/g, '');
+    return /^[1-9]\d{9,14}$/.test(cleaned);
+  };
+
+  const telefonoValido = validarTelefonoInternacional(telefono);
+
+  // Mostrar error de teléfono en tiempo real (solo si ya empezó a escribir)
+  const mostrarErrorTelefono = telefono.length > 0 && !telefonoValido;
+
   // Buscar lead cuando el usuario termine de escribir el teléfono
   const buscarLead = async () => {
-    if (!telefono.trim() || telefono.length < 8) {
-      setError('Ingresa un número de teléfono válido');
+    if (!telefono.trim()) {
+      setTelefonoError('Ingrese un número de teléfono');
+      return;
+    }
+
+    // Validar formato internacional
+    if (!telefonoValido) {
+      setTelefonoError('Teléfono inválido. Incluye el código de país (ej: 51987654321)');
       return;
     }
 
     setIsSearching(true);
     setError('');
+    setTelefonoError('');
     setLeadExistente(null);
     setSearchCompleted(false);
 
@@ -90,6 +118,12 @@ export default function VisitaSinLocalModal({
 
     if (!telefono.trim()) {
       setError('El teléfono es requerido');
+      return;
+    }
+
+    // Validar formato de teléfono
+    if (!telefonoValido) {
+      setTelefonoError('Teléfono inválido. Incluye el código de país (ej: 51987654321)');
       return;
     }
 
@@ -153,40 +187,53 @@ export default function VisitaSinLocalModal({
                 Teléfono <span className="text-red-500">*</span>
               </label>
             </div>
-            <div className="flex gap-2">
-              <input
-                type="tel"
-                value={telefono}
-                onChange={(e) => {
-                  // Solo permitir números
-                  const value = e.target.value.replace(/\D/g, '');
-                  setTelefono(value);
-                  setError('');
-                  setLeadExistente(null);
-                  setSearchCompleted(false);
-                }}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    buscarLead();
-                  }
-                }}
-                placeholder="Ej: 51987654321"
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                disabled={isSubmitting}
-              />
-              <button
-                onClick={buscarLead}
-                disabled={isSearching || isSubmitting}
-                className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Buscar lead"
-              >
-                <Search className={`w-5 h-5 ${isSearching ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-            <p className="text-xs text-gray-500">
-              Ingresa el teléfono y presiona Enter o click en buscar
+            <p className="text-sm text-gray-700 font-bold italic -mt-1">
+              * Incluir código de país (Ej: 51987654321)
             </p>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="tel"
+                  value={telefono}
+                  onChange={(e) => {
+                    // Solo permitir números
+                    const value = e.target.value.replace(/\D/g, '');
+                    setTelefono(value);
+                    setError('');
+                    if (telefonoError) setTelefonoError('');
+                    setLeadExistente(null);
+                    setSearchCompleted(false);
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (telefonoValido) buscarLead();
+                    }
+                  }}
+                  placeholder="Ej: 51987654321"
+                  className={`flex-1 px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all ${
+                    mostrarErrorTelefono || telefonoError
+                      ? 'border-red-500 focus:ring-red-500'
+                      : 'border-gray-300 focus:ring-blue-500'
+                  }`}
+                  disabled={isSubmitting}
+                />
+                <button
+                  onClick={buscarLead}
+                  disabled={isSearching || isSubmitting || !telefono.trim() || !telefonoValido}
+                  className="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Buscar lead"
+                >
+                  <Search className={`w-5 h-5 ${isSearching ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              {(mostrarErrorTelefono || telefonoError) && (
+                <p className="text-xs text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  {telefonoError || 'Teléfono inválido. Incluye el código de país (ej: 51987654321)'}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Lead existente encontrado */}
@@ -291,7 +338,7 @@ export default function VisitaSinLocalModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || !searchCompleted || !telefono || (!leadExistente && (!nombre || !proyectoId))}
+            disabled={isSubmitting || !searchCompleted || !telefono || !telefonoValido || (!leadExistente && (!nombre || !proyectoId))}
             className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             {isSubmitting ? 'Registrando...' : 'Registrar Visita'}

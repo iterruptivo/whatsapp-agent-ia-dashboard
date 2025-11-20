@@ -49,6 +49,7 @@ export async function updateLocalEstado(
   comentario?: string,
   telefono?: string,
   nombreCliente?: string,
+  montoSeparacion?: number, // ← NUEVO: monto de separación en USD
   montoVenta?: number, // ← NUEVO: monto de venta en USD
   leadId?: string,
   proyectoId?: string,
@@ -104,7 +105,7 @@ export async function updateLocalEstado(
     const estadoAnterior = local.estado;
 
     // Continuar con el flujo normal
-    const result = await updateLocalEstadoQuery(localId, nuevoEstado, vendedorId, usuarioId, comentario, montoVenta);
+    const result = await updateLocalEstadoQuery(localId, nuevoEstado, vendedorId, usuarioId, comentario, montoSeparacion, montoVenta, telefono, nombreCliente);
 
     if (result.success) {
       // ============================================================================
@@ -138,54 +139,42 @@ export async function updateLocalEstado(
           }
         }
 
-        // Registrar tracking en historial CON ESTADO ANTERIOR CORRECTO + MONTO
-        const trackingResult = await registerLeadTracking(
+        // NOTA: Ya no usamos registerLeadTracking() porque el historial
+        // se guarda directamente en updateLocalEstadoQuery() con comentario + montos
+        console.log('[NARANJA] ✅ Lead vinculado (historial ya guardado en updateLocalEstadoQuery)');
+
+        // ============================================================================
+        // REGISTRAR EN TABLA RELACIONAL locales_leads
+        // ============================================================================
+        const relationResult = await registerLocalLeadRelation(
           localId,
           telefono,
-          nombreCliente,
+          finalLeadId,  // leadId existente o recién creado (puede ser undefined)
+          vendedorId,
           usuarioId,
-          estadoAnterior,  // ✅ Pasar estado anterior (verde/amarillo)
-          nuevoEstado,     // ✅ Pasar estado nuevo (naranja)
-          montoVenta       // ✅ Pasar monto de venta en USD
+          montoSeparacion,
+          montoVenta
         );
 
-        if (trackingResult.success) {
-          console.log('[NARANJA] ✅ Lead vinculado correctamente en historial');
-
-          // ============================================================================
-          // REGISTRAR EN TABLA RELACIONAL locales_leads
-          // ============================================================================
-          const relationResult = await registerLocalLeadRelation(
-            localId,
-            telefono,
-            finalLeadId,  // leadId existente o recién creado (puede ser undefined)
-            vendedorId,
-            usuarioId,
-            montoVenta
-          );
-
-          if (relationResult.success) {
-            console.log('[NARANJA] ✅ Relación local-lead registrada en tabla locales_leads');
-          } else {
-            console.error('[NARANJA] ⚠️ Error registrando relación en locales_leads:', relationResult.message);
-            // No bloqueamos el flujo, solo logueamos el error
-          }
-
-          // Si existe finalLeadId (lead existente o recién creado), actualizar asistio='Si'
-          if (finalLeadId) {
-            const { error: asistioError } = await supabase
-              .from('leads')
-              .update({ asistio: true })
-              .eq('id', finalLeadId);
-
-            if (asistioError) {
-              console.error('[NARANJA] ⚠️ Error actualizando asistio:', asistioError);
-            } else {
-              console.log('[NARANJA] ✅ Campo asistio actualizado a "Sí" para leadId:', finalLeadId);
-            }
-          }
+        if (relationResult.success) {
+          console.log('[NARANJA] ✅ Relación local-lead registrada en tabla locales_leads');
         } else {
-          console.error('[NARANJA] ❌ Error al vincular lead en historial:', trackingResult.message);
+          console.error('[NARANJA] ⚠️ Error registrando relación en locales_leads:', relationResult.message);
+          // No bloqueamos el flujo, solo logueamos el error
+        }
+
+        // Si existe finalLeadId (lead existente o recién creado), actualizar asistio='Si'
+        if (finalLeadId) {
+          const { error: asistioError } = await supabase
+            .from('leads')
+            .update({ asistio: true })
+            .eq('id', finalLeadId);
+
+          if (asistioError) {
+            console.error('[NARANJA] ⚠️ Error actualizando asistio:', asistioError);
+          } else {
+            console.log('[NARANJA] ✅ Campo asistio actualizado a "Sí" para leadId:', finalLeadId);
+          }
         }
       }
 

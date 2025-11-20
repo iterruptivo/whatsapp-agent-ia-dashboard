@@ -345,6 +345,7 @@ export default function LocalesTable({
     comentario: string,
     telefono: string,
     nombreCliente: string,
+    montoSeparacion: number,
     montoVenta: number,
     leadId?: string,
     proyectoId?: string,
@@ -365,6 +366,7 @@ export default function LocalesTable({
         comentario, // ✅ Comentario
         telefono,   // ✅ Teléfono para vinculación
         nombreCliente, // ✅ Nombre cliente
+        montoSeparacion, // ✅ Monto de separación
         montoVenta, // ✅ Monto de venta
         leadId, // ✅ ID del lead si existe (para actualizar asistio='Si')
         proyectoId, // ✅ ID del proyecto (si se quiere crear lead manual)

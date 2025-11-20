@@ -23,6 +23,7 @@ interface ComentarioNaranjaModalProps {
     comentario: string,
     telefono: string,
     nombreCliente: string,
+    montoSeparacion: number,
     montoVenta: number,
     leadId?: string,
     proyectoId?: string,
@@ -43,7 +44,9 @@ export default function ComentarioNaranjaModal({
   const [viewState, setViewState] = useState<ViewState>('form');
   const [comentario, setComentario] = useState('');
   const [telefono, setTelefono] = useState('');
+  const [telefonoError, setTelefonoError] = useState('');
   const [nombreManual, setNombreManual] = useState('');
+  const [montoSeparacion, setMontoSeparacion] = useState('');
   const [montoVenta, setMontoVenta] = useState('');
   const [foundLead, setFoundLead] = useState<Lead | null>(null);
   const [error, setError] = useState('');
@@ -69,16 +72,39 @@ export default function ComentarioNaranjaModal({
 
   if (!isOpen || !local) return null;
 
+  // ====== VALIDACIÓN ======
+
+  // Validar teléfono internacional (E.164: código país + número)
+  // - Empieza con dígito 1-9 (código de país)
+  // - Total entre 10-15 dígitos
+  // Ejemplos válidos:
+  // - 51987654321 (Perú: 11 dígitos)
+  // - 12025551234 (USA: 11 dígitos)
+  // - 34612345678 (España: 11 dígitos)
+  const validarTelefonoInternacional = (phone: string): boolean => {
+    const cleaned = phone.replace(/\D/g, '');
+    return /^[1-9]\d{9,14}$/.test(cleaned);
+  };
+
+  const telefonoValido = validarTelefonoInternacional(telefono);
+
   // ====== HANDLERS ======
 
   const handleSearchLead = async () => {
     if (!telefono.trim()) {
-      setError('Ingrese un número de teléfono');
+      setTelefonoError('Ingrese un número de teléfono');
+      return;
+    }
+
+    // Validar formato internacional
+    if (!telefonoValido) {
+      setTelefonoError('Teléfono inválido. Incluye el código de país (ej: 51987654321)');
       return;
     }
 
     setSearching(true);
     setError('');
+    setTelefonoError('');
 
     try {
       const lead = await searchLeadByPhone(telefono);
@@ -110,9 +136,22 @@ export default function ComentarioNaranjaModal({
       return;
     }
 
+    // Validar formato de teléfono
+    if (!telefonoValido) {
+      setTelefonoError('Teléfono inválido. Incluye el código de país (ej: 51987654321)');
+      return;
+    }
+
+    // Validar monto de separación (REQUERIDO)
+    const montoSeparacionNumerico = parseFloat(montoSeparacion);
+    if (!montoSeparacion.trim() || isNaN(montoSeparacionNumerico) || montoSeparacionNumerico <= 0) {
+      setError('Debe ingresar un monto de separación válido mayor a 0');
+      return;
+    }
+
     // Validar monto de venta (REQUERIDO)
-    const montoNumerico = parseFloat(montoVenta);
-    if (!montoVenta.trim() || isNaN(montoNumerico) || montoNumerico <= 0) {
+    const montoVentaNumerico = parseFloat(montoVenta);
+    if (!montoVenta.trim() || isNaN(montoVentaNumerico) || montoVentaNumerico <= 0) {
       setError('Debe ingresar un monto de venta válido mayor a 0');
       return;
     }
@@ -135,12 +174,13 @@ export default function ComentarioNaranjaModal({
     setError('');
 
     try {
-      // Confirmar con comentario + vinculación + monto
+      // Confirmar con comentario + vinculación + montos
       await onConfirm(
         comentario.trim(),
         telefono.trim(),
         viewState === 'lead-found' && foundLead ? (foundLead.nombre || 'Sin nombre') : nombreManual.trim(),
-        montoNumerico, // Monto de venta (NUEVO)
+        montoSeparacionNumerico, // Monto de separación
+        montoVentaNumerico, // Monto de venta
         foundLead?.id, // Si existe lead, pasar su ID
         proyectoId || undefined, // Proyecto seleccionado (solo si lead no encontrado)
         viewState === 'lead-not-found' ? agregarComoLead : undefined // Checkbox (solo si lead no encontrado)
@@ -164,7 +204,9 @@ export default function ComentarioNaranjaModal({
     setViewState('form');
     setComentario('');
     setTelefono('');
+    setTelefonoError('');
     setNombreManual('');
+    setMontoSeparacion('');
     setMontoVenta('');
     setFoundLead(null);
     setError('');
@@ -176,17 +218,26 @@ export default function ComentarioNaranjaModal({
     setViewState('form');
     setFoundLead(null);
     setNombreManual('');
+    setTelefonoError('');
     setError('');
     setAgregarComoLead(true); // Reset checkbox a true
   };
 
-  const montoNumerico = parseFloat(montoVenta);
-  const montoValido = montoVenta.trim().length > 0 && !isNaN(montoNumerico) && montoNumerico > 0;
+  const montoSeparacionNum = parseFloat(montoSeparacion);
+  const montoSeparacionValido = montoSeparacion.trim().length > 0 && !isNaN(montoSeparacionNum) && montoSeparacionNum > 0;
+
+  const montoVentaNum = parseFloat(montoVenta);
+  const montoVentaValido = montoVenta.trim().length > 0 && !isNaN(montoVentaNum) && montoVentaNum > 0;
+
+  // Mostrar error de teléfono en tiempo real (solo si ya empezó a escribir)
+  const mostrarErrorTelefono = telefono.length > 0 && !telefonoValido;
 
   const canSubmit =
     comentario.trim().length >= 10 &&
     telefono.trim().length > 0 &&
-    montoValido && // Monto SIEMPRE requerido
+    telefonoValido && // Teléfono con código de país válido
+    montoSeparacionValido && // Monto separación SIEMPRE requerido
+    montoVentaValido && // Monto venta SIEMPRE requerido
     (viewState === 'lead-found' ||
       (viewState === 'lead-not-found' &&
         nombreManual.trim().length > 0 &&
@@ -250,7 +301,44 @@ export default function ComentarioNaranjaModal({
             </p>
           </div>
 
-          {/* SECCIÓN 2: Monto de Venta (siempre visible) */}
+          {/* SECCIÓN 2: Monto de Separación (siempre visible) */}
+          <div className="border-t border-gray-200 pt-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-orange-500" />
+              <label className="text-sm font-medium text-gray-700">
+                Monto de Separación <span className="text-red-500">*</span>
+              </label>
+            </div>
+
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
+                $
+              </span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={montoSeparacion}
+                onChange={(e) => {
+                  setMontoSeparacion(e.target.value);
+                  setError('');
+                }}
+                placeholder="Ej: 5000.00"
+                className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${
+                  error && (!montoSeparacion.trim() || parseFloat(montoSeparacion) <= 0)
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-orange-500'
+                }`}
+                disabled={submitting}
+              />
+            </div>
+
+            <p className="text-xs text-gray-500">
+              Monto de separación en dólares (USD). Ej: 5000 o 5000.50
+            </p>
+          </div>
+
+          {/* SECCIÓN 3: Monto de Venta (siempre visible) */}
           <div className="border-t border-gray-200 pt-6 space-y-3">
             <div className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-orange-500" />
@@ -287,7 +375,7 @@ export default function ComentarioNaranjaModal({
             </p>
           </div>
 
-          {/* SECCIÓN 3: Vinculación de Lead */}
+          {/* SECCIÓN 4: Vinculación de Lead */}
           <div className="border-t border-gray-200 pt-6 space-y-4">
             <div className="flex items-center gap-2">
               <Phone className="w-5 h-5 text-orange-500" />
@@ -306,29 +394,42 @@ export default function ComentarioNaranjaModal({
                   * Incluir código de país (Ej: 51987654321)
                 </p>
 
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={telefono}
-                    onChange={(e) => {
-                      setTelefono(e.target.value);
-                      setError('');
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSearchLead();
-                    }}
-                    placeholder="Ej: 51987654321"
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                    disabled={submitting}
-                  />
-                  <button
-                    onClick={handleSearchLead}
-                    disabled={searching || submitting || !telefono.trim()}
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
-                  >
-                    <Search className="w-4 h-4" />
-                    {searching ? 'Buscando...' : 'Buscar'}
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={telefono}
+                      onChange={(e) => {
+                        setTelefono(e.target.value);
+                        setError('');
+                        if (telefonoError) setTelefonoError('');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && telefonoValido) handleSearchLead();
+                      }}
+                      placeholder="Ej: 51987654321"
+                      className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:border-transparent outline-none transition-all ${
+                        mostrarErrorTelefono || telefonoError
+                          ? 'border-red-500 focus:ring-red-500'
+                          : 'border-gray-300 focus:ring-primary'
+                      }`}
+                      disabled={submitting}
+                    />
+                    <button
+                      onClick={handleSearchLead}
+                      disabled={searching || submitting || !telefono.trim() || !telefonoValido}
+                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <Search className="w-4 h-4" />
+                      {searching ? 'Buscando...' : 'Buscar'}
+                    </button>
+                  </div>
+                  {(mostrarErrorTelefono || telefonoError) && (
+                    <p className="text-xs text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      {telefonoError || 'Teléfono inválido. Incluye el código de país (ej: 51987654321)'}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
