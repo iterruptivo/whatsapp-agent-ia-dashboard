@@ -157,6 +157,101 @@ export default function DashboardClient({
     ];
   }, [filteredLeads]);
 
+  // Calculate asistencias data from filtered leads
+  const asistenciasData = useMemo(() => {
+    // asistio is BOOLEAN: true (visited) / false (not visited) / null (legacy)
+    const asistioSi = filteredLeads.filter((l) => l.asistio === true).length;
+    const asistioNo = filteredLeads.filter((l) => l.asistio === false || l.asistio === null).length;
+
+    // Debug log to verify data
+    console.log('[ASISTENCIAS] Total filtered leads:', filteredLeads.length);
+    console.log('[ASISTENCIAS] Asistió Sí:', asistioSi);
+    console.log('[ASISTENCIAS] Asistió No:', asistioNo);
+    console.log('[ASISTENCIAS] Sum check:', asistioSi + asistioNo, '(should equal', filteredLeads.length, ')');
+
+    return [
+      {
+        name: 'Asistió: Sí',
+        value: asistioSi,
+        color: '#1b967a', // Verde EcoPlaza
+      },
+      {
+        name: 'Asistió: No',
+        value: asistioNo,
+        color: '#cbd5e1', // Gris claro
+      },
+    ];
+  }, [filteredLeads]);
+
+  // Calculate UTM distribution from filtered leads
+  const utmData = useMemo(() => {
+    console.log('[UTM] Total filtered leads:', filteredLeads.length);
+
+    // Count leads per UTM source
+    const utmCounts = filteredLeads.reduce((acc, lead) => {
+      const utm = lead.utm || 'Sin UTM';
+      acc[utm] = (acc[utm] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    console.log('[UTM] Counts:', utmCounts);
+
+    // Sort by count descending
+    const sorted = Object.entries(utmCounts)
+      .sort((a, b) => b[1] - a[1]);
+
+    // Color palette for UTMs (diverse colors)
+    const utmColors: Record<string, string> = {
+      'victoria': '#1b967a',      // Verde EcoPlaza
+      'facebook': '#4267B2',      // Facebook blue
+      'google': '#DB4437',        // Google red
+      'instagram': '#E4405F',     // Instagram pink
+      'referido': '#192c4d',      // Azul EcoPlaza
+      'whatsapp': '#25D366',      // WhatsApp green
+      'web': '#fbde17',           // Amarillo EcoPlaza
+      'Sin UTM': '#cbd5e1',       // Gris claro
+      'Otros': '#9ca3af',         // Gris medio
+    };
+
+    // Default color generator for unknown UTMs
+    const getColor = (utm: string, index: number): string => {
+      if (utmColors[utm]) return utmColors[utm];
+      // Fallback to a color palette for unknown UTMs
+      const fallbackColors = ['#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444'];
+      return fallbackColors[index % fallbackColors.length];
+    };
+
+    // If ≤5 different UTMs: show all
+    if (sorted.length <= 5) {
+      const result = sorted.map(([name, value], index) => ({
+        name,
+        value,
+        color: getColor(name, index),
+      }));
+      console.log('[UTM] Showing all UTMs (≤5):', result.length);
+      return result;
+    }
+
+    // If >5 different UTMs: Top 5 + "Otros"
+    const top5 = sorted.slice(0, 5);
+    const otrosCount = sorted.slice(5).reduce((sum, [_, count]) => sum + count, 0);
+
+    const result = [
+      ...top5.map(([name, value], index) => ({
+        name,
+        value,
+        color: getColor(name, index),
+      })),
+      {
+        name: 'Otros',
+        value: otrosCount,
+        color: utmColors['Otros'],
+      },
+    ];
+    console.log('[UTM] Showing Top 5 + Otros:', result.length);
+    return result;
+  }, [filteredLeads]);
+
   const handleClearFilters = () => {
     setDateFrom(initialDateFrom);
     setDateTo(initialDateTo);
@@ -277,57 +372,72 @@ export default function DashboardClient({
         />
       </div>
 
-      {/* Chart Section */}
-      <div className="mb-8">
-        <PieChartComponent data={chartData} />
+      {/* Chart Section - Three charts side by side */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <PieChartComponent
+          data={chartData}
+          title="Distribución de Estados al Notificar"
+        />
+        <PieChartComponent
+          data={asistenciasData}
+          title="Asistencias al Proyecto"
+        />
+        <PieChartComponent
+          data={utmData}
+          title="Distribución por UTM"
+        />
       </div>
 
-      {/* Admin-only: Assignment Filter Tabs + Vendedor Dropdown */}
-      {user?.rol === 'admin' && (
+      {/* Admin Filters Section - Hidden for admin role */}
+      {user?.rol !== 'admin' && (
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          {/* Filter Tabs */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setAssignmentFilter('todos')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                assignmentFilter === 'todos'
-                  ? 'bg-primary text-white shadow-md'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              Todos
-            </button>
-            <button
-              onClick={() => setAssignmentFilter('sin_asignar')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                assignmentFilter === 'sin_asignar'
-                  ? 'bg-primary text-white shadow-md'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              Sin Asignar
-            </button>
-          </div>
+          {/* Filter Tabs - Only visible for jefe_ventas */}
+          {user?.rol === 'jefe_ventas' && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setAssignmentFilter('todos')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  assignmentFilter === 'todos'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Todos
+              </button>
+              <button
+                onClick={() => setAssignmentFilter('sin_asignar')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  assignmentFilter === 'sin_asignar'
+                    ? 'bg-primary text-white shadow-md'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Sin Asignar
+              </button>
+            </div>
+          )}
 
-          {/* Admin-only: Vendedor Filter Dropdown */}
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedVendedorFilter}
-              onChange={(e) => setSelectedVendedorFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors hover:bg-gray-50"
-            >
-              <option value="">Todos los vendedores</option>
-              {vendedores
-                .filter((v) => v.activo)
-                .map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.nombre}
-                  </option>
-                ))}
-            </select>
-          </div>
+          {/* Vendedor Filter Dropdown - Only for jefe_ventas */}
+          {user?.rol === 'jefe_ventas' && (
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedVendedorFilter}
+                onChange={(e) => setSelectedVendedorFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors hover:bg-gray-50"
+              >
+                <option value="">Todos los vendedores</option>
+                {vendedores
+                  .filter((v) => v.activo)
+                  .map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.nombre}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
 
-          {/* Admin-only: Estado Filter Dropdown */}
+          {/* Estado Filter Dropdown - All non-admin roles */}
           <div className="flex items-center gap-2">
             <select
               value={estadoFilter}
@@ -345,8 +455,8 @@ export default function DashboardClient({
 
           {/* Export & Import Buttons */}
           <div className="flex items-center gap-2 ml-auto">
-            {/* Import Dropdown (Admin + Vendedor) */}
-            {(user?.rol === 'admin' || user?.rol === 'vendedor') && (
+            {/* Import Dropdown (Vendedor only in this context) */}
+            {user?.rol === 'vendedor' && (
               <div className="relative">
                 <button
                   onClick={() => setIsImportDropdownOpen(!isImportDropdownOpen)}
@@ -404,8 +514,8 @@ export default function DashboardClient({
               </div>
             )}
 
-            {/* Export Button - Solo admin y jefe_ventas */}
-            {(user?.rol === 'admin' || user?.rol === 'jefe_ventas') && (
+            {/* Export Button - Only for jefe_ventas (admin is already excluded from parent condition) */}
+            {user?.rol === 'jefe_ventas' && (
               <button
                 onClick={handleExportToExcel}
                 disabled={isExporting || filteredLeads.length === 0}
@@ -426,19 +536,23 @@ export default function DashboardClient({
         </div>
       )}
 
-      {/* Table Section */}
-      <LeadsTable
-        leads={filteredLeads}
-        totalLeads={initialLeads.length}
-        onLeadClick={handleLeadClick}
-        vendedores={vendedores}
-        currentVendedorId={user?.vendedor_id || null}
-        onAssignLead={handleAssignLead}
-        userRole={user?.rol || null}
-      />
+      {/* Table Section - Hidden for admin users */}
+      {user?.rol !== 'admin' && (
+        <LeadsTable
+          leads={filteredLeads}
+          totalLeads={initialLeads.length}
+          onLeadClick={handleLeadClick}
+          vendedores={vendedores}
+          currentVendedorId={user?.vendedor_id || null}
+          onAssignLead={handleAssignLead}
+          userRole={user?.rol || null}
+        />
+      )}
 
-      {/* Lead Detail Panel */}
-      <LeadDetailPanel lead={selectedLead} isOpen={isPanelOpen} onClose={handleClosePanel} />
+      {/* Lead Detail Panel - Hidden for admin users */}
+      {user?.rol !== 'admin' && (
+        <LeadDetailPanel lead={selectedLead} isOpen={isPanelOpen} onClose={handleClosePanel} />
+      )}
 
       {/* Manual Lead Panel (Admin + Vendedor) */}
       {(user?.rol === 'admin' || user?.rol === 'vendedor') && selectedProyecto && (

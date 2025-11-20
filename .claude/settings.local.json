@@ -37,7 +37,9 @@
       "Bash(git mv:*)",
       "Bash(npx supabase:*)",
       "Bash(git fetch:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(curl:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
