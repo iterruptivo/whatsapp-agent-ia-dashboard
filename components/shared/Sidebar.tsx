@@ -60,9 +60,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         directItems: [
           { href: '/', label: 'Dashboard Gerencial', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
-          { href: '/configuracion-proyecto', label: 'Configurar Proyecto', icon: Settings },
         ],
         categories: [finanzasCategory],
+        bottomItems: [
+          { href: '/configuracion-proyecto', label: 'Configurar Proyecto', icon: Settings },
+        ],
       };
     }
 
@@ -70,6 +72,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       return {
         directItems: [{ href: '/operativo', label: 'Dashboard Operativo', icon: Users }],
         categories: [finanzasCategory],
+        bottomItems: [],
       };
     }
 
@@ -77,6 +80,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     return {
       directItems: [],
       categories: [finanzasCategory],
+      bottomItems: [],
     };
   };
 
@@ -225,6 +229,27 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   </div>
                 )}
               </div>
+            );
+          })}
+
+          {/* Bottom Items (renderizados al final, después de categorías) */}
+          {menuStructure.bottomItems && menuStructure.bottomItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+
+            return (
+              <button
+                key={item.href}
+                onClick={() => handleNavigate(item.href)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                  isActive
+                    ? 'bg-primary text-white shadow-md'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
+              </button>
             );
           })}
         </nav>
