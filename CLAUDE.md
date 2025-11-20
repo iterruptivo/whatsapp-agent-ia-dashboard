@@ -8,9 +8,9 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 19 Noviembre 2025
-**Sesión:** 49 - 🔧 **FIX CRÍTICO: Proyecto Filter Reset Loop en /locales**
-**Estado:** ✅ **DEPLOYED TO PRODUCTION**
-**Commit:** `dff7e66` - fix: Proyecto filter reset loop en /locales
+**Sesión:** 50 - 🚀 **Staging Setup + Submenús + 3 Charts Dashboard**
+**Estado:** ✅ **DEPLOYED TO STAGING**
+**Documentación:** [SESION_50_STAGING_SETUP_SUBMENU_3CHARTS.md](consultas-leo/SESION_50_STAGING_SETUP_SUBMENU_3CHARTS.md)
 
 ---
 
