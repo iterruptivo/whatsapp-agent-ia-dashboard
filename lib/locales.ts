@@ -904,6 +904,7 @@ export async function getLocalLeads(localId: string): Promise<LocalLead[]> {
       lead_id: row.lead_id,
       vendedor_id: row.vendedor_id,
       usuario_id: row.usuario_id,
+      monto_separacion: row.monto_separacion,
       monto_venta: row.monto_venta,
       created_at: row.created_at,
       lead_nombre: row.leads?.nombre || null,
