@@ -190,6 +190,7 @@ export async function middleware(req: NextRequest) {
   // ============================================================================
 
   const isAdminRoute = pathname === '/';
+  const isConfiguracionRoute = pathname.startsWith('/configuracion-proyecto');
   const isOperativoRoute = pathname.startsWith('/operativo');
   const isLocalesRoute = pathname.startsWith('/locales');
 
@@ -201,6 +202,20 @@ export async function middleware(req: NextRequest) {
     } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta') {
       // Jefe/Caseta trying to access admin - redirect to locales
       return NextResponse.redirect(new URL('/locales', req.url));
+    }
+    // Admin can access
+    return res;
+  }
+
+  // CONFIGURACION ROUTES (/configuracion-proyecto) - Admin only
+  if (isConfiguracionRoute) {
+    if (userData.rol !== 'admin') {
+      // Non-admin trying to access configuracion - redirect based on role
+      if (userData.rol === 'vendedor') {
+        return NextResponse.redirect(new URL('/operativo', req.url));
+      } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta') {
+        return NextResponse.redirect(new URL('/locales', req.url));
+      }
     }
     // Admin can access
     return res;

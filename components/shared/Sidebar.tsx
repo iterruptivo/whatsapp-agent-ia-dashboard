@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -58,6 +58,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (user?.rol === 'admin') {
       return {
         directItems: [
+          { href: '/configuracion-proyecto', label: 'Configurar Proyecto', icon: Settings },
           { href: '/', label: 'Dashboard Gerencial', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
         ],
