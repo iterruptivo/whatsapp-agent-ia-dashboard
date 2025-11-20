@@ -7,10 +7,10 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 17 Noviembre 2025
-**Sesión:** 48C - ✅ **Modal Comentario Obligatorio al Cambiar a NARANJA**
-**Estado:** ✅ **IMPLEMENTADO - PENDING TESTING**
-**Documentación:** [SESION_48C_COMENTARIO_OBLIGATORIO_NARANJA.md](consultas-leo/SESION_48C_COMENTARIO_OBLIGATORIO_NARANJA.md)
+**Fecha:** 19 Noviembre 2025
+**Sesión:** 49 - 🔧 **FIX CRÍTICO: Proyecto Filter Reset Loop en /locales**
+**Estado:** ✅ **DEPLOYED TO PRODUCTION**
+**Commit:** `dff7e66` - fix: Proyecto filter reset loop en /locales
 
 ---
 
@@ -21,7 +21,7 @@
 |--------|--------|---------------------|----------|
 | [Autenticación](docs/modulos/auth.md) | ✅ **100% ESTABLE** | **Sesión 45I (13 Nov)** | **Uptime: 100% • 2+ hrs sesión** |
 | [Leads](docs/modulos/leads.md) | ✅ OPERATIVO | Sesión 44 (12 Nov) | 1,417 leads |
-| [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 48C (17 Nov)** | 823 locales |
+| [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 49 (19 Nov)** | 823 locales |
 | [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | Sesión 40D (8 Nov) | 22 usuarios |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
@@ -145,6 +145,40 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
 
+### **Sesión 49** (19 Nov) - 🔧 ✅ **FIX CRÍTICO: Proyecto Filter Reset Loop en /locales**
+**Problema crítico:** Filtro Proyecto se resetea automáticamente al proyecto del login
+**Síntoma:** Usuario intenta cambiar a "Todos los proyectos" → resetea inmediatamente
+**Impacto:** Usuarios NO pueden ver locales de otros proyectos ni vista "Todos"
+
+**Root Cause:**
+- `useEffect` líneas 110-118 en `LocalesClient.tsx` tenía `proyectoFilter` en dependency array
+- Cada cambio del usuario → trigger `useEffect` → reset automático a `selectedProyecto.id`
+- Condición `!proyectoFilter && selectedProyecto?.id` evalúa como true cuando filtro es empty string
+
+**Solución quirúrgica (1 línea):**
+- Remover `proyectoFilter` del dependency array: `}, [selectedProyecto?.id]);`
+- `useEffect` ahora solo ejecuta cuando `selectedProyecto.id` cambia (nuevo login)
+- Usuario tiene control total del filtro sin interferencia
+
+**Comportamiento correcto:**
+1. Filtro inicia con login project (preservado)
+2. Usuario puede cambiar a "Todos los proyectos" (funciona)
+3. Usuario puede cambiar a cualquier proyecto (funciona)
+4. Filtro mantiene selección del usuario (sin resets)
+5. Solo resetea si `selectedProyecto` cambia (nuevo login context)
+
+**Testing:**
+- Login como Gerente (admin) → filtro inicia en Callao
+- Cambiar a "Todos los proyectos" → mantiene selección
+- Cambiar a "San Gabriel" → mantiene selección
+- Cambiar estados, metrajes → filtro proyecto NO resetea
+
+**Archivos:** `LocalesClient.tsx` (3 líneas: dependency array + comment explicativo)
+**Commit:** `dff7e66` - fix: Proyecto filter reset loop en /locales
+**Deploy:** PRODUCTION (main branch)
+
+---
+
 ### **Sesión 48C** (17 Nov) - ✅ **Modal Comentario Obligatorio al Cambiar a NARANJA**
 **Feature:** Vendedores deben agregar comentario obligatorio al pasar local a NARANJA
 **Problema resuelto:** Admin no sabía por qué vendedores cambiaban locales a confirmado
@@ -245,15 +279,6 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 **UI:** Border rojo + mensaje de error para todos los campos
 **Archivos:** ManualLeadPanel.tsx (nuevo, 620 líneas), LeadsTable.tsx, DashboardClient.tsx
 **[Ver detalles →](consultas-leo/SESION_44_MANUAL_LEAD_PANEL.md)**
-
----
-
-### **Sesión 43** (10 Nov) - ✅ RAG Update: Rubro Opcional en Callao
-**Cambio:** Campo "rubro" ya no es requerido para lead_completo
-**Requerido ahora:** Solo nombre + fecha y hora de visita
-**n8n Code2:** 2 líneas modificadas (if validation)
-**Template:** Documentación para replicar en Galilea y San Gabriel
-**[Ver detalles →](consultas-leo/SESION_43_RUBRO_OPCIONAL_CALLAO.md)**
 
 ---
 
