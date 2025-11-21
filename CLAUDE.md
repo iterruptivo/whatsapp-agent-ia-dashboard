@@ -8,9 +8,9 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 21 Noviembre 2025
-**Sesión:** 52B - 💰 **Campos Financiamiento/Separación en Modal Registro de Venta**
+**Sesión:** 52C - 📝 **Modal Datos Previos para Registro de Venta**
 **Estado:** ✅ **DEPLOYED TO STAGING**
-**Documentación:** SESIÓN 52B (ver sección "ÚLTIMAS 5 SESIONES" más abajo)
+**Documentación:** SESIÓN 52C (ver sección "ÚLTIMAS 5 SESIONES" más abajo)
 
 ---
 
@@ -21,7 +21,7 @@
 |--------|--------|---------------------|----------|
 | [Autenticación](docs/modulos/auth.md) | ✅ **100% ESTABLE** | **Sesión 45I (13 Nov)** | **Uptime: 100% • 2+ hrs sesión** |
 | [Leads](docs/modulos/leads.md) | ✅ OPERATIVO | Sesión 44 (12 Nov) | 1,417 leads |
-| [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 52 (21 Nov)** | 823 locales |
+| [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 52C (21 Nov)** | 823 locales |
 | [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | Sesión 40D (8 Nov) | 22 usuarios |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
@@ -144,6 +144,137 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 52C** (21 Nov) - 📝 ✅ **Modal Datos Previos para Registro de Venta**
+**Feature:** Modal previo que captura datos faltantes antes de abrir modal "Financiamiento de Local"
+**Problema resuelto:** Admin/Jefe Ventas pueden pasar locales a ROJO sin NARANJA, dejando datos faltantes (monto_venta, monto_separacion, lead_id)
+**Restricción:** Solo admin y jefe_ventas pueden acceder
+
+**Flujo completo:**
+1. Admin/Jefe Ventas click "Iniciar Registro de Venta" (local ROJO)
+2. Sistema verifica si faltan datos (monto_venta || monto_separacion || lead_id)
+   - ✅ SI tiene todos los datos → Abrir modal Financiamiento directamente
+   - ❌ NO tiene alguno → Abrir modal "Datos necesarios para iniciar proceso"
+3. Usuario completa datos faltantes en modal previo
+4. Click "Confirmar local" → Guarda datos + registra historial + auto-abre modal Financiamiento
+
+**3 Secciones del Modal:**
+
+1. **Monto de Separación** (REQUERIDO)
+   - Input numérico USD con validación >0
+   - Placeholder: "Ej: 5000.00"
+   - Formato: 2 decimales
+
+2. **Monto de Venta** (REQUERIDO)
+   - Input numérico USD con validación >0
+   - Placeholder: "Ej: 45000.00"
+   - Formato: 2 decimales
+
+3. **Vincular Lead (Cliente)** (REQUERIDO)
+   - Sistema búsqueda por teléfono (IDÉNTICO a LocalTrackingModal)
+   - Validación: Código país obligatorio (regex E.164: `^[1-9]\d{9,14}$`)
+   - Placeholder: "Ej: 51987654321"
+
+**Estados de búsqueda:**
+- `'search'` → Input teléfono + botón "Buscar" + nota código país
+- `'lead-found'` → Card verde con info lead:
+  - Nombre, Teléfono, Email (si existe), Proyecto
+  - Botón "← Buscar otro teléfono"
+- `'not-found'` → Alerta amarilla + formulario crear lead manual:
+  - Input "Teléfono" (read-only, pre-filled)
+  - Input "Nombre Completo del Cliente" * (requerido)
+  - Dropdown "Proyecto" * (requerido, lista proyectos activos)
+  - Mensaje azul informativo: "Se creará un nuevo lead en la tabla de leads con estado 'lead_manual' y asistió='Sí'"
+  - Link "← Buscar otro teléfono"
+
+**Botón "Confirmar local":**
+- Habilitado cuando:
+  - Monto separación >0 AND
+  - Monto venta >0 AND
+  - Teléfono válido (código país) AND
+  - (Lead encontrado OR Nombre completo + Proyecto seleccionado)
+
+**Acción al confirmar (Server Action):**
+1. **Crear lead manual SI no existe:**
+   - Tabla `leads` con campos: `telefono`, `nombre`, `proyecto_id`, `estado='lead_manual'`, `asistio=true`
+   - Obtener `leadId` del lead creado
+2. **Actualizar tabla `locales`:**
+   - `monto_separacion`, `monto_venta`, `lead_id`
+3. **Registrar en historial:**
+   - Tabla `locales_historial`
+   - Acción: "Admin/Jefe Ventas completó datos para registro de venta: monto_separacion=$XXX.XX, monto_venta=$XXX.XX, lead=[NOMBRE]"
+   - `usuario_id`: ID del admin/jefe_ventas actual
+4. **Auto-abrir modal Financiamiento:**
+   - Cerrar modal Datos
+   - Abrir modal Financiamiento con local actualizado
+
+**Backend: Server Action `saveDatosRegistroVenta()`:**
+- Parámetros:
+  - `localId`, `montoSeparacion`, `montoVenta`
+  - `leadId` (si vincula existente) o `newLeadData` (si crea nuevo)
+  - `usuarioId` (admin/jefe_ventas)
+- Validaciones server-side:
+  - Montos >0 (doble seguridad)
+  - Datos completos
+- Flujo:
+  1. Validar inputs
+  2. Si `newLeadData` existe → Crear lead manual (llamar `createManualLead()`)
+  3. Actualizar local con montos + leadId
+  4. Registrar en historial
+  5. Retornar local actualizado
+- Retorna: `{ success, message?, local? }`
+
+**Integración LocalesTable.tsx:**
+```typescript
+// Nueva lógica condicional
+const handleIniciarRegistroVenta = (local: Local) => {
+  const faltanDatos = !local.monto_venta || !local.monto_separacion || !local.lead_id;
+
+  if (faltanDatos) {
+    setDatosModal({ isOpen: true, local });
+  } else {
+    setFinanciamientoModal({ isOpen: true, local });
+  }
+};
+
+// Callback onSuccess
+const handleDatosSuccess = (updatedLocal: Local) => {
+  setDatosModal({ isOpen: false, local: null });
+  setFinanciamientoModal({ isOpen: true, local: updatedLocal });
+};
+```
+
+**Validaciones críticas:**
+- ✅ Client-side: Montos >0, teléfono formato internacional, campos requeridos
+- ✅ Server-side: Montos >0, datos completos (doble seguridad)
+- ✅ Teléfono: Regex E.164 internacional (10-15 dígitos, empieza con código país)
+- ✅ Nombre: Requerido si crea lead nuevo
+- ✅ Proyecto: Requerido si crea lead nuevo
+
+**Archivos nuevos:**
+- `components/locales/DatosRegistroVentaModal.tsx` (533 líneas)
+
+**Archivos modificados:**
+- `lib/actions-locales.ts` (+97 líneas) - Server action saveDatosRegistroVenta()
+- `lib/locales.ts` (1 línea) - Interface Local con campo `lead_id: string | null`
+- `components/locales/LocalesTable.tsx` (+46 líneas)
+  - Import DatosRegistroVentaModal
+  - State datosModal
+  - handleIniciarRegistroVenta() con lógica condicional
+  - handleDatosSuccess() callback
+  - Render DatosRegistroVentaModal
+
+**Testing escenarios:**
+- ✅ Escenario 1: Local ROJO sin datos → Abrir modal previo
+- ✅ Escenario 2: Local ROJO con datos → Abrir modal financiamiento directo
+- ✅ Escenario 3: Búsqueda lead exitosa → Vincular
+- ✅ Escenario 4: Búsqueda lead fallida → Crear nuevo con estado lead_manual + asistio=Sí
+- ✅ Escenario 5: Confirmar → Datos guardados + historial + auto-abrir financiamiento
+
+**Commit:** `b89dd91`
+**Deploy:** ✅ STAGING
+
+---
 
 ### **Sesión 52B** (21 Nov) - 💰 ✅ **Campos Financiamiento/Separación en Modal Registro de Venta**
 **Feature:** Agregar 3 campos al modal de Registro de Venta (antes "Financiamiento")
@@ -308,36 +439,6 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 **Archivos:** `LocalesClient.tsx` (3 líneas: dependency array + comment explicativo)
 **Commit:** `dff7e66` - fix: Proyecto filter reset loop en /locales
 **Deploy:** PRODUCTION (main branch)
-
----
-
-### **Sesión 48C** (17 Nov) - ✅ **Modal Comentario Obligatorio al Cambiar a NARANJA**
-**Feature:** Vendedores deben agregar comentario obligatorio al pasar local a NARANJA
-**Problema resuelto:** Admin no sabía por qué vendedores cambiaban locales a confirmado
-**Restricciones:** Solo vendedor/vendedor_caseta ven modal (admin/jefe_ventas flujo normal)
-
-**Flujo completo:**
-1. Vendedor click botón NARANJA 🟠
-2. Modal aparece: "Confirmar Local - Estado NARANJA"
-3. Textarea obligatorio (mínimo 10 caracteres)
-4. Click "Confirmar local" → cambio a NARANJA + timer inicia
-5. Comentario se guarda en `locales_historial.accion`
-6. Historial muestra: "Cliente confirmó compra, pidió enviar contrato por email"
-
-**Componente nuevo:**
-- `ComentarioNaranjaModal.tsx` (142 líneas)
-  - Validación en tiempo real
-  - Error message dinámico
-  - Botón disabled si comentario < 10 chars
-
-**Cambios backend:**
-- `updateLocalEstado()` acepta parámetro `comentario` opcional
-- Validación server-side (doble seguridad)
-- Comentario se guarda en `locales_historial.accion`
-
-**Beneficio:** Mayor control y auditoría sobre uso de estado NARANJA
-**Archivos:** ComentarioNaranjaModal.tsx (nuevo), LocalesTable.tsx (+67 líneas), actions-locales.ts (+17), locales.ts (+40)
-**[📖 Ver documentación completa →](consultas-leo/SESION_48C_COMENTARIO_OBLIGATORIO_NARANJA.md)**
 
 ---
 
