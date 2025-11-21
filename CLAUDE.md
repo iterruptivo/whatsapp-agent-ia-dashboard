@@ -7,10 +7,10 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 20 Noviembre 2025
-**Sesión:** 51 - ⚙️ **Sistema Completo de Configuración de Proyectos**
+**Fecha:** 21 Noviembre 2025
+**Sesión:** 52 - 💰 **Enlace "Iniciar Financiamiento" para Locales ROJOS**
 **Estado:** ✅ **DEPLOYED TO STAGING**
-**Documentación:** [SESION_51_CONFIGURACION_PROYECTOS_COMPLETE.md](docs/sesiones/SESION_51_CONFIGURACION_PROYECTOS_COMPLETE.md)
+**Documentación:** [SESION_52_ENLACE_INICIAR_FINANCIAMIENTO.md](consultas-leo/SESION_52_ENLACE_INICIAR_FINANCIAMIENTO.md)
 
 ---
 
@@ -21,7 +21,7 @@
 |--------|--------|---------------------|----------|
 | [Autenticación](docs/modulos/auth.md) | ✅ **100% ESTABLE** | **Sesión 45I (13 Nov)** | **Uptime: 100% • 2+ hrs sesión** |
 | [Leads](docs/modulos/leads.md) | ✅ OPERATIVO | Sesión 44 (12 Nov) | 1,417 leads |
-| [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 49 (19 Nov)** | 823 locales |
+| [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 52 (21 Nov)** | 823 locales |
 | [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | Sesión 40D (8 Nov) | 22 usuarios |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
@@ -144,6 +144,48 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 52** (21 Nov) - 💰 ✅ **Enlace "Iniciar Financiamiento" para Locales ROJOS**
+**Feature:** Enlace condicional debajo del semáforo para iniciar proceso de financiamiento
+**Problema resuelto:** Admin y Jefe de Ventas necesitan punto de entrada para gestionar financiamiento de locales vendidos
+**Restricción:** Solo admin y jefe_ventas pueden ver el enlace
+
+**Visibilidad condicional:**
+1. Local debe estar en estado ROJO (vendido/bloqueado)
+2. Usuario debe ser admin o jefe_ventas
+3. Enlace aparece debajo de los círculos de colores (semáforo)
+
+**Modal implementado:**
+- Título: "Financiamiento de Local: [CODIGO] - [PROYECTO]"
+- Ejemplo: "Financiamiento de Local: A-101 - Callao"
+- Información mostrada: Código, proyecto, metraje, monto de venta
+- Contenido: Placeholder (funcionalidad a desarrollar en siguiente sesión)
+
+**UI/UX:**
+- Color enlace: Verde (`text-green-600`) - Asociación con dinero/financiamiento
+- Hover: Subrayado y color más oscuro
+- Posición: Segunda línea debajo del semáforo (después de "Salir de la negociación")
+- Modal: Max width 2xl, backdrop oscuro, botón cerrar (X)
+
+**Componente nuevo:**
+- `FinanciamientoModal.tsx` (73 líneas)
+  - Props: isOpen, local, onClose
+  - Header con título dinámico
+  - Body con placeholder
+  - Footer con botón "Cerrar"
+
+**Cambios LocalesTable:**
+- Import FinanciamientoModal
+- State `financiamientoModal`
+- Helper `renderIniciarFinanciamiento()` con doble validación (estado + rol)
+- Render en tabla (línea 851)
+- Modal component (líneas 923-928)
+
+**Archivos:** FinanciamientoModal.tsx (nuevo), LocalesTable.tsx (+47 líneas)
+**Commit:** `c355ab4`
+**[📖 Ver documentación completa →](consultas-leo/SESION_52_ENLACE_INICIAR_FINANCIAMIENTO.md)**
+
+---
 
 ### **Sesión 51** (20 Nov) - ⚙️ ✅ **Sistema Completo de Configuración de Proyectos**
 **Feature:** Panel admin `/configuracion-proyectos` para configurar TEA, color, estado y listas ordenables
@@ -282,33 +324,6 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 **Archivos:** `ManualLeadPanel.tsx` (handleImportAll, handleCloseWithRefresh, X icon, botón result)
 **Commit:** `242bacb` - feat: UX manual leads - Usuario controla cuándo actualizar dashboard
-
----
-
-### **Sesión 45 (A-I)** (13 Nov) - 🎯 ✅ **SISTEMA DE AUTENTICACIÓN 100% ESTABLE**
-**Problema crítico:** Session loss en refresh, loading infinito, logout cada 55min
-**Duración:** 8 horas de debugging exhaustivo (9 subsesiones)
-**Root Causes encontrados:**
-1. Loop de eventos Supabase durante inicialización
-2. selectedProyecto null después de refresh
-3. Auto-refresh JWT cada 55min causando logout
-
-**Soluciones implementadas:**
-- Cache localStorage (5min validity) → refresh <1s
-- Flag isInitializing + cooldown 2s → previene loops
-- Restore selectedProyecto de sessionStorage → elimina loading infinito
-- TOKEN_REFRESHED handler → elimina logout cada 55min
-- SIGNED_IN smart handler → distingue login real vs token refresh
-- Timeout 30s → tolerante con plan gratuito
-
-**Resultado:**
-- ✅ 0% usuarios afectados (antes: 100%)
-- ✅ Sesiones duran indefinidamente (probado 2+ horas)
-- ✅ Dashboard carga <1s con cache
-- ✅ Sin logouts forzados
-- ✅ Sistema completamente estable
-
-**[📖 Ver documentación completa →](consultas-leo/SESION_45_COMPLETE_AUTH_STABILITY.md)**
 
 ---
 
@@ -489,7 +504,7 @@ Para detalles completos de cualquier sesión o módulo, consulta los archivos vi
 
 ---
 
-**Última Actualización:** 20 Noviembre 2025
+**Última Actualización:** 21 Noviembre 2025
 **Versión de Documentación:** 2.0 (Modular)
 **Proyecto:** EcoPlaza Dashboard - Gestión de Leads
 
