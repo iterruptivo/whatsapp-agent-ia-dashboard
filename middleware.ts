@@ -190,7 +190,7 @@ export async function middleware(req: NextRequest) {
   // ============================================================================
 
   const isAdminRoute = pathname === '/';
-  const isConfiguracionRoute = pathname.startsWith('/configuracion-proyecto');
+  const isConfiguracionRoute = pathname.startsWith('/configuracion-proyectos');
   const isOperativoRoute = pathname.startsWith('/operativo');
   const isLocalesRoute = pathname.startsWith('/locales');
 
@@ -207,7 +207,7 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  // CONFIGURACION ROUTES (/configuracion-proyecto) - Admin only
+  // CONFIGURACION ROUTES (/configuracion-proyectos) - Admin only
   if (isConfiguracionRoute) {
     if (userData.rol !== 'admin') {
       // Non-admin trying to access configuracion - redirect based on role

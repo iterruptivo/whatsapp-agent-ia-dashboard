@@ -63,7 +63,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         ],
         categories: [finanzasCategory],
         bottomItems: [
-          { href: '/configuracion-proyecto', label: 'Configurar Proyectos', icon: Settings },
+          { href: '/configuracion-proyectos', label: 'Configurar Proyectos', icon: Settings },
         ],
       };
     }
