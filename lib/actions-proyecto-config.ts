@@ -129,13 +129,6 @@ export async function saveProyectoConfiguracion(
       };
     }
 
-    console.log('[AUTH DEBUG]', {
-      userId: user.id,
-      userEmail: user.email,
-      proyectoId,
-      updating: { tea: data.tea, color: data.color, activo: data.activo }
-    });
-
     if (data.tea !== null && (data.tea <= 0 || data.tea > 100)) {
       return {
         success: false,
@@ -202,16 +195,13 @@ export async function saveProyectoConfiguracion(
     }
 
     // Update proyecto table with supabaseAuth (authenticated context)
-    const { data: proyectoData, error: proyectoError } = await supabaseAuth
+    const { error: proyectoError } = await supabaseAuth
       .from('proyectos')
       .update({
         color: data.color,
         activo: data.activo
       })
-      .eq('id', proyectoId)
-      .select();
-
-    console.log('[PROYECTO UPDATE]', { proyectoId, color: data.color, activo: data.activo, proyectoData, proyectoError });
+      .eq('id', proyectoId);
 
     if (proyectoError) {
       console.error('Error updating proyecto:', proyectoError);
