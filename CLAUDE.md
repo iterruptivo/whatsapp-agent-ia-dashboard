@@ -7,10 +7,10 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 19 Noviembre 2025
-**Sesión:** 50 - 🚀 **Staging Setup + Submenús + 3 Charts Dashboard**
+**Fecha:** 20 Noviembre 2025
+**Sesión:** 51 - ⚙️ **Sistema Completo de Configuración de Proyectos**
 **Estado:** ✅ **DEPLOYED TO STAGING**
-**Documentación:** [SESION_50_STAGING_SETUP_SUBMENU_3CHARTS.md](consultas-leo/SESION_50_STAGING_SETUP_SUBMENU_3CHARTS.md)
+**Documentación:** [SESION_51_CONFIGURACION_PROYECTOS_COMPLETE.md](docs/sesiones/SESION_51_CONFIGURACION_PROYECTOS_COMPLETE.md)
 
 ---
 
@@ -64,9 +64,9 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Última sesión: 40D (Nuevo admin Bryan)
   - Estado: OPERATIVO (22 usuarios activos)
 
-- **[Proyectos](docs/modulos/proyectos.md)** - Gestión multiproyecto
-  - Última sesión: 40B (Flujo n8n San Gabriel)
-  - Estado: OPERATIVO (7 proyectos)
+- **[Proyectos](docs/modulos/proyectos.md)** - Gestión multiproyecto + configuración TEA/cuotas
+  - Última sesión: **51 (Sistema configuración completo)**
+  - Estado: OPERATIVO (7 proyectos + configuraciones)
 
 - **[Integraciones](docs/modulos/integraciones.md)** - n8n, webhooks, WhatsApp
   - Última sesión: 43 (Rubro opcional Callao)
@@ -144,6 +144,46 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 51** (20 Nov) - ⚙️ ✅ **Sistema Completo de Configuración de Proyectos**
+**Feature:** Panel admin `/configuracion-proyectos` para configurar TEA, color, estado y listas ordenables
+**Problema resuelto:** Admin puede configurar parámetros financieros por proyecto (porcentajes inicial, cuotas)
+**Restricción:** Solo admin puede acceder (middleware + RLS policies)
+
+**Configuraciones implementadas:**
+1. **TEA del Proyecto** - Decimal 0.01-100 o null
+2. **Color del Proyecto** - Picker hexadecimal con preview
+3. **Estado activo/inactivo** - Toggle switch
+4. **Porcentaje(s) de Inicial** - Lista orderable con valores 0.01-100 (ej: 50%, 30%, 45%)
+5. **Cuotas sin intereses** - Lista orderable en meses enteros (ej: 12, 24, 36)
+6. **Cuotas con intereses** - Lista orderable en meses enteros (ej: 60, 120, 180)
+
+**Estructura datos (JSONB):**
+```json
+{
+  "porcentajes_inicial": [{"value": 50, "order": 0}, {"value": 30, "order": 1}],
+  "cuotas_sin_interes": [{"value": 12, "order": 0}, {"value": 24, "order": 1}],
+  "cuotas_con_interes": [{"value": 60, "order": 0}, {"value": 120, "order": 1}]
+}
+```
+
+**Problemas críticos resueltos:**
+1. **RLS Policy Violation** - Eliminado service role key bypass, implementado createServerClient con cookies
+2. **Campo activo no persiste** - SELECT policy bloqueaba UPDATE, modificado para permitir admin ver inactivos
+3. **406 Errors** - Browser client sin auth, consolidado en Server Action con supabaseAuth
+
+**UI/UX:**
+- Multi-accordion (todos proyectos visibles, primero expandido)
+- Layout 2 columnas desktop (TEA/Color/Estado | Porcentajes/Cuotas)
+- Zebra striping headers (gris/azul alternado)
+- Validaciones en tiempo real + no duplicados
+- Enter key support + botones ↑↓ para ordenar
+
+**Tabla nueva:** `proyecto_configuraciones` con RLS policies para admin
+**Archivos:** actions-proyecto-config.ts (nuevo), page.tsx (810 líneas), Sidebar.tsx, middleware.ts
+**[📖 Ver documentación completa →](docs/sesiones/SESION_51_CONFIGURACION_PROYECTOS_COMPLETE.md)**
+
+---
 
 ### **Sesión 49** (19 Nov) - 🔧 ✅ **FIX CRÍTICO: Proyecto Filter Reset Loop en /locales**
 **Problema crítico:** Filtro Proyecto se resetea automáticamente al proyecto del login
@@ -272,16 +312,6 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ---
 
-### **Sesión 44** (12 Nov) - ✅ Panel Entrada Manual de Leads + UX Improvements
-**Feature:** Panel lateral para agregar leads uno por uno (alternativa a CSV)
-**Validaciones:** Phone internacional, email, vendedor, nombre (100% consistente)
-**UX:** Dropdown "Importar Leads Manuales", tabla con header verde, zebra striping
-**UI:** Border rojo + mensaje de error para todos los campos
-**Archivos:** ManualLeadPanel.tsx (nuevo, 620 líneas), LeadsTable.tsx, DashboardClient.tsx
-**[Ver detalles →](consultas-leo/SESION_44_MANUAL_LEAD_PANEL.md)**
-
----
-
 ## 📈 PROGRESO DEL PROYECTO
 
 ## 🚀 FEATURES PRINCIPALES
@@ -295,6 +325,7 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 - ✅ Exportar leads a Excel
 - ✅ Gestionar usuarios (CRUD)
 - ✅ Gestionar proyectos
+- ✅ **Configurar proyectos** (TEA, color, estado, porcentajes inicial, cuotas)
 - ✅ Ver métricas y estadísticas
 
 ### **Dashboard Vendedor**
@@ -391,14 +422,15 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ## 📊 HEALTH CHECK
 
-**Última verificación:** 10 Noviembre 2025
+**Última verificación:** 20 Noviembre 2025
 
 | Componente | Estado | Última Revisión |
 |------------|--------|-----------------|
-| Autenticación | 🟢 ESTABLE | Sesión 42 |
+| Autenticación | 🟢 ESTABLE | Sesión 45I |
 | Dashboard Admin | 🟢 OPERATIVO | Daily |
 | Dashboard Operativo | 🟢 OPERATIVO | Daily |
-| Sistema de Locales | 🟢 OPERATIVO | Sesión 38 |
+| Sistema de Locales | 🟢 OPERATIVO | Sesión 48C |
+| **Configuración Proyectos** | 🟢 **OPERATIVO** | **Sesión 51** |
 | n8n Webhooks | 🟢 OPERATIVO | Sesión 40B |
 | Supabase Realtime | 🟢 OPERATIVO | Daily |
 | Vercel Deployment | 🟢 STABLE | Auto |
@@ -417,6 +449,9 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 - `.limit()` falla con JOINs → usar `.range()` o fetch separado
 - Límite por defecto de 1000 registros → siempre especificar explícitamente
 - RLS policies con Server Actions necesitan policy para `anon` role
+- **SELECT policies restrictivas pueden bloquear UPDATE/DELETE** - Si SELECT policy usa `activo = true`, no podrá UPDATE a `activo = false`
+- **Server Actions sin auth context fallan RLS** - NUNCA usar browser client en Server Actions, usar createServerClient con cookies
+- **Service role key bypass es anti-patrón** - Evitar supabaseAdmin, siempre buscar solución con RLS correcto
 
 ### **Desarrollo**
 - Rollback es herramienta válida (no temer usarlo)
@@ -454,7 +489,7 @@ Para detalles completos de cualquier sesión o módulo, consulta los archivos vi
 
 ---
 
-**Última Actualización:** 10 Noviembre 2025
+**Última Actualización:** 20 Noviembre 2025
 **Versión de Documentación:** 2.0 (Modular)
 **Proyecto:** EcoPlaza Dashboard - Gestión de Leads
 
