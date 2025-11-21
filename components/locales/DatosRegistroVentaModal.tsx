@@ -226,7 +226,7 @@ export default function DatosRegistroVentaModal({
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           {/* Header */}
-          <div className="sticky top-0 bg-primary text-white p-4 flex items-center justify-between">
+          <div className="sticky top-0 z-10 bg-primary text-white p-4 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold">Datos necesarios para iniciar proceso</h2>
               <p className="text-sm text-white/80">
