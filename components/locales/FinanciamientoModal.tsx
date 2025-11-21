@@ -1,13 +1,15 @@
 // ============================================================================
 // COMPONENT: FinanciamientoModal
 // ============================================================================
-// Descripción: Modal para iniciar financiamiento de locales en estado ROJO
-// Features: Muestra código local y proyecto - contenido placeholder
+// Descripción: Modal para registro de venta de locales en estado ROJO
+// Features: Captura si hay financiamiento, muestra precio venta y monto separación
 // SESIÓN 52: Feature inicial - Solo mostrar modal con título correcto
+// SESIÓN 52B: Agregar campos financiamiento/separación (radio buttons + display values)
 // ============================================================================
 
 'use client';
 
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import type { Local } from '@/lib/locales';
 
@@ -22,7 +24,15 @@ export default function FinanciamientoModal({
   local,
   onClose,
 }: FinanciamientoModalProps) {
+  const [conFinanciamiento, setConFinanciamiento] = useState<boolean>(true);
+
   if (!isOpen || !local) return null;
+
+  // Helper para formatear montos
+  const formatMonto = (monto: number | null | undefined): string => {
+    if (!monto) return 'N/A';
+    return `S/ ${monto.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -41,22 +51,73 @@ export default function FinanciamientoModal({
           </button>
         </div>
 
-        {/* Body - Placeholder */}
-        <div className="p-6">
-          <div className="text-center py-8">
-            <p className="text-gray-600 mb-4">
-              Funcionalidad de financiamiento próximamente.
-            </p>
-            <div className="text-sm text-gray-500 space-y-2">
-              <p><strong>Local:</strong> {local.codigo}</p>
-              <p><strong>Proyecto:</strong> {local.proyecto_nombre}</p>
-              <p><strong>Metraje:</strong> {local.metraje} m²</p>
-              {local.monto_venta && (
-                <p>
-                  <strong>Monto de Venta:</strong>{' '}
-                  $ {local.monto_venta.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </p>
-              )}
+        {/* Body */}
+        <div className="p-6 space-y-6">
+          {/* Información del Local */}
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">Información del Local</h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-500">Local:</span>
+                <span className="ml-2 font-medium text-gray-900">{local.codigo}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Proyecto:</span>
+                <span className="ml-2 font-medium text-gray-900">{local.proyecto_nombre}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Metraje:</span>
+                <span className="ml-2 font-medium text-gray-900">{local.metraje} m²</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Precio de Venta y Separación */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Precio de venta
+              </label>
+              <div className="text-2xl font-bold text-blue-900">
+                {formatMonto(local.monto_venta)}
+              </div>
+            </div>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Separó con
+              </label>
+              <div className="text-2xl font-bold text-green-900">
+                {formatMonto(local.monto_separacion)}
+              </div>
+            </div>
+          </div>
+
+          {/* ¿Con financiamiento? */}
+          <div className="border-t pt-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              ¿Con financiamiento?
+            </label>
+            <div className="flex gap-6">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="financiamiento"
+                  checked={conFinanciamiento === true}
+                  onChange={() => setConFinanciamiento(true)}
+                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm font-medium text-gray-900">Sí</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="financiamiento"
+                  checked={conFinanciamiento === false}
+                  onChange={() => setConFinanciamiento(false)}
+                  className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm font-medium text-gray-900">No</span>
+              </label>
             </div>
           </div>
         </div>

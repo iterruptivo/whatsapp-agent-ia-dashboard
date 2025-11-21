@@ -707,7 +707,7 @@ export default function LocalesTable({
           onClick={() => setFinanciamientoModal({ isOpen: true, local })}
           className="text-xs text-green-600 hover:text-green-800 hover:underline cursor-pointer"
         >
-          Iniciar Financiamiento
+          Iniciar Registro de Venta
         </button>
       </div>
     );
