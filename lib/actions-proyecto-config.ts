@@ -8,7 +8,10 @@ import {
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-export async function saveProyectoTEA(proyectoId: string, tea: number | null) {
+export async function saveProyectoConfiguracion(
+  proyectoId: string,
+  data: { tea: number | null; color: string }
+) {
   try {
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -32,39 +35,58 @@ export async function saveProyectoTEA(proyectoId: string, tea: number | null) {
       };
     }
 
-    if (tea !== null && (tea <= 0 || tea > 100)) {
+    if (data.tea !== null && (data.tea <= 0 || data.tea > 100)) {
       return {
         success: false,
         message: 'TEA debe ser mayor a 0 y menor o igual a 100',
       };
     }
 
-    const existingConfig = await getProyectoConfiguracion(proyectoId);
-
-    let result;
-    if (existingConfig) {
-      result = await updateProyectoConfiguracion(proyectoId, tea, user.id);
-    } else {
-      result = await createProyectoConfiguracion(proyectoId, tea, user.id);
-    }
-
-    if (!result.success) {
+    if (!data.color || !/^#[0-9A-F]{6}$/i.test(data.color)) {
       return {
         success: false,
-        message: result.error || 'Error al guardar TEA',
+        message: 'Color debe ser un código hexadecimal válido (ej: #1b967a)',
+      };
+    }
+
+    const existingConfig = await getProyectoConfiguracion(proyectoId);
+
+    let teaResult;
+    if (existingConfig) {
+      teaResult = await updateProyectoConfiguracion(proyectoId, data.tea, user.id);
+    } else {
+      teaResult = await createProyectoConfiguracion(proyectoId, data.tea, user.id);
+    }
+
+    if (!teaResult.success) {
+      return {
+        success: false,
+        message: teaResult.error || 'Error al guardar TEA',
+      };
+    }
+
+    const { error: proyectoError } = await supabase
+      .from('proyectos')
+      .update({ color: data.color })
+      .eq('id', proyectoId);
+
+    if (proyectoError) {
+      console.error('Error updating proyecto color:', proyectoError);
+      return {
+        success: false,
+        message: 'Error al guardar color del proyecto',
       };
     }
 
     return {
       success: true,
-      message: 'TEA guardado exitosamente',
-      data: result.data,
+      message: 'Configuración guardada exitosamente',
     };
   } catch (error) {
-    console.error('Error in saveProyectoTEA:', error);
+    console.error('Error in saveProyectoConfiguracion:', error);
     return {
       success: false,
-      message: 'Error inesperado al guardar TEA',
+      message: 'Error inesperado al guardar configuración',
     };
   }
 }
