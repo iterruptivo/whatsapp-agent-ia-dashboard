@@ -13,11 +13,18 @@ export interface Proyecto {
   created_at: string | null;
 }
 
+export interface PorcentajeInicial {
+  value: number;
+  order: number;
+}
+
 export interface ProyectoConfiguracion {
   id: string;
   proyecto_id: string;
   tea: number | null;
-  configuraciones_extra: Record<string, any>;
+  configuraciones_extra: {
+    porcentajes_inicial?: PorcentajeInicial[];
+  };
   created_at: string;
   updated_at: string;
   updated_by: string | null;
@@ -104,7 +111,12 @@ export async function getProyectosWithConfigurations(): Promise<{
 
 export async function saveProyectoConfiguracion(
   proyectoId: string,
-  data: { tea: number | null; color: string; activo: boolean }
+  data: {
+    tea: number | null;
+    color: string;
+    activo: boolean;
+    porcentajes_inicial?: PorcentajeInicial[];
+  }
 ) {
   try {
     const cookieStore = await cookies();
@@ -150,6 +162,12 @@ export async function saveProyectoConfiguracion(
       .eq('proyecto_id', proyectoId)
       .maybeSingle();
 
+    // Build configuraciones_extra with porcentajes_inicial
+    const configuraciones_extra = {
+      ...(existingConfig?.configuraciones_extra || {}),
+      porcentajes_inicial: data.porcentajes_inicial || []
+    };
+
     let teaResult;
     if (existingConfig) {
       // Update existing config
@@ -157,6 +175,7 @@ export async function saveProyectoConfiguracion(
         .from('proyecto_configuraciones')
         .update({
           tea: data.tea,
+          configuraciones_extra,
           updated_at: new Date().toISOString(),
           updated_by: user.id,
         })
@@ -175,7 +194,7 @@ export async function saveProyectoConfiguracion(
         .insert({
           proyecto_id: proyectoId,
           tea: data.tea,
-          configuraciones_extra: {},
+          configuraciones_extra,
           updated_by: user.id,
         });
 

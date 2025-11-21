@@ -8,14 +8,17 @@ import {
   getProyectosWithConfigurations,
   saveProyectoConfiguracion,
   Proyecto,
-  ProyectoWithConfig
+  ProyectoWithConfig,
+  PorcentajeInicial
 } from '@/lib/actions-proyecto-config';
-import { Save, ChevronDown, ChevronUp } from 'lucide-react';
+import { Save, ChevronDown, ChevronUp, ChevronUp as ArrowUp, ChevronDown as ArrowDown, X, Plus } from 'lucide-react';
 
 interface ProyectoFormData {
   tea: string;
   color: string;
   activo: boolean;
+  porcentajes_inicial: PorcentajeInicial[];
+  nuevoPorcentaje: string;
   saving: boolean;
   message: { type: 'success' | 'error'; text: string } | null;
 }
@@ -59,6 +62,8 @@ export default function ConfiguracionProyectos() {
           tea: configuracion?.tea?.toString() || '',
           color: proyecto.color || '#1b967a',
           activo: proyecto.activo,
+          porcentajes_inicial: configuracion?.configuraciones_extra?.porcentajes_inicial || [],
+          nuevoPorcentaje: '',
           saving: false,
           message: null,
         };
@@ -124,6 +129,7 @@ export default function ConfiguracionProyectos() {
       tea: teaValue,
       color: data.color,
       activo: data.activo,
+      porcentajes_inicial: data.porcentajes_inicial,
     });
 
     updateFormData(proyectoId, 'saving', false);
@@ -136,6 +142,64 @@ export default function ConfiguracionProyectos() {
     } else {
       updateFormData(proyectoId, 'message', { type: 'error', text: result.message });
     }
+  };
+
+  const handleAgregarPorcentaje = (proyectoId: string) => {
+    const data = formData[proyectoId];
+    if (!data) return;
+
+    const value = parseFloat(data.nuevoPorcentaje);
+
+    if (isNaN(value) || value <= 0 || value > 100) {
+      updateFormData(proyectoId, 'message', {
+        type: 'error',
+        text: 'Porcentaje debe ser un número mayor a 0 y menor o igual a 100',
+      });
+      return;
+    }
+
+    if (data.porcentajes_inicial.some(p => p.value === value)) {
+      updateFormData(proyectoId, 'message', {
+        type: 'error',
+        text: 'Este porcentaje ya existe',
+      });
+      return;
+    }
+
+    const newPorcentaje: PorcentajeInicial = {
+      value,
+      order: data.porcentajes_inicial.length
+    };
+
+    updateFormData(proyectoId, 'porcentajes_inicial', [...data.porcentajes_inicial, newPorcentaje]);
+    updateFormData(proyectoId, 'nuevoPorcentaje', '');
+    updateFormData(proyectoId, 'message', null);
+  };
+
+  const handleEliminarPorcentaje = (proyectoId: string, index: number) => {
+    const data = formData[proyectoId];
+    if (!data) return;
+
+    const updated = data.porcentajes_inicial.filter((_, i) => i !== index);
+    const reordered = updated.map((p, i) => ({ ...p, order: i }));
+
+    updateFormData(proyectoId, 'porcentajes_inicial', reordered);
+  };
+
+  const handleMoverPorcentaje = (proyectoId: string, index: number, direction: 'up' | 'down') => {
+    const data = formData[proyectoId];
+    if (!data) return;
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+
+    if (newIndex < 0 || newIndex >= data.porcentajes_inicial.length) return;
+
+    const updated = [...data.porcentajes_inicial];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+
+    const reordered = updated.map((p, i) => ({ ...p, order: i }));
+
+    updateFormData(proyectoId, 'porcentajes_inicial', reordered);
   };
 
   if (authLoading || loading) {
@@ -285,6 +349,103 @@ export default function ConfiguracionProyectos() {
                         <span className="ml-3 text-sm font-medium text-gray-900">
                           {data.activo ? 'Activo' : 'Inactivo'}
                         </span>
+                      </div>
+
+                      <div className="border-t border-gray-200"></div>
+
+                      {/* Porcentajes de Inicial */}
+                      <div>
+                        <label className="block text-lg font-semibold text-gray-900 mb-1">
+                          Porcentajes de Inicial
+                        </label>
+                        <p className="text-sm text-gray-500 mb-4">
+                          Gestiona los porcentajes de inicial disponibles para este proyecto
+                        </p>
+
+                        {/* Input para agregar porcentaje */}
+                        <div className="flex gap-2 mb-4">
+                          <input
+                            type="number"
+                            value={data.nuevoPorcentaje}
+                            onChange={(e) => updateFormData(proyecto.id, 'nuevoPorcentaje', e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleAgregarPorcentaje(proyecto.id);
+                              }
+                            }}
+                            placeholder="Ej: 30"
+                            min="0.01"
+                            max="100"
+                            step="0.01"
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAgregarPorcentaje(proyecto.id)}
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Agregar
+                          </button>
+                        </div>
+
+                        {/* Lista de porcentajes */}
+                        {data.porcentajes_inicial.length > 0 && (
+                          <div className="space-y-2">
+                            {data.porcentajes_inicial.map((porcentaje, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                              >
+                                <span className="text-sm font-medium text-gray-600 min-w-[30px]">
+                                  {index + 1}°
+                                </span>
+                                <span className="flex-1 text-base font-semibold text-gray-900">
+                                  {porcentaje.value}%
+                                </span>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoverPorcentaje(proyecto.id, index, 'up')}
+                                    disabled={index === 0}
+                                    className={`p-1 rounded ${
+                                      index === 0
+                                        ? 'text-gray-300 cursor-not-allowed'
+                                        : 'text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                  >
+                                    <ArrowUp className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMoverPorcentaje(proyecto.id, index, 'down')}
+                                    disabled={index === data.porcentajes_inicial.length - 1}
+                                    className={`p-1 rounded ${
+                                      index === data.porcentajes_inicial.length - 1
+                                        ? 'text-gray-300 cursor-not-allowed'
+                                        : 'text-gray-600 hover:bg-gray-200'
+                                    }`}
+                                  >
+                                    <ArrowDown className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEliminarPorcentaje(proyecto.id, index)}
+                                    className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {data.porcentajes_inicial.length === 0 && (
+                          <p className="text-sm text-gray-400 italic">
+                            No hay porcentajes configurados. Agrega uno para comenzar.
+                          </p>
+                        )}
                       </div>
 
                       <div className="pt-4 flex items-center gap-4">
