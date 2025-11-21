@@ -18,12 +18,19 @@ export interface PorcentajeInicial {
   order: number;
 }
 
+export interface CuotaMeses {
+  value: number;
+  order: number;
+}
+
 export interface ProyectoConfiguracion {
   id: string;
   proyecto_id: string;
   tea: number | null;
   configuraciones_extra: {
     porcentajes_inicial?: PorcentajeInicial[];
+    cuotas_sin_interes?: CuotaMeses[];
+    cuotas_con_interes?: CuotaMeses[];
   };
   created_at: string;
   updated_at: string;
@@ -116,6 +123,8 @@ export async function saveProyectoConfiguracion(
     color: string;
     activo: boolean;
     porcentajes_inicial?: PorcentajeInicial[];
+    cuotas_sin_interes?: CuotaMeses[];
+    cuotas_con_interes?: CuotaMeses[];
   }
 ) {
   try {
@@ -162,10 +171,12 @@ export async function saveProyectoConfiguracion(
       .eq('proyecto_id', proyectoId)
       .maybeSingle();
 
-    // Build configuraciones_extra with porcentajes_inicial
+    // Build configuraciones_extra with all arrays
     const configuraciones_extra = {
       ...(existingConfig?.configuraciones_extra || {}),
-      porcentajes_inicial: data.porcentajes_inicial || []
+      porcentajes_inicial: data.porcentajes_inicial || [],
+      cuotas_sin_interes: data.cuotas_sin_interes || [],
+      cuotas_con_interes: data.cuotas_con_interes || []
     };
 
     let teaResult;
