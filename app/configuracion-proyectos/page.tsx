@@ -359,10 +359,10 @@ export default function ConfiguracionProyectos() {
                           </div>
                         </div>
 
-                        {/* Columna Derecha: Porcentajes de Inicial */}
+                        {/* Columna Derecha: Porcentaje(s) de Inicial */}
                         <div>
                         <label className="block text-lg font-semibold text-gray-900 mb-1">
-                          Porcentajes de Inicial
+                          Porcentaje(s) de Inicial
                         </label>
                         <p className="text-sm text-gray-500 mb-4">
                           Gestiona los porcentajes de inicial disponibles para este proyecto
