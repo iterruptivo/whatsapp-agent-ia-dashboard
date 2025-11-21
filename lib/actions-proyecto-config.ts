@@ -5,6 +5,7 @@ import {
   createProyectoConfiguracion,
   updateProyectoConfiguracion
 } from './proyecto-config';
+import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -14,7 +15,7 @@ export async function saveProyectoConfiguracion(
 ) {
   try {
     const cookieStore = await cookies();
-    const supabase = createServerClient(
+    const supabaseAuth = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
@@ -26,7 +27,7 @@ export async function saveProyectoConfiguracion(
       }
     );
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
 
     if (authError || !user) {
       return {
@@ -49,13 +50,52 @@ export async function saveProyectoConfiguracion(
       };
     }
 
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+
     const existingConfig = await getProyectoConfiguracion(proyectoId);
 
     let teaResult;
     if (existingConfig) {
-      teaResult = await updateProyectoConfiguracion(proyectoId, data.tea, user.id);
+      const { error: updateError } = await supabaseAdmin
+        .from('proyecto_configuraciones')
+        .update({
+          tea: data.tea,
+          updated_at: new Date().toISOString(),
+          updated_by: user.id,
+        })
+        .eq('proyecto_id', proyectoId);
+
+      if (updateError) {
+        console.error('Error updating proyecto configuracion:', updateError);
+        teaResult = { success: false, error: updateError.message };
+      } else {
+        teaResult = { success: true };
+      }
     } else {
-      teaResult = await createProyectoConfiguracion(proyectoId, data.tea, user.id);
+      const { error: insertError } = await supabaseAdmin
+        .from('proyecto_configuraciones')
+        .insert({
+          proyecto_id: proyectoId,
+          tea: data.tea,
+          configuraciones_extra: {},
+          updated_by: user.id,
+        });
+
+      if (insertError) {
+        console.error('Error creating proyecto configuracion:', insertError);
+        teaResult = { success: false, error: insertError.message };
+      } else {
+        teaResult = { success: true };
+      }
     }
 
     if (!teaResult.success) {
@@ -65,7 +105,7 @@ export async function saveProyectoConfiguracion(
       };
     }
 
-    const { error: proyectoError } = await supabase
+    const { error: proyectoError } = await supabaseAdmin
       .from('proyectos')
       .update({
         color: data.color,
