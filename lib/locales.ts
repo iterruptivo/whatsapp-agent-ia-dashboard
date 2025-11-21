@@ -21,6 +21,7 @@ export interface Local {
   bloqueado: boolean;
   monto_separacion: number | null; // Monto de separación (REQUERIDO al cambiar a NARANJA)
   monto_venta: number | null; // Monto de venta (REQUERIDO al cambiar a NARANJA)
+  lead_id: string | null; // SESIÓN 52C: Lead vinculado al local (capturado en modal Datos)
   vendedor_actual_id: string | null;
   vendedor_actual_nombre?: string | null; // Via JOIN (opcional)
   vendedor_cerro_venta_id: string | null;

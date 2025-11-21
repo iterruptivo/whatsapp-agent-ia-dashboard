@@ -465,6 +465,132 @@ export async function autoLiberarLocalesExpirados() {
 }
 
 // ============================================================================
+// SESIÓN 52C: GUARDAR DATOS PARA REGISTRO DE VENTA (MODAL PREVIO)
+// ============================================================================
+
+/**
+ * Guardar datos necesarios para iniciar proceso de registro de venta
+ * - Montos de separación y venta
+ * - Vinculación de lead (existente o nuevo)
+ * - Registro en historial
+ *
+ * @param localId ID del local
+ * @param montoSeparacion Monto de separación en USD
+ * @param montoVenta Monto de venta en USD
+ * @param leadId ID del lead existente (opcional)
+ * @param newLeadData Datos para crear nuevo lead manual (opcional)
+ * @param usuarioId ID del usuario (admin/jefe_ventas) que registra
+ * @returns Success/error con local actualizado
+ */
+export async function saveDatosRegistroVenta(
+  localId: string,
+  montoSeparacion: number,
+  montoVenta: number,
+  leadId: string | null,
+  newLeadData: {
+    telefono: string;
+    nombre: string;
+    proyectoId: string;
+  } | null,
+  usuarioId: string
+) {
+  try {
+    // PASO 1: Validar inputs server-side
+    if (!localId || !usuarioId) {
+      return { success: false, message: 'Datos incompletos (localId, usuarioId)' };
+    }
+
+    if (!montoSeparacion || montoSeparacion <= 0) {
+      return { success: false, message: 'Monto de separación debe ser mayor a 0' };
+    }
+
+    if (!montoVenta || montoVenta <= 0) {
+      return { success: false, message: 'Monto de venta debe ser mayor a 0' };
+    }
+
+    let finalLeadId = leadId;
+
+    // PASO 2: Si newLeadData existe, crear nuevo lead manual
+    if (!leadId && newLeadData) {
+      console.log('[DATOS VENTA] Creando nuevo lead manual:', newLeadData);
+
+      const createResult = await createManualLead(
+        newLeadData.nombre,
+        newLeadData.telefono,
+        newLeadData.proyectoId,
+        usuarioId // vendedorId = usuarioId (admin/jefe_ventas)
+      );
+
+      if (createResult.success && createResult.leadId) {
+        finalLeadId = createResult.leadId;
+        console.log('[DATOS VENTA] ✅ Lead manual creado:', finalLeadId);
+      } else {
+        console.error('[DATOS VENTA] ⚠️ Error creando lead manual:', createResult.message);
+        return { success: false, message: createResult.message || 'Error al crear lead manual' };
+      }
+    }
+
+    // PASO 3: Actualizar local con montos y lead_id
+    const { error: updateError } = await supabase
+      .from('locales')
+      .update({
+        monto_separacion: montoSeparacion,
+        monto_venta: montoVenta,
+        lead_id: finalLeadId,
+      })
+      .eq('id', localId);
+
+    if (updateError) {
+      console.error('[DATOS VENTA] ❌ Error actualizando local:', updateError);
+      return { success: false, message: 'Error al actualizar local' };
+    }
+
+    // PASO 4: Registrar en historial
+    const nombreCliente = newLeadData?.nombre || 'Lead existente';
+    const accion = `Admin/Jefe Ventas completó datos para registro de venta: monto_separacion=$${montoSeparacion.toFixed(2)}, monto_venta=$${montoVenta.toFixed(2)}, lead=${nombreCliente}`;
+
+    const { error: historialError } = await supabase
+      .from('locales_historial')
+      .insert({
+        local_id: localId,
+        usuario_id: usuarioId,
+        estado_anterior: 'rojo', // Asumimos que siempre viene de ROJO
+        estado_nuevo: 'rojo', // Permanece en ROJO
+        accion,
+      });
+
+    if (historialError) {
+      console.error('[DATOS VENTA] ⚠️ Error registrando historial:', historialError);
+      // No fallar la operación si solo falla el historial
+    }
+
+    // PASO 5: Obtener local actualizado para retornar
+    const local = await getLocalById(localId);
+    if (!local) {
+      return { success: false, message: 'Local no encontrado después de actualizar' };
+    }
+
+    console.log('[DATOS VENTA] ✅ Datos guardados exitosamente:', {
+      localId,
+      montoSeparacion,
+      montoVenta,
+      leadId: finalLeadId,
+    });
+
+    revalidatePath('/locales');
+
+    return {
+      success: true,
+      message: 'Datos guardados correctamente',
+      local,
+    };
+  } catch (error) {
+    console.error('[DATOS VENTA] ❌ Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al guardar datos' };
+  }
+}
+
+// ============================================================================
 // SESIÓN 48E: SALIR DE NEGOCIACIÓN (AMARILLO)
 // ============================================================================
 

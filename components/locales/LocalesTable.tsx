@@ -17,6 +17,7 @@ import ConfirmModal from '@/components/shared/ConfirmModal';
 import VendedorSelectModal from './VendedorSelectModal';
 import ComentarioNaranjaModal from './ComentarioNaranjaModal';
 import FinanciamientoModal from './FinanciamientoModal'; // SESIÓN 52: Modal para iniciar financiamiento
+import DatosRegistroVentaModal from './DatosRegistroVentaModal'; // SESIÓN 52C: Modal previo para capturar datos faltantes
 import TimerCountdown from './TimerCountdown'; // OPT: Componente separado para evitar re-render global
 
 interface LocalesTableProps {
@@ -84,6 +85,15 @@ export default function LocalesTable({
 
   // SESIÓN 52: State para modal de financiamiento
   const [financiamientoModal, setFinanciamientoModal] = useState<{
+    isOpen: boolean;
+    local: Local | null;
+  }>({
+    isOpen: false,
+    local: null,
+  });
+
+  // SESIÓN 52C: State para modal de datos previos
+  const [datosModal, setDatosModal] = useState<{
     isOpen: boolean;
     local: Local | null;
   }>({
@@ -689,7 +699,20 @@ export default function LocalesTable({
     );
   };
 
-  // ====== SESIÓN 52: HELPER - Render Link "Iniciar Financiamiento" ======
+  // ====== SESIÓN 52C: HELPER - Render Link "Iniciar Registro de Venta" ======
+  const handleIniciarRegistroVenta = (local: Local) => {
+    // SESIÓN 52C: Verificar si faltan datos
+    const faltanDatos = !local.monto_venta || !local.monto_separacion || !local.lead_id;
+
+    if (faltanDatos) {
+      // Abrir modal de datos previos
+      setDatosModal({ isOpen: true, local });
+    } else {
+      // Abrir modal de financiamiento directamente
+      setFinanciamientoModal({ isOpen: true, local });
+    }
+  };
+
   const renderIniciarFinanciamiento = (local: Local) => {
     // Solo mostrar si:
     // 1. Local está en ROJO (vendido/bloqueado)
@@ -704,13 +727,24 @@ export default function LocalesTable({
     return (
       <div className="mt-2">
         <button
-          onClick={() => setFinanciamientoModal({ isOpen: true, local })}
+          onClick={() => handleIniciarRegistroVenta(local)}
           className="text-xs text-green-600 hover:text-green-800 hover:underline cursor-pointer"
         >
           Iniciar Registro de Venta
         </button>
       </div>
     );
+  };
+
+  // ====== SESIÓN 52C: HANDLER - Callback onSuccess de DatosModal ======
+  const handleDatosSuccess = (updatedLocal: Local) => {
+    // Cerrar modal de datos
+    setDatosModal({ isOpen: false, local: null });
+
+    // Abrir modal de financiamiento con local actualizado
+    setFinanciamientoModal({ isOpen: true, local: updatedLocal });
+
+    // TODO: Refresh de la tabla se hará con revalidatePath en server action
   };
 
   // ====== HELPER: Paginación ======
@@ -918,6 +952,15 @@ export default function LocalesTable({
         local={comentarioNaranjaModal.local}
         onConfirm={handleConfirmarNaranjaConComentario}
         onCancel={handleCancelarComentarioNaranja}
+      />
+
+      {/* SESIÓN 52C: Modal Datos Previos para Registro de Venta */}
+      <DatosRegistroVentaModal
+        isOpen={datosModal.isOpen}
+        local={datosModal.local}
+        onClose={() => setDatosModal({ isOpen: false, local: null })}
+        onSuccess={handleDatosSuccess}
+        usuarioId={user?.id || ''}
       />
 
       {/* SESIÓN 52: Modal Financiamiento */}
