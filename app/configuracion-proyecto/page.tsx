@@ -4,9 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import { getAllProyectos, Proyecto } from '@/lib/db';
-import { getProyectoConfiguracion } from '@/lib/proyecto-config';
-import { saveProyectoConfiguracion } from '@/lib/actions-proyecto-config';
+import {
+  getProyectosWithConfigurations,
+  saveProyectoConfiguracion,
+  Proyecto,
+  ProyectoWithConfig
+} from '@/lib/actions-proyecto-config';
 import { Save, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface ProyectoFormData {
@@ -35,10 +38,15 @@ export default function ConfiguracionProyectos() {
     async function loadData() {
       setLoading(true);
 
-      const proyectosData = await getAllProyectos(true);
-      proyectosData.sort((a, b) =>
-        new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
-      );
+      const result = await getProyectosWithConfigurations();
+
+      if (!result.success || !result.data) {
+        console.error('Error loading proyectos:', result.message);
+        setLoading(false);
+        return;
+      }
+
+      const proyectosData = result.data.map(p => p.proyecto);
       setProyectos(proyectosData);
 
       if (proyectosData.length > 0) {
@@ -46,10 +54,9 @@ export default function ConfiguracionProyectos() {
       }
 
       const initialFormData: Record<string, ProyectoFormData> = {};
-      for (const proyecto of proyectosData) {
-        const config = await getProyectoConfiguracion(proyecto.id);
+      for (const { proyecto, configuracion } of result.data) {
         initialFormData[proyecto.id] = {
-          tea: config?.tea?.toString() || '',
+          tea: configuracion?.tea?.toString() || '',
           color: proyecto.color || '#1b967a',
           activo: proyecto.activo,
           saving: false,
