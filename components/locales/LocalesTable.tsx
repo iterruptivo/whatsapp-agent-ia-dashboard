@@ -16,6 +16,7 @@ import { ChevronLeft, ChevronRight, History, Lock, Clock } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import VendedorSelectModal from './VendedorSelectModal';
 import ComentarioNaranjaModal from './ComentarioNaranjaModal';
+import FinanciamientoModal from './FinanciamientoModal'; // SESIÓN 52: Modal para iniciar financiamiento
 import TimerCountdown from './TimerCountdown'; // OPT: Componente separado para evitar re-render global
 
 interface LocalesTableProps {
@@ -74,6 +75,15 @@ export default function LocalesTable({
 
   // SESIÓN 48C: State para modal de comentario NARANJA
   const [comentarioNaranjaModal, setComentarioNaranjaModal] = useState<{
+    isOpen: boolean;
+    local: Local | null;
+  }>({
+    isOpen: false,
+    local: null,
+  });
+
+  // SESIÓN 52: State para modal de financiamiento
+  const [financiamientoModal, setFinanciamientoModal] = useState<{
     isOpen: boolean;
     local: Local | null;
   }>({
@@ -679,6 +689,30 @@ export default function LocalesTable({
     );
   };
 
+  // ====== SESIÓN 52: HELPER - Render Link "Iniciar Financiamiento" ======
+  const renderIniciarFinanciamiento = (local: Local) => {
+    // Solo mostrar si:
+    // 1. Local está en ROJO (vendido/bloqueado)
+    // 2. Usuario es admin o jefe_ventas
+    if (
+      local.estado !== 'rojo' ||
+      (user?.rol !== 'admin' && user?.rol !== 'jefe_ventas')
+    ) {
+      return null;
+    }
+
+    return (
+      <div className="mt-2">
+        <button
+          onClick={() => setFinanciamientoModal({ isOpen: true, local })}
+          className="text-xs text-green-600 hover:text-green-800 hover:underline cursor-pointer"
+        >
+          Iniciar Financiamiento
+        </button>
+      </div>
+    );
+  };
+
   // ====== HELPER: Paginación ======
   const renderPagination = () => {
     // Protección: Si no hay páginas válidas, no renderizar
@@ -810,10 +844,11 @@ export default function LocalesTable({
                     {/* Metraje */}
                     <td className="py-3 px-4 text-gray-700">{local.metraje} m²</td>
 
-                    {/* Semáforo + Timer NARANJA + Link Salir Negociación */}
+                    {/* Semáforo + Timer NARANJA + Link Salir Negociación + Link Iniciar Financiamiento */}
                     <td className="py-3 px-4">
                       {renderSemaforo(local)}
                       {renderSalirNegociacion(local)}
+                      {renderIniciarFinanciamiento(local)}
                       {/* OPT: Componente separado para timer (solo se re-renderiza él, no toda la tabla) */}
                       {local.estado === 'naranja' && <TimerCountdown naranjaTimestamp={local.naranja_timestamp} />}
                     </td>
@@ -883,6 +918,13 @@ export default function LocalesTable({
         local={comentarioNaranjaModal.local}
         onConfirm={handleConfirmarNaranjaConComentario}
         onCancel={handleCancelarComentarioNaranja}
+      />
+
+      {/* SESIÓN 52: Modal Financiamiento */}
+      <FinanciamientoModal
+        isOpen={financiamientoModal.isOpen}
+        local={financiamientoModal.local}
+        onClose={() => setFinanciamientoModal({ isOpen: false, local: null })}
       />
     </div>
   );
