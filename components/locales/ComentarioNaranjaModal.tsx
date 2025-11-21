@@ -251,18 +251,18 @@ export default function ComentarioNaranjaModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 bg-white">
+        <div className="flex items-center justify-between p-6 sticky top-0 z-10 bg-orange-500">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-white">
               Confirmar Local - Estado NARANJA
             </h2>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-white/80 mt-1">
               {local.proyecto_nombre} - Local {local.codigo}
             </p>
           </div>
           <button
             onClick={handleCancel}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
             disabled={submitting}
           >
             <X className="w-6 h-6" />
