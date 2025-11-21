@@ -8,9 +8,9 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 21 Noviembre 2025
-**Sesión:** 52 - 💰 **Enlace "Iniciar Financiamiento" para Locales ROJOS**
+**Sesión:** 52B - 💰 **Campos Financiamiento/Separación en Modal Registro de Venta**
 **Estado:** ✅ **DEPLOYED TO STAGING**
-**Documentación:** [SESION_52_ENLACE_INICIAR_FINANCIAMIENTO.md](consultas-leo/SESION_52_ENLACE_INICIAR_FINANCIAMIENTO.md)
+**Documentación:** SESIÓN 52B (ver sección "ÚLTIMAS 5 SESIONES" más abajo)
 
 ---
 
@@ -145,8 +145,58 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
 
-### **Sesión 52** (21 Nov) - 💰 ✅ **Enlace "Iniciar Financiamiento" para Locales ROJOS**
-**Feature:** Enlace condicional debajo del semáforo para iniciar proceso de financiamiento
+### **Sesión 52B** (21 Nov) - 💰 ✅ **Campos Financiamiento/Separación en Modal Registro de Venta**
+**Feature:** Agregar 3 campos al modal de Registro de Venta (antes "Financiamiento")
+**Problema resuelto:** Capturar información completa de financiamiento y mostrar montos de venta/separación
+**Cambio terminológico:** "Iniciar Financiamiento" → "Iniciar Registro de Venta" (mejor describe el proceso)
+
+**Nuevos campos implementados:**
+1. **"¿Con financiamiento?"** - Radio buttons Si/No (default: Sí)
+   - Estado local `conFinanciamiento` (boolean, default true)
+   - Dos opciones mutuamente exclusivas
+   - Estilo Tailwind limpio con hover states
+
+2. **"Precio de venta"** - Display read-only
+   - Muestra `local.monto_venta` (capturado en estado NARANJA)
+   - Formato: S/ XXX,XXX.XX (moneda peruana con comas)
+   - Card con fondo azul (`bg-blue-50`)
+   - Tipografía grande y bold (`text-2xl font-bold text-blue-900`)
+
+3. **"Separó con"** - Display read-only
+   - Muestra `local.monto_separacion` (capturado en estado NARANJA)
+   - Formato: S/ XXX,XXX.XX (moneda peruana con comas)
+   - Card con fondo verde (`bg-green-50`)
+   - Tipografía grande y bold (`text-2xl font-bold text-green-900`)
+
+**Helper function:**
+- `formatMonto()` - Formatea number a string con locale es-PE
+  - Input: `12345.67` → Output: `"S/ 12,345.67"`
+  - Maneja null/undefined → muestra "N/A"
+  - Siempre 2 decimales (minimumFractionDigits, maximumFractionDigits)
+
+**Layout mejorado:**
+- Sección "Información del Local" (fondo gris, código/proyecto/metraje)
+- Grid 2 columnas para montos (precio venta | separación)
+- Radio buttons en sección separada con borde superior
+- Espaciado vertical consistente (`space-y-6`)
+
+**Archivos modificados:**
+- `FinanciamientoModal.tsx` (+93 líneas netas)
+  - Import useState
+  - Estado conFinanciamiento
+  - Helper formatMonto
+  - Nuevo layout con 3 secciones
+  - Comentarios SESIÓN 52B
+- `LocalesTable.tsx` (1 línea)
+  - Cambio texto: "Iniciar Financiamiento" → "Iniciar Registro de Venta"
+
+**Commit:** `801e31e`
+**Deploy:** ✅ STAGING
+
+---
+
+### **Sesión 52** (21 Nov) - 💰 ✅ **Enlace "Iniciar Registro de Venta" para Locales ROJOS**
+**Feature:** Enlace condicional debajo del semáforo para iniciar proceso de registro de venta
 **Problema resuelto:** Admin y Jefe de Ventas necesitan punto de entrada para gestionar financiamiento de locales vendidos
 **Restricción:** Solo admin y jefe_ventas pueden ver el enlace
 
@@ -291,42 +341,6 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ---
 
-### **Sesión 46 (A-B)** (16 Nov) - ✅ **FIX PGRST116 + UX Improvement**
-
-#### **Sesión 46A: Fix PGRST116 en Import Manual**
-**Problema crítico:** Error PGRST116 al intentar agregar lead manual con email leo@ecoplaza.com
-**Síntoma:** "Cannot coerce the result to a single JSON object"
-**Root Cause:** `.maybeSingle()` falla cuando encuentra duplicados en la DB (2+ leads con mismo teléfono)
-
-**Solución quirúrgica (1 línea modificada):**
-- Cambiar `.maybeSingle()` por `.limit(1)` en verificación de duplicados
-- `.limit(1)` solo verifica "¿existe al menos uno?" sin fallar con duplicados
-- Mejorar logging: mostrar objeto completo en vez de solo 3 campos
-
-**Archivos:** `lib/actions.ts`, `ManualLeadPanel.tsx`
-**Commit:** `7fe69cf` - fix: PGRST116 en import manual - usar .limit(1) en vez de .maybeSingle()
-
-#### **Sesión 46B: UX - Usuario controla cuándo actualizar dashboard**
-**Problema UX:** Panel se auto-cerraba con timeout 2s, dashboard se actualizaba automáticamente
-**Solución:** Aplicar mismo patrón que LeadImportModal (Sesión 46A)
-
-**Mejoras implementadas:**
-1. Eliminado auto-refresh después de importación exitosa
-2. Botón "Cerrar" cambia a "Actualizar dashboard" cuando hay imports exitosos
-3. Ícono X también actualiza dashboard cuando corresponde
-4. Panel permanece abierto - usuario ve confirmación con calma
-
-**Comportamiento final:**
-- Usuario agrega lead → Click "Importar 1 Lead" → Panel permanece abierto mostrando éxito
-- Usuario controla cuándo cerrar: click "Actualizar dashboard" o X
-- Dashboard solo se refresca cuando usuario lo solicita
-- **Consistencia:** LeadImportModal (CSV/Excel) y ManualLeadPanel (uno por uno) tienen la MISMA UX
-
-**Archivos:** `ManualLeadPanel.tsx` (handleImportAll, handleCloseWithRefresh, X icon, botón result)
-**Commit:** `242bacb` - feat: UX manual leads - Usuario controla cuándo actualizar dashboard
-
----
-
 ## 📈 PROGRESO DEL PROYECTO
 
 ## 🚀 FEATURES PRINCIPALES
@@ -359,6 +373,7 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 - ✅ Audit trail completo (historial)
 - ✅ CSV bulk import
 - ✅ Role-based access control
+- ✅ Registro de venta (modal con financiamiento, precio venta, monto separación)
 
 ### **Integraciones**
 - ✅ n8n: Captura automática de leads vía WhatsApp
