@@ -4,85 +4,131 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import { getAllProyectos, Proyecto } from '@/lib/db';
 import { getProyectoConfiguracion } from '@/lib/proyecto-config';
 import { saveProyectoConfiguracion } from '@/lib/actions-proyecto-config';
-import { Save } from 'lucide-react';
+import { Save, ChevronDown, ChevronUp } from 'lucide-react';
 
-export default function ConfiguracionProyecto() {
+interface ProyectoFormData {
+  tea: string;
+  color: string;
+  saving: boolean;
+  message: { type: 'success' | 'error'; text: string } | null;
+}
+
+export default function ConfiguracionProyectos() {
   const router = useRouter();
-  const { user, selectedProyecto, loading: authLoading } = useAuth();
-  const [tea, setTea] = useState<string>('');
-  const [color, setColor] = useState<string>('#1b967a');
+  const { user, loading: authLoading } = useAuth();
+  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [expandedProyectos, setExpandedProyectos] = useState<Set<string>>(new Set());
+  const [formData, setFormData] = useState<Record<string, ProyectoFormData>>({});
 
-  // Redirect if not authenticated or no proyecto selected
   useEffect(() => {
-    if (!authLoading && (!user || !selectedProyecto)) {
+    if (!authLoading && !user) {
       router.push('/login');
     }
-  }, [user, selectedProyecto, authLoading, router]);
+  }, [user, authLoading, router]);
 
-  // Load existing configuration
   useEffect(() => {
-    async function loadConfig() {
-      if (!selectedProyecto) return;
-
+    async function loadData() {
       setLoading(true);
 
-      const config = await getProyectoConfiguracion(selectedProyecto.id);
-      if (config && config.tea !== null) {
-        setTea(config.tea.toString());
+      const proyectosData = await getAllProyectos(true);
+      proyectosData.sort((a, b) =>
+        new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime()
+      );
+      setProyectos(proyectosData);
+
+      if (proyectosData.length > 0) {
+        setExpandedProyectos(new Set([proyectosData[0].id]));
       }
 
-      if (selectedProyecto.color) {
-        setColor(selectedProyecto.color);
+      const initialFormData: Record<string, ProyectoFormData> = {};
+      for (const proyecto of proyectosData) {
+        const config = await getProyectoConfiguracion(proyecto.id);
+        initialFormData[proyecto.id] = {
+          tea: config?.tea?.toString() || '',
+          color: proyecto.color || '#1b967a',
+          saving: false,
+          message: null,
+        };
       }
+      setFormData(initialFormData);
 
       setLoading(false);
     }
 
-    if (selectedProyecto) {
-      loadConfig();
+    if (user) {
+      loadData();
     }
-  }, [selectedProyecto]);
+  }, [user]);
 
-  const handleSave = async () => {
-    if (!selectedProyecto) return;
+  const toggleProyecto = (proyectoId: string) => {
+    setExpandedProyectos((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(proyectoId)) {
+        newSet.delete(proyectoId);
+      } else {
+        newSet.add(proyectoId);
+      }
+      return newSet;
+    });
+  };
 
-    const teaValue = tea.trim() === '' ? null : parseFloat(tea);
+  const updateFormData = (proyectoId: string, field: keyof ProyectoFormData, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [proyectoId]: {
+        ...prev[proyectoId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleSave = async (proyectoId: string) => {
+    const data = formData[proyectoId];
+    if (!data) return;
+
+    const teaValue = data.tea.trim() === '' ? null : parseFloat(data.tea);
 
     if (teaValue !== null && (isNaN(teaValue) || teaValue <= 0 || teaValue > 100)) {
-      setMessage({ type: 'error', text: 'TEA debe ser un número mayor a 0 y menor o igual a 100' });
+      updateFormData(proyectoId, 'message', {
+        type: 'error',
+        text: 'TEA debe ser un número mayor a 0 y menor o igual a 100',
+      });
       return;
     }
 
-    if (!color || !/^#[0-9A-F]{6}$/i.test(color)) {
-      setMessage({ type: 'error', text: 'Color debe ser un código hexadecimal válido (ej: #1b967a)' });
+    if (!data.color || !/^#[0-9A-F]{6}$/i.test(data.color)) {
+      updateFormData(proyectoId, 'message', {
+        type: 'error',
+        text: 'Color debe ser un código hexadecimal válido (ej: #1b967a)',
+      });
       return;
     }
 
-    setSaving(true);
-    setMessage(null);
+    updateFormData(proyectoId, 'saving', true);
+    updateFormData(proyectoId, 'message', null);
 
-    const result = await saveProyectoConfiguracion(selectedProyecto.id, {
+    const result = await saveProyectoConfiguracion(proyectoId, {
       tea: teaValue,
-      color: color,
+      color: data.color,
     });
 
-    setSaving(false);
+    updateFormData(proyectoId, 'saving', false);
 
     if (result.success) {
-      setMessage({ type: 'success', text: result.message });
-      setTimeout(() => setMessage(null), 3000);
+      updateFormData(proyectoId, 'message', { type: 'success', text: result.message });
+      setTimeout(() => {
+        updateFormData(proyectoId, 'message', null);
+      }, 3000);
     } else {
-      setMessage({ type: 'error', text: result.message });
+      updateFormData(proyectoId, 'message', { type: 'error', text: result.message });
     }
   };
 
-  // Show loading while auth is loading
-  if (authLoading || !selectedProyecto || loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -95,105 +141,145 @@ export default function ConfiguracionProyecto() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <DashboardHeader
-        title="Configuración del Proyecto"
-        subtitle={`Configuración - ${selectedProyecto.nombre}`}
+        title="Configuración de Proyectos"
+        subtitle="Gestiona la configuración de todos los proyectos"
       />
 
-      {/* Main Content */}
       <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-md p-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            Configuración del Proyecto
+            Configuración de Proyectos
           </h2>
 
-          <div className="max-w-2xl space-y-8">
-            {/* TEA Field */}
-            <div>
-              <label htmlFor="tea" className="block text-lg font-semibold text-gray-900 mb-1">
-                TEA del proyecto
-              </label>
-              <p className="text-sm text-gray-500 mb-4">
-                Este dato se usará para financiamiento del proyecto
-              </p>
-              <input
-                type="number"
-                id="tea"
-                value={tea}
-                onChange={(e) => setTea(e.target.value)}
-                placeholder="Ej: 18.5"
-                min="0.01"
-                max="100"
-                step="0.01"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
-              />
-            </div>
+          <div className="space-y-4">
+            {proyectos.map((proyecto) => {
+              const isExpanded = expandedProyectos.has(proyecto.id);
+              const data = formData[proyecto.id];
 
-            {/* Divider */}
-            <div className="border-t border-gray-200"></div>
-
-            {/* Color Field */}
-            <div>
-              <label htmlFor="color" className="block text-lg font-semibold text-gray-900 mb-1">
-                Color del proyecto
-              </label>
-              <p className="text-sm text-gray-500 mb-4">
-                Color para identificación visual en el dashboard
-              </p>
-              <div className="flex gap-3 items-center">
-                <input
-                  type="color"
-                  id="color"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  className="h-12 w-20 rounded-lg border border-gray-300 cursor-pointer"
-                />
-                <input
-                  type="text"
-                  value={color}
-                  onChange={(e) => setColor(e.target.value)}
-                  placeholder="#1b967a"
-                  maxLength={7}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors font-mono"
-                />
+              return (
                 <div
-                  className="h-12 w-24 rounded-lg border border-gray-300 flex items-center justify-center text-white font-medium text-sm"
-                  style={{ backgroundColor: color }}
+                  key={proyecto.id}
+                  className="border border-gray-200 rounded-lg overflow-hidden"
                 >
-                  Preview
+                  <button
+                    onClick={() => toggleProyecto(proyecto.id)}
+                    className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: data?.color || proyecto.color || '#1b967a' }}
+                      />
+                      <span className="text-lg font-semibold text-gray-900">
+                        {proyecto.nombre}
+                      </span>
+                      {!proyecto.activo && (
+                        <span className="px-2 py-1 text-xs font-medium bg-gray-200 text-gray-600 rounded-full">
+                          Inactivo
+                        </span>
+                      )}
+                    </div>
+                    {isExpanded ? (
+                      <ChevronUp className="w-5 h-5 text-gray-600" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-600" />
+                    )}
+                  </button>
+
+                  {isExpanded && data && (
+                    <div className="px-6 py-6 space-y-6">
+                      <div>
+                        <label
+                          htmlFor={`tea-${proyecto.id}`}
+                          className="block text-lg font-semibold text-gray-900 mb-1"
+                        >
+                          TEA del proyecto
+                        </label>
+                        <p className="text-sm text-gray-500 mb-4">
+                          Este dato se usará para financiamiento del proyecto
+                        </p>
+                        <input
+                          type="number"
+                          id={`tea-${proyecto.id}`}
+                          value={data.tea}
+                          onChange={(e) => updateFormData(proyecto.id, 'tea', e.target.value)}
+                          placeholder="Ej: 18.5"
+                          min="0.01"
+                          max="100"
+                          step="0.01"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                        />
+                      </div>
+
+                      <div className="border-t border-gray-200"></div>
+
+                      <div>
+                        <label
+                          htmlFor={`color-${proyecto.id}`}
+                          className="block text-lg font-semibold text-gray-900 mb-1"
+                        >
+                          Color del proyecto
+                        </label>
+                        <p className="text-sm text-gray-500 mb-4">
+                          Color para identificación visual en el dashboard
+                        </p>
+                        <div className="flex gap-3 items-center">
+                          <input
+                            type="color"
+                            id={`color-${proyecto.id}`}
+                            value={data.color}
+                            onChange={(e) => updateFormData(proyecto.id, 'color', e.target.value)}
+                            className="h-12 w-20 rounded-lg border border-gray-300 cursor-pointer"
+                          />
+                          <input
+                            type="text"
+                            value={data.color}
+                            onChange={(e) => updateFormData(proyecto.id, 'color', e.target.value)}
+                            placeholder="#1b967a"
+                            maxLength={7}
+                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors font-mono"
+                          />
+                          <div
+                            className="h-12 w-24 rounded-lg border border-gray-300 flex items-center justify-center text-white font-medium text-sm"
+                            style={{ backgroundColor: data.color }}
+                          >
+                            Preview
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="pt-4 flex items-center gap-4">
+                        <button
+                          onClick={() => handleSave(proyecto.id)}
+                          disabled={data.saving}
+                          className={`flex items-center gap-2 px-8 py-3 rounded-lg font-medium transition-all duration-200 ${
+                            data.saving
+                              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              : 'bg-primary text-white hover:bg-primary/90 hover:shadow-md active:scale-95'
+                          }`}
+                        >
+                          <Save className="w-5 h-5" />
+                          {data.saving ? 'Guardando...' : 'Guardar'}
+                        </button>
+
+                        {data.message && (
+                          <div
+                            className={`flex-1 p-3 rounded-lg text-sm ${
+                              data.message.type === 'success'
+                                ? 'bg-green-50 text-green-800 border border-green-200'
+                                : 'bg-red-50 text-red-800 border border-red-200'
+                            }`}
+                          >
+                            {data.message.text}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
-
-            {/* Save Button */}
-            <div className="pt-4">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className={`flex items-center gap-2 px-8 py-3 rounded-lg font-medium transition-all duration-200 ${
-                  saving
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-primary text-white hover:bg-primary/90 hover:shadow-md active:scale-95'
-                }`}
-              >
-                <Save className="w-5 h-5" />
-                {saving ? 'Guardando configuración...' : 'Guardar Configuración'}
-              </button>
-            </div>
-
-            {/* Message */}
-            {message && (
-              <div
-                className={`p-4 rounded-lg ${
-                  message.type === 'success'
-                    ? 'bg-green-50 text-green-800 border border-green-200'
-                    : 'bg-red-50 text-red-800 border border-red-200'
-                }`}
-              >
-                {message.text}
-              </div>
-            )}
+              );
+            })}
           </div>
         </div>
       </main>
