@@ -10,7 +10,7 @@ import { cookies } from 'next/headers';
 
 export async function saveProyectoConfiguracion(
   proyectoId: string,
-  data: { tea: number | null; color: string }
+  data: { tea: number | null; color: string; activo: boolean }
 ) {
   try {
     const cookieStore = await cookies();
@@ -67,14 +67,17 @@ export async function saveProyectoConfiguracion(
 
     const { error: proyectoError } = await supabase
       .from('proyectos')
-      .update({ color: data.color })
+      .update({
+        color: data.color,
+        activo: data.activo
+      })
       .eq('id', proyectoId);
 
     if (proyectoError) {
-      console.error('Error updating proyecto color:', proyectoError);
+      console.error('Error updating proyecto:', proyectoError);
       return {
         success: false,
-        message: 'Error al guardar color del proyecto',
+        message: 'Error al guardar configuración del proyecto',
       };
     }
 

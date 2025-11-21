@@ -12,6 +12,7 @@ import { Save, ChevronDown, ChevronUp } from 'lucide-react';
 interface ProyectoFormData {
   tea: string;
   color: string;
+  activo: boolean;
   saving: boolean;
   message: { type: 'success' | 'error'; text: string } | null;
 }
@@ -50,6 +51,7 @@ export default function ConfiguracionProyectos() {
         initialFormData[proyecto.id] = {
           tea: config?.tea?.toString() || '',
           color: proyecto.color || '#1b967a',
+          activo: proyecto.activo,
           saving: false,
           message: null,
         };
@@ -114,6 +116,7 @@ export default function ConfiguracionProyectos() {
     const result = await saveProyectoConfiguracion(proyectoId, {
       tea: teaValue,
       color: data.color,
+      activo: data.activo,
     });
 
     updateFormData(proyectoId, 'saving', false);
@@ -247,6 +250,34 @@ export default function ConfiguracionProyectos() {
                             Preview
                           </div>
                         </div>
+                      </div>
+
+                      <div className="border-t border-gray-200"></div>
+
+                      {/* Estado Activo/Inactivo */}
+                      <div>
+                        <label className="block text-lg font-semibold text-gray-900 mb-1">
+                          Estado del proyecto
+                        </label>
+                        <p className="text-sm text-gray-500 mb-4">
+                          Proyecto activo en el sistema
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => updateFormData(proyecto.id, 'activo', !data.activo)}
+                          className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                            data.activo ? 'bg-primary' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                              data.activo ? 'translate-x-9' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                        <span className="ml-3 text-sm font-medium text-gray-900">
+                          {data.activo ? 'Activo' : 'Inactivo'}
+                        </span>
                       </div>
 
                       <div className="pt-4 flex items-center gap-4">
