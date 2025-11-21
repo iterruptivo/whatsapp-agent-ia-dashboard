@@ -262,99 +262,105 @@ export default function ConfiguracionProyectos() {
                   </button>
 
                   {isExpanded && data && (
-                    <div className="px-6 py-6 space-y-6">
-                      <div>
-                        <label
-                          htmlFor={`tea-${proyecto.id}`}
-                          className="block text-lg font-semibold text-gray-900 mb-1"
-                        >
-                          TEA del proyecto
-                        </label>
-                        <p className="text-sm text-gray-500 mb-4">
-                          Este dato se usará para financiamiento del proyecto
-                        </p>
-                        <input
-                          type="number"
-                          id={`tea-${proyecto.id}`}
-                          value={data.tea}
-                          onChange={(e) => updateFormData(proyecto.id, 'tea', e.target.value)}
-                          placeholder="Ej: 18.5"
-                          min="0.01"
-                          max="100"
-                          step="0.01"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
-                        />
-                      </div>
+                    <div className="px-6 py-6">
+                      {/* Grid 2 columnas en desktop, apilado en mobile */}
+                      <div className="grid lg:grid-cols-2 gap-8 mb-6">
 
-                      <div className="border-t border-gray-200"></div>
+                        {/* Columna Izquierda: TEA + Color + Estado */}
+                        <div className="space-y-6">
+                          {/* TEA del proyecto */}
+                          <div>
+                            <label
+                              htmlFor={`tea-${proyecto.id}`}
+                              className="block text-lg font-semibold text-gray-900 mb-1"
+                            >
+                              TEA del proyecto
+                            </label>
+                            <p className="text-sm text-gray-500 mb-4">
+                              Este dato se usará para financiamiento del proyecto
+                            </p>
+                            <input
+                              type="number"
+                              id={`tea-${proyecto.id}`}
+                              value={data.tea}
+                              onChange={(e) => updateFormData(proyecto.id, 'tea', e.target.value)}
+                              placeholder="Ej: 18.5"
+                              min="0.01"
+                              max="100"
+                              step="0.01"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                            />
+                          </div>
 
-                      <div>
-                        <label
-                          htmlFor={`color-${proyecto.id}`}
-                          className="block text-lg font-semibold text-gray-900 mb-1"
-                        >
-                          Color del proyecto
-                        </label>
-                        <p className="text-sm text-gray-500 mb-4">
-                          Color para identificación visual en el dashboard
-                        </p>
-                        <div className="flex gap-3 items-center">
-                          <input
-                            type="color"
-                            id={`color-${proyecto.id}`}
-                            value={data.color}
-                            onChange={(e) => updateFormData(proyecto.id, 'color', e.target.value)}
-                            className="h-12 w-20 rounded-lg border border-gray-300 cursor-pointer"
-                          />
-                          <input
-                            type="text"
-                            value={data.color}
-                            onChange={(e) => updateFormData(proyecto.id, 'color', e.target.value)}
-                            placeholder="#1b967a"
-                            maxLength={7}
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors font-mono"
-                          />
-                          <div
-                            className="h-12 w-24 rounded-lg border border-gray-300 flex items-center justify-center text-white font-medium text-sm"
-                            style={{ backgroundColor: data.color }}
-                          >
-                            Preview
+                          <div className="border-t border-gray-200"></div>
+
+                          {/* Color del proyecto */}
+                          <div>
+                            <label
+                              htmlFor={`color-${proyecto.id}`}
+                              className="block text-lg font-semibold text-gray-900 mb-1"
+                            >
+                              Color del proyecto
+                            </label>
+                            <p className="text-sm text-gray-500 mb-4">
+                              Color para identificación visual en el dashboard
+                            </p>
+                            <div className="flex gap-3 items-center">
+                              <input
+                                type="color"
+                                id={`color-${proyecto.id}`}
+                                value={data.color}
+                                onChange={(e) => updateFormData(proyecto.id, 'color', e.target.value)}
+                                className="h-12 w-20 rounded-lg border border-gray-300 cursor-pointer"
+                              />
+                              <input
+                                type="text"
+                                value={data.color}
+                                onChange={(e) => updateFormData(proyecto.id, 'color', e.target.value)}
+                                placeholder="#1b967a"
+                                maxLength={7}
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors font-mono"
+                              />
+                              <div
+                                className="h-12 w-24 rounded-lg border border-gray-300 flex items-center justify-center text-white font-medium text-sm"
+                                style={{ backgroundColor: data.color }}
+                              >
+                                Preview
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="border-t border-gray-200"></div>
+
+                          {/* Estado Activo/Inactivo */}
+                          <div>
+                            <label className="block text-lg font-semibold text-gray-900 mb-1">
+                              Estado del proyecto
+                            </label>
+                            <p className="text-sm text-gray-500 mb-4">
+                              Proyecto activo en el sistema
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => updateFormData(proyecto.id, 'activo', !data.activo)}
+                              className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                                data.activo ? 'bg-primary' : 'bg-gray-300'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                                  data.activo ? 'translate-x-9' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                            <span className="ml-3 text-sm font-medium text-gray-900">
+                              {data.activo ? 'Activo' : 'Inactivo'}
+                            </span>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="border-t border-gray-200"></div>
-
-                      {/* Estado Activo/Inactivo */}
-                      <div>
-                        <label className="block text-lg font-semibold text-gray-900 mb-1">
-                          Estado del proyecto
-                        </label>
-                        <p className="text-sm text-gray-500 mb-4">
-                          Proyecto activo en el sistema
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => updateFormData(proyecto.id, 'activo', !data.activo)}
-                          className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                            data.activo ? 'bg-primary' : 'bg-gray-300'
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                              data.activo ? 'translate-x-9' : 'translate-x-1'
-                            }`}
-                          />
-                        </button>
-                        <span className="ml-3 text-sm font-medium text-gray-900">
-                          {data.activo ? 'Activo' : 'Inactivo'}
-                        </span>
-                      </div>
-
-                      <div className="border-t border-gray-200"></div>
-
-                      {/* Porcentajes de Inicial */}
-                      <div>
+                        {/* Columna Derecha: Porcentajes de Inicial */}
+                        <div>
                         <label className="block text-lg font-semibold text-gray-900 mb-1">
                           Porcentajes de Inicial
                         </label>
@@ -446,9 +452,12 @@ export default function ConfiguracionProyectos() {
                             No hay porcentajes configurados. Agrega uno para comenzar.
                           </p>
                         )}
+                        </div>
                       </div>
 
-                      <div className="pt-4 flex items-center gap-4">
+                      {/* Botón Guardar y Mensajes */}
+                      <div className="border-t border-gray-200 pt-6">
+                        <div className="flex items-center gap-4">
                         <button
                           onClick={() => handleSave(proyecto.id)}
                           disabled={data.saving}
@@ -473,6 +482,7 @@ export default function ConfiguracionProyectos() {
                             {data.message.text}
                           </div>
                         )}
+                        </div>
                       </div>
                     </div>
                   )}
