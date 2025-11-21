@@ -129,6 +129,13 @@ export async function saveProyectoConfiguracion(
       };
     }
 
+    console.log('[AUTH DEBUG]', {
+      userId: user.id,
+      userEmail: user.email,
+      proyectoId,
+      updating: { tea: data.tea, color: data.color, activo: data.activo }
+    });
+
     if (data.tea !== null && (data.tea <= 0 || data.tea > 100)) {
       return {
         success: false,
