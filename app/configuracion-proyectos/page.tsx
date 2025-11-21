@@ -356,9 +356,10 @@ export default function ConfiguracionProyectos() {
           </h2>
 
           <div className="space-y-4">
-            {proyectos.map((proyecto) => {
+            {proyectos.map((proyecto, index) => {
               const isExpanded = expandedProyectos.has(proyecto.id);
               const data = formData[proyecto.id];
+              const isEven = index % 2 === 0;
 
               return (
                 <div
@@ -367,7 +368,11 @@ export default function ConfiguracionProyectos() {
                 >
                   <button
                     onClick={() => toggleProyecto(proyecto.id)}
-                    className="w-full flex items-center justify-between px-6 py-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className={`w-full flex items-center justify-between px-6 py-4 transition-colors ${
+                      isEven
+                        ? 'bg-gray-50 hover:bg-gray-100'
+                        : 'bg-blue-50 hover:bg-blue-100'
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <div
