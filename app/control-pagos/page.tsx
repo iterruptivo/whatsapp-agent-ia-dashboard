@@ -6,24 +6,39 @@
 // Acceso: Solo admin y jefe_ventas
 // ============================================================================
 
-import { redirect } from 'next/navigation';
-import { getServerSession } from '@/lib/auth-server';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { FileText } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export default function ControlPagosPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
 
-export default async function ControlPagosPage() {
-  // Validación de acceso role-based
-  const session = await getServerSession();
+  // Redirect if not authenticated or not admin/jefe_ventas
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push('/login');
+      } else if (user.rol !== 'admin' && user.rol !== 'jefe_ventas') {
+        router.push('/');
+      }
+    }
+  }, [user, loading, router]);
 
-  if (!session) {
-    redirect('/login');
-  }
-
-  // Solo admin y jefe_ventas pueden acceder
-  if (session.rol !== 'admin' && session.rol !== 'jefe_ventas') {
-    redirect('/');
+  // Show loading while auth is loading
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -6,19 +6,35 @@
 // Acceso: Todos los roles (cada usuario ve sus propias comisiones)
 // ============================================================================
 
-import { redirect } from 'next/navigation';
-import { getServerSession } from '@/lib/auth-server';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { DollarSign } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
+export default function ComisionesPage() {
+  const router = useRouter();
+  const { user, loading } = useAuth();
 
-export default async function ComisionesPage() {
-  // Validación de sesión
-  const session = await getServerSession();
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
 
-  if (!session) {
-    redirect('/login');
+  // Show loading while auth is loading
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -46,10 +62,10 @@ export default async function ComisionesPage() {
             </p>
 
             {/* Info Role-based */}
-            {session.rol === 'admin' || session.rol === 'jefe_ventas' ? (
+            {user.rol === 'admin' || user.rol === 'jefe_ventas' ? (
               <div className="mt-4 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  Como {session.rol === 'admin' ? 'administrador' : 'jefe de ventas'}, podrás ver
+                  Como {user.rol === 'admin' ? 'administrador' : 'jefe de ventas'}, podrás ver
                   las comisiones de todos los vendedores y gestionar los pagos.
                 </p>
               </div>
