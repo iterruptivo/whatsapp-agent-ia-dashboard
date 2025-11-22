@@ -6,6 +6,7 @@
 // SESIÓN 52: Feature inicial - Solo mostrar modal con título correcto
 // SESIÓN 52B: Agregar campos financiamiento/separación (radio buttons + display values)
 // SESIÓN 52D: Lead vinculado (nombre + teléfono) + Cuotas condicionales del proyecto
+// SESIÓN 52E: Inicial (porcentaje + monto) + Inicial Restante (calculado)
 // ============================================================================
 
 'use client';
@@ -34,6 +35,7 @@ export default function FinanciamientoModal({
   const [cuotasSinInteres, setCuotasSinInteres] = useState<CuotaMeses[]>([]);
   const [cuotasConInteres, setCuotasConInteres] = useState<CuotaMeses[]>([]);
   const [cuotaSeleccionada, setCuotaSeleccionada] = useState<number | null>(null);
+  const [porcentajeInicial, setPorcentajeInicial] = useState<number | null>(null);
 
   // Obtener nombre y teléfono del lead vinculado
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function FinanciamientoModal({
     fetchLeadData();
   }, [isOpen, local]);
 
-  // Obtener configuración del proyecto (cuotas)
+  // Obtener configuración del proyecto (cuotas y porcentaje inicial)
   useEffect(() => {
     if (!isOpen || !local?.proyecto_id) return;
 
@@ -62,10 +64,16 @@ export default function FinanciamientoModal({
       if (config?.configuraciones_extra) {
         const cuotasSin = config.configuraciones_extra.cuotas_sin_interes || [];
         const cuotasCon = config.configuraciones_extra.cuotas_con_interes || [];
+        const porcentajes = config.configuraciones_extra.porcentajes_inicial || [];
 
         // Ordenar por campo order
         setCuotasSinInteres(cuotasSin.sort((a: CuotaMeses, b: CuotaMeses) => a.order - b.order));
         setCuotasConInteres(cuotasCon.sort((a: CuotaMeses, b: CuotaMeses) => a.order - b.order));
+
+        // Tomar el primer (y único) porcentaje de inicial
+        if (porcentajes.length > 0) {
+          setPorcentajeInicial(porcentajes[0].value);
+        }
       }
     }
 
@@ -79,6 +87,15 @@ export default function FinanciamientoModal({
     if (!monto) return 'N/A';
     return `$ ${monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
+
+  // Cálculos
+  const montoInicial = porcentajeInicial && local.monto_venta
+    ? (local.monto_venta * porcentajeInicial) / 100
+    : null;
+
+  const inicialRestante = montoInicial && local.monto_separacion
+    ? montoInicial - local.monto_separacion
+    : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -142,6 +159,26 @@ export default function FinanciamientoModal({
               </label>
               <div className="text-2xl font-bold text-green-900">
                 {formatMonto(local.monto_separacion)}
+              </div>
+            </div>
+          </div>
+
+          {/* Inicial e Inicial Restante */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Inicial ({porcentajeInicial ? `${porcentajeInicial}%` : 'N/A'})
+              </label>
+              <div className="text-2xl font-bold text-orange-900">
+                {formatMonto(montoInicial)}
+              </div>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Inicial Restante
+              </label>
+              <div className="text-2xl font-bold text-purple-900">
+                {formatMonto(inicialRestante)}
               </div>
             </div>
           </div>
