@@ -519,8 +519,8 @@ export async function saveDatosRegistroVenta(
     // SESIÓN 52D: Validar que vendedor existe y tiene rol válido
     const { data: vendedorData, error: vendedorError } = await supabase
       .from('usuarios')
-      .select('id, nombre, rol')
-      .eq('id', vendedorId)  // Fix: Usar 'id' en vez de 'vendedor_id'
+      .select('id, nombre, rol, vendedor_id')
+      .eq('id', vendedorId)  // Buscar por ID de usuario
       .in('rol', ['vendedor', 'vendedor_caseta'])
       .single();
 
@@ -558,7 +558,7 @@ export async function saveDatosRegistroVenta(
         monto_separacion: montoSeparacion,
         monto_venta: montoVenta,
         lead_id: finalLeadId,
-        vendedor_actual_id: vendedorId, // SESIÓN 52D: Asignar vendedor
+        vendedor_actual_id: vendedorData.vendedor_id, // SESIÓN 52D: Usar vendedor_id de la tabla vendedores
       })
       .eq('id', localId);
 

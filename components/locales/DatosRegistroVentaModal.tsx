@@ -586,7 +586,7 @@ export default function DatosRegistroVentaModal({
                 >
                   <span className={selectedVendedor ? 'text-gray-900' : 'text-gray-500'}>
                     {selectedVendedor
-                      ? vendedores.find(v => v.vendedor_id === selectedVendedor)?.nombre || 'Seleccionar vendedor...'
+                      ? vendedores.find(v => v.id === selectedVendedor)?.nombre || 'Seleccionar vendedor...'
                       : 'Seleccionar vendedor...'}
                   </span>
                   <svg
@@ -629,13 +629,13 @@ export default function DatosRegistroVentaModal({
                             key={vendedor.id}
                             type="button"
                             onClick={() => {
-                              setSelectedVendedor(vendedor.vendedor_id);
+                              setSelectedVendedor(vendedor.id);
                               setVendedorDropdownOpen(false);
                               setVendedorSearchTerm('');
                               setError(null);
                             }}
                             className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 ${
-                              selectedVendedor === vendedor.vendedor_id ? 'bg-primary/5' : ''
+                              selectedVendedor === vendedor.id ? 'bg-primary/5' : ''
                             }`}
                           >
                             <div className="flex items-center justify-between">
