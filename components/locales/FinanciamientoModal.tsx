@@ -119,13 +119,14 @@ export default function FinanciamientoModal({
 
     const montoPorCuota = montoRestante / cuotaSeleccionada;
     const cuotas: Array<{ numero: number; fecha: string; monto: number }> = [];
-    const fechaInicial = new Date(fechaPago);
-    const diaOriginal = fechaInicial.getDate();
+
+    // Parsear fecha manualmente para evitar problemas de timezone
+    const [año, mes, dia] = fechaPago.split('-').map(Number);
+    const diaOriginal = dia;
 
     for (let i = 0; i < cuotaSeleccionada; i++) {
-      // Calcular año y mes destino
-      const año = fechaInicial.getFullYear();
-      const mesInicial = fechaInicial.getMonth();
+      // Calcular año y mes destino (mes en JS es 0-indexed)
+      const mesInicial = mes - 1; // Convertir a 0-indexed
       const mesDestino = mesInicial + i;
 
       const añoDestino = año + Math.floor(mesDestino / 12);
