@@ -567,8 +567,27 @@ export async function saveDatosRegistroVenta(
     }
 
     let finalLeadId = leadId;
+    let telefono = '';
 
-    // PASO 2: Si newLeadData existe, crear nuevo lead manual
+    // PASO 2A: Si usamos lead existente, obtener teléfono de BD
+    if (leadId && !newLeadData) {
+      console.log('[DATOS VENTA] Obteniendo teléfono de lead existente:', leadId);
+      const { data: existingLead, error: leadError } = await supabaseAuth
+        .from('leads')
+        .select('telefono, nombre')
+        .eq('id', leadId)
+        .single();
+
+      if (leadError || !existingLead) {
+        console.error('[DATOS VENTA] ❌ Error obteniendo lead existente:', leadError);
+        return { success: false, message: 'Lead no encontrado' };
+      }
+
+      telefono = existingLead.telefono;
+      console.log('[DATOS VENTA] ✅ Lead existente encontrado:', existingLead.nombre, 'Tel:', telefono);
+    }
+
+    // PASO 2B: Si newLeadData existe, crear nuevo lead manual
     if (!leadId && newLeadData) {
       console.log('[DATOS VENTA] Creando nuevo lead manual:', newLeadData);
       console.log('[DATOS VENTA] Pasando vendedor_id a createManualLead:', {
@@ -585,6 +604,7 @@ export async function saveDatosRegistroVenta(
 
       if (createResult.success && createResult.leadId) {
         finalLeadId = createResult.leadId;
+        telefono = newLeadData.telefono;
         console.log('[DATOS VENTA] ✅ Lead manual creado:', finalLeadId);
       } else {
         console.error('[DATOS VENTA] ⚠️ Error creando lead manual:', createResult.message);
@@ -593,11 +613,10 @@ export async function saveDatosRegistroVenta(
     }
 
     // PASO 3: Registrar relación en tabla locales_leads (junction table) - SESIÓN 52D
-    const telefono = newLeadData?.telefono || foundLead?.telefono || '';
     const relationResult = await registerLocalLeadRelation(
       localId,
       telefono,
-      finalLeadId,
+      finalLeadId ?? undefined,  // Convertir null a undefined
       vendedorData.vendedor_id,  // FK a tabla vendedores
       vendedorId,                 // FK a tabla usuarios (quien asigna/ejecuta)
       montoSeparacion,
