@@ -15,10 +15,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Search, User, Phone, Mail, Building2, CheckCircle, AlertCircle, DollarSign } from 'lucide-react';
+import { X, Search, User, Phone, Mail, Building2, CheckCircle, AlertCircle, DollarSign, Users } from 'lucide-react';
 import { searchLeadByPhone, getAllProyectos } from '@/lib/db';
 import type { Lead, Proyecto } from '@/lib/db';
-import type { Local } from '@/lib/locales';
+import type { Local, VendedorActivo } from '@/lib/locales';
 
 interface DatosRegistroVentaModalProps {
   isOpen: boolean;
@@ -49,17 +49,26 @@ export default function DatosRegistroVentaModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+  // SESIÓN 52D: Campo vendedor
+  const [vendedores, setVendedores] = useState<VendedorActivo[]>([]);
+  const [selectedVendedor, setSelectedVendedor] = useState('');
+  const [vendedorSearchTerm, setVendedorSearchTerm] = useState('');
 
   // ====== EFFECTS ======
   useEffect(() => {
-    // Cargar proyectos al montar
-    const loadProyectos = async () => {
+    // Cargar proyectos y vendedores al montar
+    const loadData = async () => {
       const proyectosData = await getAllProyectos();
       setProyectos(proyectosData);
+
+      // SESIÓN 52D: Cargar vendedores activos
+      const { getAllVendedoresActivos } = await import('@/lib/locales');
+      const vendedoresData = await getAllVendedoresActivos();
+      setVendedores(vendedoresData);
     };
 
     if (isOpen) {
-      loadProyectos();
+      loadData();
       // Pre-fill montos si ya existen (edit mode)
       if (local?.monto_venta) setMontoVenta(local.monto_venta.toString());
       if (local?.monto_separacion) setMontoSeparacion(local.monto_separacion.toString());
@@ -86,6 +95,7 @@ export default function DatosRegistroVentaModal({
     montoVentaValido &&
     phoneInput.trim().length > 0 &&
     telefonoValido &&
+    selectedVendedor.trim().length > 0 && // SESIÓN 52D: Validar vendedor seleccionado
     (viewState === 'lead-found' ||
       (viewState === 'not-found' && manualName.trim().length > 0 && selectedProyecto.trim().length > 0));
 
@@ -139,6 +149,12 @@ export default function DatosRegistroVentaModal({
       return;
     }
 
+    // SESIÓN 52D: Validar vendedor seleccionado
+    if (!selectedVendedor) {
+      setError('Debe seleccionar un vendedor');
+      return;
+    }
+
     // Validar lead no encontrado
     if (viewState === 'not-found') {
       if (!manualName.trim()) {
@@ -170,7 +186,8 @@ export default function DatosRegistroVentaModal({
               proyectoId: selectedProyecto,
             }
           : null, // newLeadData
-        usuarioId
+        usuarioId,
+        selectedVendedor // SESIÓN 52D: Pasar vendedorId seleccionado
       );
 
       if (result.success && result.local) {
@@ -201,6 +218,8 @@ export default function DatosRegistroVentaModal({
     setPhoneInput('');
     setManualName('');
     setSelectedProyecto('');
+    setSelectedVendedor(''); // SESIÓN 52D: Limpiar vendedor
+    setVendedorSearchTerm(''); // SESIÓN 52D: Limpiar búsqueda
     setFoundLead(null);
     setError(null);
   };
@@ -525,6 +544,90 @@ export default function DatosRegistroVentaModal({
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* SECCIÓN 4: Asignar Vendedor (SESIÓN 52D) */}
+            <div className="border-t border-gray-200 pt-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                <label className="text-sm font-medium text-gray-700">
+                  Asignar Vendedor <span className="text-red-500">*</span>
+                </label>
+              </div>
+
+              <p className="text-sm text-gray-600">
+                Seleccione el vendedor que gestionará este local.
+              </p>
+
+              {/* Input con búsqueda */}
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={vendedorSearchTerm}
+                  onChange={(e) => setVendedorSearchTerm(e.target.value)}
+                  placeholder="Buscar vendedor por nombre..."
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                  disabled={submitting}
+                />
+
+                {/* Lista de vendedores filtrados */}
+                {vendedorSearchTerm.length > 0 && (
+                  <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-lg bg-white">
+                    {vendedores
+                      .filter((v) =>
+                        v.nombre.toLowerCase().includes(vendedorSearchTerm.toLowerCase())
+                      )
+                      .map((vendedor) => (
+                        <button
+                          key={vendedor.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedVendedor(vendedor.vendedor_id);
+                            setVendedorSearchTerm(vendedor.nombre);
+                            setError(null);
+                          }}
+                          className="w-full px-4 py-2 text-left hover:bg-gray-100 transition-colors"
+                          disabled={submitting}
+                        >
+                          <p className="font-medium text-gray-900">{vendedor.nombre}</p>
+                          <p className="text-xs text-gray-500">
+                            {vendedor.rol === 'vendedor' ? 'Vendedor' : 'Vendedor Caseta'}
+                          </p>
+                        </button>
+                      ))}
+                    {vendedores.filter((v) =>
+                      v.nombre.toLowerCase().includes(vendedorSearchTerm.toLowerCase())
+                    ).length === 0 && (
+                      <p className="px-4 py-2 text-sm text-gray-500">
+                        No se encontraron vendedores
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Vendedor seleccionado */}
+                {selectedVendedor && vendedorSearchTerm.length > 0 && (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-green-900">
+                        Vendedor seleccionado: {vendedorSearchTerm}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedVendedor('');
+                        setVendedorSearchTerm('');
+                      }}
+                      className="text-green-600 hover:text-green-700 text-sm"
+                      disabled={submitting}
+                    >
+                      Cambiar
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Error Message Global */}

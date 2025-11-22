@@ -472,6 +472,7 @@ export async function autoLiberarLocalesExpirados() {
  * Guardar datos necesarios para iniciar proceso de registro de venta
  * - Montos de separación y venta
  * - Vinculación de lead (existente o nuevo)
+ * - Asignación de vendedor (SESIÓN 52D)
  * - Registro en historial
  *
  * @param localId ID del local
@@ -480,6 +481,7 @@ export async function autoLiberarLocalesExpirados() {
  * @param leadId ID del lead existente (opcional)
  * @param newLeadData Datos para crear nuevo lead manual (opcional)
  * @param usuarioId ID del usuario (admin/jefe_ventas) que registra
+ * @param vendedorId ID del vendedor a asignar al local (SESIÓN 52D)
  * @returns Success/error con local actualizado
  */
 export async function saveDatosRegistroVenta(
@@ -492,7 +494,8 @@ export async function saveDatosRegistroVenta(
     nombre: string;
     proyectoId: string;
   } | null,
-  usuarioId: string
+  usuarioId: string,
+  vendedorId: string // SESIÓN 52D: Nuevo parámetro REQUERIDO
 ) {
   try {
     // PASO 1: Validar inputs server-side
@@ -506,6 +509,23 @@ export async function saveDatosRegistroVenta(
 
     if (!montoVenta || montoVenta <= 0) {
       return { success: false, message: 'Monto de venta debe ser mayor a 0' };
+    }
+
+    // SESIÓN 52D: Validar vendedorId
+    if (!vendedorId || vendedorId.trim().length === 0) {
+      return { success: false, message: 'Debe seleccionar un vendedor' };
+    }
+
+    // SESIÓN 52D: Validar que vendedor existe y tiene rol válido
+    const { data: vendedorData, error: vendedorError } = await supabase
+      .from('usuarios')
+      .select('id, nombre, rol')
+      .eq('vendedor_id', vendedorId)
+      .in('rol', ['vendedor', 'vendedor_caseta'])
+      .single();
+
+    if (vendedorError || !vendedorData) {
+      return { success: false, message: 'Vendedor no encontrado o inválido' };
     }
 
     let finalLeadId = leadId;
@@ -530,13 +550,14 @@ export async function saveDatosRegistroVenta(
       }
     }
 
-    // PASO 3: Actualizar local con montos y lead_id
+    // PASO 3: Actualizar local con montos, lead_id y vendedor_id (SESIÓN 52D)
     const { error: updateError } = await supabase
       .from('locales')
       .update({
         monto_separacion: montoSeparacion,
         monto_venta: montoVenta,
         lead_id: finalLeadId,
+        vendedor_actual_id: vendedorId, // SESIÓN 52D: Asignar vendedor
       })
       .eq('id', localId);
 
@@ -545,9 +566,9 @@ export async function saveDatosRegistroVenta(
       return { success: false, message: 'Error al actualizar local' };
     }
 
-    // PASO 4: Registrar en historial
+    // PASO 4: Registrar en historial (SESIÓN 52D: Incluir vendedor asignado)
     const nombreCliente = newLeadData?.nombre || 'Lead existente';
-    const accion = `Admin/Jefe Ventas completó datos para registro de venta: monto_separacion=$${montoSeparacion.toFixed(2)}, monto_venta=$${montoVenta.toFixed(2)}, lead=${nombreCliente}`;
+    const accion = `Admin/Jefe Ventas completó datos para registro de venta: monto_separacion=$${montoSeparacion.toFixed(2)}, monto_venta=$${montoVenta.toFixed(2)}, lead=${nombreCliente}, vendedor_asignado=${vendedorData.nombre}`;
 
     const { error: historialError } = await supabase
       .from('locales_historial')

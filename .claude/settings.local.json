@@ -39,7 +39,10 @@
       "Bash(git fetch:*)",
       "Bash(git pull:*)",
       "Bash(curl:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(clip)",
+      "Bash(git restore:*)",
+      "Bash(npm ci)"
     ],
     "deny": [],
     "ask": []
