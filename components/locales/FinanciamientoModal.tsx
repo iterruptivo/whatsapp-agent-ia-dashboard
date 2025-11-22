@@ -105,7 +105,7 @@ export default function FinanciamientoModal({
 
   // Helper para formatear montos
   const formatMonto = (monto: number | null | undefined): string => {
-    if (!monto) return 'N/A';
+    if (monto === null || monto === undefined) return 'N/A';
     return `$ ${monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
