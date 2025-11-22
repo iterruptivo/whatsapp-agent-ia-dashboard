@@ -8,9 +8,9 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 21 Noviembre 2025
-**Sesión:** 52C - 📝 **Modal Datos Previos para Registro de Venta**
+**Sesión:** 52D - 👤 **Campo "Asignar Vendedor" en Modal Datos Previos**
 **Estado:** ✅ **DEPLOYED TO STAGING**
-**Documentación:** SESIÓN 52C (ver sección "ÚLTIMAS 5 SESIONES" más abajo)
+**Documentación:** SESIÓN 52D (ver sección "ÚLTIMAS 5 SESIONES" más abajo)
 
 ---
 
@@ -57,8 +57,8 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: OPERATIVO (1,417 leads con keyset pagination)
 
 - **[Locales](docs/modulos/locales.md)** - Semáforo, monto de venta, tracking
-  - Última sesión: **48C (Modal comentario obligatorio NARANJA)**
-  - Estado: OPERATIVO (823 locales con real-time + comentarios obligatorios)
+  - Última sesión: **52D (Campo Asignar Vendedor en modal datos previos)**
+  - Estado: OPERATIVO (823 locales con real-time + asignación vendedor obligatoria)
 
 - **[Usuarios](docs/modulos/usuarios.md)** - Roles, permisos, CRUD
   - Última sesión: 40D (Nuevo admin Bryan)
@@ -144,6 +144,60 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 52D** (21 Nov) - 👤 ✅ **Campo "Asignar Vendedor" en Modal Datos Previos**
+**Feature:** 4ta sección en modal "Datos necesarios para iniciar proceso" para asignar vendedor
+**Problema resuelto:** Error "Vendedor no encontrado" cuando admin/jefe_ventas confirman el modal
+**Root cause:** Local puede no tener vendedor asignado cuando se pasa directamente a ROJO sin pasar por NARANJA
+
+**Campo implementado:**
+- **Label:** "Asignar Vendedor *" (requerido)
+- **Tipo:** Searchable select con búsqueda en tiempo real
+- **Opciones:** Todos los usuarios con rol 'vendedor' OR 'vendedor_caseta'
+- **Formato:** Nombre completo del vendedor
+- **Ordenado:** Alfabéticamente por nombre
+- **Búsqueda:** Filtrar mientras el usuario escribe
+
+**UI/UX:**
+- Icon: Users (lucide-react)
+- Input text con placeholder "Buscar vendedor por nombre..."
+- Dropdown con scroll (max-h-40) para lista filtrada
+- Cada item muestra: Nombre (bold) + Rol (Vendedor/Vendedor Caseta)
+- Card verde cuando seleccionado (CheckCircle icon + nombre + botón "Cambiar")
+- Espaciado consistente (border-t + pt-6)
+
+**Frontend (DatosRegistroVentaModal.tsx):**
+- State nuevo: `vendedores`, `selectedVendedor`, `vendedorSearchTerm`
+- useEffect para cargar vendedores activos (`getAllVendedoresActivos()`)
+- Filtrado en tiempo real: `.filter(v => v.nombre.toLowerCase().includes(term.toLowerCase()))`
+- Validación client-side: `selectedVendedor.trim().length > 0` en `canSubmit`
+- Error si se intenta confirmar sin vendedor
+- handleReset limpia campos vendedor
+- Paso `vendedorId` al server action
+
+**Backend (actions-locales.ts):**
+- Modificar firma de `saveDatosRegistroVenta()` agregando parámetro `vendedorId: string`
+- Validación server-side: `vendedorId` no vacío ni null
+- Validación server-side: Query verifica que vendedor existe con rol válido
+- Actualizar query UPDATE para incluir `vendedor_actual_id`
+- Actualizar mensaje de historial: incluye `vendedor_asignado=[NOMBRE]`
+
+**Validaciones implementadas:**
+1. **Client-side:**
+   - Campo requerido (validación en `canSubmit`)
+   - Error si se intenta confirmar sin vendedor
+
+2. **Server-side:**
+   - `vendedorId` no vacío ni null
+   - Query verifica vendedor existe: `supabase.from('usuarios').select().eq('vendedor_id', vendedorId).in('rol', ['vendedor', 'vendedor_caseta']).single()`
+   - Retorna error si vendedor no encontrado o rol inválido
+
+**Beneficio:** Elimina error "Vendedor no encontrado" + garantiza asignación correcta de locales ROJOS
+**Archivos:** DatosRegistroVentaModal.tsx (+85 líneas), actions-locales.ts (+27 líneas)
+**Commit:** `154d305`
+**Deploy:** ✅ STAGING
+
+---
 
 ### **Sesión 52C** (21 Nov) - 📝 ✅ **Modal Datos Previos para Registro de Venta**
 **Feature:** Modal previo que captura datos faltantes antes de abrir modal "Financiamiento de Local"
@@ -405,40 +459,6 @@ const handleDatosSuccess = (updatedLocal: Local) => {
 **Tabla nueva:** `proyecto_configuraciones` con RLS policies para admin
 **Archivos:** actions-proyecto-config.ts (nuevo), page.tsx (810 líneas), Sidebar.tsx, middleware.ts
 **[📖 Ver documentación completa →](docs/sesiones/SESION_51_CONFIGURACION_PROYECTOS_COMPLETE.md)**
-
----
-
-### **Sesión 49** (19 Nov) - 🔧 ✅ **FIX CRÍTICO: Proyecto Filter Reset Loop en /locales**
-**Problema crítico:** Filtro Proyecto se resetea automáticamente al proyecto del login
-**Síntoma:** Usuario intenta cambiar a "Todos los proyectos" → resetea inmediatamente
-**Impacto:** Usuarios NO pueden ver locales de otros proyectos ni vista "Todos"
-
-**Root Cause:**
-- `useEffect` líneas 110-118 en `LocalesClient.tsx` tenía `proyectoFilter` en dependency array
-- Cada cambio del usuario → trigger `useEffect` → reset automático a `selectedProyecto.id`
-- Condición `!proyectoFilter && selectedProyecto?.id` evalúa como true cuando filtro es empty string
-
-**Solución quirúrgica (1 línea):**
-- Remover `proyectoFilter` del dependency array: `}, [selectedProyecto?.id]);`
-- `useEffect` ahora solo ejecuta cuando `selectedProyecto.id` cambia (nuevo login)
-- Usuario tiene control total del filtro sin interferencia
-
-**Comportamiento correcto:**
-1. Filtro inicia con login project (preservado)
-2. Usuario puede cambiar a "Todos los proyectos" (funciona)
-3. Usuario puede cambiar a cualquier proyecto (funciona)
-4. Filtro mantiene selección del usuario (sin resets)
-5. Solo resetea si `selectedProyecto` cambia (nuevo login context)
-
-**Testing:**
-- Login como Gerente (admin) → filtro inicia en Callao
-- Cambiar a "Todos los proyectos" → mantiene selección
-- Cambiar a "San Gabriel" → mantiene selección
-- Cambiar estados, metrajes → filtro proyecto NO resetea
-
-**Archivos:** `LocalesClient.tsx` (3 líneas: dependency array + comment explicativo)
-**Commit:** `dff7e66` - fix: Proyecto filter reset loop en /locales
-**Deploy:** PRODUCTION (main branch)
 
 ---
 
