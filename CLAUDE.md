@@ -8,9 +8,9 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 22 Noviembre 2025
-**Sesión:** 52H - 📄 **Sistema Completo de Generación de PDF para Financiamiento**
+**Sesión:** 53 - 🔧 **CORRECCIÓN: Items Separados en Sidebar (Control Pagos + Comisiones)**
 **Estado:** ✅ **DEPLOYED TO STAGING**
-**Documentación:** [SESION_52H_PDF_FINANCIAMIENTO.md](docs/sesiones/SESION_52H_PDF_FINANCIAMIENTO.md)
+**Commit:** 7e3d887
 
 ---
 
@@ -144,6 +144,92 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 53** (22 Nov) - 🔧 ✅ **CORRECCIÓN: Items Separados en Sidebar (Control Pagos + Comisiones)**
+**Tipo:** Corrección urgente de implementación incorrecta
+**Problema:** Se implementaron tabs DENTRO de `/locales` cuando lo correcto era crear items SEPARADOS en el sidebar
+**Root cause:** Malinterpretación de requerimiento del usuario
+
+**Implementación incorrecta (REVERTIDA):**
+- Sistema de tabs con LocalesClientWrapper
+- TabButton component
+- 3 tabs: Gestión | Control de Pagos | Comisiones
+- Navegación interna en `/locales`
+
+**Implementación correcta (APLICADA):**
+- 2 nuevas páginas separadas con rutas propias
+- Items agregados al dropdown "Finanzas" en sidebar
+- Navegación desde menú lateral (no tabs internos)
+
+**Archivos ELIMINADOS (reversión):**
+- `components/locales/LocalesClientWrapper.tsx` (92 líneas)
+- `components/shared/TabButton.tsx` (26 líneas)
+- `components/locales/ControlPagosTab.tsx` (56 líneas)
+- `components/locales/ComisionesTab.tsx` (67 líneas)
+- `components/locales/LocalesGestionTab.tsx` (529 líneas)
+
+**Archivos CREADOS:**
+- `app/control-pagos/page.tsx` (62 líneas)
+  - Placeholder profesional con icono FileText
+  - Solo accesible para admin y jefe_ventas
+  - Validación role-based con redirect
+  - Mensaje "Funcionalidad en desarrollo"
+- `app/comisiones/page.tsx` (70 líneas)
+  - Placeholder profesional con icono DollarSign
+  - Accesible para todos los roles
+  - Mensaje personalizado según rol del usuario
+  - Mensaje "Funcionalidad en desarrollo"
+
+**Archivos MODIFICADOS:**
+- `app/locales/page.tsx` (1 línea)
+  - Restaurar: `import LocalesClient` (en vez de LocalesClientWrapper)
+- `components/shared/Sidebar.tsx` (+16 líneas)
+  - Import FileText icon
+  - Lógica condicional en `getMenuStructure()`:
+    - Crear array `finanzasItems` dinámico según rol
+    - Item 1: "Gestión de Locales" (todos)
+    - Item 2: "Control de Pagos" (solo admin/jefe_ventas)
+    - Item 3: "Comisiones" (todos)
+
+**Estructura final del Sidebar:**
+```
+Finanzas ▼ (dropdown DollarSign icon)
+  ├─ Gestión de Locales → /locales (todos)
+  ├─ Control de Pagos → /control-pagos (solo admin/jefe_ventas)
+  └─ Comisiones → /comisiones (todos)
+```
+
+**Role-based access control:**
+- `admin`: Ve los 3 items
+- `jefe_ventas`: Ve los 3 items
+- `vendedor`: Ve Gestión + Comisiones (NO ve Control de Pagos)
+- `vendedor_caseta`: Ve Gestión + Comisiones (NO ve Control de Pagos)
+
+**Cambios netos:**
+- Líneas eliminadas: 770
+- Líneas agregadas: 155
+- Balance: -615 líneas de código
+- Archivos eliminados: 5
+- Archivos creados: 2
+
+**Testing:**
+- ✅ Sidebar muestra items correctos según rol
+- ✅ Navegación a páginas funciona
+- ✅ Placeholders se renderizan correctamente
+- ✅ Validación role-based en `/control-pagos` funciona
+- ✅ `/locales` sigue funcionando como antes
+
+**Lecciones aprendidas:**
+- Verificar SIEMPRE el contexto exacto del usuario antes de implementar
+- "Tabs dentro de Gestión de Locales" ≠ "Items en el sidebar bajo Finanzas"
+- Tabs internos = navegación dentro de UNA página
+- Items sidebar = navegación entre DIFERENTES páginas
+- Cuando hay duda, PREGUNTAR al usuario antes de implementar
+
+**Commit:** 7e3d887
+**Deploy:** ✅ STAGING
+
+---
 
 ### **Sesión 52H** (22 Nov) - 📄 ✅ **Sistema Completo de Generación de PDF para Financiamiento**
 **Feature:** Generación de PDF profesional con branding EcoPlaza para calendario de pagos de financiamiento
