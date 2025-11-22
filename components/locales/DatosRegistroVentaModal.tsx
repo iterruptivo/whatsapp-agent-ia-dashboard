@@ -186,6 +186,15 @@ export default function DatosRegistroVentaModal({
     setError(null);
 
     try {
+      // DEBUG: Log valores antes de enviar
+      console.log('[DATOS MODAL] Valores a enviar:', {
+        localId: local.id,
+        usuarioId,
+        selectedVendedor,
+        vendedorSeleccionadoTipo: typeof selectedVendedor,
+        vendedores: vendedores.map(v => ({ id: v.id, vendedor_id: v.vendedor_id, nombre: v.nombre }))
+      });
+
       // Importar server action dinámicamente
       const { saveDatosRegistroVenta } = await import('@/lib/actions-locales');
 

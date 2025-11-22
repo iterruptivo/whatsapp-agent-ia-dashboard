@@ -512,17 +512,31 @@ export async function saveDatosRegistroVenta(
     }
 
     // SESIÓN 52D: Validar vendedorId
+    console.log('[DATOS VENTA] 🔍 Validando vendedorId recibido:', {
+      vendedorId,
+      tipo: typeof vendedorId,
+      longitud: vendedorId?.length,
+      estaVacio: !vendedorId || vendedorId.trim().length === 0
+    });
+
     if (!vendedorId || vendedorId.trim().length === 0) {
       return { success: false, message: 'Debe seleccionar un vendedor' };
     }
 
     // SESIÓN 52D: Validar que vendedor existe y tiene rol válido
+    console.log('[DATOS VENTA] 🔍 Ejecutando query usuarios con .eq("id", vendedorId)');
     const { data: vendedorData, error: vendedorError } = await supabase
       .from('usuarios')
       .select('id, nombre, rol, vendedor_id')
       .eq('id', vendedorId)  // Buscar por ID de usuario
       .in('rol', ['vendedor', 'vendedor_caseta'])
       .single();
+
+    console.log('[DATOS VENTA] 🔍 Resultado de query:', {
+      found: !!vendedorData,
+      vendedorData,
+      error: vendedorError
+    });
 
     if (vendedorError || !vendedorData) {
       console.error('[DATOS VENTA] ❌ Error validando vendedor:', vendedorError);
