@@ -7,12 +7,15 @@ import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import {
   getProyectosWithConfigurations,
   saveProyectoConfiguracion,
+  getUsuariosActivosPorRol,
   Proyecto,
   ProyectoWithConfig,
   PorcentajeInicial,
-  CuotaMeses
+  CuotaMeses,
+  ComisionRol,
+  Usuario
 } from '@/lib/actions-proyecto-config';
-import { Save, ChevronDown, ChevronUp, ChevronUp as ArrowUp, ChevronDown as ArrowDown, X, Plus } from 'lucide-react';
+import { Save, ChevronDown, ChevronUp, ChevronUp as ArrowUp, ChevronDown as ArrowDown, X, Plus, Users, Search } from 'lucide-react';
 
 interface ProyectoFormData {
   tea: string;
@@ -24,6 +27,12 @@ interface ProyectoFormData {
   nuevaCuotaSinInteres: string;
   cuotas_con_interes: CuotaMeses[];
   nuevaCuotaConInteres: string;
+  // SESIÓN 54: Comisiones por rol
+  comisiones: ComisionRol[];
+  nuevaComision_rol: string; // rol seleccionado en dropdown
+  nuevaComision_usuarios: Set<string>; // IDs de usuarios checked
+  nuevaComision_porcentaje: string; // input valor porcentaje
+  nuevaComision_searchTerm: string; // búsqueda en dropdown
   saving: boolean;
   message: { type: 'success' | 'error'; text: string } | null;
 }
@@ -35,6 +44,8 @@ export default function ConfiguracionProyectos() {
   const [loading, setLoading] = useState(true);
   const [expandedProyectos, setExpandedProyectos] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState<Record<string, ProyectoFormData>>({});
+  // SESIÓN 54: Estado de usuarios para comisiones
+  const [todosUsuarios, setTodosUsuarios] = useState<Usuario[]>([]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -45,6 +56,12 @@ export default function ConfiguracionProyectos() {
   useEffect(() => {
     async function loadData() {
       setLoading(true);
+
+      // SESIÓN 54: Cargar usuarios activos
+      const usuariosResult = await getUsuariosActivosPorRol();
+      if (usuariosResult.success && usuariosResult.data) {
+        setTodosUsuarios(usuariosResult.data);
+      }
 
       const result = await getProyectosWithConfigurations();
 
@@ -73,6 +90,12 @@ export default function ConfiguracionProyectos() {
           nuevaCuotaSinInteres: '',
           cuotas_con_interes: configuracion?.configuraciones_extra?.cuotas_con_interes || [],
           nuevaCuotaConInteres: '',
+          // SESIÓN 54: Inicializar comisiones
+          comisiones: configuracion?.configuraciones_extra?.comisiones || [],
+          nuevaComision_rol: '',
+          nuevaComision_usuarios: new Set<string>(),
+          nuevaComision_porcentaje: '',
+          nuevaComision_searchTerm: '',
           saving: false,
           message: null,
         };
@@ -141,6 +164,7 @@ export default function ConfiguracionProyectos() {
       porcentajes_inicial: data.porcentajes_inicial,
       cuotas_sin_interes: data.cuotas_sin_interes,
       cuotas_con_interes: data.cuotas_con_interes,
+      comisiones: data.comisiones, // SESIÓN 54
     });
 
     updateFormData(proyectoId, 'saving', false);
@@ -338,6 +362,149 @@ export default function ConfiguracionProyectos() {
     const reordered = updated.map((c, i) => ({ ...c, order: i }));
 
     updateFormData(proyectoId, 'cuotas_con_interes', reordered);
+  };
+
+  // ==========================================================================
+  // SESIÓN 54: Handlers para Comisiones por Rol
+  // ==========================================================================
+
+  // Helper: Obtener usuarios ya asignados en comisiones
+  const getUsuariosYaAsignados = (proyectoId: string): string[] => {
+    const data = formData[proyectoId];
+    if (!data) return [];
+
+    return data.comisiones.flatMap(c => c.usuarios_ids);
+  };
+
+  // Helper: Filtrar usuarios disponibles según rol seleccionado
+  const getUsuariosDisponiblesParaRol = (proyectoId: string, rol: string): Usuario[] => {
+    if (!rol) return [];
+
+    const usuariosYaAsignados = getUsuariosYaAsignados(proyectoId);
+
+    return todosUsuarios
+      .filter(u => u.rol === rol) // Filtrar por rol
+      .filter(u => !usuariosYaAsignados.includes(u.id)); // Excluir ya asignados
+  };
+
+  // Handler: Seleccionar rol (carga usuarios disponibles)
+  const handleSeleccionarRol = (proyectoId: string, rol: string) => {
+    const data = formData[proyectoId];
+    if (!data) return;
+
+    // Reset campos relacionados
+    updateFormData(proyectoId, 'nuevaComision_rol', rol);
+    updateFormData(proyectoId, 'nuevaComision_usuarios', new Set<string>());
+    updateFormData(proyectoId, 'nuevaComision_porcentaje', '');
+    updateFormData(proyectoId, 'nuevaComision_searchTerm', '');
+    updateFormData(proyectoId, 'message', null);
+
+    // Cargar usuarios disponibles del rol (se filtran dinámicamente)
+    const usuariosDisponibles = getUsuariosDisponiblesParaRol(proyectoId, rol);
+
+    // Si no hay usuarios disponibles, mostrar mensaje
+    if (usuariosDisponibles.length === 0) {
+      updateFormData(proyectoId, 'message', {
+        type: 'error',
+        text: `Todos los usuarios del rol "${rol}" ya tienen comisión asignada`,
+      });
+    }
+  };
+
+  // Handler: Toggle checkbox de usuario
+  const handleToggleUsuario = (proyectoId: string, usuarioId: string) => {
+    const data = formData[proyectoId];
+    if (!data) return;
+
+    const newSet = new Set(data.nuevaComision_usuarios);
+
+    if (newSet.has(usuarioId)) {
+      newSet.delete(usuarioId);
+    } else {
+      newSet.add(usuarioId);
+    }
+
+    updateFormData(proyectoId, 'nuevaComision_usuarios', newSet);
+  };
+
+  // Handler: Agregar comisión
+  const handleAgregarComision = (proyectoId: string) => {
+    const data = formData[proyectoId];
+    if (!data) return;
+
+    // Validación: Rol seleccionado
+    if (!data.nuevaComision_rol) {
+      updateFormData(proyectoId, 'message', {
+        type: 'error',
+        text: 'Debe seleccionar un rol',
+      });
+      return;
+    }
+
+    // Validación: Al menos un usuario seleccionado
+    if (data.nuevaComision_usuarios.size === 0) {
+      updateFormData(proyectoId, 'message', {
+        type: 'error',
+        text: 'Debe seleccionar al menos un usuario',
+      });
+      return;
+    }
+
+    // Validación: Porcentaje válido
+    const porcentaje = parseFloat(data.nuevaComision_porcentaje);
+    if (isNaN(porcentaje) || porcentaje <= 0 || porcentaje > 100) {
+      updateFormData(proyectoId, 'message', {
+        type: 'error',
+        text: 'Porcentaje debe ser un número mayor a 0 y menor o igual a 100',
+      });
+      return;
+    }
+
+    // Crear nueva comisión
+    const nuevaComision: ComisionRol = {
+      rol: data.nuevaComision_rol as 'admin' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta',
+      usuarios_ids: Array.from(data.nuevaComision_usuarios),
+      porcentaje,
+      order: data.comisiones.length
+    };
+
+    // Agregar al array
+    updateFormData(proyectoId, 'comisiones', [...data.comisiones, nuevaComision]);
+
+    // Reset campos
+    updateFormData(proyectoId, 'nuevaComision_rol', '');
+    updateFormData(proyectoId, 'nuevaComision_usuarios', new Set<string>());
+    updateFormData(proyectoId, 'nuevaComision_porcentaje', '');
+    updateFormData(proyectoId, 'nuevaComision_searchTerm', '');
+    updateFormData(proyectoId, 'message', null);
+  };
+
+  // Handler: Eliminar comisión
+  const handleEliminarComision = (proyectoId: string, index: number) => {
+    const data = formData[proyectoId];
+    if (!data) return;
+
+    const updated = data.comisiones.filter((_, i) => i !== index);
+    const reordered = updated.map((c, i) => ({ ...c, order: i }));
+
+    updateFormData(proyectoId, 'comisiones', reordered);
+  };
+
+  // Handler: Mover comisión (reordenar)
+  const handleMoverComision = (proyectoId: string, index: number, direction: 'up' | 'down') => {
+    const data = formData[proyectoId];
+    if (!data) return;
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+
+    if (newIndex < 0 || newIndex >= data.comisiones.length) return;
+
+    const updated = [...data.comisiones];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+
+    const reordered = updated.map((c, i) => ({ ...c, order: i }));
+
+    updateFormData(proyectoId, 'comisiones', reordered);
   };
 
   if (authLoading || loading) {
@@ -771,22 +938,238 @@ export default function ConfiguracionProyectos() {
                         </div>
                         </div>
 
-                        {/* Columna 3: Mantenimiento de comisiones - SESIÓN 53 */}
+                        {/* Columna 3: Mantenimiento de comisiones - SESIÓN 54 */}
                         <div className="space-y-6">
                           <div>
                             <label className="block text-lg font-semibold text-gray-900 mb-1">
                               Mantenimiento de comisiones
                             </label>
                             <p className="text-sm text-gray-500 mb-4">
-                              Configuración de comisiones para este proyecto
+                              Asigna porcentajes de comisión por rol de usuario
                             </p>
 
-                            {/* Placeholder */}
-                            <div className="p-8 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg text-center">
-                              <p className="text-gray-500 italic">
-                                Por configurar
-                              </p>
+                            {/* Dropdown de roles */}
+                            <div className="mb-4">
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Seleccionar rol
+                              </label>
+                              <div className="relative">
+                                <select
+                                  value={data.nuevaComision_rol}
+                                  onChange={(e) => handleSeleccionarRol(proyecto.id, e.target.value)}
+                                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors appearance-none bg-white"
+                                >
+                                  <option value="">Seleccionar rol...</option>
+                                  <option value="admin">Admin</option>
+                                  <option value="jefe_ventas">Jefe de Ventas</option>
+                                  <option value="vendedor">Vendedor</option>
+                                  <option value="vendedor_caseta">Vendedor Caseta</option>
+                                </select>
+                                <Users className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                              </div>
                             </div>
+
+                            {/* Box de usuarios (aparece cuando se selecciona un rol) */}
+                            {data.nuevaComision_rol && (() => {
+                              const usuariosDisponibles = getUsuariosDisponiblesParaRol(proyecto.id, data.nuevaComision_rol);
+                              const usuariosFiltrados = data.nuevaComision_searchTerm
+                                ? usuariosDisponibles.filter(u =>
+                                    u.nombre.toLowerCase().includes(data.nuevaComision_searchTerm.toLowerCase())
+                                  )
+                                : usuariosDisponibles;
+
+                              return (
+                                <div className="p-4 bg-gray-50 border-2 border-gray-300 rounded-lg">
+                                  {/* Header con rol */}
+                                  <div className="pb-3 mb-3 border-b border-gray-300">
+                                    <p className="text-sm font-semibold text-gray-900">
+                                      Rol: {data.nuevaComision_rol === 'admin' ? 'Admin' :
+                                             data.nuevaComision_rol === 'jefe_ventas' ? 'Jefe de Ventas' :
+                                             data.nuevaComision_rol === 'vendedor' ? 'Vendedor' : 'Vendedor Caseta'}
+                                    </p>
+                                  </div>
+
+                                  {usuariosDisponibles.length === 0 ? (
+                                    <p className="text-sm text-amber-600 italic mb-3">
+                                      Todos los usuarios de este rol ya tienen comisión asignada
+                                    </p>
+                                  ) : (
+                                    <>
+                                      {/* Buscador */}
+                                      {usuariosDisponibles.length > 5 && (
+                                        <div className="relative mb-3">
+                                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                          <input
+                                            type="text"
+                                            value={data.nuevaComision_searchTerm}
+                                            onChange={(e) => updateFormData(proyecto.id, 'nuevaComision_searchTerm', e.target.value)}
+                                            placeholder="Buscar usuario..."
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
+                                          />
+                                        </div>
+                                      )}
+
+                                      {/* Lista de checkboxes */}
+                                      <div className="max-h-40 overflow-y-auto space-y-2 mb-3">
+                                        {usuariosFiltrados.map((usuario) => (
+                                          <label
+                                            key={usuario.id}
+                                            className="flex items-center gap-2 p-2 hover:bg-white rounded cursor-pointer transition-colors"
+                                          >
+                                            <input
+                                              type="checkbox"
+                                              checked={data.nuevaComision_usuarios.has(usuario.id)}
+                                              onChange={() => handleToggleUsuario(proyecto.id, usuario.id)}
+                                              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-2 focus:ring-primary"
+                                            />
+                                            <span className="text-sm font-medium text-gray-900">
+                                              {usuario.nombre}
+                                            </span>
+                                          </label>
+                                        ))}
+                                      </div>
+
+                                      {usuariosFiltrados.length === 0 && (
+                                        <p className="text-sm text-gray-400 italic mb-3">
+                                          No se encontraron usuarios
+                                        </p>
+                                      )}
+
+                                      {/* Input porcentaje + botón Agregar */}
+                                      <div className="pt-3 border-t border-gray-300">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                          Definir porcentaje
+                                        </label>
+                                        <div className="flex gap-2">
+                                          <input
+                                            type="number"
+                                            value={data.nuevaComision_porcentaje}
+                                            onChange={(e) => updateFormData(proyecto.id, 'nuevaComision_porcentaje', e.target.value)}
+                                            placeholder="10.5"
+                                            min="0.01"
+                                            max="100"
+                                            step="0.01"
+                                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                                          />
+                                          <span className="flex items-center px-3 bg-gray-100 border border-gray-300 rounded-lg text-gray-700 font-medium">
+                                            %
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleAgregarComision(proyecto.id)}
+                                            disabled={data.nuevaComision_usuarios.size === 0 || !data.nuevaComision_porcentaje}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                                              data.nuevaComision_usuarios.size === 0 || !data.nuevaComision_porcentaje
+                                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                : 'bg-primary text-white hover:bg-primary/90'
+                                            }`}
+                                          >
+                                            <Plus className="w-4 h-4" />
+                                            Agregar
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              );
+                            })()}
+
+                            {/* Lista de comisiones configuradas */}
+                            {data.comisiones.length > 0 && (
+                              <div className="mt-6">
+                                <label className="block text-sm font-semibold text-gray-900 mb-3">
+                                  Comisiones configuradas
+                                </label>
+                                <div className="space-y-2">
+                                  {data.comisiones.map((comision, index) => {
+                                    // Obtener nombres de usuarios
+                                    const nombresUsuarios = comision.usuarios_ids
+                                      .map(id => todosUsuarios.find(u => u.id === id)?.nombre)
+                                      .filter(Boolean);
+
+                                    return (
+                                      <div
+                                        key={index}
+                                        className="p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                                      >
+                                        {/* Header con rol, cantidad, porcentaje */}
+                                        <div className="flex items-center justify-between mb-2">
+                                          <div className="flex items-center gap-3">
+                                            <span className="text-sm font-medium text-gray-600 min-w-[30px]">
+                                              {index + 1}°
+                                            </span>
+                                            <div>
+                                              <p className="text-base font-semibold text-gray-900">
+                                                {comision.rol === 'admin' ? 'Admin' :
+                                                 comision.rol === 'jefe_ventas' ? 'Jefe de Ventas' :
+                                                 comision.rol === 'vendedor' ? 'Vendedor' : 'Vendedor Caseta'}
+                                                {' - '}
+                                                <span className="text-primary">
+                                                  {comision.usuarios_ids.length} usuario{comision.usuarios_ids.length !== 1 ? 's' : ''}
+                                                </span>
+                                                {' - '}
+                                                <span className="text-green-600">{comision.porcentaje}%</span>
+                                              </p>
+                                            </div>
+                                          </div>
+
+                                          {/* Botones de acción */}
+                                          <div className="flex items-center gap-1">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleMoverComision(proyecto.id, index, 'up')}
+                                              disabled={index === 0}
+                                              className={`p-1 rounded ${
+                                                index === 0
+                                                  ? 'text-gray-300 cursor-not-allowed'
+                                                  : 'text-gray-600 hover:bg-gray-200'
+                                              }`}
+                                            >
+                                              <ArrowUp className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleMoverComision(proyecto.id, index, 'down')}
+                                              disabled={index === data.comisiones.length - 1}
+                                              className={`p-1 rounded ${
+                                                index === data.comisiones.length - 1
+                                                  ? 'text-gray-300 cursor-not-allowed'
+                                                  : 'text-gray-600 hover:bg-gray-200'
+                                              }`}
+                                            >
+                                              <ArrowDown className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleEliminarComision(proyecto.id, index)}
+                                              className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                            >
+                                              <X className="w-4 h-4" />
+                                            </button>
+                                          </div>
+                                        </div>
+
+                                        {/* Lista de usuarios */}
+                                        <ul className="ml-12 space-y-1">
+                                          {nombresUsuarios.map((nombre, i) => (
+                                            <li key={i} className="text-sm text-gray-600">
+                                              • {nombre}
+                                            </li>
+                                          ))}
+                                        </ul>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {data.comisiones.length === 0 && !data.nuevaComision_rol && (
+                              <p className="text-sm text-gray-400 italic mt-4">
+                                No hay comisiones configuradas. Selecciona un rol para comenzar.
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>

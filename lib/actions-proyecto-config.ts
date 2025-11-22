@@ -23,6 +23,23 @@ export interface CuotaMeses {
   order: number;
 }
 
+// SESIÓN 54: Configuración de comisiones por rol
+export interface Usuario {
+  id: string;
+  nombre: string;
+  email: string;
+  rol: 'admin' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta';
+  vendedor_id: string | null;
+  activo: boolean;
+}
+
+export interface ComisionRol {
+  rol: 'admin' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta';
+  usuarios_ids: string[]; // IDs de usuarios seleccionados
+  porcentaje: number; // Puede ser decimal (10.5)
+  order: number;
+}
+
 export interface ProyectoConfiguracion {
   id: string;
   proyecto_id: string;
@@ -31,6 +48,7 @@ export interface ProyectoConfiguracion {
     porcentajes_inicial?: PorcentajeInicial[];
     cuotas_sin_interes?: CuotaMeses[];
     cuotas_con_interes?: CuotaMeses[];
+    comisiones?: ComisionRol[]; // SESIÓN 54
   };
   created_at: string;
   updated_at: string;
@@ -40,6 +58,71 @@ export interface ProyectoConfiguracion {
 export interface ProyectoWithConfig {
   proyecto: Proyecto;
   configuracion: ProyectoConfiguracion | null;
+}
+
+// SESIÓN 54: Obtener usuarios activos filtrados por rol
+export async function getUsuariosActivosPorRol(
+  rol?: 'admin' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta'
+): Promise<{
+  success: boolean;
+  data?: Usuario[];
+  message?: string;
+}> {
+  try {
+    const cookieStore = await cookies();
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+
+    if (authError || !user) {
+      return {
+        success: false,
+        message: 'Usuario no autenticado',
+      };
+    }
+
+    // Build query
+    let query = supabaseAuth
+      .from('usuarios')
+      .select('id, nombre, email, rol, vendedor_id, activo')
+      .eq('activo', true); // Solo usuarios activos
+
+    // Filter by rol if provided
+    if (rol) {
+      query = query.eq('rol', rol);
+    }
+
+    const { data: usuarios, error: usuariosError } = await query.order('nombre', { ascending: true });
+
+    if (usuariosError) {
+      console.error('Error fetching usuarios:', usuariosError);
+      return {
+        success: false,
+        message: 'Error al cargar usuarios',
+      };
+    }
+
+    return {
+      success: true,
+      data: usuarios || [],
+    };
+  } catch (error) {
+    console.error('Error in getUsuariosActivosPorRol:', error);
+    return {
+      success: false,
+      message: 'Error inesperado al cargar usuarios',
+    };
+  }
 }
 
 export async function getProyectosWithConfigurations(): Promise<{
@@ -125,6 +208,7 @@ export async function saveProyectoConfiguracion(
     porcentajes_inicial?: PorcentajeInicial[];
     cuotas_sin_interes?: CuotaMeses[];
     cuotas_con_interes?: CuotaMeses[];
+    comisiones?: ComisionRol[]; // SESIÓN 54
   }
 ) {
   try {
@@ -171,12 +255,64 @@ export async function saveProyectoConfiguracion(
       .eq('proyecto_id', proyectoId)
       .maybeSingle();
 
+    // SESIÓN 54: Validaciones de comisiones
+    if (data.comisiones && data.comisiones.length > 0) {
+      // Validar que porcentajes sean válidos
+      for (const comision of data.comisiones) {
+        if (comision.porcentaje <= 0 || comision.porcentaje > 100) {
+          return {
+            success: false,
+            message: `Porcentaje de comisión debe ser mayor a 0 y menor o igual a 100 (rol: ${comision.rol})`,
+          };
+        }
+
+        // Validar que al menos haya un usuario seleccionado
+        if (comision.usuarios_ids.length === 0) {
+          return {
+            success: false,
+            message: `Debe seleccionar al menos un usuario para la comisión (rol: ${comision.rol})`,
+          };
+        }
+
+        // Validar que usuarios existan y pertenezcan al rol especificado
+        const { data: usuarios, error: usuariosError } = await supabaseAuth
+          .from('usuarios')
+          .select('id, rol')
+          .in('id', comision.usuarios_ids);
+
+        if (usuariosError || !usuarios) {
+          return {
+            success: false,
+            message: `Error al validar usuarios de la comisión (rol: ${comision.rol})`,
+          };
+        }
+
+        // Verificar que todos los usuarios pertenecen al rol
+        const usuariosInvalidos = usuarios.filter(u => u.rol !== comision.rol);
+        if (usuariosInvalidos.length > 0) {
+          return {
+            success: false,
+            message: `Algunos usuarios no pertenecen al rol ${comision.rol}`,
+          };
+        }
+
+        // Verificar que todos los IDs fueron encontrados
+        if (usuarios.length !== comision.usuarios_ids.length) {
+          return {
+            success: false,
+            message: `Algunos usuarios no fueron encontrados (rol: ${comision.rol})`,
+          };
+        }
+      }
+    }
+
     // Build configuraciones_extra with all arrays
     const configuraciones_extra = {
       ...(existingConfig?.configuraciones_extra || {}),
       porcentajes_inicial: data.porcentajes_inicial || [],
       cuotas_sin_interes: data.cuotas_sin_interes || [],
-      cuotas_con_interes: data.cuotas_con_interes || []
+      cuotas_con_interes: data.cuotas_con_interes || [],
+      comisiones: data.comisiones || [] // SESIÓN 54
     };
 
     let teaResult;
