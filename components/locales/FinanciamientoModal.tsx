@@ -9,9 +9,10 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { Local } from '@/lib/locales';
+import { getLocalLeads } from '@/lib/locales';
 
 interface FinanciamientoModalProps {
   isOpen: boolean;
@@ -25,6 +26,23 @@ export default function FinanciamientoModal({
   onClose,
 }: FinanciamientoModalProps) {
   const [conFinanciamiento, setConFinanciamiento] = useState<boolean>(true);
+  const [leadNombre, setLeadNombre] = useState<string>('');
+
+  // Obtener nombre del lead vinculado
+  useEffect(() => {
+    if (!isOpen || !local) return;
+
+    async function fetchLeadNombre() {
+      const localLeads = await getLocalLeads(local!.id);
+      if (localLeads.length > 0 && localLeads[0].lead_nombre) {
+        setLeadNombre(localLeads[0].lead_nombre);
+      } else {
+        setLeadNombre('N/A');
+      }
+    }
+
+    fetchLeadNombre();
+  }, [isOpen, local]);
 
   if (!isOpen || !local) return null;
 
@@ -68,6 +86,10 @@ export default function FinanciamientoModal({
               <div>
                 <span className="text-gray-500">Metraje:</span>
                 <span className="ml-2 font-medium text-gray-900">{local.metraje} m²</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Lead Vinculado:</span>
+                <span className="ml-2 font-medium text-gray-900">{leadNombre || 'Cargando...'}</span>
               </div>
             </div>
           </div>
