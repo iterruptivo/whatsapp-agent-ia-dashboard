@@ -571,12 +571,16 @@ export async function saveDatosRegistroVenta(
     // PASO 2: Si newLeadData existe, crear nuevo lead manual
     if (!leadId && newLeadData) {
       console.log('[DATOS VENTA] Creando nuevo lead manual:', newLeadData);
+      console.log('[DATOS VENTA] Pasando vendedor_id a createManualLead:', {
+        usuarioId: vendedorId,
+        vendedorId: vendedorData.vendedor_id
+      });
 
       const createResult = await createManualLead(
         newLeadData.nombre,
         newLeadData.telefono,
         newLeadData.proyectoId,
-        vendedorId // SESIÓN 52D: Usar vendedorId seleccionado por admin
+        vendedorData.vendedor_id // SESIÓN 52D: Pasar vendedor_id (tabla vendedores), NO usuario.id
       );
 
       if (createResult.success && createResult.leadId) {
