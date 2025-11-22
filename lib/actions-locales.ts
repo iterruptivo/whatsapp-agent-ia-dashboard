@@ -520,11 +520,12 @@ export async function saveDatosRegistroVenta(
     const { data: vendedorData, error: vendedorError } = await supabase
       .from('usuarios')
       .select('id, nombre, rol')
-      .eq('vendedor_id', vendedorId)
+      .eq('id', vendedorId)  // Fix: Usar 'id' en vez de 'vendedor_id'
       .in('rol', ['vendedor', 'vendedor_caseta'])
       .single();
 
     if (vendedorError || !vendedorData) {
+      console.error('[DATOS VENTA] ❌ Error validando vendedor:', vendedorError);
       return { success: false, message: 'Vendedor no encontrado o inválido' };
     }
 
@@ -538,7 +539,7 @@ export async function saveDatosRegistroVenta(
         newLeadData.nombre,
         newLeadData.telefono,
         newLeadData.proyectoId,
-        usuarioId // vendedorId = usuarioId (admin/jefe_ventas)
+        vendedorId // SESIÓN 52D: Usar vendedorId seleccionado por admin
       );
 
       if (createResult.success && createResult.leadId) {
