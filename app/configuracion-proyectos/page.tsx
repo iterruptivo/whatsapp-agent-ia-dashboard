@@ -392,15 +392,16 @@ export default function ConfiguracionProyectos() {
     const data = formData[proyectoId];
     if (!data) return;
 
+    // Obtener usuarios disponibles y pre-cargar todos sus IDs (checkboxes marcados por defecto)
+    const usuariosDisponibles = getUsuariosDisponiblesParaRol(proyectoId, rol);
+    const todosLosIds = new Set(usuariosDisponibles.map(u => u.id));
+
     // Reset campos relacionados
     updateFormData(proyectoId, 'nuevaComision_rol', rol);
-    updateFormData(proyectoId, 'nuevaComision_usuarios', new Set<string>());
+    updateFormData(proyectoId, 'nuevaComision_usuarios', todosLosIds); // Pre-cargado con todos los IDs
     updateFormData(proyectoId, 'nuevaComision_porcentaje', '');
     updateFormData(proyectoId, 'nuevaComision_searchTerm', '');
     updateFormData(proyectoId, 'message', null);
-
-    // Cargar usuarios disponibles del rol (se filtran dinámicamente)
-    const usuariosDisponibles = getUsuariosDisponiblesParaRol(proyectoId, rol);
 
     // Si no hay usuarios disponibles, mostrar mensaje
     if (usuariosDisponibles.length === 0) {
