@@ -406,8 +406,8 @@ export default function ConfiguracionProyectos() {
 
                   {isExpanded && data && (
                     <div className="px-6 py-6">
-                      {/* Grid 2 columnas en desktop, apilado en mobile */}
-                      <div className="grid lg:grid-cols-2 gap-8 mb-6">
+                      {/* Grid 3 columnas en desktop, apilado en mobile - SESIÓN 53: Agregada columna Mantenimiento de comisiones */}
+                      <div className="grid lg:grid-cols-3 gap-8 mb-6">
 
                         {/* Columna Izquierda: TEA + Color + Estado */}
                         <div className="space-y-6">
@@ -769,6 +769,25 @@ export default function ConfiguracionProyectos() {
                             </p>
                           )}
                         </div>
+                        </div>
+
+                        {/* Columna 3: Mantenimiento de comisiones - SESIÓN 53 */}
+                        <div className="space-y-6">
+                          <div>
+                            <label className="block text-lg font-semibold text-gray-900 mb-1">
+                              Mantenimiento de comisiones
+                            </label>
+                            <p className="text-sm text-gray-500 mb-4">
+                              Configuración de comisiones para este proyecto
+                            </p>
+
+                            {/* Placeholder */}
+                            <div className="p-8 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg text-center">
+                              <p className="text-gray-500 italic">
+                                Por configurar
+                              </p>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
