@@ -51,9 +51,9 @@ export function generarPDFFinanciamiento(data: PDFData): void {
   const doc = new jsPDF();
 
   // Colores EcoPlaza
-  const verde = [27, 150, 122]; // #1b967a
-  const navy = [25, 44, 77]; // #192c4d
-  const amarillo = [251, 222, 23]; // #fbde17
+  const verde: [number, number, number] = [27, 150, 122]; // #1b967a
+  const navy: [number, number, number] = [25, 44, 77]; // #192c4d
+  const amarillo: [number, number, number] = [251, 222, 23]; // #fbde17
 
   let yPos = 20;
   const margin = 15;
