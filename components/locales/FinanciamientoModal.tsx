@@ -6,7 +6,8 @@
 // SESIÓN 52: Feature inicial - Solo mostrar modal con título correcto
 // SESIÓN 52B: Agregar campos financiamiento/separación (radio buttons + display values)
 // SESIÓN 52D: Lead vinculado (nombre + teléfono) + Cuotas condicionales del proyecto
-// SESIÓN 52E: Inicial (porcentaje + monto) + Inicial Restante (calculado)
+// SESIÓN 52E: Inicial (porcentaje + monto) + Inicial Restante + Monto Restante + TEA
+// SESIÓN 52F: Fecha de pago + Calendario de cuotas (Sin financiamiento) con manejo de febrero
 // ============================================================================
 
 'use client';
@@ -37,6 +38,8 @@ export default function FinanciamientoModal({
   const [cuotaSeleccionada, setCuotaSeleccionada] = useState<number | null>(null);
   const [porcentajeInicial, setPorcentajeInicial] = useState<number | null>(null);
   const [teaProyecto, setTeaProyecto] = useState<number | null>(null);
+  const [fechaPago, setFechaPago] = useState<string>('');
+  const [calendarioCuotas, setCalendarioCuotas] = useState<Array<{ numero: number; fecha: string; monto: number }>>([]);
 
   // Obtener nombre y teléfono del lead vinculado
   useEffect(() => {
@@ -109,6 +112,43 @@ export default function FinanciamientoModal({
   const montoRestante = montoInicial && local.monto_venta
     ? local.monto_venta - montoInicial
     : null;
+
+  // Función para generar calendario de cuotas (Sin financiamiento)
+  const generarCalendarioCuotas = () => {
+    if (!fechaPago || !cuotaSeleccionada || !montoRestante) return;
+
+    const montoPorCuota = montoRestante / cuotaSeleccionada;
+    const cuotas: Array<{ numero: number; fecha: string; monto: number }> = [];
+    const fechaInicial = new Date(fechaPago);
+
+    for (let i = 0; i < cuotaSeleccionada; i++) {
+      const fechaCuota = new Date(fechaInicial);
+      fechaCuota.setMonth(fechaCuota.getMonth() + i);
+
+      // Manejo especial de febrero
+      const diaOriginal = fechaInicial.getDate();
+      const mesActual = fechaCuota.getMonth();
+
+      // Si el día original es 29, 30 o 31 y estamos en febrero
+      if (diaOriginal >= 29 && mesActual === 1) {
+        const año = fechaCuota.getFullYear();
+        const esBisiesto = (año % 4 === 0 && año % 100 !== 0) || (año % 400 === 0);
+        const ultimoDiaFebrero = esBisiesto ? 29 : 28;
+        fechaCuota.setDate(Math.min(diaOriginal, ultimoDiaFebrero));
+      }
+
+      cuotas.push({
+        numero: i + 1,
+        fecha: fechaCuota.toISOString().split('T')[0],
+        monto: montoPorCuota
+      });
+    }
+
+    setCalendarioCuotas(cuotas);
+  };
+
+  // Fecha mínima (hoy)
+  const fechaMinima = new Date().toISOString().split('T')[0];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -307,6 +347,76 @@ export default function FinanciamientoModal({
               )
             )}
           </div>
+
+          {/* Fecha de Pago (para ambos) */}
+          <div className="border-t pt-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Fecha de Pago
+            </label>
+            <input
+              type="date"
+              value={fechaPago}
+              onChange={(e) => {
+                setFechaPago(e.target.value);
+                setCalendarioCuotas([]); // Reset calendario al cambiar fecha
+              }}
+              min={fechaMinima}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+            />
+          </div>
+
+          {/* Botón Generar Calendario (solo para Sin financiamiento) */}
+          {!conFinanciamiento && fechaPago && cuotaSeleccionada && (
+            <div className="flex justify-center">
+              <button
+                type="button"
+                onClick={generarCalendarioCuotas}
+                className="px-6 py-3 bg-[#1b967a] text-white font-semibold rounded-lg hover:bg-[#157a63] transition-colors shadow-md"
+              >
+                Generar calendario de pagos
+              </button>
+            </div>
+          )}
+
+          {/* Tabla de Cuotas (solo para Sin financiamiento y cuando hay calendario) */}
+          {!conFinanciamiento && calendarioCuotas.length > 0 && (
+            <div className="border-t pt-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                Calendario de Pagos
+              </h3>
+              <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-[#192c4d] text-white">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-semibold"># Cuota</th>
+                      <th className="px-4 py-3 text-left font-semibold">Fecha de Pago</th>
+                      <th className="px-4 py-3 text-right font-semibold">Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {calendarioCuotas.map((cuota, index) => (
+                      <tr
+                        key={cuota.numero}
+                        className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                      >
+                        <td className="px-4 py-3 font-medium text-gray-900">{cuota.numero}</td>
+                        <td className="px-4 py-3 text-gray-700">
+                          {new Date(cuota.fecha + 'T00:00:00').toLocaleDateString('es-PE', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-[#1b967a]">
+                          {formatMonto(cuota.monto)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
