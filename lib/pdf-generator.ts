@@ -97,7 +97,7 @@ export function generarPDFFinanciamiento(data: PDFData): void {
     `Proyecto: ${data.local.proyecto_nombre || 'N/A'}`,
     `Precio de Venta: $ ${data.local.monto_venta?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || 'N/A'}`,
     `Separación: $ ${data.local.monto_separacion?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || 'N/A'}`,
-    `Lead Vinculado: ${data.leadNombre}${data.leadTelefono ? ` (${data.leadTelefono})` : ''}`,
+    `Lead Vinculado (Cliente): ${data.leadNombre}${data.leadTelefono ? ` (${data.leadTelefono})` : ''}`,
   ];
 
   infoLocal.forEach((line) => {
@@ -221,14 +221,15 @@ export function generarPDFFinanciamiento(data: PDFData): void {
           fillColor: [245, 245, 245],
         },
         columnStyles: {
-          0: { halign: 'center', cellWidth: 18 },
-          1: { halign: 'left', cellWidth: 28 },
-          2: { halign: 'right', cellWidth: 25, textColor: [220, 38, 38] }, // Rojo
-          3: { halign: 'right', cellWidth: 30, textColor: [37, 99, 235] }, // Azul
-          4: { halign: 'right', cellWidth: 25, textColor: verde, fontStyle: 'bold' }, // Verde
-          5: { halign: 'right', cellWidth: 25 },
+          0: { halign: 'center' },
+          1: { halign: 'left' },
+          2: { halign: 'right', textColor: [220, 38, 38] }, // Rojo
+          3: { halign: 'right', textColor: [37, 99, 235] }, // Azul
+          4: { halign: 'right', textColor: verde, fontStyle: 'bold' }, // Verde
+          5: { halign: 'right' },
         },
-        margin: { left: margin, right: margin },
+        margin: { left: 5, right: 5 },
+        tableWidth: 'auto',
       });
     } else {
       // Tabla SIN financiamiento (3 columnas)
@@ -257,11 +258,12 @@ export function generarPDFFinanciamiento(data: PDFData): void {
           fillColor: [245, 245, 245],
         },
         columnStyles: {
-          0: { halign: 'center', cellWidth: 25 },
-          1: { halign: 'left', cellWidth: 50 },
-          2: { halign: 'right', cellWidth: 40, textColor: verde, fontStyle: 'bold' },
+          0: { halign: 'center' },
+          1: { halign: 'left' },
+          2: { halign: 'right', textColor: verde, fontStyle: 'bold' },
         },
-        margin: { left: margin, right: margin },
+        margin: { left: 5, right: 5 },
+        tableWidth: 'auto',
       });
     }
   }
