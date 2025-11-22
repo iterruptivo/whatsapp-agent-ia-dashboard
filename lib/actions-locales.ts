@@ -9,6 +9,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabase } from './supabase';
+import { createServerClient } from '@supabase/ssr'; // SESIÓN 52D: Para Server Actions con auth
+import { cookies } from 'next/headers'; // SESIÓN 52D: Para Server Actions con auth
 import {
   updateLocalEstadoQuery,
   importLocalesQuery,
@@ -498,6 +500,27 @@ export async function saveDatosRegistroVenta(
   vendedorId: string // SESIÓN 52D: Nuevo parámetro REQUERIDO
 ) {
   try {
+    // SESIÓN 52D: Crear Server Client con autenticación (patrón Sesión 51)
+    const cookieStore = await cookies();
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value;
+          },
+        },
+      }
+    );
+
+    // Validar autenticación
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      console.error('[DATOS VENTA] ❌ Error de autenticación:', authError);
+      return { success: false, message: 'No autorizado' };
+    }
+
     // PASO 1: Validar inputs server-side
     if (!localId || !usuarioId) {
       return { success: false, message: 'Datos incompletos (localId, usuarioId)' };
@@ -523,9 +546,9 @@ export async function saveDatosRegistroVenta(
       return { success: false, message: 'Debe seleccionar un vendedor' };
     }
 
-    // SESIÓN 52D: Validar que vendedor existe y tiene rol válido
+    // SESIÓN 52D: Validar que vendedor existe y tiene rol válido (usando Server Client)
     console.log('[DATOS VENTA] 🔍 Ejecutando query usuarios con .eq("id", vendedorId)');
-    const { data: vendedorData, error: vendedorError } = await supabase
+    const { data: vendedorData, error: vendedorError } = await supabaseAuth
       .from('usuarios')
       .select('id, nombre, rol, vendedor_id')
       .eq('id', vendedorId)  // Buscar por ID de usuario
@@ -566,7 +589,7 @@ export async function saveDatosRegistroVenta(
     }
 
     // PASO 3: Actualizar local con montos, lead_id y vendedor_id (SESIÓN 52D)
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAuth
       .from('locales')
       .update({
         monto_separacion: montoSeparacion,
@@ -585,7 +608,7 @@ export async function saveDatosRegistroVenta(
     const nombreCliente = newLeadData?.nombre || 'Lead existente';
     const accion = `Admin/Jefe Ventas completó datos para registro de venta: monto_separacion=$${montoSeparacion.toFixed(2)}, monto_venta=$${montoVenta.toFixed(2)}, lead=${nombreCliente}, vendedor_asignado=${vendedorData.nombre}`;
 
-    const { error: historialError } = await supabase
+    const { error: historialError } = await supabaseAuth
       .from('locales_historial')
       .insert({
         local_id: localId,
