@@ -97,6 +97,10 @@ export default function FinanciamientoModal({
     ? montoInicial - local.monto_separacion
     : null;
 
+  const montoRestante = montoInicial && local.monto_venta
+    ? local.monto_venta - montoInicial
+    : null;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -180,6 +184,18 @@ export default function FinanciamientoModal({
               <div className="text-2xl font-bold text-purple-900">
                 {formatMonto(inicialRestante)}
               </div>
+            </div>
+          </div>
+
+          {/* Monto Restante destacado */}
+          <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-2 border-indigo-300 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-lg font-semibold text-indigo-900">
+                Monto Restante:
+              </span>
+              <span className="text-3xl font-bold text-indigo-900">
+                {formatMonto(montoRestante)}
+              </span>
             </div>
           </div>
 
