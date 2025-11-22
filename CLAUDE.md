@@ -8,9 +8,9 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 22 Noviembre 2025
-**Sesión:** 53C - 🎨 **UX Mejora: Modal Financiamiento con Header/Footer Sticky**
-**Estado:** ⏳ **PENDING QA REVIEW**
-**Documentación:** Sesión actual
+**Sesión:** 52I - ✅ **Mejora UX: Botón "Procesar" Deshabilitado hasta Generar Calendario**
+**Estado:** ✅ **DEPLOYED TO STAGING**
+**Documentación:** [SESION_52I_BOTON_PROCESAR_DISABLED.md](docs/sesiones/SESION_52I_BOTON_PROCESAR_DISABLED.md)
 
 ---
 
@@ -57,8 +57,8 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: OPERATIVO (1,417 leads con keyset pagination)
 
 - **[Locales](docs/modulos/locales.md)** - Semáforo, monto de venta, tracking, PDF financiamiento
-  - Última sesión: **52H (PDF generación financiamiento completo)**
-  - Estado: OPERATIVO (823 locales con real-time + PDF profesional con calendario de pagos)
+  - Última sesión: **52I (Mejora UX: Botón Procesar disabled)**
+  - Estado: OPERATIVO (823 locales con real-time + PDF profesional + validación UX)
 
 - **[Usuarios](docs/modulos/usuarios.md)** - Roles, permisos, CRUD
   - Última sesión: 40D (Nuevo admin Bryan)
@@ -441,6 +441,72 @@ Finanzas ▼ (dropdown DollarSign icon)
 
 **Commit:** 7e3d887
 **Deploy:** ✅ STAGING
+
+---
+
+### **Sesión 52I** (22 Nov) - ✅ ⚡ **Mejora UX: Botón "Procesar" Deshabilitado hasta Generar Calendario**
+**Feature:** Validación preventiva en modal de financiamiento
+**Problema resuelto:** Usuarios podían intentar procesar venta sin calendario de pagos generado
+**Pattern:** Disabled State Pattern - Client-side validation con feedback visual
+
+**Comportamiento del botón "Procesar":**
+
+**DESHABILITADO (inicial):**
+- Condición: `calendarioCuotas.length === 0`
+- Estilos: `bg-gray-300 text-gray-500 cursor-not-allowed`
+- Interacción: No responde a clicks (atributo `disabled`)
+
+**HABILITADO:**
+- Condición: `calendarioCuotas.length > 0`
+- Estilos: `bg-[#1b967a] text-white hover:bg-[#157a63]` (verde corporativo)
+- Interacción: Click abre modal de confirmación
+
+**Reset triggers (vuelve a deshabilitado):**
+1. Usuario cambia "¿Con financiamiento?" (toggle Sí/No)
+2. Usuario cambia fecha de pago
+3. Usuario cambia número de cuotas
+
+**Implementación técnica:**
+```typescript
+<button
+  onClick={() => setShowConfirmModal(true)}
+  disabled={calendarioCuotas.length === 0}
+  className={`px-6 py-2 font-semibold rounded-lg transition-colors ${
+    calendarioCuotas.length === 0
+      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+      : 'bg-[#1b967a] text-white hover:bg-[#157a63]'
+  }`}
+>
+  Procesar
+</button>
+```
+
+**Validaciones:**
+- ✅ Client-side: Validación reactiva con `calendarioCuotas.length`
+- ✅ Atributo HTML `disabled` previene clicks
+- ✅ Cursor `not-allowed` indica estado deshabilitado
+- ✅ Colores dinámicos (gris vs verde) según estado
+
+**Flujo correcto:**
+1. Usuario abre modal → Botón GRIS deshabilitado
+2. Usuario completa datos (financiamiento, cuotas, fecha)
+3. Usuario click "Generar calendario de pagos" → Tabla aparece
+4. Botón cambia a VERDE habilitado
+5. Usuario click "Procesar" → Modal de confirmación
+6. Usuario confirma → Procesamiento de venta
+
+**Beneficios:**
+- ✅ Previene errores de flujo incompleto
+- ✅ Feedback visual claro (gris = falta algo)
+- ✅ Garantiza integridad de datos
+- ✅ Reduce frustración por errores evitables
+- ✅ Guía intuitiva del proceso
+
+**Archivos:** FinanciamientoModal.tsx (+7 líneas)
+**Commit:** `708354b`
+**Testing:** ✅ QA approved (5 escenarios)
+**Deploy:** ✅ STAGING
+**[📖 Ver documentación completa →](docs/sesiones/SESION_52I_BOTON_PROCESAR_DISABLED.md)**
 
 ---
 
