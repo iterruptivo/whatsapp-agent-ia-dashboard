@@ -8,6 +8,7 @@
 // SESIÓN 52D: Lead vinculado (nombre + teléfono) + Cuotas condicionales del proyecto
 // SESIÓN 52E: Inicial (porcentaje + monto) + Inicial Restante + Monto Restante + TEA
 // SESIÓN 52F: Fecha de pago + Calendario de cuotas (Sin financiamiento) con manejo de febrero
+// SESIÓN 52G: Calendario CON financiamiento - Sistema Francés (TEA → TEM, amortización)
 // ============================================================================
 
 'use client';
@@ -39,7 +40,15 @@ export default function FinanciamientoModal({
   const [porcentajeInicial, setPorcentajeInicial] = useState<number | null>(null);
   const [teaProyecto, setTeaProyecto] = useState<number | null>(null);
   const [fechaPago, setFechaPago] = useState<string>('');
-  const [calendarioCuotas, setCalendarioCuotas] = useState<Array<{ numero: number; fecha: string; monto: number }>>([]);
+  const [calendarioCuotas, setCalendarioCuotas] = useState<Array<{
+    numero: number;
+    fecha: string;
+    monto?: number; // Sin financiamiento
+    interes?: number; // Con financiamiento
+    amortizacion?: number; // Con financiamiento
+    cuota?: number; // Con financiamiento
+    saldo?: number; // Con financiamiento
+  }>>([]);
 
   // Obtener nombre y teléfono del lead vinculado
   useEffect(() => {
@@ -113,41 +122,96 @@ export default function FinanciamientoModal({
     ? local.monto_venta - montoInicial
     : null;
 
-  // Función para generar calendario de cuotas (Sin financiamiento)
+  // Función helper para calcular fechas de cuotas (reutilizable)
+  const calcularFechaCuota = (fechaPagoInicial: string, numeroCuota: number): string => {
+    // Parsear fecha manualmente para evitar problemas de timezone
+    const [año, mes, dia] = fechaPagoInicial.split('-').map(Number);
+    const diaOriginal = dia;
+
+    // Calcular año y mes destino (mes en JS es 0-indexed)
+    const mesInicial = mes - 1; // Convertir a 0-indexed
+    const mesDestino = mesInicial + numeroCuota;
+
+    const añoDestino = año + Math.floor(mesDestino / 12);
+    const mesDestinoFinal = mesDestino % 12;
+
+    // Obtener último día del mes destino
+    const ultimoDiaMes = new Date(añoDestino, mesDestinoFinal + 1, 0).getDate();
+
+    // Usar el menor entre el día original y el último día del mes
+    const diaFinal = Math.min(diaOriginal, ultimoDiaMes);
+
+    const fechaCuota = new Date(añoDestino, mesDestinoFinal, diaFinal);
+    return fechaCuota.toISOString().split('T')[0];
+  };
+
+  // Función para generar calendario de cuotas
   const generarCalendarioCuotas = () => {
     if (!fechaPago || !cuotaSeleccionada || !montoRestante) return;
 
-    const montoPorCuota = montoRestante / cuotaSeleccionada;
-    const cuotas: Array<{ numero: number; fecha: string; monto: number }> = [];
+    if (conFinanciamiento) {
+      // CON FINANCIAMIENTO: Sistema Francés con TEA
+      if (teaProyecto === null) {
+        alert('No se puede generar el calendario sin TEA del proyecto');
+        return;
+      }
 
-    // Parsear fecha manualmente para evitar problemas de timezone
-    const [año, mes, dia] = fechaPago.split('-').map(Number);
-    const diaOriginal = dia;
+      // Convertir TEA a TEM (Tasa Efectiva Mensual)
+      const teaDecimal = teaProyecto / 100; // Ej: 20% → 0.20
+      const tem = Math.pow(1 + teaDecimal, 1/12) - 1; // Fórmula compuesta
 
-    for (let i = 0; i < cuotaSeleccionada; i++) {
-      // Calcular año y mes destino (mes en JS es 0-indexed)
-      const mesInicial = mes - 1; // Convertir a 0-indexed
-      const mesDestino = mesInicial + i;
+      // Calcular cuota mensual usando fórmula francesa
+      // Cuota = P × [r(1+r)^n] / [(1+r)^n - 1]
+      const P = montoRestante;
+      const r = tem;
+      const n = cuotaSeleccionada;
+      const cuotaMensual = P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
 
-      const añoDestino = año + Math.floor(mesDestino / 12);
-      const mesDestinoFinal = mesDestino % 12;
+      const cuotas = [];
+      let saldoPendiente = montoRestante;
 
-      // Obtener último día del mes destino
-      const ultimoDiaMes = new Date(añoDestino, mesDestinoFinal + 1, 0).getDate();
+      for (let i = 0; i < cuotaSeleccionada; i++) {
+        // Calcular interés de esta cuota
+        const interes = saldoPendiente * tem;
 
-      // Usar el menor entre el día original y el último día del mes
-      const diaFinal = Math.min(diaOriginal, ultimoDiaMes);
+        // Calcular amortización
+        const amortizacion = cuotaMensual - interes;
 
-      const fechaCuota = new Date(añoDestino, mesDestinoFinal, diaFinal);
+        // Actualizar saldo pendiente
+        saldoPendiente -= amortizacion;
 
-      cuotas.push({
-        numero: i + 1,
-        fecha: fechaCuota.toISOString().split('T')[0],
-        monto: montoPorCuota
-      });
+        // Calcular fecha
+        const fecha = calcularFechaCuota(fechaPago, i);
+
+        cuotas.push({
+          numero: i + 1,
+          fecha,
+          interes,
+          amortizacion,
+          cuota: cuotaMensual,
+          saldo: Math.max(0, saldoPendiente) // Evitar valores negativos por redondeo
+        });
+      }
+
+      setCalendarioCuotas(cuotas);
+
+    } else {
+      // SIN FINANCIAMIENTO: Cuotas iguales sin interés
+      const montoPorCuota = montoRestante / cuotaSeleccionada;
+      const cuotas = [];
+
+      for (let i = 0; i < cuotaSeleccionada; i++) {
+        const fecha = calcularFechaCuota(fechaPago, i);
+
+        cuotas.push({
+          numero: i + 1,
+          fecha,
+          monto: montoPorCuota
+        });
+      }
+
+      setCalendarioCuotas(cuotas);
     }
-
-    setCalendarioCuotas(cuotas);
   };
 
   // Fecha mínima (hoy)
@@ -264,7 +328,8 @@ export default function FinanciamientoModal({
                   checked={conFinanciamiento === true}
                   onChange={() => {
                     setConFinanciamiento(true);
-                    setCuotaSeleccionada(null); // Reset cuota cuando cambia tipo
+                    setCuotaSeleccionada(null);
+                    setCalendarioCuotas([]); // Reset calendario cuando cambia tipo
                   }}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                 />
@@ -277,7 +342,8 @@ export default function FinanciamientoModal({
                   checked={conFinanciamiento === false}
                   onChange={() => {
                     setConFinanciamiento(false);
-                    setCuotaSeleccionada(null); // Reset cuota cuando cambia tipo
+                    setCuotaSeleccionada(null);
+                    setCalendarioCuotas([]); // Reset calendario cuando cambia tipo
                   }}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                 />
@@ -368,8 +434,8 @@ export default function FinanciamientoModal({
             />
           </div>
 
-          {/* Botón Generar Calendario (solo para Sin financiamiento) */}
-          {!conFinanciamiento && fechaPago && cuotaSeleccionada && (
+          {/* Botón Generar Calendario (para ambos tipos de financiamiento) */}
+          {fechaPago && cuotaSeleccionada && (
             <div className="flex justify-center">
               <button
                 type="button"
@@ -381,11 +447,11 @@ export default function FinanciamientoModal({
             </div>
           )}
 
-          {/* Tabla de Cuotas (solo para Sin financiamiento y cuando hay calendario) */}
+          {/* Tabla de Cuotas SIN FINANCIAMIENTO */}
           {!conFinanciamiento && calendarioCuotas.length > 0 && (
             <div className="border-t pt-6">
               <h3 className="text-sm font-semibold text-gray-700 mb-3">
-                Calendario de Pagos
+                Calendario de Pagos (Sin Intereses)
               </h3>
               <div className="max-h-64 overflow-y-auto border border-gray-200 rounded-lg">
                 <table className="w-full text-sm">
@@ -412,6 +478,58 @@ export default function FinanciamientoModal({
                         </td>
                         <td className="px-4 py-3 text-right font-semibold text-[#1b967a]">
                           {formatMonto(cuota.monto)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Tabla de Cuotas CON FINANCIAMIENTO (Sistema Francés) */}
+          {conFinanciamiento && calendarioCuotas.length > 0 && (
+            <div className="border-t pt-6">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                Calendario de Pagos (Con Intereses - Sistema Francés)
+              </h3>
+              <div className="max-h-80 overflow-y-auto border border-gray-200 rounded-lg">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-[#192c4d] text-white">
+                    <tr>
+                      <th className="px-3 py-3 text-left font-semibold"># Cuota</th>
+                      <th className="px-3 py-3 text-left font-semibold">Fecha</th>
+                      <th className="px-3 py-3 text-right font-semibold">Interés</th>
+                      <th className="px-3 py-3 text-right font-semibold">Amortización</th>
+                      <th className="px-3 py-3 text-right font-semibold">Cuota</th>
+                      <th className="px-3 py-3 text-right font-semibold">Saldo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {calendarioCuotas.map((cuota, index) => (
+                      <tr
+                        key={cuota.numero}
+                        className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                      >
+                        <td className="px-3 py-3 font-medium text-gray-900">{cuota.numero}</td>
+                        <td className="px-3 py-3 text-gray-700">
+                          {new Date(cuota.fecha + 'T00:00:00').toLocaleDateString('es-PE', {
+                            day: '2-digit',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </td>
+                        <td className="px-3 py-3 text-right text-red-600 font-semibold">
+                          {formatMonto(cuota.interes)}
+                        </td>
+                        <td className="px-3 py-3 text-right text-blue-600 font-semibold">
+                          {formatMonto(cuota.amortizacion)}
+                        </td>
+                        <td className="px-3 py-3 text-right text-[#1b967a] font-bold">
+                          {formatMonto(cuota.cuota)}
+                        </td>
+                        <td className="px-3 py-3 text-right text-gray-700 font-medium">
+                          {formatMonto(cuota.saldo)}
                         </td>
                       </tr>
                     ))}
