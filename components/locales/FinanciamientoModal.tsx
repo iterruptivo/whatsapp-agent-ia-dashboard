@@ -5,6 +5,7 @@
 // Features: Captura si hay financiamiento, muestra precio venta y monto separación
 // SESIÓN 52: Feature inicial - Solo mostrar modal con título correcto
 // SESIÓN 52B: Agregar campos financiamiento/separación (radio buttons + display values)
+// SESIÓN 52D: Lead vinculado (nombre + teléfono) + Cuotas condicionales del proyecto
 // ============================================================================
 
 'use client';
@@ -13,6 +14,8 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
+import { getProyectoConfiguracion } from '@/lib/proyecto-config';
+import type { CuotaMeses } from '@/lib/actions-proyecto-config';
 
 interface FinanciamientoModalProps {
   isOpen: boolean;
@@ -28,6 +31,9 @@ export default function FinanciamientoModal({
   const [conFinanciamiento, setConFinanciamiento] = useState<boolean>(true);
   const [leadNombre, setLeadNombre] = useState<string>('');
   const [leadTelefono, setLeadTelefono] = useState<string>('');
+  const [cuotasSinInteres, setCuotasSinInteres] = useState<CuotaMeses[]>([]);
+  const [cuotasConInteres, setCuotasConInteres] = useState<CuotaMeses[]>([]);
+  const [cuotaSeleccionada, setCuotaSeleccionada] = useState<number | null>(null);
 
   // Obtener nombre y teléfono del lead vinculado
   useEffect(() => {
@@ -45,6 +51,25 @@ export default function FinanciamientoModal({
     }
 
     fetchLeadData();
+  }, [isOpen, local]);
+
+  // Obtener configuración del proyecto (cuotas)
+  useEffect(() => {
+    if (!isOpen || !local?.proyecto_id) return;
+
+    async function fetchProyectoConfig() {
+      const config = await getProyectoConfiguracion(local!.proyecto_id);
+      if (config?.configuraciones_extra) {
+        const cuotasSin = config.configuraciones_extra.cuotas_sin_interes || [];
+        const cuotasCon = config.configuraciones_extra.cuotas_con_interes || [];
+
+        // Ordenar por campo order
+        setCuotasSinInteres(cuotasSin.sort((a, b) => a.order - b.order));
+        setCuotasConInteres(cuotasCon.sort((a, b) => a.order - b.order));
+      }
+    }
+
+    fetchProyectoConfig();
   }, [isOpen, local]);
 
   if (!isOpen || !local) return null;
@@ -132,7 +157,10 @@ export default function FinanciamientoModal({
                   type="radio"
                   name="financiamiento"
                   checked={conFinanciamiento === true}
-                  onChange={() => setConFinanciamiento(true)}
+                  onChange={() => {
+                    setConFinanciamiento(true);
+                    setCuotaSeleccionada(null); // Reset cuota cuando cambia tipo
+                  }}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="ml-2 text-sm font-medium text-gray-900">Sí</span>
@@ -142,12 +170,67 @@ export default function FinanciamientoModal({
                   type="radio"
                   name="financiamiento"
                   checked={conFinanciamiento === false}
-                  onChange={() => setConFinanciamiento(false)}
+                  onChange={() => {
+                    setConFinanciamiento(false);
+                    setCuotaSeleccionada(null); // Reset cuota cuando cambia tipo
+                  }}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="ml-2 text-sm font-medium text-gray-900">No</span>
               </label>
             </div>
+          </div>
+
+          {/* Cuotas (condicional según financiamiento) */}
+          <div className="border-t pt-6">
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Cuotas {conFinanciamiento ? 'con intereses' : 'sin intereses'} (meses)
+            </label>
+            {conFinanciamiento ? (
+              // Cuotas CON intereses
+              cuotasConInteres.length > 0 ? (
+                <div className="flex flex-wrap gap-4">
+                  {cuotasConInteres.map((cuota) => (
+                    <label key={cuota.order} className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="cuotas"
+                        checked={cuotaSeleccionada === cuota.value}
+                        onChange={() => setCuotaSeleccionada(cuota.value)}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-sm font-medium text-gray-900">
+                        {cuota.value} meses
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No hay cuotas con intereses configuradas para este proyecto.</p>
+              )
+            ) : (
+              // Cuotas SIN intereses
+              cuotasSinInteres.length > 0 ? (
+                <div className="flex flex-wrap gap-4">
+                  {cuotasSinInteres.map((cuota) => (
+                    <label key={cuota.order} className="flex items-center cursor-pointer">
+                      <input
+                        type="radio"
+                        name="cuotas"
+                        checked={cuotaSeleccionada === cuota.value}
+                        onChange={() => setCuotaSeleccionada(cuota.value)}
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="ml-2 text-sm font-medium text-gray-900">
+                        {cuota.value} meses
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No hay cuotas sin intereses configuradas para este proyecto.</p>
+              )
+            )}
           </div>
         </div>
 
