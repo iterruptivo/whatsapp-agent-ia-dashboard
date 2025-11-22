@@ -7,10 +7,10 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 21 Noviembre 2025
-**Sesión:** 52D - 👤 **Campo "Asignar Vendedor" en Modal Datos Previos**
+**Fecha:** 22 Noviembre 2025
+**Sesión:** 52H - 📄 **Sistema Completo de Generación de PDF para Financiamiento**
 **Estado:** ✅ **DEPLOYED TO STAGING**
-**Documentación:** SESIÓN 52D (ver sección "ÚLTIMAS 5 SESIONES" más abajo)
+**Documentación:** [SESION_52H_PDF_FINANCIAMIENTO.md](docs/sesiones/SESION_52H_PDF_FINANCIAMIENTO.md)
 
 ---
 
@@ -21,7 +21,7 @@
 |--------|--------|---------------------|----------|
 | [Autenticación](docs/modulos/auth.md) | ✅ **100% ESTABLE** | **Sesión 45I (13 Nov)** | **Uptime: 100% • 2+ hrs sesión** |
 | [Leads](docs/modulos/leads.md) | ✅ OPERATIVO | Sesión 44 (12 Nov) | 1,417 leads |
-| [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 52C (21 Nov)** | 823 locales |
+| [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 52H (22 Nov)** | 823 locales |
 | [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | Sesión 40D (8 Nov) | 22 usuarios |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
@@ -56,9 +56,9 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Última sesión: **46B (UX: Usuario controla actualización dashboard)**
   - Estado: OPERATIVO (1,417 leads con keyset pagination)
 
-- **[Locales](docs/modulos/locales.md)** - Semáforo, monto de venta, tracking
-  - Última sesión: **52D (Campo Asignar Vendedor en modal datos previos)**
-  - Estado: OPERATIVO (823 locales con real-time + asignación vendedor obligatoria)
+- **[Locales](docs/modulos/locales.md)** - Semáforo, monto de venta, tracking, PDF financiamiento
+  - Última sesión: **52H (PDF generación financiamiento completo)**
+  - Estado: OPERATIVO (823 locales con real-time + PDF profesional con calendario de pagos)
 
 - **[Usuarios](docs/modulos/usuarios.md)** - Roles, permisos, CRUD
   - Última sesión: 40D (Nuevo admin Bryan)
@@ -144,6 +144,45 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 52H** (22 Nov) - 📄 ✅ **Sistema Completo de Generación de PDF para Financiamiento**
+**Feature:** Generación de PDF profesional con branding EcoPlaza para calendario de pagos de financiamiento
+**Problema resuelto:** Vendedores y gerentes necesitan documentos PDF para compartir con clientes
+**Librería:** jsPDF + jspdf-autotable
+
+**Contenido del PDF:**
+1. **Header navy** - Logo EcoPlaza + título "Financiamiento de Local"
+2. **Sección: Información del Local** - Código, proyecto, precio venta, separación, lead vinculado (Cliente)
+3. **Sección: Cálculos Financieros** - Inicial (%), restante inicial, monto restante
+4. **Sección: Detalles de Financiamiento** - ¿Con financiamiento?, cuotas, TEA, fecha de pago
+5. **Sección: Calendario de Pagos** - Tabla con autoTable
+
+**Tablas calendario:**
+- **SIN financiamiento (3 columnas):** # Cuota | Fecha de Pago | Monto
+- **CON financiamiento (6 columnas):** # Cuota | Fecha | Interés (rojo) | Amortización (azul) | Cuota (verde bold) | Saldo
+
+**Colores corporativos:**
+- Verde: #1b967a (headers, cuota)
+- Navy: #192c4d (header PDF, headers tabla)
+- Amarillo: #fbde17 (futuro uso)
+
+**Problemas resueltos:**
+1. **TypeScript tuple types** - Cambiar `const verde = [27, 150, 122]` a `const verde: [number, number, number] = [27, 150, 122]`
+2. **Tabla desbordada** - Margins 15px (igual que headers) en vez de 5px
+3. **Texto desalineado** - Todo centrado (modal y PDF): headers + body cells
+4. **Headers PDF no centrados** - Agregar `halign: 'center'` a headStyles
+
+**Formato profesional:**
+- Zebra striping (gris/blanco alternado)
+- Colores semánticos (rojo=interés, azul=amortización, verde=cuota)
+- Footer con fecha de generación
+- Nombre archivo: `Local-{codigo}-Financiamiento.pdf`
+
+**Archivos:** lib/pdf-generator.ts (nuevo, 293 líneas), FinanciamientoModal.tsx (+50 líneas), package.json (jspdf deps)
+**Commits:** 6c6ffd0, 3c85a7c, 0e4ac2a, 4fb89fa, 2291ec8
+**[📖 Ver documentación completa →](docs/sesiones/SESION_52H_PDF_FINANCIAMIENTO.md)**
+
+---
 
 ### **Sesión 52D** (21 Nov) - 👤 ✅ **Campo "Asignar Vendedor" en Modal Datos Previos**
 **Feature:** 4ta sección en modal "Datos necesarios para iniciar proceso" para asignar vendedor
@@ -422,46 +461,6 @@ const handleDatosSuccess = (updatedLocal: Local) => {
 
 ---
 
-### **Sesión 51** (20 Nov) - ⚙️ ✅ **Sistema Completo de Configuración de Proyectos**
-**Feature:** Panel admin `/configuracion-proyectos` para configurar TEA, color, estado y listas ordenables
-**Problema resuelto:** Admin puede configurar parámetros financieros por proyecto (porcentajes inicial, cuotas)
-**Restricción:** Solo admin puede acceder (middleware + RLS policies)
-
-**Configuraciones implementadas:**
-1. **TEA del Proyecto** - Decimal 0.01-100 o null
-2. **Color del Proyecto** - Picker hexadecimal con preview
-3. **Estado activo/inactivo** - Toggle switch
-4. **Porcentaje(s) de Inicial** - Lista orderable con valores 0.01-100 (ej: 50%, 30%, 45%)
-5. **Cuotas sin intereses** - Lista orderable en meses enteros (ej: 12, 24, 36)
-6. **Cuotas con intereses** - Lista orderable en meses enteros (ej: 60, 120, 180)
-
-**Estructura datos (JSONB):**
-```json
-{
-  "porcentajes_inicial": [{"value": 50, "order": 0}, {"value": 30, "order": 1}],
-  "cuotas_sin_interes": [{"value": 12, "order": 0}, {"value": 24, "order": 1}],
-  "cuotas_con_interes": [{"value": 60, "order": 0}, {"value": 120, "order": 1}]
-}
-```
-
-**Problemas críticos resueltos:**
-1. **RLS Policy Violation** - Eliminado service role key bypass, implementado createServerClient con cookies
-2. **Campo activo no persiste** - SELECT policy bloqueaba UPDATE, modificado para permitir admin ver inactivos
-3. **406 Errors** - Browser client sin auth, consolidado en Server Action con supabaseAuth
-
-**UI/UX:**
-- Multi-accordion (todos proyectos visibles, primero expandido)
-- Layout 2 columnas desktop (TEA/Color/Estado | Porcentajes/Cuotas)
-- Zebra striping headers (gris/azul alternado)
-- Validaciones en tiempo real + no duplicados
-- Enter key support + botones ↑↓ para ordenar
-
-**Tabla nueva:** `proyecto_configuraciones` con RLS policies para admin
-**Archivos:** actions-proyecto-config.ts (nuevo), page.tsx (810 líneas), Sidebar.tsx, middleware.ts
-**[📖 Ver documentación completa →](docs/sesiones/SESION_51_CONFIGURACION_PROYECTOS_COMPLETE.md)**
-
----
-
 ## 📈 PROGRESO DEL PROYECTO
 
 ## 🚀 FEATURES PRINCIPALES
@@ -573,15 +572,16 @@ const handleDatosSuccess = (updatedLocal: Local) => {
 
 ## 📊 HEALTH CHECK
 
-**Última verificación:** 20 Noviembre 2025
+**Última verificación:** 22 Noviembre 2025
 
 | Componente | Estado | Última Revisión |
 |------------|--------|-----------------|
 | Autenticación | 🟢 ESTABLE | Sesión 45I |
 | Dashboard Admin | 🟢 OPERATIVO | Daily |
 | Dashboard Operativo | 🟢 OPERATIVO | Daily |
-| Sistema de Locales | 🟢 OPERATIVO | Sesión 48C |
-| **Configuración Proyectos** | 🟢 **OPERATIVO** | **Sesión 51** |
+| **Sistema de Locales** | 🟢 **OPERATIVO** | **Sesión 52H** |
+| **PDF Financiamiento** | 🟢 **OPERATIVO** | **Sesión 52H** |
+| Configuración Proyectos | 🟢 OPERATIVO | Sesión 51 |
 | n8n Webhooks | 🟢 OPERATIVO | Sesión 40B |
 | Supabase Realtime | 🟢 OPERATIVO | Daily |
 | Vercel Deployment | 🟢 STABLE | Auto |
@@ -609,6 +609,12 @@ const handleDatosSuccess = (updatedLocal: Local) => {
 - Cambios quirúrgicos > rewrites completos
 - Documentación exhaustiva previene errores futuros
 - Testing incremental ahorra tiempo (FASE 1 antes de FASE 2)
+
+### **TypeScript & PDF Generation**
+- **Tuple types explícitos** para arrays de tamaño fijo: `const color: [number, number, number] = [255, 0, 0]` en vez de `const color = [255, 0, 0]`
+- **jsPDF autoTable alignment** requiere configuración en DOS lugares: `headStyles.halign` para headers Y `columnStyles[n].halign` para body
+- **Margin consistency** entre secciones y tablas: usar mismo valor de margin para alinear elementos
+- **Colores semánticos** en tablas mejoran legibilidad: rojo=gasto, azul=reducción deuda, verde=valor total
 
 ---
 
@@ -640,7 +646,7 @@ Para detalles completos de cualquier sesión o módulo, consulta los archivos vi
 
 ---
 
-**Última Actualización:** 21 Noviembre 2025
+**Última Actualización:** 22 Noviembre 2025
 **Versión de Documentación:** 2.0 (Modular)
 **Proyecto:** EcoPlaza Dashboard - Gestión de Leads
 
