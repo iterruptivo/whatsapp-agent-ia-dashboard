@@ -64,8 +64,8 @@ export default function FinanciamientoModal({
         const cuotasCon = config.configuraciones_extra.cuotas_con_interes || [];
 
         // Ordenar por campo order
-        setCuotasSinInteres(cuotasSin.sort((a, b) => a.order - b.order));
-        setCuotasConInteres(cuotasCon.sort((a, b) => a.order - b.order));
+        setCuotasSinInteres(cuotasSin.sort((a: CuotaMeses, b: CuotaMeses) => a.order - b.order));
+        setCuotasConInteres(cuotasCon.sort((a: CuotaMeses, b: CuotaMeses) => a.order - b.order));
       }
     }
 
