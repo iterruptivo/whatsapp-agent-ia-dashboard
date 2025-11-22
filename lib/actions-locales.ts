@@ -653,7 +653,9 @@ export async function saveDatosRegistroVenta(
     const accion = `Admin/Jefe Ventas completó datos para registro de venta: monto_separacion=$${montoSeparacion.toFixed(2)}, monto_venta=$${montoVenta.toFixed(2)}, lead=${nombreCliente}, vendedor_asignado=${vendedorData.nombre}`;
 
     console.log('[DATOS VENTA] 📝 Acción a insertar:', accion);
-    const { error: historialError } = await supabaseAuth
+    // SESIÓN 52D: Usar browser client (supabase) para INSERT historial, igual que updateLocalEstadoQuery
+    // RLS policy permite INSERT con role anon (no authenticated)
+    const { error: historialError } = await supabase
       .from('locales_historial')
       .insert({
         local_id: localId,
