@@ -21,6 +21,7 @@ import { getLocalLeads } from '@/lib/locales';
 import { getProyectoConfiguracion } from '@/lib/proyecto-config';
 import type { CuotaMeses } from '@/lib/actions-proyecto-config';
 import { generarPDFFinanciamiento } from '@/lib/pdf-generator';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 
 interface FinanciamientoModalProps {
   isOpen: boolean;
@@ -51,6 +52,8 @@ export default function FinanciamientoModal({
     cuota?: number; // Con financiamiento
     saldo?: number; // Con financiamiento
   }>>([]);
+  // SESIÓN 52I: Modal de confirmación para "Procesar"
+  const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
 
   // Obtener nombre y teléfono del lead vinculado
   useEffect(() => {
@@ -576,15 +579,28 @@ export default function FinanciamientoModal({
             Cerrar
           </button>
           <button
-            onClick={() => {
-              // TODO: Implementar lógica de procesamiento
-              console.log('Procesar venta');
-            }}
+            onClick={() => setShowConfirmModal(true)}
             className="px-6 py-2 bg-[#1b967a] text-white font-semibold rounded-lg hover:bg-[#157a63] transition-colors"
           >
             Procesar
           </button>
         </div>
+
+        {/* SESIÓN 52I: Modal de confirmación para Procesar */}
+        <ConfirmModal
+          isOpen={showConfirmModal}
+          title="Procesar Venta"
+          message="¿Está seguro en procesar la venta del local? Esta acción es irreversible"
+          variant="warning"
+          confirmText="Continuar"
+          cancelText="Cancelar"
+          onConfirm={() => {
+            setShowConfirmModal(false);
+            // TODO: Implementar lógica de procesamiento aquí
+            console.log('Procesar venta');
+          }}
+          onCancel={() => setShowConfirmModal(false)}
+        />
       </div>
     </div>
   );
