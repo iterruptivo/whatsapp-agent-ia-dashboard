@@ -484,9 +484,9 @@ export default function FinanciamientoModal({
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-[#192c4d] text-white">
                     <tr>
-                      <th className="px-4 py-3 text-left font-semibold"># Cuota</th>
-                      <th className="px-4 py-3 text-left font-semibold">Fecha de Pago</th>
-                      <th className="px-4 py-3 text-right font-semibold">Monto</th>
+                      <th className="px-4 py-3 text-center font-semibold"># Cuota</th>
+                      <th className="px-4 py-3 text-center font-semibold">Fecha de Pago</th>
+                      <th className="px-4 py-3 text-center font-semibold">Monto</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -495,15 +495,15 @@ export default function FinanciamientoModal({
                         key={cuota.numero}
                         className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
                       >
-                        <td className="px-4 py-3 font-medium text-gray-900">{cuota.numero}</td>
-                        <td className="px-4 py-3 text-gray-700">
+                        <td className="px-4 py-3 text-center font-medium text-gray-900">{cuota.numero}</td>
+                        <td className="px-4 py-3 text-center text-gray-700">
                           {new Date(cuota.fecha + 'T00:00:00').toLocaleDateString('es-PE', {
                             day: '2-digit',
                             month: 'short',
                             year: 'numeric'
                           })}
                         </td>
-                        <td className="px-4 py-3 text-right font-semibold text-[#1b967a]">
+                        <td className="px-4 py-3 text-center font-semibold text-[#1b967a]">
                           {formatMonto(cuota.monto)}
                         </td>
                       </tr>
@@ -524,12 +524,12 @@ export default function FinanciamientoModal({
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-[#192c4d] text-white">
                     <tr>
-                      <th className="px-3 py-3 text-left font-semibold"># Cuota</th>
-                      <th className="px-3 py-3 text-left font-semibold">Fecha</th>
-                      <th className="px-3 py-3 text-right font-semibold">Interés</th>
-                      <th className="px-3 py-3 text-right font-semibold">Amortización</th>
-                      <th className="px-3 py-3 text-right font-semibold">Cuota</th>
-                      <th className="px-3 py-3 text-right font-semibold">Saldo</th>
+                      <th className="px-3 py-3 text-center font-semibold"># Cuota</th>
+                      <th className="px-3 py-3 text-center font-semibold">Fecha</th>
+                      <th className="px-3 py-3 text-center font-semibold">Interés</th>
+                      <th className="px-3 py-3 text-center font-semibold">Amortización</th>
+                      <th className="px-3 py-3 text-center font-semibold">Cuota</th>
+                      <th className="px-3 py-3 text-center font-semibold">Saldo</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -538,24 +538,24 @@ export default function FinanciamientoModal({
                         key={cuota.numero}
                         className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
                       >
-                        <td className="px-3 py-3 font-medium text-gray-900">{cuota.numero}</td>
-                        <td className="px-3 py-3 text-gray-700">
+                        <td className="px-3 py-3 text-center font-medium text-gray-900">{cuota.numero}</td>
+                        <td className="px-3 py-3 text-center text-gray-700">
                           {new Date(cuota.fecha + 'T00:00:00').toLocaleDateString('es-PE', {
                             day: '2-digit',
                             month: 'short',
                             year: 'numeric'
                           })}
                         </td>
-                        <td className="px-3 py-3 text-right text-red-600 font-semibold">
+                        <td className="px-3 py-3 text-center text-red-600 font-semibold">
                           {formatMonto(cuota.interes)}
                         </td>
-                        <td className="px-3 py-3 text-right text-blue-600 font-semibold">
+                        <td className="px-3 py-3 text-center text-blue-600 font-semibold">
                           {formatMonto(cuota.amortizacion)}
                         </td>
-                        <td className="px-3 py-3 text-right text-[#1b967a] font-bold">
+                        <td className="px-3 py-3 text-center text-[#1b967a] font-bold">
                           {formatMonto(cuota.cuota)}
                         </td>
-                        <td className="px-3 py-3 text-right text-gray-700 font-medium">
+                        <td className="px-3 py-3 text-center text-gray-700 font-medium">
                           {formatMonto(cuota.saldo)}
                         </td>
                       </tr>

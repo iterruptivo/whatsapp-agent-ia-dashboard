@@ -222,11 +222,11 @@ export function generarPDFFinanciamiento(data: PDFData): void {
         },
         columnStyles: {
           0: { halign: 'center' },
-          1: { halign: 'left' },
-          2: { halign: 'right', textColor: [220, 38, 38] }, // Rojo
-          3: { halign: 'right', textColor: [37, 99, 235] }, // Azul
-          4: { halign: 'right', textColor: verde, fontStyle: 'bold' }, // Verde
-          5: { halign: 'right' },
+          1: { halign: 'center' },
+          2: { halign: 'center', textColor: [220, 38, 38] }, // Rojo
+          3: { halign: 'center', textColor: [37, 99, 235] }, // Azul
+          4: { halign: 'center', textColor: verde, fontStyle: 'bold' }, // Verde
+          5: { halign: 'center' },
         },
         margin: { left: margin, right: margin },
       });
@@ -258,8 +258,8 @@ export function generarPDFFinanciamiento(data: PDFData): void {
         },
         columnStyles: {
           0: { halign: 'center' },
-          1: { halign: 'left' },
-          2: { halign: 'right', textColor: verde, fontStyle: 'bold' },
+          1: { halign: 'center' },
+          2: { halign: 'center', textColor: verde, fontStyle: 'bold' },
         },
         margin: { left: margin, right: margin },
       });
