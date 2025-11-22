@@ -159,6 +159,15 @@ export default function ConfiguracionProyectos() {
     const data = formData[proyectoId];
     if (!data) return;
 
+    // VALIDACIÓN: Máximo 1 porcentaje de inicial permitido
+    if (data.porcentajes_inicial.length >= 1) {
+      updateFormData(proyectoId, 'message', {
+        type: 'error',
+        text: 'Solo se permite un porcentaje de inicial por proyecto',
+      });
+      return;
+    }
+
     const value = parseFloat(data.nuevoPorcentaje);
 
     if (isNaN(value) || value <= 0 || value > 100) {
@@ -493,13 +502,13 @@ export default function ConfiguracionProyectos() {
                           </div>
                         </div>
 
-                        {/* Columna Derecha: Porcentaje(s) de Inicial */}
+                        {/* Columna Derecha: Porcentaje de Inicial */}
                         <div>
                         <label className="block text-lg font-semibold text-gray-900 mb-1">
-                          Porcentaje(s) de Inicial
+                          Porcentaje de Inicial
                         </label>
                         <p className="text-sm text-gray-500 mb-4">
-                          Gestiona los porcentajes de inicial disponibles para este proyecto
+                          Define el porcentaje de inicial para este proyecto (máximo 1 valor)
                         </p>
 
                         {/* Input para agregar porcentaje */}
@@ -509,7 +518,7 @@ export default function ConfiguracionProyectos() {
                             value={data.nuevoPorcentaje}
                             onChange={(e) => updateFormData(proyecto.id, 'nuevoPorcentaje', e.target.value)}
                             onKeyPress={(e) => {
-                              if (e.key === 'Enter') {
+                              if (e.key === 'Enter' && data.porcentajes_inicial.length < 1) {
                                 handleAgregarPorcentaje(proyecto.id);
                               }
                             }}
@@ -517,12 +526,20 @@ export default function ConfiguracionProyectos() {
                             min="0.01"
                             max="100"
                             step="0.01"
-                            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                            disabled={data.porcentajes_inicial.length >= 1}
+                            className={`flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors ${
+                              data.porcentajes_inicial.length >= 1 ? 'bg-gray-100 cursor-not-allowed' : ''
+                            }`}
                           />
                           <button
                             type="button"
                             onClick={() => handleAgregarPorcentaje(proyecto.id)}
-                            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                            disabled={data.porcentajes_inicial.length >= 1}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                              data.porcentajes_inicial.length >= 1
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-primary text-white hover:bg-primary/90'
+                            }`}
                           >
                             <Plus className="w-4 h-4" />
                             Agregar
@@ -537,37 +554,11 @@ export default function ConfiguracionProyectos() {
                                 key={index}
                                 className="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-lg"
                               >
-                                <span className="text-sm font-medium text-gray-600 min-w-[30px]">
-                                  {index + 1}°
-                                </span>
                                 <span className="flex-1 text-base font-semibold text-gray-900">
                                   {porcentaje.value}%
                                 </span>
                                 <div className="flex items-center gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMoverPorcentaje(proyecto.id, index, 'up')}
-                                    disabled={index === 0}
-                                    className={`p-1 rounded ${
-                                      index === 0
-                                        ? 'text-gray-300 cursor-not-allowed'
-                                        : 'text-gray-600 hover:bg-gray-200'
-                                    }`}
-                                  >
-                                    <ArrowUp className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMoverPorcentaje(proyecto.id, index, 'down')}
-                                    disabled={index === data.porcentajes_inicial.length - 1}
-                                    className={`p-1 rounded ${
-                                      index === data.porcentajes_inicial.length - 1
-                                        ? 'text-gray-300 cursor-not-allowed'
-                                        : 'text-gray-600 hover:bg-gray-200'
-                                    }`}
-                                  >
-                                    <ArrowDown className="w-4 h-4" />
-                                  </button>
+                                  {/* Solo botón eliminar (sin ordenar porque máximo 1 valor) */}
                                   <button
                                     type="button"
                                     onClick={() => handleEliminarPorcentaje(proyecto.id, index)}
@@ -583,7 +574,7 @@ export default function ConfiguracionProyectos() {
 
                         {data.porcentajes_inicial.length === 0 && (
                           <p className="text-sm text-gray-400 italic">
-                            No hay porcentajes configurados. Agrega uno para comenzar.
+                            No hay porcentaje configurado. Agrega uno para comenzar.
                           </p>
                         )}
 
