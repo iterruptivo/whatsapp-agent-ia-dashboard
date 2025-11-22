@@ -9,7 +9,7 @@
 import { redirect } from 'next/navigation';
 import { getAllLocales, getLocalesStats } from '@/lib/locales';
 import { getAllProyectos } from '@/lib/db';
-import LocalesClient from '@/components/locales/LocalesClient';
+import LocalesClientWrapper from '@/components/locales/LocalesClientWrapper';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
 export const dynamic = 'force-dynamic'; // Evitar cache agresivo de Next.js 15
@@ -34,9 +34,9 @@ export default async function LocalesPage() {
         subtitle="Control de estados en tiempo real"
       />
 
-      {/* Client Component con Realtime */}
+      {/* Client Component con Realtime + Tab Navigation */}
       <div className="max-w-[1400px] mx-auto p-6">
-        <LocalesClient
+        <LocalesClientWrapper
           initialLocales={locales}
           totalLocales={totalLocales}
           proyectos={proyectos}

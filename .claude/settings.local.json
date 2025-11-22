@@ -42,7 +42,12 @@
       "Bash(git checkout:*)",
       "Bash(clip)",
       "Bash(git restore:*)",
-      "Bash(npm ci)"
+      "Bash(npm ci)",
+      "WebSearch",
+      "Bash(if exist node_modules rmdir /s /q node_modules)",
+      "Bash(if exist package-lock.json del /f package-lock.json)",
+      "Bash(npm --version:*)",
+      "Bash(where:*)"
     ],
     "deny": [],
     "ask": []
