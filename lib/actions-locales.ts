@@ -592,13 +592,31 @@ export async function saveDatosRegistroVenta(
       }
     }
 
-    // PASO 3: Actualizar local con montos, lead_id y vendedor_id (SESIÓN 52D)
+    // PASO 3: Registrar relación en tabla locales_leads (junction table) - SESIÓN 52D
+    const telefono = newLeadData?.telefono || foundLead?.telefono || '';
+    const relationResult = await registerLocalLeadRelation(
+      localId,
+      telefono,
+      finalLeadId,
+      vendedorData.vendedor_id,  // FK a tabla vendedores
+      vendedorId,                 // FK a tabla usuarios (quien asigna/ejecuta)
+      montoSeparacion,
+      montoVenta
+    );
+
+    if (!relationResult.success) {
+      console.error('[DATOS VENTA] ❌ Error registrando relación:', relationResult.message);
+      return { success: false, message: 'Error al vincular lead con local' };
+    }
+
+    console.log('[DATOS VENTA] ✅ Relación lead-local registrada en locales_leads');
+
+    // PASO 4: Actualizar local con montos y vendedor_id (SESIÓN 52D)
     const { error: updateError } = await supabaseAuth
       .from('locales')
       .update({
         monto_separacion: montoSeparacion,
         monto_venta: montoVenta,
-        lead_id: finalLeadId,
         vendedor_actual_id: vendedorData.vendedor_id, // SESIÓN 52D: Usar vendedor_id de la tabla vendedores
       })
       .eq('id', localId);
@@ -608,7 +626,7 @@ export async function saveDatosRegistroVenta(
       return { success: false, message: 'Error al actualizar local' };
     }
 
-    // PASO 4: Registrar en historial (SESIÓN 52D: Incluir vendedor asignado)
+    // PASO 5: Registrar en historial (SESIÓN 52D: Incluir vendedor asignado)
     const nombreCliente = newLeadData?.nombre || 'Lead existente';
     const accion = `Admin/Jefe Ventas completó datos para registro de venta: monto_separacion=$${montoSeparacion.toFixed(2)}, monto_venta=$${montoVenta.toFixed(2)}, lead=${nombreCliente}, vendedor_asignado=${vendedorData.nombre}`;
 
