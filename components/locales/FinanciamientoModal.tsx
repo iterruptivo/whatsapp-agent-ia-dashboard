@@ -36,6 +36,7 @@ export default function FinanciamientoModal({
   const [cuotasConInteres, setCuotasConInteres] = useState<CuotaMeses[]>([]);
   const [cuotaSeleccionada, setCuotaSeleccionada] = useState<number | null>(null);
   const [porcentajeInicial, setPorcentajeInicial] = useState<number | null>(null);
+  const [teaProyecto, setTeaProyecto] = useState<number | null>(null);
 
   // Obtener nombre y teléfono del lead vinculado
   useEffect(() => {
@@ -61,18 +62,26 @@ export default function FinanciamientoModal({
 
     async function fetchProyectoConfig() {
       const config = await getProyectoConfiguracion(local!.proyecto_id);
-      if (config?.configuraciones_extra) {
-        const cuotasSin = config.configuraciones_extra.cuotas_sin_interes || [];
-        const cuotasCon = config.configuraciones_extra.cuotas_con_interes || [];
-        const porcentajes = config.configuraciones_extra.porcentajes_inicial || [];
+      if (config) {
+        // TEA del proyecto
+        if (config.tea !== null && config.tea !== undefined) {
+          setTeaProyecto(config.tea);
+        }
 
-        // Ordenar por campo order
-        setCuotasSinInteres(cuotasSin.sort((a: CuotaMeses, b: CuotaMeses) => a.order - b.order));
-        setCuotasConInteres(cuotasCon.sort((a: CuotaMeses, b: CuotaMeses) => a.order - b.order));
+        // Configuraciones extra
+        if (config.configuraciones_extra) {
+          const cuotasSin = config.configuraciones_extra.cuotas_sin_interes || [];
+          const cuotasCon = config.configuraciones_extra.cuotas_con_interes || [];
+          const porcentajes = config.configuraciones_extra.porcentajes_inicial || [];
 
-        // Tomar el primer (y único) porcentaje de inicial
-        if (porcentajes.length > 0) {
-          setPorcentajeInicial(porcentajes[0].value);
+          // Ordenar por campo order
+          setCuotasSinInteres(cuotasSin.sort((a: CuotaMeses, b: CuotaMeses) => a.order - b.order));
+          setCuotasConInteres(cuotasCon.sort((a: CuotaMeses, b: CuotaMeses) => a.order - b.order));
+
+          // Tomar el primer (y único) porcentaje de inicial
+          if (porcentajes.length > 0) {
+            setPorcentajeInicial(porcentajes[0].value);
+          }
         }
       }
     }
@@ -241,26 +250,39 @@ export default function FinanciamientoModal({
             </label>
             {conFinanciamiento ? (
               // Cuotas CON intereses
-              cuotasConInteres.length > 0 ? (
-                <div className="flex flex-wrap gap-4">
-                  {cuotasConInteres.map((cuota) => (
-                    <label key={cuota.order} className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="cuotas"
-                        checked={cuotaSeleccionada === cuota.value}
-                        onChange={() => setCuotaSeleccionada(cuota.value)}
-                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="ml-2 text-sm font-medium text-gray-900">
-                        {cuota.value} meses
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">No hay cuotas con intereses configuradas para este proyecto.</p>
-              )
+              <>
+                {cuotasConInteres.length > 0 ? (
+                  <div className="flex flex-wrap gap-4">
+                    {cuotasConInteres.map((cuota) => (
+                      <label key={cuota.order} className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="cuotas"
+                          checked={cuotaSeleccionada === cuota.value}
+                          onChange={() => setCuotaSeleccionada(cuota.value)}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm font-medium text-gray-900">
+                          {cuota.value} meses
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">No hay cuotas con intereses configuradas para este proyecto.</p>
+                )}
+
+                {/* Badge TEA del proyecto */}
+                {teaProyecto !== null && (
+                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-2 bg-blue-100 border border-blue-300 rounded-full">
+                    <span className="text-lg">📊</span>
+                    <span className="text-sm font-semibold text-blue-900">
+                      TEA: {teaProyecto}% anual
+                    </span>
+                  </div>
+                )}
+              </>
+
             ) : (
               // Cuotas SIN intereses
               cuotasSinInteres.length > 0 ? (
