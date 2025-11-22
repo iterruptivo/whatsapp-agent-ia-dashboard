@@ -228,8 +228,7 @@ export function generarPDFFinanciamiento(data: PDFData): void {
           4: { halign: 'right', textColor: verde, fontStyle: 'bold' }, // Verde
           5: { halign: 'right' },
         },
-        margin: { left: 5, right: 5 },
-        tableWidth: 'auto',
+        margin: { left: margin, right: margin },
       });
     } else {
       // Tabla SIN financiamiento (3 columnas)
@@ -262,8 +261,7 @@ export function generarPDFFinanciamiento(data: PDFData): void {
           1: { halign: 'left' },
           2: { halign: 'right', textColor: verde, fontStyle: 'bold' },
         },
-        margin: { left: 5, right: 5 },
-        tableWidth: 'auto',
+        margin: { left: margin, right: margin },
       });
     }
   }
