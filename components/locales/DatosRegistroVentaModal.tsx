@@ -14,7 +14,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { X, Search, User, Phone, Mail, Building2, CheckCircle, AlertCircle, DollarSign, Users } from 'lucide-react';
 import { searchLeadByPhone, getAllProyectos } from '@/lib/db';
 import type { Lead, Proyecto } from '@/lib/db';
@@ -52,8 +52,24 @@ export default function DatosRegistroVentaModal({
   // SESIÓN 52D: Campo vendedor
   const [vendedores, setVendedores] = useState<VendedorActivo[]>([]);
   const [selectedVendedor, setSelectedVendedor] = useState('');
+  const [vendedorSearchTerm, setVendedorSearchTerm] = useState('');
+  const [vendedorDropdownOpen, setVendedorDropdownOpen] = useState(false);
+  const vendedorDropdownRef = useRef<HTMLDivElement>(null);
 
   // ====== EFFECTS ======
+  // Click outside handler para cerrar dropdown vendedor
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (vendedorDropdownRef.current && !vendedorDropdownRef.current.contains(event.target as Node)) {
+        setVendedorDropdownOpen(false);
+      }
+    };
+
+    if (vendedorDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [vendedorDropdownOpen]);
   useEffect(() => {
     // Cargar proyectos y vendedores al montar
     const loadData = async () => {
@@ -218,6 +234,8 @@ export default function DatosRegistroVentaModal({
     setManualName('');
     setSelectedProyecto('');
     setSelectedVendedor(''); // SESIÓN 52D: Limpiar vendedor
+    setVendedorSearchTerm(''); // SESIÓN 52D: Limpiar búsqueda
+    setVendedorDropdownOpen(false); // SESIÓN 52D: Cerrar dropdown
     setFoundLead(null);
     setError(null);
   };
@@ -548,7 +566,7 @@ export default function DatosRegistroVentaModal({
             <div className="border-t border-gray-200 pt-6 space-y-4">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-primary" />
-                <label htmlFor="vendedor-select" className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700">
                   Asignar Vendedor <span className="text-red-500">*</span>
                 </label>
               </div>
@@ -557,26 +575,88 @@ export default function DatosRegistroVentaModal({
                 Seleccione el vendedor que se asignará a este local
               </p>
 
-              <select
-                id="vendedor-select"
-                value={selectedVendedor}
-                onChange={(e) => {
-                  setSelectedVendedor(e.target.value);
-                  setError(null);
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none bg-white"
-                disabled={submitting}
-                required
-              >
-                <option value="">-- Seleccione un vendedor --</option>
-                {vendedores
-                  .sort((a, b) => a.nombre.localeCompare(b.nombre))
-                  .map((vendedor) => (
-                    <option key={vendedor.id} value={vendedor.vendedor_id}>
-                      {vendedor.nombre} ({vendedor.rol === 'vendedor' ? 'Vendedor' : 'Vendedor Caseta'})
-                    </option>
-                  ))}
-              </select>
+              {/* Combobox Custom */}
+              <div className="relative" ref={vendedorDropdownRef}>
+                {/* Trigger Button */}
+                <button
+                  type="button"
+                  onClick={() => setVendedorDropdownOpen(!vendedorDropdownOpen)}
+                  className="w-full px-4 py-2.5 text-left border border-gray-300 rounded-lg bg-white hover:border-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors flex items-center justify-between"
+                  disabled={submitting}
+                >
+                  <span className={selectedVendedor ? 'text-gray-900' : 'text-gray-500'}>
+                    {selectedVendedor
+                      ? vendedores.find(v => v.vendedor_id === selectedVendedor)?.nombre || 'Seleccionar vendedor...'
+                      : 'Seleccionar vendedor...'}
+                  </span>
+                  <svg
+                    className={`w-5 h-5 text-gray-400 transition-transform ${vendedorDropdownOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Dropdown */}
+                {vendedorDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-80 overflow-hidden">
+                    {/* Search Input */}
+                    <div className="p-3 border-b border-gray-200">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          value={vendedorSearchTerm}
+                          onChange={(e) => setVendedorSearchTerm(e.target.value)}
+                          placeholder="Buscar vendedor..."
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+
+                    {/* Lista de vendedores */}
+                    <div className="max-h-60 overflow-y-auto">
+                      {vendedores
+                        .filter(v =>
+                          v.nombre.toLowerCase().includes(vendedorSearchTerm.toLowerCase())
+                        )
+                        .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                        .map((vendedor) => (
+                          <button
+                            key={vendedor.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedVendedor(vendedor.vendedor_id);
+                              setVendedorDropdownOpen(false);
+                              setVendedorSearchTerm('');
+                              setError(null);
+                            }}
+                            className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 ${
+                              selectedVendedor === vendedor.vendedor_id ? 'bg-primary/5' : ''
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-gray-900">{vendedor.nombre}</span>
+                              <span className="text-xs text-gray-500">
+                                {vendedor.rol === 'vendedor' ? 'Vendedor' : 'Vendedor Caseta'}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      {vendedores.filter(v =>
+                        v.nombre.toLowerCase().includes(vendedorSearchTerm.toLowerCase())
+                      ).length === 0 && (
+                        <p className="px-4 py-6 text-sm text-gray-500 text-center">
+                          No se encontraron vendedores
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {!selectedVendedor && (
                 <p className="text-xs text-gray-500 italic">
