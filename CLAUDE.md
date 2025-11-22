@@ -8,9 +8,9 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 22 Noviembre 2025
-**Sesión:** 53 - 🔧 **CORRECCIÓN: Items Separados en Sidebar (Control Pagos + Comisiones)**
+**Sesión:** 53B - 🔥 **HOTFIX: Build Error - Client Component Pattern**
 **Estado:** ✅ **DEPLOYED TO STAGING**
-**Commit:** 7e3d887
+**Commit:** b84f16e
 
 ---
 
@@ -144,6 +144,158 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 53B** (22 Nov) - 🔥 ✅ **HOTFIX: Build Error - Client Component Pattern**
+**Tipo:** Hotfix urgente de build error en Vercel
+**Problema:** Build failing con "Module not found: Can't resolve '@/lib/auth-server'"
+**Root cause:** Páginas control-pagos y comisiones intentaban importar archivo que NO EXISTE
+
+**Error original:**
+```
+Module not found: Can't resolve '@/lib/auth-server'
+  app/control-pagos/page.tsx (línea 10)
+  app/comisiones/page.tsx (línea 10)
+```
+
+**Análisis:**
+- auth-server.ts NO EXISTE en el proyecto
+- Proyecto usa patrón Client Component + useAuth() hook (NO Server Component)
+- Páginas existentes (page.tsx, operativo/page.tsx) usan 'use client' + useAuth()
+- Middleware.ts maneja autenticación y RBAC en nivel de routing
+- Patrón server-side con getServerSession() NO es estándar del proyecto
+
+**Solución implementada:**
+1. **Convertir a Client Components:**
+   - Agregar 'use client' directive
+   - Cambiar async function → function regular
+   - Usar useAuth() hook en vez de getServerSession()
+
+2. **Pattern seguido (igual que app/page.tsx):**
+   - useRouter() para navigation
+   - useAuth() para obtener { user, loading }
+   - useEffect para redirect condicional
+   - Loading state mientras auth carga
+   - Validación client-side con user.rol
+
+3. **Middleware.ts actualizado:**
+   - Agregar flags isControlPagosRoute y isComisionesRoute
+   - RBAC para /control-pagos: solo admin y jefe_ventas
+   - RBAC para /comisiones: todos los roles autenticados
+   - Redirects automáticos según rol
+
+**Cambios en archivos:**
+
+**app/control-pagos/page.tsx:**
+```typescript
+'use client'; // NUEVO
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context'; // CAMBIO: No más auth-server
+
+export default function ControlPagosPage() { // CAMBIO: No más async
+  const { user, loading } = useAuth(); // CAMBIO: useAuth hook
+
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.push('/login');
+      } else if (user.rol !== 'admin' && user.rol !== 'jefe_ventas') {
+        router.push('/');
+      }
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return <LoadingSpinner />;
+  }
+  // ... resto del componente
+}
+```
+
+**app/comisiones/page.tsx:**
+```typescript
+'use client'; // NUEVO
+
+import { useAuth } from '@/lib/auth-context'; // CAMBIO
+
+export default function ComisionesPage() { // No más async
+  const { user, loading } = useAuth();
+
+  // useEffect para redirect
+  // Loading state
+  // JSX usa user.rol (no session.rol)
+}
+```
+
+**middleware.ts (+24 líneas):**
+```typescript
+const isControlPagosRoute = pathname.startsWith('/control-pagos');
+const isComisionesRoute = pathname.startsWith('/comisiones');
+
+// CONTROL DE PAGOS - Admin and jefe_ventas only
+if (isControlPagosRoute) {
+  if (userData.rol !== 'admin' && userData.rol !== 'jefe_ventas') {
+    // Redirect según rol
+    if (userData.rol === 'vendedor') {
+      return NextResponse.redirect(new URL('/operativo', req.url));
+    } else if (userData.rol === 'vendedor_caseta') {
+      return NextResponse.redirect(new URL('/locales', req.url));
+    }
+  }
+  return res;
+}
+
+// COMISIONES - All roles
+if (isComisionesRoute) {
+  return res;
+}
+```
+
+**Patrón de autenticación del proyecto:**
+```
+CORRECTO (usado en proyecto):
+├─ Client Components ('use client')
+├─ useAuth() hook (auth-context.tsx)
+├─ Middleware.ts protege rutas (getUser() validation)
+└─ Loading states en componentes
+
+INCORRECTO (intentado en 53):
+├─ Server Components (async)
+├─ getServerSession() de archivo inexistente
+└─ redirect() de next/navigation
+```
+
+**Doble validación de seguridad:**
+1. **Middleware.ts** - Valida + redirige antes de renderizar
+2. **useEffect en página** - Validación client-side + redirect si bypass
+
+**Testing:**
+- ✅ Build compila sin errores
+- ✅ Middleware protege rutas correctamente
+- ✅ useAuth() provee user object con rol
+- ✅ Loading states funcionan
+- ✅ Redirects automáticos según rol
+
+**Lecciones aprendidas:**
+- **SIEMPRE** verificar patrones existentes del proyecto antes de implementar
+- Glob archivos en /lib/ para ver qué utilidades existen
+- Leer páginas existentes (page.tsx) para seguir mismo patrón
+- NO asumir que archivos existen sin verificar
+- Build errors son prioritarios - fix inmediato antes de features
+
+**Archivos modificados:**
+- app/control-pagos/page.tsx (76 líneas → patrón Client Component)
+- app/comisiones/page.tsx (75 líneas → patrón Client Component)
+- middleware.ts (+24 líneas → RBAC nuevas rutas)
+
+**Commits:**
+- 7e3d887 (Sesión 53 - Items sidebar)
+- **b84f16e** (Sesión 53B - Hotfix build error)
+
+**Deploy:** ✅ STAGING (build success)
+
+---
 
 ### **Sesión 53** (22 Nov) - 🔧 ✅ **CORRECCIÓN: Items Separados en Sidebar (Control Pagos + Comisiones)**
 **Tipo:** Corrección urgente de implementación incorrecta
@@ -695,6 +847,10 @@ const handleDatosSuccess = (updatedLocal: Local) => {
 - Cambios quirúrgicos > rewrites completos
 - Documentación exhaustiva previene errores futuros
 - Testing incremental ahorra tiempo (FASE 1 antes de FASE 2)
+- **SIEMPRE** verificar patrones existentes del proyecto antes de implementar nuevas páginas
+- Glob archivos en /lib/ para verificar qué utilidades existen antes de asumir
+- Leer páginas existentes (page.tsx, operativo/page.tsx) para seguir mismo patrón de auth
+- NO asumir que archivos existen sin verificar - build errors tienen prioridad
 
 ### **TypeScript & PDF Generation**
 - **Tuple types explícitos** para arrays de tamaño fijo: `const color: [number, number, number] = [255, 0, 0]` en vez de `const color = [255, 0, 0]`
