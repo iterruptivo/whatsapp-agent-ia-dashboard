@@ -631,6 +631,7 @@ export async function saveDatosRegistroVenta(
     console.log('[DATOS VENTA] ✅ Relación lead-local registrada en locales_leads');
 
     // PASO 4: Actualizar local con montos y vendedor_id (SESIÓN 52D)
+    console.log('[DATOS VENTA] 🔄 PASO 4: Actualizando local...', { localId, montoSeparacion, montoVenta });
     const { error: updateError } = await supabaseAuth
       .from('locales')
       .update({
@@ -644,11 +645,14 @@ export async function saveDatosRegistroVenta(
       console.error('[DATOS VENTA] ❌ Error actualizando local:', updateError);
       return { success: false, message: 'Error al actualizar local' };
     }
+    console.log('[DATOS VENTA] ✅ PASO 4 completado: Local actualizado');
 
     // PASO 5: Registrar en historial (SESIÓN 52D: Incluir vendedor asignado)
+    console.log('[DATOS VENTA] 🔄 PASO 5: Registrando en historial...');
     const nombreCliente = newLeadData?.nombre || 'Lead existente';
     const accion = `Admin/Jefe Ventas completó datos para registro de venta: monto_separacion=$${montoSeparacion.toFixed(2)}, monto_venta=$${montoVenta.toFixed(2)}, lead=${nombreCliente}, vendedor_asignado=${vendedorData.nombre}`;
 
+    console.log('[DATOS VENTA] 📝 Acción a insertar:', accion);
     const { error: historialError } = await supabaseAuth
       .from('locales_historial')
       .insert({
@@ -660,11 +664,14 @@ export async function saveDatosRegistroVenta(
       });
 
     if (historialError) {
-      console.error('[DATOS VENTA] ⚠️ Error registrando historial:', historialError);
+      console.error('[DATOS VENTA] ❌ Error registrando historial:', historialError);
       // No fallar la operación si solo falla el historial
+    } else {
+      console.log('[DATOS VENTA] ✅ PASO 5 completado: Historial registrado');
     }
 
-    // PASO 5: Obtener local actualizado para retornar
+    // PASO 6: Obtener local actualizado para retornar
+    console.log('[DATOS VENTA] 🔄 PASO 6: Obteniendo local actualizado...');
     const local = await getLocalById(localId);
     if (!local) {
       return { success: false, message: 'Local no encontrado después de actualizar' };
