@@ -20,6 +20,7 @@ import type { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getProyectoConfiguracion } from '@/lib/proyecto-config';
 import type { CuotaMeses } from '@/lib/actions-proyecto-config';
+import { generarPDFFinanciamiento } from '@/lib/pdf-generator';
 
 interface FinanciamientoModalProps {
   isOpen: boolean;
@@ -449,8 +450,20 @@ export default function FinanciamientoModal({
                 <button
                   type="button"
                   onClick={() => {
-                    // TODO: Implementar generación de PDF
-                    console.log('Generar PDF');
+                    generarPDFFinanciamiento({
+                      local,
+                      leadNombre,
+                      leadTelefono,
+                      porcentajeInicial,
+                      teaProyecto,
+                      montoInicial,
+                      inicialRestante,
+                      montoRestante,
+                      conFinanciamiento,
+                      cuotaSeleccionada,
+                      fechaPago,
+                      calendarioCuotas,
+                    });
                   }}
                   className="flex items-center gap-2 px-6 py-3 bg-[#192c4d] text-white font-semibold rounded-lg hover:bg-[#192c4d]/90 transition-colors shadow-md"
                 >
