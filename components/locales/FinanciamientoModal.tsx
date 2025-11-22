@@ -31,7 +31,7 @@ export default function FinanciamientoModal({
   // Helper para formatear montos
   const formatMonto = (monto: number | null | undefined): string => {
     if (!monto) return 'N/A';
-    return `S/ ${monto.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `$ ${monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   return (
