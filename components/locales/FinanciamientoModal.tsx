@@ -9,12 +9,13 @@
 // SESIÓN 52E: Inicial (porcentaje + monto) + Inicial Restante + Monto Restante + TEA
 // SESIÓN 52F: Fecha de pago + Calendario de cuotas (Sin financiamiento) con manejo de febrero
 // SESIÓN 52G: Calendario CON financiamiento - Sistema Francés (TEA → TEM, amortización)
+// SESIÓN 52H: Footer buttons reorganizados + Botón "Imprimir en PDF" (placeholder)
 // ============================================================================
 
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Printer } from 'lucide-react';
 import type { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getProyectoConfiguracion } from '@/lib/proyecto-config';
@@ -434,9 +435,9 @@ export default function FinanciamientoModal({
             />
           </div>
 
-          {/* Botón Generar Calendario (para ambos tipos de financiamiento) */}
+          {/* Botones Generar Calendario + Imprimir PDF */}
           {fechaPago && cuotaSeleccionada && (
-            <div className="flex justify-center">
+            <div className="flex justify-center gap-3">
               <button
                 type="button"
                 onClick={generarCalendarioCuotas}
@@ -444,6 +445,19 @@ export default function FinanciamientoModal({
               >
                 Generar calendario de pagos
               </button>
+              {calendarioCuotas.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // TODO: Implementar generación de PDF
+                    console.log('Generar PDF');
+                  }}
+                  className="flex items-center gap-2 px-6 py-3 bg-[#192c4d] text-white font-semibold rounded-lg hover:bg-[#192c4d]/90 transition-colors shadow-md"
+                >
+                  <Printer className="w-5 h-5" />
+                  Imprimir en PDF
+                </button>
+              )}
             </div>
           )}
 
@@ -541,12 +555,21 @@ export default function FinanciamientoModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 p-6 border-t">
+        <div className="flex justify-between gap-3 p-6 border-t">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
           >
             Cerrar
+          </button>
+          <button
+            onClick={() => {
+              // TODO: Implementar lógica de procesamiento
+              console.log('Procesar venta');
+            }}
+            className="px-6 py-2 bg-[#1b967a] text-white font-semibold rounded-lg hover:bg-[#157a63] transition-colors"
+          >
+            Procesar
           </button>
         </div>
       </div>
