@@ -120,22 +120,24 @@ export default function FinanciamientoModal({
     const montoPorCuota = montoRestante / cuotaSeleccionada;
     const cuotas: Array<{ numero: number; fecha: string; monto: number }> = [];
     const fechaInicial = new Date(fechaPago);
+    const diaOriginal = fechaInicial.getDate();
 
     for (let i = 0; i < cuotaSeleccionada; i++) {
-      const fechaCuota = new Date(fechaInicial);
-      fechaCuota.setMonth(fechaCuota.getMonth() + i);
+      // Calcular año y mes destino
+      const año = fechaInicial.getFullYear();
+      const mesInicial = fechaInicial.getMonth();
+      const mesDestino = mesInicial + i;
 
-      // Manejo especial de febrero
-      const diaOriginal = fechaInicial.getDate();
-      const mesActual = fechaCuota.getMonth();
+      const añoDestino = año + Math.floor(mesDestino / 12);
+      const mesDestinoFinal = mesDestino % 12;
 
-      // Si el día original es 29, 30 o 31 y estamos en febrero
-      if (diaOriginal >= 29 && mesActual === 1) {
-        const año = fechaCuota.getFullYear();
-        const esBisiesto = (año % 4 === 0 && año % 100 !== 0) || (año % 400 === 0);
-        const ultimoDiaFebrero = esBisiesto ? 29 : 28;
-        fechaCuota.setDate(Math.min(diaOriginal, ultimoDiaFebrero));
-      }
+      // Obtener último día del mes destino
+      const ultimoDiaMes = new Date(añoDestino, mesDestinoFinal + 1, 0).getDate();
+
+      // Usar el menor entre el día original y el último día del mes
+      const diaFinal = Math.min(diaOriginal, ultimoDiaMes);
+
+      const fechaCuota = new Date(añoDestino, mesDestinoFinal, diaFinal);
 
       cuotas.push({
         numero: i + 1,
