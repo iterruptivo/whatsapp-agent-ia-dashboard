@@ -10,6 +10,7 @@
 // SESIÓN 52F: Fecha de pago + Calendario de cuotas (Sin financiamiento) con manejo de febrero
 // SESIÓN 52G: Calendario CON financiamiento - Sistema Francés (TEA → TEM, amortización)
 // SESIÓN 52H: Footer buttons reorganizados + Botón "Imprimir en PDF" (placeholder)
+// SESIÓN 52I: Mejora UX - Botón "Procesar" deshabilitado hasta generar calendario
 // ============================================================================
 
 'use client';
@@ -580,7 +581,12 @@ export default function FinanciamientoModal({
           </button>
           <button
             onClick={() => setShowConfirmModal(true)}
-            className="px-6 py-2 bg-[#1b967a] text-white font-semibold rounded-lg hover:bg-[#157a63] transition-colors"
+            disabled={calendarioCuotas.length === 0}
+            className={`px-6 py-2 font-semibold rounded-lg transition-colors ${
+              calendarioCuotas.length === 0
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : 'bg-[#1b967a] text-white hover:bg-[#157a63]'
+            }`}
           >
             Procesar
           </button>
