@@ -568,8 +568,9 @@ export async function saveDatosRegistroVenta(
 
     let finalLeadId = leadId;
     let telefono = '';
+    let nombreLead = '';
 
-    // PASO 2A: Si usamos lead existente, obtener teléfono de BD
+    // PASO 2A: Si usamos lead existente, obtener teléfono y nombre de BD
     if (leadId && !newLeadData) {
       console.log('[DATOS VENTA] Obteniendo teléfono de lead existente:', leadId);
       const { data: existingLead, error: leadError } = await supabaseAuth
@@ -584,6 +585,7 @@ export async function saveDatosRegistroVenta(
       }
 
       telefono = existingLead.telefono;
+      nombreLead = existingLead.nombre;
       console.log('[DATOS VENTA] ✅ Lead existente encontrado:', existingLead.nombre, 'Tel:', telefono);
     }
 
@@ -605,6 +607,7 @@ export async function saveDatosRegistroVenta(
       if (createResult.success && createResult.leadId) {
         finalLeadId = createResult.leadId;
         telefono = newLeadData.telefono;
+        nombreLead = newLeadData.nombre;
         console.log('[DATOS VENTA] ✅ Lead manual creado:', finalLeadId);
       } else {
         console.error('[DATOS VENTA] ⚠️ Error creando lead manual:', createResult.message);
@@ -647,10 +650,25 @@ export async function saveDatosRegistroVenta(
     }
     console.log('[DATOS VENTA] ✅ PASO 4 completado: Local actualizado');
 
-    // PASO 5: Registrar en historial (SESIÓN 52D: Incluir vendedor asignado)
+    // PASO 5: Registrar en historial (SESIÓN 52D: Formato mejorado)
     console.log('[DATOS VENTA] 🔄 PASO 5: Registrando en historial...');
-    const nombreCliente = newLeadData?.nombre || 'Lead existente';
-    const accion = `Admin/Jefe Ventas completó datos para registro de venta: monto_separacion=$${montoSeparacion.toFixed(2)}, monto_venta=$${montoVenta.toFixed(2)}, lead=${nombreCliente}, vendedor_asignado=${vendedorData.nombre}`;
+
+    // Obtener nombre y rol del usuario que ejecuta
+    const { data: usuarioData, error: usuarioError } = await supabaseAuth
+      .from('usuarios')
+      .select('nombre, rol')
+      .eq('id', usuarioId)
+      .single();
+
+    if (usuarioError || !usuarioData) {
+      console.error('[DATOS VENTA] ⚠️ Error obteniendo usuario:', usuarioError);
+      return { success: false, message: 'Usuario no encontrado' };
+    }
+
+    // Formato mejorado del historial
+    const montoSeparacionFormateado = `$${montoSeparacion.toFixed(2)}`;
+    const montoVentaFormateado = `$${montoVenta.toFixed(2)}`;
+    const accion = `${usuarioData.nombre} (${usuarioData.rol}) completó datos para registro de venta: monto_separacion=${montoSeparacionFormateado} | monto_venta=${montoVentaFormateado} | Vinculó lead: ${nombreLead} (Tel: ${telefono}) | vendedor_asignado=${vendedorData.nombre}`;
 
     console.log('[DATOS VENTA] 📝 Acción a insertar:', accion);
     // SESIÓN 52D: Usar browser client (supabase) para INSERT historial, igual que updateLocalEstadoQuery
