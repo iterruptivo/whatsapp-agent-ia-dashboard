@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -49,10 +49,23 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   // Estructura de menú basado en rol
   // Puede tener items directos O categorías con subitems
   const getMenuStructure = () => {
+    // Construir items de Finanzas según el rol
+    const finanzasItems: MenuItem[] = [
+      { href: '/locales', label: 'Gestión de Locales', icon: Home }
+    ];
+
+    // Control de Pagos: Solo admin y jefe_ventas
+    if (user?.rol === 'admin' || user?.rol === 'jefe_ventas') {
+      finanzasItems.push({ href: '/control-pagos', label: 'Control de Pagos', icon: FileText });
+    }
+
+    // Comisiones: Todos los roles
+    finanzasItems.push({ href: '/comisiones', label: 'Comisiones', icon: DollarSign });
+
     const finanzasCategory: MenuCategory = {
       label: 'Finanzas',
       icon: DollarSign,
-      items: [{ href: '/locales', label: 'Gestión de Locales', icon: Home }],
+      items: finanzasItems,
     };
 
     if (user?.rol === 'admin') {
