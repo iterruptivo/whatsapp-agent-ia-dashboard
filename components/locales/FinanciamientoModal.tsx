@@ -27,21 +27,24 @@ export default function FinanciamientoModal({
 }: FinanciamientoModalProps) {
   const [conFinanciamiento, setConFinanciamiento] = useState<boolean>(true);
   const [leadNombre, setLeadNombre] = useState<string>('');
+  const [leadTelefono, setLeadTelefono] = useState<string>('');
 
-  // Obtener nombre del lead vinculado
+  // Obtener nombre y teléfono del lead vinculado
   useEffect(() => {
     if (!isOpen || !local) return;
 
-    async function fetchLeadNombre() {
+    async function fetchLeadData() {
       const localLeads = await getLocalLeads(local!.id);
-      if (localLeads.length > 0 && localLeads[0].lead_nombre) {
-        setLeadNombre(localLeads[0].lead_nombre);
+      if (localLeads.length > 0) {
+        setLeadNombre(localLeads[0].lead_nombre || 'N/A');
+        setLeadTelefono(localLeads[0].lead_telefono || '');
       } else {
         setLeadNombre('N/A');
+        setLeadTelefono('');
       }
     }
 
-    fetchLeadNombre();
+    fetchLeadData();
   }, [isOpen, local]);
 
   if (!isOpen || !local) return null;
@@ -89,7 +92,11 @@ export default function FinanciamientoModal({
               </div>
               <div>
                 <span className="text-gray-500">Lead Vinculado:</span>
-                <span className="ml-2 font-medium text-gray-900">{leadNombre || 'Cargando...'}</span>
+                <span className="ml-2 font-medium text-gray-900">
+                  {leadNombre ? (
+                    leadTelefono ? `${leadNombre} (${leadTelefono})` : leadNombre
+                  ) : 'Cargando...'}
+                </span>
               </div>
             </div>
           </div>
