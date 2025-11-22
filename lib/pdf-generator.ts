@@ -213,6 +213,7 @@ export function generarPDFFinanciamiento(data: PDFData): void {
           textColor: [255, 255, 255],
           fontStyle: 'bold',
           fontSize: 9,
+          halign: 'center',
         },
         bodyStyles: {
           fontSize: 8,
@@ -249,6 +250,7 @@ export function generarPDFFinanciamiento(data: PDFData): void {
           textColor: [255, 255, 255],
           fontStyle: 'bold',
           fontSize: 10,
+          halign: 'center',
         },
         bodyStyles: {
           fontSize: 9,
