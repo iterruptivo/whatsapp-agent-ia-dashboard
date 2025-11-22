@@ -8,9 +8,9 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 22 Noviembre 2025
-**Sesión:** 52I - ✅ **Mejora UX: Botón "Procesar" Deshabilitado hasta Generar Calendario**
+**Sesión:** 53 - 🎨 **Tercera Columna en Configuración de Proyectos**
 **Estado:** ✅ **DEPLOYED TO STAGING**
-**Documentación:** [SESION_52I_BOTON_PROCESAR_DISABLED.md](docs/sesiones/SESION_52I_BOTON_PROCESAR_DISABLED.md)
+**Documentación:** Ver "Últimas 5 Sesiones" abajo
 
 ---
 
@@ -144,6 +144,60 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 53** (22 Nov) - 🎨 ✅ **Tercera Columna en Configuración de Proyectos**
+**Feature:** Agregar tercera columna "Mantenimiento de comisiones" a la página `/configuracion-proyectos`
+**Problema resuelto:** Expandir layout de 2 a 3 columnas para agregar nueva sección de configuración
+**Estado:** ✅ **DEPLOYED TO STAGING**
+
+**Cambios implementados:**
+
+1. **Grid layout expandido:**
+   - Cambio: `lg:grid-cols-2` → `lg:grid-cols-3` (línea 410)
+   - Desktop: 3 columnas horizontales con gap-8
+   - Mobile/Tablet: Columnas apiladas verticalmente
+
+2. **Nueva columna 3 agregada (líneas 774-791):**
+   - Título: "Mantenimiento de comisiones"
+   - Subtítulo: "Configuración de comisiones para este proyecto"
+   - Placeholder visual:
+     - Border dashed gris (`border-2 border-dashed border-gray-300`)
+     - Background: `bg-gray-50`
+     - Texto centrado: "Por configurar" (itálico, gris)
+     - Padding: `p-8` para aire visual
+
+3. **Layout final (3 columnas):**
+   - **Columna 1 (izquierda):** TEA + Color + Estado - **SIN CAMBIOS**
+   - **Columna 2 (centro):** Porcentaje Inicial + Cuotas sin/con interés - **SIN CAMBIOS**
+   - **Columna 3 (derecha):** Mantenimiento de comisiones (nuevo)
+
+**Responsive design:**
+- Desktop (>1024px): 3 columnas horizontales
+- Tablet/Mobile (<1024px): Columnas apiladas
+
+**Styling & Consistency:**
+- Usa misma estructura `space-y-6` de otras columnas
+- Tipografía y colores consistentes con diseño existente
+- Border dashed para indicar "pendiente de configurar"
+
+**Archivos modificados:**
+- `app/configuracion-proyectos/page.tsx` (+21 líneas, -2 líneas)
+
+**Commits:**
+- `38eaffc` - "feat: Add third column 'Mantenimiento de comisiones' to project configuration"
+
+**Testing QA:**
+- ⏳ Pendiente validación @QADev:
+  - Layout 3 columnas en desktop
+  - Responsive design correcto
+  - Columnas 1 y 2 sin modificaciones
+  - Funcionalidad existente intacta
+
+**Beneficio:**
+- Espacio preparado para futura funcionalidad de gestión de comisiones
+- Layout escalable y modular
+
+---
 
 ### **Sesión 53C** (22 Nov) - 🎨 ⏳ **UX Mejora: Modal Financiamiento con Header/Footer Sticky**
 **Feature:** Mejorar experiencia de usuario en modal de financiamiento con sticky header/footer
@@ -546,283 +600,6 @@ Finanzas ▼ (dropdown DollarSign icon)
 **Archivos:** lib/pdf-generator.ts (nuevo, 293 líneas), FinanciamientoModal.tsx (+50 líneas), package.json (jspdf deps)
 **Commits:** 6c6ffd0, 3c85a7c, 0e4ac2a, 4fb89fa, 2291ec8
 **[📖 Ver documentación completa →](docs/sesiones/SESION_52H_PDF_FINANCIAMIENTO.md)**
-
----
-
-### **Sesión 52D** (21 Nov) - 👤 ✅ **Campo "Asignar Vendedor" en Modal Datos Previos**
-**Feature:** 4ta sección en modal "Datos necesarios para iniciar proceso" para asignar vendedor
-**Problema resuelto:** Error "Vendedor no encontrado" cuando admin/jefe_ventas confirman el modal
-**Root cause:** Local puede no tener vendedor asignado cuando se pasa directamente a ROJO sin pasar por NARANJA
-
-**Campo implementado:**
-- **Label:** "Asignar Vendedor *" (requerido)
-- **Tipo:** Searchable select con búsqueda en tiempo real
-- **Opciones:** Todos los usuarios con rol 'vendedor' OR 'vendedor_caseta'
-- **Formato:** Nombre completo del vendedor
-- **Ordenado:** Alfabéticamente por nombre
-- **Búsqueda:** Filtrar mientras el usuario escribe
-
-**UI/UX:**
-- Icon: Users (lucide-react)
-- Input text con placeholder "Buscar vendedor por nombre..."
-- Dropdown con scroll (max-h-40) para lista filtrada
-- Cada item muestra: Nombre (bold) + Rol (Vendedor/Vendedor Caseta)
-- Card verde cuando seleccionado (CheckCircle icon + nombre + botón "Cambiar")
-- Espaciado consistente (border-t + pt-6)
-
-**Frontend (DatosRegistroVentaModal.tsx):**
-- State nuevo: `vendedores`, `selectedVendedor`, `vendedorSearchTerm`
-- useEffect para cargar vendedores activos (`getAllVendedoresActivos()`)
-- Filtrado en tiempo real: `.filter(v => v.nombre.toLowerCase().includes(term.toLowerCase()))`
-- Validación client-side: `selectedVendedor.trim().length > 0` en `canSubmit`
-- Error si se intenta confirmar sin vendedor
-- handleReset limpia campos vendedor
-- Paso `vendedorId` al server action
-
-**Backend (actions-locales.ts):**
-- Modificar firma de `saveDatosRegistroVenta()` agregando parámetro `vendedorId: string`
-- Validación server-side: `vendedorId` no vacío ni null
-- Validación server-side: Query verifica que vendedor existe con rol válido
-- Actualizar query UPDATE para incluir `vendedor_actual_id`
-- Actualizar mensaje de historial: incluye `vendedor_asignado=[NOMBRE]`
-
-**Validaciones implementadas:**
-1. **Client-side:**
-   - Campo requerido (validación en `canSubmit`)
-   - Error si se intenta confirmar sin vendedor
-
-2. **Server-side:**
-   - `vendedorId` no vacío ni null
-   - Query verifica vendedor existe: `supabase.from('usuarios').select().eq('vendedor_id', vendedorId).in('rol', ['vendedor', 'vendedor_caseta']).single()`
-   - Retorna error si vendedor no encontrado o rol inválido
-
-**Beneficio:** Elimina error "Vendedor no encontrado" + garantiza asignación correcta de locales ROJOS
-**Archivos:** DatosRegistroVentaModal.tsx (+85 líneas), actions-locales.ts (+27 líneas)
-**Commit:** `154d305`
-**Deploy:** ✅ STAGING
-
----
-
-### **Sesión 52C** (21 Nov) - 📝 ✅ **Modal Datos Previos para Registro de Venta**
-**Feature:** Modal previo que captura datos faltantes antes de abrir modal "Financiamiento de Local"
-**Problema resuelto:** Admin/Jefe Ventas pueden pasar locales a ROJO sin NARANJA, dejando datos faltantes (monto_venta, monto_separacion, lead_id)
-**Restricción:** Solo admin y jefe_ventas pueden acceder
-
-**Flujo completo:**
-1. Admin/Jefe Ventas click "Iniciar Registro de Venta" (local ROJO)
-2. Sistema verifica si faltan datos (monto_venta || monto_separacion || lead_id)
-   - ✅ SI tiene todos los datos → Abrir modal Financiamiento directamente
-   - ❌ NO tiene alguno → Abrir modal "Datos necesarios para iniciar proceso"
-3. Usuario completa datos faltantes en modal previo
-4. Click "Confirmar local" → Guarda datos + registra historial + auto-abre modal Financiamiento
-
-**3 Secciones del Modal:**
-
-1. **Monto de Separación** (REQUERIDO)
-   - Input numérico USD con validación >0
-   - Placeholder: "Ej: 5000.00"
-   - Formato: 2 decimales
-
-2. **Monto de Venta** (REQUERIDO)
-   - Input numérico USD con validación >0
-   - Placeholder: "Ej: 45000.00"
-   - Formato: 2 decimales
-
-3. **Vincular Lead (Cliente)** (REQUERIDO)
-   - Sistema búsqueda por teléfono (IDÉNTICO a LocalTrackingModal)
-   - Validación: Código país obligatorio (regex E.164: `^[1-9]\d{9,14}$`)
-   - Placeholder: "Ej: 51987654321"
-
-**Estados de búsqueda:**
-- `'search'` → Input teléfono + botón "Buscar" + nota código país
-- `'lead-found'` → Card verde con info lead:
-  - Nombre, Teléfono, Email (si existe), Proyecto
-  - Botón "← Buscar otro teléfono"
-- `'not-found'` → Alerta amarilla + formulario crear lead manual:
-  - Input "Teléfono" (read-only, pre-filled)
-  - Input "Nombre Completo del Cliente" * (requerido)
-  - Dropdown "Proyecto" * (requerido, lista proyectos activos)
-  - Mensaje azul informativo: "Se creará un nuevo lead en la tabla de leads con estado 'lead_manual' y asistió='Sí'"
-  - Link "← Buscar otro teléfono"
-
-**Botón "Confirmar local":**
-- Habilitado cuando:
-  - Monto separación >0 AND
-  - Monto venta >0 AND
-  - Teléfono válido (código país) AND
-  - (Lead encontrado OR Nombre completo + Proyecto seleccionado)
-
-**Acción al confirmar (Server Action):**
-1. **Crear lead manual SI no existe:**
-   - Tabla `leads` con campos: `telefono`, `nombre`, `proyecto_id`, `estado='lead_manual'`, `asistio=true`
-   - Obtener `leadId` del lead creado
-2. **Actualizar tabla `locales`:**
-   - `monto_separacion`, `monto_venta`, `lead_id`
-3. **Registrar en historial:**
-   - Tabla `locales_historial`
-   - Acción: "Admin/Jefe Ventas completó datos para registro de venta: monto_separacion=$XXX.XX, monto_venta=$XXX.XX, lead=[NOMBRE]"
-   - `usuario_id`: ID del admin/jefe_ventas actual
-4. **Auto-abrir modal Financiamiento:**
-   - Cerrar modal Datos
-   - Abrir modal Financiamiento con local actualizado
-
-**Backend: Server Action `saveDatosRegistroVenta()`:**
-- Parámetros:
-  - `localId`, `montoSeparacion`, `montoVenta`
-  - `leadId` (si vincula existente) o `newLeadData` (si crea nuevo)
-  - `usuarioId` (admin/jefe_ventas)
-- Validaciones server-side:
-  - Montos >0 (doble seguridad)
-  - Datos completos
-- Flujo:
-  1. Validar inputs
-  2. Si `newLeadData` existe → Crear lead manual (llamar `createManualLead()`)
-  3. Actualizar local con montos + leadId
-  4. Registrar en historial
-  5. Retornar local actualizado
-- Retorna: `{ success, message?, local? }`
-
-**Integración LocalesTable.tsx:**
-```typescript
-// Nueva lógica condicional
-const handleIniciarRegistroVenta = (local: Local) => {
-  const faltanDatos = !local.monto_venta || !local.monto_separacion || !local.lead_id;
-
-  if (faltanDatos) {
-    setDatosModal({ isOpen: true, local });
-  } else {
-    setFinanciamientoModal({ isOpen: true, local });
-  }
-};
-
-// Callback onSuccess
-const handleDatosSuccess = (updatedLocal: Local) => {
-  setDatosModal({ isOpen: false, local: null });
-  setFinanciamientoModal({ isOpen: true, local: updatedLocal });
-};
-```
-
-**Validaciones críticas:**
-- ✅ Client-side: Montos >0, teléfono formato internacional, campos requeridos
-- ✅ Server-side: Montos >0, datos completos (doble seguridad)
-- ✅ Teléfono: Regex E.164 internacional (10-15 dígitos, empieza con código país)
-- ✅ Nombre: Requerido si crea lead nuevo
-- ✅ Proyecto: Requerido si crea lead nuevo
-
-**Archivos nuevos:**
-- `components/locales/DatosRegistroVentaModal.tsx` (533 líneas)
-
-**Archivos modificados:**
-- `lib/actions-locales.ts` (+97 líneas) - Server action saveDatosRegistroVenta()
-- `lib/locales.ts` (1 línea) - Interface Local con campo `lead_id: string | null`
-- `components/locales/LocalesTable.tsx` (+46 líneas)
-  - Import DatosRegistroVentaModal
-  - State datosModal
-  - handleIniciarRegistroVenta() con lógica condicional
-  - handleDatosSuccess() callback
-  - Render DatosRegistroVentaModal
-
-**Testing escenarios:**
-- ✅ Escenario 1: Local ROJO sin datos → Abrir modal previo
-- ✅ Escenario 2: Local ROJO con datos → Abrir modal financiamiento directo
-- ✅ Escenario 3: Búsqueda lead exitosa → Vincular
-- ✅ Escenario 4: Búsqueda lead fallida → Crear nuevo con estado lead_manual + asistio=Sí
-- ✅ Escenario 5: Confirmar → Datos guardados + historial + auto-abrir financiamiento
-
-**Commit:** `b89dd91`
-**Deploy:** ✅ STAGING
-
----
-
-### **Sesión 52B** (21 Nov) - 💰 ✅ **Campos Financiamiento/Separación en Modal Registro de Venta**
-**Feature:** Agregar 3 campos al modal de Registro de Venta (antes "Financiamiento")
-**Problema resuelto:** Capturar información completa de financiamiento y mostrar montos de venta/separación
-**Cambio terminológico:** "Iniciar Financiamiento" → "Iniciar Registro de Venta" (mejor describe el proceso)
-
-**Nuevos campos implementados:**
-1. **"¿Con financiamiento?"** - Radio buttons Si/No (default: Sí)
-   - Estado local `conFinanciamiento` (boolean, default true)
-   - Dos opciones mutuamente exclusivas
-   - Estilo Tailwind limpio con hover states
-
-2. **"Precio de venta"** - Display read-only
-   - Muestra `local.monto_venta` (capturado en estado NARANJA)
-   - Formato: S/ XXX,XXX.XX (moneda peruana con comas)
-   - Card con fondo azul (`bg-blue-50`)
-   - Tipografía grande y bold (`text-2xl font-bold text-blue-900`)
-
-3. **"Separó con"** - Display read-only
-   - Muestra `local.monto_separacion` (capturado en estado NARANJA)
-   - Formato: S/ XXX,XXX.XX (moneda peruana con comas)
-   - Card con fondo verde (`bg-green-50`)
-   - Tipografía grande y bold (`text-2xl font-bold text-green-900`)
-
-**Helper function:**
-- `formatMonto()` - Formatea number a string con locale es-PE
-  - Input: `12345.67` → Output: `"S/ 12,345.67"`
-  - Maneja null/undefined → muestra "N/A"
-  - Siempre 2 decimales (minimumFractionDigits, maximumFractionDigits)
-
-**Layout mejorado:**
-- Sección "Información del Local" (fondo gris, código/proyecto/metraje)
-- Grid 2 columnas para montos (precio venta | separación)
-- Radio buttons en sección separada con borde superior
-- Espaciado vertical consistente (`space-y-6`)
-
-**Archivos modificados:**
-- `FinanciamientoModal.tsx` (+93 líneas netas)
-  - Import useState
-  - Estado conFinanciamiento
-  - Helper formatMonto
-  - Nuevo layout con 3 secciones
-  - Comentarios SESIÓN 52B
-- `LocalesTable.tsx` (1 línea)
-  - Cambio texto: "Iniciar Financiamiento" → "Iniciar Registro de Venta"
-
-**Commit:** `801e31e`
-**Deploy:** ✅ STAGING
-
----
-
-### **Sesión 52** (21 Nov) - 💰 ✅ **Enlace "Iniciar Registro de Venta" para Locales ROJOS**
-**Feature:** Enlace condicional debajo del semáforo para iniciar proceso de registro de venta
-**Problema resuelto:** Admin y Jefe de Ventas necesitan punto de entrada para gestionar financiamiento de locales vendidos
-**Restricción:** Solo admin y jefe_ventas pueden ver el enlace
-
-**Visibilidad condicional:**
-1. Local debe estar en estado ROJO (vendido/bloqueado)
-2. Usuario debe ser admin o jefe_ventas
-3. Enlace aparece debajo de los círculos de colores (semáforo)
-
-**Modal implementado:**
-- Título: "Financiamiento de Local: [CODIGO] - [PROYECTO]"
-- Ejemplo: "Financiamiento de Local: A-101 - Callao"
-- Información mostrada: Código, proyecto, metraje, monto de venta
-- Contenido: Placeholder (funcionalidad a desarrollar en siguiente sesión)
-
-**UI/UX:**
-- Color enlace: Verde (`text-green-600`) - Asociación con dinero/financiamiento
-- Hover: Subrayado y color más oscuro
-- Posición: Segunda línea debajo del semáforo (después de "Salir de la negociación")
-- Modal: Max width 2xl, backdrop oscuro, botón cerrar (X)
-
-**Componente nuevo:**
-- `FinanciamientoModal.tsx` (73 líneas)
-  - Props: isOpen, local, onClose
-  - Header con título dinámico
-  - Body con placeholder
-  - Footer con botón "Cerrar"
-
-**Cambios LocalesTable:**
-- Import FinanciamientoModal
-- State `financiamientoModal`
-- Helper `renderIniciarFinanciamiento()` con doble validación (estado + rol)
-- Render en tabla (línea 851)
-- Modal component (líneas 923-928)
-
-**Archivos:** FinanciamientoModal.tsx (nuevo), LocalesTable.tsx (+47 líneas)
-**Commit:** `c355ab4`
-**[📖 Ver documentación completa →](consultas-leo/SESION_52_ENLACE_INICIAR_FINANCIAMIENTO.md)**
 
 ---
 
