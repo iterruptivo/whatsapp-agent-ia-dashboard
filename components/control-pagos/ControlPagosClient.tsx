@@ -34,7 +34,8 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
 
   // Helper para formatear fechas
   const formatFecha = (fecha: string): string => {
-    const date = new Date(fecha);
+    // Agregar T00:00:00 para forzar interpretación como hora local (no UTC)
+    const date = new Date(fecha + 'T00:00:00');
     return date.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
