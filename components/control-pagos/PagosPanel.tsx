@@ -189,7 +189,7 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={pagoSeparacion.estado === 'completado'}
+                      checked={pagoSeparacion.monto_abonado >= pagoSeparacion.monto_esperado}
                       onChange={(e) => handleToggleSeparacion(e.target.checked)}
                       className="w-4 h-4 text-[#1b967a] border-gray-300 rounded focus:ring-[#1b967a]"
                     />
@@ -208,7 +208,7 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                   </div>
                 </div>
 
-                {pagoSeparacion.estado !== 'completado' && (
+                {pagoSeparacion.monto_abonado < pagoSeparacion.monto_esperado && (
                   <button
                     onClick={() => setAbonoModal({ isOpen: true, pago: pagoSeparacion })}
                     className="mt-3 w-full bg-[#1b967a] text-white py-2 px-4 rounded-lg hover:bg-[#157a63] transition-colors font-medium text-sm"
