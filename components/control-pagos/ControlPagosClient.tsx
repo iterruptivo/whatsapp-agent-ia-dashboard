@@ -10,7 +10,8 @@
 
 import { useState } from 'react';
 import type { ControlPago } from '@/lib/actions-control-pagos';
-import { FileText, Calendar, DollarSign } from 'lucide-react';
+import { FileText, Calendar, Eye } from 'lucide-react';
+import PagosPanel from './PagosPanel';
 
 interface ControlPagosClientProps {
   initialData: ControlPago[];
@@ -18,6 +19,13 @@ interface ControlPagosClientProps {
 
 export default function ControlPagosClient({ initialData }: ControlPagosClientProps) {
   const [controlPagos] = useState<ControlPago[]>(initialData);
+  const [pagosPanel, setPagosPanel] = useState<{
+    isOpen: boolean;
+    controlPago: ControlPago | null;
+  }>({
+    isOpen: false,
+    controlPago: null,
+  });
 
   // Helper para formatear montos
   const formatMonto = (monto: number): string => {
@@ -175,13 +183,11 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
                   {/* Acciones */}
                   <td className="px-4 py-3 text-center">
                     <button
-                      className="text-sm text-primary hover:text-primary-dark hover:underline"
-                      onClick={() => {
-                        // TODO: Abrir modal con detalle completo + calendario de cuotas
-                        console.log('Ver detalle:', cp.id);
-                      }}
+                      onClick={() => setPagosPanel({ isOpen: true, controlPago: cp })}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a63] transition-colors text-sm font-medium"
                     >
-                      Ver detalle
+                      <Eye className="w-4 h-4" />
+                      Ver
                     </button>
                   </td>
                 </tr>
@@ -190,6 +196,12 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
           </table>
         </div>
       )}
+
+      <PagosPanel
+        isOpen={pagosPanel.isOpen}
+        controlPago={pagosPanel.controlPago}
+        onClose={() => setPagosPanel({ isOpen: false, controlPago: null })}
+      />
     </div>
   );
 }
