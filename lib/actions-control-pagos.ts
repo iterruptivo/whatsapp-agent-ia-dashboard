@@ -96,7 +96,7 @@ export interface ControlPago {
  * @returns Success/error con mensaje
  */
 export async function procesarVentaLocal(data: ProcesarVentaData) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -223,7 +223,7 @@ export async function procesarVentaLocal(data: ProcesarVentaData) {
  * @returns Array de control_pagos ordenados por fecha de creación DESC
  */
 export async function getAllControlPagos(): Promise<ControlPago[]> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -262,7 +262,7 @@ export async function getAllControlPagos(): Promise<ControlPago[]> {
  * @returns Control_pago o null si no existe
  */
 export async function getControlPagoById(id: string): Promise<ControlPago | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -301,7 +301,7 @@ export async function getControlPagoById(id: string): Promise<ControlPago | null
  * @returns Control_pago o null si no existe
  */
 export async function getControlPagoByLocalId(localId: string): Promise<ControlPago | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -343,7 +343,7 @@ export async function getControlPagoByLocalId(localId: string): Promise<ControlP
  * @returns Contadores por estado
  */
 export async function getControlPagosStats() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
