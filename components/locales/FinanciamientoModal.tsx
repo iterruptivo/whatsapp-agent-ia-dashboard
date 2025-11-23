@@ -148,6 +148,7 @@ export default function FinanciamientoModal({
     : null;
 
   // Función helper para calcular fechas de cuotas (reutilizable)
+  // FIXED: Construcción manual de fecha sin conversión UTC para evitar timezone shift
   const calcularFechaCuota = (fechaPagoInicial: string, numeroCuota: number): string => {
     // Parsear fecha manualmente para evitar problemas de timezone
     const [año, mes, dia] = fechaPagoInicial.split('-').map(Number);
