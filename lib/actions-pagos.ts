@@ -238,3 +238,74 @@ export async function registrarAbono(data: {
     return { success: false, message: 'Error inesperado al registrar abono' };
   }
 }
+
+export async function toggleSeparacionPagada(data: {
+  pagoId: string;
+  pagado: boolean;
+  usuarioId: string;
+  montoSeparacion: number;
+}) {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: 'No autenticado' };
+    }
+
+    if (data.pagado) {
+      const { data: abonos } = await supabase
+        .from('abonos_pago')
+        .select('*')
+        .eq('pago_id', data.pagoId);
+
+      if (abonos && abonos.length > 0) {
+        return { success: false, message: 'La separación ya tiene abonos registrados' };
+      }
+
+      const { error } = await supabase
+        .from('abonos_pago')
+        .insert({
+          pago_id: data.pagoId,
+          monto: data.montoSeparacion,
+          fecha_abono: new Date().toISOString().split('T')[0],
+          metodo_pago: 'Efectivo',
+          notas: 'Separación marcada como pagada',
+          registrado_por: data.usuarioId,
+        });
+
+      if (error) {
+        console.error('[PAGOS] Error marcando separación como pagada:', error);
+        return { success: false, message: 'Error al marcar como pagado' };
+      }
+
+      return { success: true, message: 'Separación marcada como pagada' };
+    } else {
+      const { error } = await supabase
+        .from('abonos_pago')
+        .delete()
+        .eq('pago_id', data.pagoId);
+
+      if (error) {
+        console.error('[PAGOS] Error desmarcando separación:', error);
+        return { success: false, message: 'Error al desmarcar' };
+      }
+
+      return { success: true, message: 'Separación marcada como NO pagada' };
+    }
+  } catch (error) {
+    console.error('[PAGOS] Error en toggleSeparacionPagada:', error);
+    return { success: false, message: 'Error inesperado' };
+  }
+}

@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import type { ControlPago } from '@/lib/actions-control-pagos';
-import { getPagosLocal, getPagoStats, type PagoConAbonos, type PagoStats } from '@/lib/actions-pagos';
+import { getPagosLocal, getPagoStats, toggleSeparacionPagada, type PagoConAbonos, type PagoStats } from '@/lib/actions-pagos';
 import RegistrarAbonoModal from './RegistrarAbonoModal';
+import AlertModal from '@/components/shared/AlertModal';
 import { useAuth } from '@/lib/auth-context';
 
 interface PagosPanelProps {
@@ -21,6 +22,17 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
   const [abonoModal, setAbonoModal] = useState<{ isOpen: boolean; pago: PagoConAbonos | null }>({
     isOpen: false,
     pago: null,
+  });
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'success' | 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info',
   });
   const { user } = useAuth();
 
@@ -42,8 +54,37 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
     setLoading(false);
   };
 
+  const pagoSeparacion = pagos.find(p => p.tipo === 'separacion');
   const pagoInicial = pagos.find(p => p.tipo === 'inicial');
   const cuotas = pagos.filter(p => p.tipo === 'cuota');
+
+  const handleToggleSeparacion = async (pagado: boolean) => {
+    if (!pagoSeparacion || !user || !controlPago) return;
+
+    const result = await toggleSeparacionPagada({
+      pagoId: pagoSeparacion.id,
+      pagado,
+      usuarioId: user.id,
+      montoSeparacion: controlPago.monto_separacion,
+    });
+
+    if (result.success) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Actualizado',
+        message: result.message || 'Separación actualizada',
+        variant: 'success',
+      });
+      loadData();
+    } else {
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: result.message || 'No se pudo actualizar',
+        variant: 'danger',
+      });
+    }
+  };
 
   const formatMonto = (monto: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -132,6 +173,46 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                 </div>
               </div>
             </div>
+
+            {pagoSeparacion && (
+              <div className="p-6 bg-white border-b">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="font-semibold text-gray-900 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-gray-600" />
+                    Separación
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={pagoSeparacion.estado === 'completado'}
+                      onChange={(e) => handleToggleSeparacion(e.target.checked)}
+                      className="w-4 h-4 text-[#1b967a] border-gray-300 rounded focus:ring-[#1b967a]"
+                    />
+                    <span className="text-sm font-medium text-gray-700">Pagado</span>
+                  </label>
+                </div>
+
+                <div className="bg-gray-50 p-3 rounded-lg space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Monto:</span>
+                    <span className="font-semibold">{formatMonto(pagoSeparacion.monto_esperado)}</span>
+                  </div>
+                  <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(pagoSeparacion.estado)}`}>
+                    {getEstadoIcon(pagoSeparacion.estado)}
+                    {pagoSeparacion.estado}
+                  </div>
+                </div>
+
+                {pagoSeparacion.estado !== 'completado' && (
+                  <button
+                    onClick={() => setAbonoModal({ isOpen: true, pago: pagoSeparacion })}
+                    className="mt-3 w-full bg-[#1b967a] text-white py-2 px-4 rounded-lg hover:bg-[#157a63] transition-colors font-medium text-sm"
+                  >
+                    + Registrar Monto de Separación
+                  </button>
+                )}
+              </div>
+            )}
 
             <div className="border-b">
               <div className="flex">
@@ -264,6 +345,14 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
           setAbonoModal({ isOpen: false, pago: null });
           loadData();
         }}
+      />
+
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        title={alertModal.title}
+        message={alertModal.message}
+        variant={alertModal.variant}
+        onOk={() => setAlertModal({ ...alertModal, isOpen: false })}
       />
     </>
   );
