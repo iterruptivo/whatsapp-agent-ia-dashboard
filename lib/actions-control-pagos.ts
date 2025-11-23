@@ -8,7 +8,7 @@
 
 'use server';
 
-import { createServerClient } from '@/lib/supabase-server';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
 // ============================================================================
@@ -97,7 +97,17 @@ export interface ControlPago {
  */
 export async function procesarVentaLocal(data: ProcesarVentaData) {
   const cookieStore = cookies();
-  const supabase = createServerClient(cookieStore);
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
 
   try {
     // 1. Validar autenticación
@@ -214,7 +224,17 @@ export async function procesarVentaLocal(data: ProcesarVentaData) {
  */
 export async function getAllControlPagos(): Promise<ControlPago[]> {
   const cookieStore = cookies();
-  const supabase = createServerClient(cookieStore);
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
 
   try {
     const { data, error } = await supabase
@@ -243,7 +263,17 @@ export async function getAllControlPagos(): Promise<ControlPago[]> {
  */
 export async function getControlPagoById(id: string): Promise<ControlPago | null> {
   const cookieStore = cookies();
-  const supabase = createServerClient(cookieStore);
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
 
   try {
     const { data, error } = await supabase
@@ -272,7 +302,17 @@ export async function getControlPagoById(id: string): Promise<ControlPago | null
  */
 export async function getControlPagoByLocalId(localId: string): Promise<ControlPago | null> {
   const cookieStore = cookies();
-  const supabase = createServerClient(cookieStore);
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
 
   try {
     const { data, error } = await supabase
@@ -304,7 +344,17 @@ export async function getControlPagoByLocalId(localId: string): Promise<ControlP
  */
 export async function getControlPagosStats() {
   const cookieStore = cookies();
-  const supabase = createServerClient(cookieStore);
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
 
   try {
     const { data, error } = await supabase
