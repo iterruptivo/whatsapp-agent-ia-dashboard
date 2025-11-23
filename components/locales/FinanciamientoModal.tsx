@@ -166,8 +166,10 @@ export default function FinanciamientoModal({
     // Usar el menor entre el día original y el último día del mes
     const diaFinal = Math.min(diaOriginal, ultimoDiaMes);
 
-    const fechaCuota = new Date(añoDestino, mesDestinoFinal, diaFinal);
-    return fechaCuota.toISOString().split('T')[0];
+    // Construir fecha manualmente SIN conversión UTC para evitar desplazamiento de zona horaria
+    const mesStr = String(mesDestinoFinal + 1).padStart(2, '0');
+    const diaStr = String(diaFinal).padStart(2, '0');
+    return `${añoDestino}-${mesStr}-${diaStr}`;
   };
 
   // Función para generar calendario de cuotas
