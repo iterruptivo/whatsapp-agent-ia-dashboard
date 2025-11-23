@@ -328,14 +328,30 @@ export async function toggleSeparacionPagada(data: {
 
       return { success: true, message: 'Separación marcada como pagada' };
     } else {
-      const { error } = await supabase
+      // Eliminar abonos
+      const { error: deleteError } = await supabase
         .from('abonos_pago')
         .delete()
         .eq('pago_id', data.pagoId);
 
-      if (error) {
-        console.error('[PAGOS] Error desmarcando separación:', error);
+      if (deleteError) {
+        console.error('[PAGOS] Error desmarcando separación:', deleteError);
         return { success: false, message: 'Error al desmarcar' };
+      }
+
+      // UPDATE manual: resetear monto_abonado y estado
+      // El trigger solo se dispara en INSERT, no en DELETE
+      const { error: updateError } = await supabase
+        .from('pagos_local')
+        .update({
+          monto_abonado: 0,
+          estado: 'pendiente',
+        })
+        .eq('id', data.pagoId);
+
+      if (updateError) {
+        console.error('[PAGOS] Error actualizando pago_local:', updateError);
+        return { success: false, message: 'Error al actualizar estado del pago' };
       }
 
       return { success: true, message: 'Separación marcada como NO pagada' };
