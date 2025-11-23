@@ -202,7 +202,7 @@ export async function procesarVentaLocal(data: ProcesarVentaData) {
     }
 
     // 7. INSERT en locales_historial
-    const accion = `Local procesado para control de pagos. Financiamiento: ${data.conFinanciamiento ? 'Sí' : 'No'}, Cuotas: ${data.numeroCuotas}, Monto restante: $${data.montoRestante.toFixed(2)}`;
+    const accion = `Local procesado para control de pagos. Monto de venta: $${data.montoVenta.toFixed(2)}, Financiamiento: ${data.conFinanciamiento ? 'Sí' : 'No'}, Cuotas: ${data.numeroCuotas}, Monto restante: $${data.montoRestante.toFixed(2)}`;
 
     const { error: historialError } = await supabase
       .from('locales_historial')
