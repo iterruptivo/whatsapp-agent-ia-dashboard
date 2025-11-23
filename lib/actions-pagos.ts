@@ -6,7 +6,7 @@ import { cookies } from 'next/headers';
 export interface PagoLocal {
   id: string;
   control_pago_id: string;
-  tipo: 'inicial' | 'cuota';
+  tipo: 'separacion' | 'inicial' | 'cuota';
   numero_cuota: number | null;
   monto_esperado: number;
   monto_abonado: number;
