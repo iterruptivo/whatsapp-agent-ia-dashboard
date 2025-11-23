@@ -84,10 +84,7 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
   };
 
   const formatFecha = (fecha: string) => {
-    // Agregar T00:00:00 para forzar interpretación como hora local (no UTC)
-    // Sin esto: "2026-02-28" → UTC midnight → Perú 27/02 19:00 → muestra día 27
-    // Con esto: "2026-02-28T00:00:00" → Local midnight → muestra día 28
-    return new Date(fecha + 'T00:00:00').toLocaleDateString('es-PE', {
+    return new Date(fecha).toLocaleDateString('es-PE', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -192,7 +189,7 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={pagoSeparacion.monto_abonado >= pagoSeparacion.monto_esperado}
+                      checked={pagoSeparacion.estado === 'completado'}
                       onChange={(e) => handleToggleSeparacion(e.target.checked)}
                       className="w-4 h-4 text-[#1b967a] border-gray-300 rounded focus:ring-[#1b967a]"
                     />
@@ -211,25 +208,7 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                   </div>
                 </div>
 
-                {pagoSeparacion.fue_desmarcado && pagoSeparacion.abonos.length > 0 && (
-                  <div className="mt-3">
-                    <div className="text-sm font-semibold text-gray-700 mb-2">Historial de abonos de Separación</div>
-                    <div className="space-y-2">
-                      {pagoSeparacion.abonos.map((abono) => (
-                        <div key={abono.id} className="bg-gray-50 border rounded-lg p-3 text-sm">
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="font-semibold text-gray-900">{formatMonto(abono.monto)}</div>
-                            <div className="text-gray-600">{formatFecha(abono.fecha_abono)}</div>
-                          </div>
-                          <div className="text-gray-600">{abono.metodo_pago}</div>
-                          {abono.notas && <div className="text-gray-500 text-xs mt-1">{abono.notas}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {pagoSeparacion.monto_abonado < pagoSeparacion.monto_esperado && (
+                {pagoSeparacion.estado !== 'completado' && (
                   <button
                     onClick={() => setAbonoModal({ isOpen: true, pago: pagoSeparacion })}
                     className="mt-3 w-full bg-[#1b967a] text-white py-2 px-4 rounded-lg hover:bg-[#157a63] transition-colors font-medium text-sm"
