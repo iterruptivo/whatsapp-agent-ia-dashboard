@@ -8,8 +8,11 @@
 -- Root Cause: No existe policy de INSERT para role 'authenticated'
 -- ============================================================================
 
+-- Eliminar policy si existe (para evitar error de duplicado)
+DROP POLICY IF EXISTS locales_historial_insert_authenticated ON locales_historial;
+
 -- Crear policy de INSERT para usuarios autenticados
-CREATE POLICY IF NOT EXISTS locales_historial_insert_authenticated
+CREATE POLICY locales_historial_insert_authenticated
   ON locales_historial
   FOR INSERT
   TO authenticated
