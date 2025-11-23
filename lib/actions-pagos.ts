@@ -250,6 +250,16 @@ export async function registrarAbono(data: {
     const montoCentavos = Math.round(data.monto * 100);
     const restanteCentavos = Math.round(montoRestante * 100);
 
+    // DEBUG: Log valores para diagnóstico
+    console.log('🔍 DEBUG BACKEND VALIDATION:');
+    console.log('  data.monto (input):', data.monto);
+    console.log('  pago.monto_esperado:', pago.monto_esperado);
+    console.log('  pago.monto_abonado:', pago.monto_abonado);
+    console.log('  montoRestante (calculated):', montoRestante);
+    console.log('  montoCentavos:', montoCentavos);
+    console.log('  restanteCentavos:', restanteCentavos);
+    console.log('  montoCentavos > restanteCentavos:', montoCentavos > restanteCentavos);
+
     if (montoCentavos > restanteCentavos) {
       return {
         success: false,

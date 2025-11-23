@@ -69,6 +69,16 @@ export default function RegistrarAbonoModal({
     const montoCentavos = Math.round(montoNum * 100);
     const restanteCentavos = Math.round(montoRestante * 100);
 
+    // DEBUG: Log valores para diagnóstico
+    console.log('🔍 DEBUG FRONTEND VALIDATION:');
+    console.log('  montoNum (input):', montoNum);
+    console.log('  montoRestante (calculated):', montoRestante);
+    console.log('  pago.monto_esperado:', pago.monto_esperado);
+    console.log('  pago.monto_abonado:', pago.monto_abonado);
+    console.log('  montoCentavos:', montoCentavos);
+    console.log('  restanteCentavos:', restanteCentavos);
+    console.log('  montoCentavos > restanteCentavos:', montoCentavos > restanteCentavos);
+
     if (montoCentavos > restanteCentavos) {
       setAlertModal({
         isOpen: true,
