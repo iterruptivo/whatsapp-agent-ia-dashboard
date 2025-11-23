@@ -46,9 +46,9 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
   const cuotas = pagos.filter(p => p.tipo === 'cuota');
 
   const formatMonto = (monto: number) => {
-    return new Intl.NumberFormat('es-PE', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'PEN',
+      currency: 'USD',
     }).format(monto);
   };
 

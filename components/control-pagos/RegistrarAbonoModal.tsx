@@ -108,9 +108,9 @@ export default function RegistrarAbonoModal({
   };
 
   const formatMonto = (num: number) => {
-    return new Intl.NumberFormat('es-PE', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'PEN',
+      currency: 'USD',
     }).format(num);
   };
 
@@ -153,7 +153,7 @@ export default function RegistrarAbonoModal({
                 Monto del Abono *
               </label>
               <div className="relative">
-                <span className="absolute left-3 top-2.5 text-gray-500">S/</span>
+                <span className="absolute left-3 top-2.5 text-gray-500">$</span>
                 <input
                   type="number"
                   value={monto}
