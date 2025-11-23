@@ -150,9 +150,12 @@ export default function FinanciamientoModal({
   // Función helper para calcular fechas de cuotas (reutilizable)
   // FIXED: Construcción manual de fecha sin conversión UTC para evitar timezone shift
   const calcularFechaCuota = (fechaPagoInicial: string, numeroCuota: number): string => {
+    console.log(`[DEBUG CALC] Input: fechaPagoInicial="${fechaPagoInicial}", numeroCuota=${numeroCuota}`);
+
     // Parsear fecha manualmente para evitar problemas de timezone
     const [año, mes, dia] = fechaPagoInicial.split('-').map(Number);
     const diaOriginal = dia;
+    console.log(`[DEBUG CALC] Parsed: año=${año}, mes=${mes}, dia=${dia}`);
 
     // Calcular año y mes destino (mes en JS es 0-indexed)
     const mesInicial = mes - 1; // Convertir a 0-indexed
@@ -166,11 +169,15 @@ export default function FinanciamientoModal({
 
     // Usar el menor entre el día original y el último día del mes
     const diaFinal = Math.min(diaOriginal, ultimoDiaMes);
+    console.log(`[DEBUG CALC] Destino: año=${añoDestino}, mes=${mesDestinoFinal + 1}, diaFinal=${diaFinal}, ultimoDiaMes=${ultimoDiaMes}`);
 
     // Construir fecha manualmente SIN conversión UTC para evitar desplazamiento de zona horaria
     const mesStr = String(mesDestinoFinal + 1).padStart(2, '0');
     const diaStr = String(diaFinal).padStart(2, '0');
-    return `${añoDestino}-${mesStr}-${diaStr}`;
+    const fechaResultado = `${añoDestino}-${mesStr}-${diaStr}`;
+    console.log(`[DEBUG CALC] Resultado final: "${fechaResultado}"`);
+
+    return fechaResultado;
   };
 
   // Función para generar calendario de cuotas
@@ -523,11 +530,16 @@ export default function FinanciamientoModal({
                       >
                         <td className="px-4 py-3 text-center font-medium text-gray-900">{cuota.numero}</td>
                         <td className="px-4 py-3 text-center text-gray-700">
-                          {new Date(cuota.fecha + 'T00:00:00').toLocaleDateString('es-PE', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric'
-                          })}
+                          {(() => {
+                            console.log('[DEBUG FECHA] cuota.fecha RAW:', cuota.fecha);
+                            const fechaFormateada = new Date(cuota.fecha + 'T00:00:00').toLocaleDateString('es-PE', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            });
+                            console.log('[DEBUG FECHA] Formateada:', fechaFormateada);
+                            return fechaFormateada;
+                          })()}
                         </td>
                         <td className="px-4 py-3 text-center font-semibold text-[#1b967a]">
                           {formatMonto(cuota.monto)}
@@ -566,11 +578,16 @@ export default function FinanciamientoModal({
                       >
                         <td className="px-3 py-3 text-center font-medium text-gray-900">{cuota.numero}</td>
                         <td className="px-3 py-3 text-center text-gray-700">
-                          {new Date(cuota.fecha + 'T00:00:00').toLocaleDateString('es-PE', {
-                            day: '2-digit',
-                            month: 'short',
-                            year: 'numeric'
-                          })}
+                          {(() => {
+                            console.log('[DEBUG FECHA CON FIN] cuota.fecha RAW:', cuota.fecha);
+                            const fechaFormateada = new Date(cuota.fecha + 'T00:00:00').toLocaleDateString('es-PE', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric'
+                            });
+                            console.log('[DEBUG FECHA CON FIN] Formateada:', fechaFormateada);
+                            return fechaFormateada;
+                          })()}
                         </td>
                         <td className="px-3 py-3 text-center text-red-600 font-semibold">
                           {formatMonto(cuota.interes)}
