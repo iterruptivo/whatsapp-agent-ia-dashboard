@@ -8,8 +8,8 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 22 Noviembre 2025
-**Sesión:** 53 - 🎨 **Tercera Columna en Configuración de Proyectos**
-**Estado:** ✅ **DEPLOYED TO STAGING**
+**Sesión:** 54 - 💰 **Sistema Completo de Control de Pagos (Post-Venta)**
+**Estado:** ⏳ **PENDING QA REVIEW**
 **Documentación:** Ver "Últimas 5 Sesiones" abajo
 
 ---
@@ -57,8 +57,8 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: OPERATIVO (1,417 leads con keyset pagination)
 
 - **[Locales](docs/modulos/locales.md)** - Semáforo, monto de venta, tracking, PDF financiamiento
-  - Última sesión: **52I (Mejora UX: Botón Procesar disabled)**
-  - Estado: OPERATIVO (823 locales con real-time + PDF profesional + validación UX)
+  - Última sesión: **54 (Sistema Control de Pagos)**
+  - Estado: OPERATIVO (823 locales con real-time + PDF + control de pagos post-venta)
 
 - **[Usuarios](docs/modulos/usuarios.md)** - Roles, permisos, CRUD
   - Última sesión: 40D (Nuevo admin Bryan)
@@ -144,6 +144,148 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 54** (22 Nov) - 💰 ⏳ **Sistema Completo de Control de Pagos (Post-Venta)**
+**Feature:** Sistema completo de gestión de pagos para locales vendidos (post-venta)
+**Problema resuelto:** Necesidad de gestionar calendario de cuotas, pagos recibidos y morosidad
+**Estado:** ⏳ **PENDING QA REVIEW**
+
+**Implementación completa en 4 FASES:**
+
+**FASE 1: Database Schema (DataDev)**
+- Migration SQL: `supabase/migrations/20251122_create_control_pagos.sql`
+- Nueva tabla `control_pagos` con snapshot inmutable de datos:
+  - Relación: `local_id` (FK a locales con ON DELETE CASCADE)
+  - Snapshot local: código, proyecto, metraje
+  - Snapshot cliente: lead_id, nombre, teléfono
+  - Montos: venta, separación, inicial, inicial_restante, monto_restante
+  - Financiamiento: con_financiamiento (boolean), porcentaje_inicial, numero_cuotas, tea, fecha_primer_pago
+  - **Calendario cuotas:** JSONB completo (array de objetos con fecha, monto, interés, amortización, saldo)
+  - Estado: 'activo' | 'completado' | 'cancelado'
+  - Metadata: procesado_por, vendedor_id, created_at, updated_at
+- RLS policies: SELECT (authenticated), INSERT/UPDATE (admin + jefe_ventas)
+- Trigger para `updated_at`
+- Índices: local_id, proyecto_id, estado, vendedor_id, created_at DESC
+- Modificación tabla `locales`: Campo `en_control_pagos` (boolean, default false) + índice
+
+**FASE 2: Backend (BackDev)**
+- Archivo nuevo: `lib/actions-control-pagos.ts` (370 líneas)
+- Server Actions:
+  1. **procesarVentaLocal(data)**: Procesa venta completa
+     - Validaciones: Auth, rol (admin/jefe_ventas), local no duplicado
+     - INSERT en control_pagos (snapshot completo)
+     - UPDATE locales SET en_control_pagos = true
+     - INSERT en locales_historial
+     - Retorna: `{ success, message }`
+  2. **getAllControlPagos()**: Obtiene todos los registros activos (ORDER BY created_at DESC)
+  3. **getControlPagoById(id)**: Obtiene por ID
+  4. **getControlPagoByLocalId(localId)**: Obtiene por local_id
+  5. **getControlPagosStats()**: Contadores por estado (activo, completado, cancelado)
+- Interfaces:
+  - **ProcesarVentaData**: 17 campos (local, cliente, montos, financiamiento, calendario, usuario)
+  - **ControlPago**: Estructura completa de registro
+
+**FASE 3: Frontend - Modificaciones `/locales` (FrontDev)**
+
+1. **FinanciamientoModal.tsx (+40 líneas):**
+   - Import `useAuth` y `procesarVentaLocal`
+   - State `isProcessing` (loading durante procesamiento)
+   - Modal confirmación "Procesar" ahora ejecuta lógica real:
+     - Preparar objeto `dataProcesar` con 17 campos
+     - Llamar `await procesarVentaLocal(dataProcesar)`
+     - Success: Cerrar modal + alert + `window.location.reload()`
+     - Error: Alert con mensaje + mantener modal abierto
+   - Error handling completo con try/catch
+
+2. **LocalesTable.tsx (+15 líneas):**
+   - **renderSemaforo():** Si `local.en_control_pagos === true`:
+     - Mostrar badge azul (#0066cc): "🔒 En proceso de venta"
+     - NO mostrar semáforo ni círculos de colores
+   - **renderSalirNegociacion():** Bloquear si `en_control_pagos === true` (return null)
+   - **renderIniciarFinanciamiento():** Bloquear si `en_control_pagos === true` (return null)
+   - Badge design: `bg-blue-600 text-white font-semibold rounded-full px-3 py-1.5`
+
+3. **lib/locales.ts (1 línea):**
+   - Interface `Local`: Campo `en_control_pagos: boolean` agregado
+
+**FASE 4: Frontend - Nueva página `/control-pagos` (FrontDev)**
+
+1. **app/control-pagos/page.tsx (reescrito, 84 líneas):**
+   - Client Component con useAuth
+   - Validación RBAC: Solo admin y jefe_ventas
+   - useEffect para fetch `getAllControlPagos()` on mount
+   - Loading states: Auth + data
+   - Render `<ControlPagosClient initialData={controlPagos} />`
+
+2. **components/control-pagos/ControlPagosClient.tsx (nuevo, 200 líneas):**
+   - **Header verde corporativo (#1b967a):**
+     - Icon FileText
+     - Título: "Locales en Control de Pagos"
+     - Total: "Total de locales procesados: {N}"
+   - **Tabla profesional (10 columnas):**
+     1. **Código Local:** Código (bold) + metraje (pequeño gris)
+     2. **Proyecto:** Nombre del proyecto
+     3. **Cliente:** Nombre (bold) + teléfono (pequeño gris)
+     4. **Monto Total:** Formato USD con comas
+     5. **Inicial (%):** Porcentaje (azul) + monto (gris pequeño)
+     6. **Restante:** Formato USD verde
+     7. **Cuotas:** Badge azul "{N} cuotas" + TEA (si aplica)
+     8. **Financiamiento:** Badge verde "Sí" o gris "No"
+     9. **Próximo Pago:** Fecha con icon Calendar
+     10. **Acciones:** Link "Ver detalle" (placeholder)
+   - **Empty state profesional:**
+     - Icon FileText gris
+     - Texto: "No hay locales en control de pagos"
+     - Subtexto: "Los locales procesados aparecerán aquí"
+   - Helpers: `formatMonto()`, `formatFecha()`
+
+**FLUJO COMPLETO (End-to-End):**
+1. Admin/Jefe Ventas abre modal Financiamiento (local ROJO)
+2. Completa datos: ¿Financiamiento? (Sí/No), Cuotas, Fecha de pago
+3. Click "Generar calendario de pagos" → Tabla aparece
+4. Click "Procesar" → Modal de confirmación
+5. Click "Continuar" → Procesamiento:
+   - INSERT en `control_pagos` (snapshot completo)
+   - UPDATE `locales` SET `en_control_pagos = true`
+   - INSERT en `locales_historial`
+6. Página `/locales`:
+   - Local muestra badge azul "🔒 En proceso de venta"
+   - Todos los botones/enlaces bloqueados (no clickeables)
+   - Semáforo NO visible
+7. Página `/control-pagos`:
+   - Local aparece en tabla con datos completos
+   - Link "Ver detalle" (futuro: modal con calendario)
+
+**Beneficios:**
+- ✅ Snapshot inmutable de datos al momento de venta (no depende de JOINs futuros)
+- ✅ Locales bloqueados previenen cambios accidentales
+- ✅ Vista centralizada de todos los locales en proceso
+- ✅ Base sólida para futura gestión de pagos (registrar cuotas pagadas)
+- ✅ Calendario de cuotas almacenado en JSONB (flexible para futuras queries)
+
+**Próximos pasos (futuro):**
+- Modal detalle con calendario completo de cuotas (tabla expandible)
+- Registrar pagos recibidos (nuevo campo `pagos_recibidos` JSONB)
+- Alertas de cuotas vencidas (webhook o cron job)
+- Dashboard de morosidad (analytics de atrasos)
+- Exportar PDF con estado de cuenta del cliente
+
+**Archivos modificados:**
+- FinanciamientoModal.tsx (+40 líneas)
+- LocalesTable.tsx (+15 líneas)
+- lib/locales.ts (+1 línea)
+- app/control-pagos/page.tsx (reescrito, 84 líneas)
+
+**Archivos nuevos:**
+- lib/actions-control-pagos.ts (370 líneas)
+- components/control-pagos/ControlPagosClient.tsx (200 líneas)
+- supabase/migrations/20251122_create_control_pagos.sql (160 líneas)
+
+**Líneas totales:** +788 líneas netas
+**Commit:** `6fc6787`
+**Testing pendiente:** 3 escenarios críticos (ver abajo)
+
+---
 
 ### **Sesión 53** (22 Nov) - 🎨 ✅ **Tercera Columna en Configuración de Proyectos**
 **Feature:** Agregar tercera columna "Mantenimiento de comisiones" a la página `/configuracion-proyectos`
