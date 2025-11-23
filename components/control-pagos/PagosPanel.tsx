@@ -84,7 +84,10 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
   };
 
   const formatFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleDateString('es-PE', {
+    // Agregar T00:00:00 para forzar interpretación como hora local (no UTC)
+    // Sin esto: "2026-02-28" → UTC midnight → Perú 27/02 19:00 → muestra día 27
+    // Con esto: "2026-02-28T00:00:00" → Local midnight → muestra día 28
+    return new Date(fecha + 'T00:00:00').toLocaleDateString('es-PE', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
