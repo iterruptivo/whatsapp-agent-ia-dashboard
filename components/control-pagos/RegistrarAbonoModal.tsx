@@ -65,7 +65,11 @@ export default function RegistrarAbonoModal({
       return;
     }
 
-    if (montoNum > montoRestante) {
+    // Redondear a centavos (2 decimales) para evitar errores de punto flotante
+    const montoCentavos = Math.round(montoNum * 100);
+    const restanteCentavos = Math.round(montoRestante * 100);
+
+    if (montoCentavos > restanteCentavos) {
       setAlertModal({
         isOpen: true,
         title: 'Monto Excedido',

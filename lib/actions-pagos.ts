@@ -245,7 +245,12 @@ export async function registrarAbono(data: {
     }
 
     const montoRestante = pago.monto_esperado - pago.monto_abonado;
-    if (data.monto > montoRestante) {
+
+    // Redondear a centavos (2 decimales) para evitar errores de punto flotante
+    const montoCentavos = Math.round(data.monto * 100);
+    const restanteCentavos = Math.round(montoRestante * 100);
+
+    if (montoCentavos > restanteCentavos) {
       return {
         success: false,
         message: `El monto excede lo que falta pagar ($${montoRestante.toFixed(2)})`
