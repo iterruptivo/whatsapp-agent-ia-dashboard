@@ -216,6 +216,14 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                     + Registrar Monto de Separación
                   </button>
                 )}
+
+                {pagoSeparacion.fue_desmarcado && pagoSeparacion.abonos.length === 0 && (
+                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-800">
+                      ⚠️ La separación fue desmarcada como NO pagada
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
