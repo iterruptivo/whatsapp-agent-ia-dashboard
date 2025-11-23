@@ -23,6 +23,7 @@ import { getProyectoConfiguracion } from '@/lib/proyecto-config';
 import type { CuotaMeses } from '@/lib/actions-proyecto-config';
 import { generarPDFFinanciamiento } from '@/lib/pdf-generator';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import AlertModal from '@/components/shared/AlertModal';
 import { useAuth } from '@/lib/auth-context';
 import { procesarVentaLocal } from '@/lib/actions-control-pagos';
 
@@ -59,6 +60,18 @@ export default function FinanciamientoModal({
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
   // SESIÓN 54: Estado de loading para procesamiento
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  // SESIÓN 54: Modal de alerta para errores/éxito
+  const [alertModal, setAlertModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    variant: 'success' | 'danger' | 'warning' | 'info';
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info',
+  });
   // SESIÓN 54: useAuth para obtener usuario actual
   const { user } = useAuth();
 
@@ -639,23 +652,53 @@ export default function FinanciamientoModal({
               const result = await procesarVentaLocal(dataProcesar);
 
               if (result.success) {
-                // Cerrar modal
+                // Cerrar modal de financiamiento
                 onClose();
                 // Mostrar mensaje de éxito
-                alert(result.message);
-                // Refresh página para ver cambios
-                window.location.reload();
+                setAlertModal({
+                  isOpen: true,
+                  title: 'Venta Procesada Exitosamente',
+                  message: result.message || 'El local ahora está en Control de Pagos.',
+                  variant: 'success',
+                });
               } else {
-                alert(`Error: ${result.message}`);
+                // Mostrar error
+                setAlertModal({
+                  isOpen: true,
+                  title: 'Error al Procesar Venta',
+                  message: result.message || 'No se pudo procesar la venta.',
+                  variant: 'danger',
+                });
                 setIsProcessing(false);
               }
             } catch (error) {
               console.error('[FINANCIAMIENTO_MODAL] Error procesando venta:', error);
-              alert('Error inesperado al procesar venta');
+              // Mostrar error inesperado
+              setAlertModal({
+                isOpen: true,
+                title: 'Error Inesperado',
+                message: 'Ocurrió un error inesperado al procesar la venta. Por favor, intenta de nuevo.',
+                variant: 'danger',
+              });
               setIsProcessing(false);
             }
           }}
           onCancel={() => setShowConfirmModal(false)}
+        />
+
+        {/* SESIÓN 54: AlertModal para errores/éxito */}
+        <AlertModal
+          isOpen={alertModal.isOpen}
+          title={alertModal.title}
+          message={alertModal.message}
+          variant={alertModal.variant}
+          onOk={() => {
+            setAlertModal({ ...alertModal, isOpen: false });
+            // Si fue exitoso, recargar la página
+            if (alertModal.variant === 'success') {
+              window.location.reload();
+            }
+          }}
         />
       </div>
     </div>

@@ -138,7 +138,26 @@ export async function procesarVentaLocal(data: ProcesarVentaData) {
       return { success: false, message: 'Este local ya está en control de pagos' };
     }
 
-    // 4. INSERT en control_pagos
+    // 4. Resolver vendedor_id: buscar usuario.id desde vendedores.id
+    let usuarioVendedorId: string | null = null;
+
+    if (data.vendedorId) {
+      const { data: usuarioVendedor, error: vendedorError } = await supabase
+        .from('usuarios')
+        .select('id')
+        .eq('vendedor_id', data.vendedorId)
+        .maybeSingle();
+
+      if (vendedorError) {
+        console.error('[CONTROL_PAGOS] Error buscando usuario del vendedor:', vendedorError);
+      } else if (usuarioVendedor) {
+        usuarioVendedorId = usuarioVendedor.id;
+      } else {
+        console.warn('[CONTROL_PAGOS] ⚠️ Vendedor no encontrado en tabla usuarios:', data.vendedorId);
+      }
+    }
+
+    // 5. INSERT en control_pagos
     const { error: insertError } = await supabase
       .from('control_pagos')
       .insert({
@@ -163,7 +182,7 @@ export async function procesarVentaLocal(data: ProcesarVentaData) {
         calendario_cuotas: data.calendarioCuotas,
         estado: 'activo',
         procesado_por: data.procesadoPor,
-        vendedor_id: data.vendedorId || null,
+        vendedor_id: usuarioVendedorId,
       });
 
     if (insertError) {
@@ -171,7 +190,7 @@ export async function procesarVentaLocal(data: ProcesarVentaData) {
       return { success: false, message: 'Error al crear control de pagos' };
     }
 
-    // 5. UPDATE locales SET en_control_pagos = true
+    // 6. UPDATE locales SET en_control_pagos = true
     const { error: updateError } = await supabase
       .from('locales')
       .update({ en_control_pagos: true })
@@ -182,7 +201,7 @@ export async function procesarVentaLocal(data: ProcesarVentaData) {
       return { success: false, message: 'Error al actualizar estado del local' };
     }
 
-    // 6. INSERT en locales_historial
+    // 7. INSERT en locales_historial
     const accion = `Local procesado para control de pagos. Financiamiento: ${data.conFinanciamiento ? 'Sí' : 'No'}, Cuotas: ${data.numeroCuotas}, Monto restante: $${data.montoRestante.toFixed(2)}`;
 
     const { error: historialError } = await supabase
