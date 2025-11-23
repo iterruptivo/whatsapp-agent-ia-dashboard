@@ -23,6 +23,8 @@ import { getProyectoConfiguracion } from '@/lib/proyecto-config';
 import type { CuotaMeses } from '@/lib/actions-proyecto-config';
 import { generarPDFFinanciamiento } from '@/lib/pdf-generator';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import { useAuth } from '@/lib/auth-context';
+import { procesarVentaLocal } from '@/lib/actions-control-pagos';
 
 interface FinanciamientoModalProps {
   isOpen: boolean;
@@ -55,6 +57,10 @@ export default function FinanciamientoModal({
   }>>([]);
   // SESIÓN 52I: Modal de confirmación para "Procesar"
   const [showConfirmModal, setShowConfirmModal] = useState<boolean>(false);
+  // SESIÓN 54: Estado de loading para procesamiento
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  // SESIÓN 54: useAuth para obtener usuario actual
+  const { user } = useAuth();
 
   // Obtener nombre y teléfono del lead vinculado
   useEffect(() => {
@@ -600,10 +606,54 @@ export default function FinanciamientoModal({
           variant="warning"
           confirmText="Continuar"
           cancelText="Cancelar"
-          onConfirm={() => {
+          onConfirm={async () => {
             setShowConfirmModal(false);
-            // TODO: Implementar lógica de procesamiento aquí
-            console.log('Procesar venta');
+            setIsProcessing(true);
+
+            try {
+              // SESIÓN 54: Preparar datos para procesar venta
+              const dataProcesar = {
+                localId: local.id,
+                codigoLocal: local.codigo,
+                proyectoId: local.proyecto_id,
+                proyectoNombre: local.proyecto_nombre || 'N/A',
+                metraje: local.metraje,
+                leadId: local.lead_id!,
+                leadNombre: leadNombre,
+                leadTelefono: leadTelefono,
+                montoVenta: local.monto_venta!,
+                montoSeparacion: local.monto_separacion!,
+                montoInicial: montoInicial!,
+                inicialRestante: inicialRestante!,
+                montoRestante: montoRestante!,
+                conFinanciamiento: conFinanciamiento,
+                porcentajeInicial: porcentajeInicial,
+                numeroCuotas: cuotaSeleccionada!,
+                tea: conFinanciamiento ? teaProyecto : null,
+                fechaPrimerPago: fechaPago,
+                calendarioCuotas: calendarioCuotas,
+                procesadoPor: user!.id,
+                vendedorId: local.vendedor_actual_id || undefined,
+              };
+
+              const result = await procesarVentaLocal(dataProcesar);
+
+              if (result.success) {
+                // Cerrar modal
+                onClose();
+                // Mostrar mensaje de éxito
+                alert(result.message);
+                // Refresh página para ver cambios
+                window.location.reload();
+              } else {
+                alert(`Error: ${result.message}`);
+                setIsProcessing(false);
+              }
+            } catch (error) {
+              console.error('[FINANCIAMIENTO_MODAL] Error procesando venta:', error);
+              alert('Error inesperado al procesar venta');
+              setIsProcessing(false);
+            }
           }}
           onCancel={() => setShowConfirmModal(false)}
         />

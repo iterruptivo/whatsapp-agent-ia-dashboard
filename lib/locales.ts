@@ -32,6 +32,8 @@ export interface Local {
   naranja_vendedor_id: string | null; // ID del vendedor que puso en NARANJA (para exclusividad)
   // SESIÓN 48D: Contador de vendedores negociando (estado AMARILLO)
   vendedores_negociando_ids: string[]; // Array de UUIDs de vendedores negociando
+  // SESIÓN 54: Flag para control de pagos (post-venta)
+  en_control_pagos: boolean; // Si true, local ya fue procesado y está en control de pagos (bloquea acciones)
   created_at: string;
   updated_at: string;
 }

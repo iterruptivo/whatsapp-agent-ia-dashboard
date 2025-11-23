@@ -556,6 +556,18 @@ export default function LocalesTable({
 
   // ====== HELPER: Render Semáforo ======
   const renderSemaforo = (local: Local) => {
+    // SESIÓN 54: Si local está en control de pagos, mostrar badge en vez de semáforo
+    if (local.en_control_pagos) {
+      return (
+        <div className="flex items-center gap-2">
+          <div className="px-3 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-full inline-flex items-center gap-2">
+            <span>🔒</span>
+            En proceso de venta
+          </div>
+        </div>
+      );
+    }
+
     const isChanging = changingLocalId === local.id;
     const isBlocked = local.bloqueado;
     const canUnblock = user?.rol === 'admin' || user?.rol === 'jefe_ventas';
@@ -670,6 +682,11 @@ export default function LocalesTable({
 
   // ====== SESIÓN 48E: HELPER - Render Link "Salir de la negociación" ======
   const renderSalirNegociacion = (local: Local) => {
+    // SESIÓN 54: No mostrar si local está en control de pagos
+    if (local.en_control_pagos) {
+      return null;
+    }
+
     // Solo mostrar si:
     // 1. Local está en AMARILLO
     // 2. Usuario tiene vendedor_id
@@ -716,6 +733,11 @@ export default function LocalesTable({
   };
 
   const renderIniciarFinanciamiento = (local: Local) => {
+    // SESIÓN 54: No mostrar si local está en control de pagos
+    if (local.en_control_pagos) {
+      return null;
+    }
+
     // Solo mostrar si:
     // 1. Local está en ROJO (vendido/bloqueado)
     // 2. Usuario es admin o jefe_ventas

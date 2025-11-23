@@ -4,19 +4,24 @@
 // Ruta: /control-pagos
 // Descripción: Sistema de control y seguimiento de pagos de locales
 // Acceso: Solo admin y jefe_ventas
+// Sesión: 54 - Implementación completa
 // ============================================================================
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import { FileText } from 'lucide-react';
+import ControlPagosClient from '@/components/control-pagos/ControlPagosClient';
+import { getAllControlPagos } from '@/lib/actions-control-pagos';
+import type { ControlPago } from '@/lib/actions-control-pagos';
 
 export default function ControlPagosPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [controlPagos, setControlPagos] = useState<ControlPago[]>([]);
+  const [loadingData, setLoadingData] = useState<boolean>(true);
 
   // Redirect if not authenticated or not admin/jefe_ventas
   useEffect(() => {
@@ -28,6 +33,19 @@ export default function ControlPagosPage() {
       }
     }
   }, [user, loading, router]);
+
+  // Fetch control_pagos data
+  useEffect(() => {
+    if (user && (user.rol === 'admin' || user.rol === 'jefe_ventas')) {
+      async function fetchData() {
+        setLoadingData(true);
+        const data = await getAllControlPagos();
+        setControlPagos(data);
+        setLoadingData(false);
+      }
+      fetchData();
+    }
+  }, [user]);
 
   // Show loading while auth is loading
   if (loading || !user) {
@@ -46,30 +64,19 @@ export default function ControlPagosPage() {
       {/* Header */}
       <DashboardHeader
         title="Control de Pagos"
-        subtitle="Seguimiento y gestión de pagos de locales"
+        subtitle="Seguimiento y gestión de pagos de locales vendidos"
       />
 
-      {/* Contenido Placeholder */}
-      <div className="max-w-[1400px] mx-auto p-6">
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
-              <FileText className="w-8 h-8 text-primary" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Control de Pagos
-            </h2>
-            <p className="text-gray-600 max-w-md">
-              Esta sección permitirá gestionar y realizar seguimiento detallado de los pagos
-              de cada local vendido, incluyendo calendario de cuotas, pagos recibidos y pendientes.
-            </p>
-            <div className="mt-6 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                Funcionalidad en desarrollo
-              </p>
-            </div>
+      {/* Contenido */}
+      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {loadingData ? (
+          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando control de pagos...</p>
           </div>
-        </div>
+        ) : (
+          <ControlPagosClient initialData={controlPagos} />
+        )}
       </div>
     </div>
   );

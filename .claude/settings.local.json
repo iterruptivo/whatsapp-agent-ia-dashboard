@@ -48,7 +48,8 @@
       "Bash(if exist package-lock.json del /f package-lock.json)",
       "Bash(npm --version:*)",
       "Bash(where:*)",
-      "Bash(npx next lint --dir app --dir components)"
+      "Bash(npx next lint --dir app --dir components)",
+      "Bash(npx next build:*)"
     ],
     "deny": [],
     "ask": []
