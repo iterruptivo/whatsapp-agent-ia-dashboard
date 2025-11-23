@@ -12,6 +12,7 @@ export interface PagoLocal {
   monto_abonado: number;
   fecha_esperada: string;
   estado: 'pendiente' | 'parcial' | 'completado' | 'vencido';
+  fue_desmarcado: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -339,13 +340,14 @@ export async function toggleSeparacionPagada(data: {
         return { success: false, message: 'Error al desmarcar' };
       }
 
-      // UPDATE manual: resetear monto_abonado y estado
+      // UPDATE manual: resetear monto_abonado, estado y marcar fue_desmarcado
       // El trigger solo se dispara en INSERT, no en DELETE
       const { error: updateError } = await supabase
         .from('pagos_local')
         .update({
           monto_abonado: 0,
           estado: 'pendiente',
+          fue_desmarcado: true,
         })
         .eq('id', data.pagoId);
 
