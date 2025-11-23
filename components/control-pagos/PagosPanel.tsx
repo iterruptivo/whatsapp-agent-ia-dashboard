@@ -154,7 +154,7 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                     {formatMonto(stats?.inicial.abonado || 0)}
                   </div>
                   <div className="text-xs text-gray-500">
-                    de {formatMonto(stats?.inicial.esperado || 0)} ({stats?.inicial.porcentaje || 0}%)
+                    de {formatMonto(stats?.inicial.esperado || 0)}
                   </div>
                   <div className={`mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getEstadoColor(stats?.inicial.estado || 'pendiente')}`}>
                     {getEstadoIcon(stats?.inicial.estado || 'pendiente')}

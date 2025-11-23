@@ -41,7 +41,6 @@ export interface PagoStats {
   inicial: {
     esperado: number;
     abonado: number;
-    porcentaje: number;
     estado: string;
   };
   cuotas: {
@@ -140,7 +139,7 @@ export async function getPagoStats(controlPagoId: string): Promise<PagoStats> {
     if (!pagos || pagos.length === 0) {
       return {
         separacion: { esperado: 0, abonado: 0, estado: 'pendiente' },
-        inicial: { esperado: 0, abonado: 0, porcentaje: 0, estado: 'pendiente' },
+        inicial: { esperado: 0, abonado: 0, estado: 'pendiente' },
         cuotas: { total: 0, pagadas: 0, parciales: 0, pendientes: 0, vencidas: 0, proximaFecha: null },
         totalVenta,
         totalAbonado: 0,
@@ -177,9 +176,6 @@ export async function getPagoStats(controlPagoId: string): Promise<PagoStats> {
       inicial: {
         esperado: pagoInicial?.monto_esperado || 0,
         abonado: pagoInicial?.monto_abonado || 0,
-        porcentaje: pagoInicial && pagoInicial.monto_esperado > 0
-          ? Math.round((pagoInicial.monto_abonado / pagoInicial.monto_esperado) * 100)
-          : 0,
         estado: pagoInicial?.estado || 'pendiente',
       },
       cuotas: {
@@ -197,7 +193,7 @@ export async function getPagoStats(controlPagoId: string): Promise<PagoStats> {
     console.error('[PAGOS] Error obteniendo stats:', error);
     return {
       separacion: { esperado: 0, abonado: 0, estado: 'pendiente' },
-      inicial: { esperado: 0, abonado: 0, porcentaje: 0, estado: 'pendiente' },
+      inicial: { esperado: 0, abonado: 0, estado: 'pendiente' },
       cuotas: { total: 0, pagadas: 0, parciales: 0, pendientes: 0, vencidas: 0, proximaFecha: null },
       totalVenta: 0,
       totalAbonado: 0,
