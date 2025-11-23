@@ -33,6 +33,11 @@ export interface PagoConAbonos extends PagoLocal {
 }
 
 export interface PagoStats {
+  separacion: {
+    esperado: number;
+    abonado: number;
+    estado: string;
+  };
   inicial: {
     esperado: number;
     abonado: number;
@@ -47,6 +52,8 @@ export interface PagoStats {
     vencidas: number;
     proximaFecha: string | null;
   };
+  totalVenta: number;
+  totalAbonado: number;
 }
 
 export async function getPagosLocal(controlPagoId: string): Promise<PagoConAbonos[]> {
@@ -112,18 +119,35 @@ export async function getPagoStats(controlPagoId: string): Promise<PagoStats> {
   );
 
   try {
-    const { data: pagos } = await supabase
-      .from('pagos_local')
-      .select('*')
-      .eq('control_pago_id', controlPagoId);
+    // Query: pagos + control_pagos (para obtener monto_venta)
+    const [
+      { data: pagos },
+      { data: controlPago }
+    ] = await Promise.all([
+      supabase
+        .from('pagos_local')
+        .select('*')
+        .eq('control_pago_id', controlPagoId),
+      supabase
+        .from('control_pagos')
+        .select('monto_venta')
+        .eq('id', controlPagoId)
+        .single()
+    ]);
+
+    const totalVenta = controlPago?.monto_venta || 0;
 
     if (!pagos || pagos.length === 0) {
       return {
+        separacion: { esperado: 0, abonado: 0, estado: 'pendiente' },
         inicial: { esperado: 0, abonado: 0, porcentaje: 0, estado: 'pendiente' },
         cuotas: { total: 0, pagadas: 0, parciales: 0, pendientes: 0, vencidas: 0, proximaFecha: null },
+        totalVenta,
+        totalAbonado: 0,
       };
     }
 
+    const pagoSeparacion = pagos.find(p => p.tipo === 'separacion');
     const pagoInicial = pagos.find(p => p.tipo === 'inicial');
     const cuotas = pagos.filter(p => p.tipo === 'cuota');
 
@@ -138,11 +162,22 @@ export async function getPagoStats(controlPagoId: string): Promise<PagoStats> {
     const cuotasPendientesOrdenadas = cuotas.filter(c => c.estado === 'pendiente' && c.fecha_esperada >= hoy);
     const proximaFecha = cuotasPendientesOrdenadas.length > 0 ? cuotasPendientesOrdenadas[0].fecha_esperada : null;
 
+    // Calcular total abonado (separación + inicial + cuotas)
+    const totalAbonado =
+      (pagoSeparacion?.monto_abonado || 0) +
+      (pagoInicial?.monto_abonado || 0) +
+      cuotas.reduce((sum, c) => sum + c.monto_abonado, 0);
+
     return {
+      separacion: {
+        esperado: pagoSeparacion?.monto_esperado || 0,
+        abonado: pagoSeparacion?.monto_abonado || 0,
+        estado: pagoSeparacion?.estado || 'pendiente',
+      },
       inicial: {
         esperado: pagoInicial?.monto_esperado || 0,
         abonado: pagoInicial?.monto_abonado || 0,
-        porcentaje: pagoInicial
+        porcentaje: pagoInicial && pagoInicial.monto_esperado > 0
           ? Math.round((pagoInicial.monto_abonado / pagoInicial.monto_esperado) * 100)
           : 0,
         estado: pagoInicial?.estado || 'pendiente',
@@ -155,12 +190,17 @@ export async function getPagoStats(controlPagoId: string): Promise<PagoStats> {
         vencidas: cuotasVencidas,
         proximaFecha,
       },
+      totalVenta,
+      totalAbonado,
     };
   } catch (error) {
     console.error('[PAGOS] Error obteniendo stats:', error);
     return {
+      separacion: { esperado: 0, abonado: 0, estado: 'pendiente' },
       inicial: { esperado: 0, abonado: 0, porcentaje: 0, estado: 'pendiente' },
       cuotas: { total: 0, pagadas: 0, parciales: 0, pendientes: 0, vencidas: 0, proximaFecha: null },
+      totalVenta: 0,
+      totalAbonado: 0,
     };
   }
 }

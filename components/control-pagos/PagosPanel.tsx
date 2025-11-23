@@ -68,22 +68,12 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
       montoSeparacion: controlPago.monto_separacion,
     });
 
-    if (result.success) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Actualizado',
-        message: result.message || 'Separación actualizada',
-        variant: 'success',
-      });
-      loadData();
-    } else {
-      setAlertModal({
-        isOpen: true,
-        title: 'Error',
-        message: result.message || 'No se pudo actualizar',
-        variant: 'danger',
-      });
-    }
+    setAlertModal({
+      isOpen: true,
+      title: result.success ? 'Actualizado' : 'Error',
+      message: result.message || (result.success ? 'Separación actualizada' : 'No se pudo actualizar'),
+      variant: result.success ? 'success' : 'danger',
+    });
   };
 
   const formatMonto = (monto: number) => {
@@ -141,6 +131,21 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
           <div className="p-6 text-center text-gray-500">Cargando...</div>
         ) : (
           <>
+            {/* Banner Total Abonado */}
+            <div className="p-6 bg-gradient-to-r from-green-50 to-blue-50 border-b">
+              <div className="text-center">
+                <div className="text-sm text-gray-600 mb-1">
+                  Monto total: {formatMonto(stats?.totalVenta || 0)}
+                </div>
+                <div className="text-3xl font-bold text-green-600">
+                  Total abonado: {formatMonto(stats?.totalAbonado || 0)}
+                </div>
+                <div className="mt-2 text-sm text-gray-500">
+                  Falta por pagar: {formatMonto((stats?.totalVenta || 0) - (stats?.totalAbonado || 0))}
+                </div>
+              </div>
+            </div>
+
             <div className="p-6 bg-gray-50 border-b">
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-lg border">
@@ -352,7 +357,10 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
         title={alertModal.title}
         message={alertModal.message}
         variant={alertModal.variant}
-        onOk={() => setAlertModal({ ...alertModal, isOpen: false })}
+        onOk={() => {
+          setAlertModal({ ...alertModal, isOpen: false });
+          loadData(); // Recargar datos después de cerrar el modal
+        }}
       />
     </>
   );
