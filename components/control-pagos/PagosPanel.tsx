@@ -138,7 +138,7 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                   Monto total: {formatMonto(stats?.totalVenta || 0)}
                   {(stats?.totalIntereses || 0) > 0 && (
                     <span className="ml-2 text-orange-600">
-                      | Intereses: {formatMonto(stats.totalIntereses)}
+                      | Intereses: {formatMonto(stats?.totalIntereses || 0)}
                     </span>
                   )}
                 </div>
