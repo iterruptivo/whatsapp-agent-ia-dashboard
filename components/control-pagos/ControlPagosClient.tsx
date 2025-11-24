@@ -78,7 +78,7 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
                   Cliente
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                  Monto Total
+                  Monto Venta
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Inicial (%)
