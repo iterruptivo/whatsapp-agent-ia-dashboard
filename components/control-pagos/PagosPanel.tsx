@@ -217,11 +217,29 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                   </button>
                 )}
 
-                {pagoSeparacion.fue_desmarcado && pagoSeparacion.abonos.length === 0 && (
-                  <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      ⚠️ La separación fue desmarcada como NO pagada
-                    </p>
+                {pagoSeparacion.fue_desmarcado && (
+                  <div className="mt-3">
+                    <div className="text-sm font-semibold text-gray-700 mb-2">Historial de Abonos</div>
+                    {pagoSeparacion.abonos.length > 0 ? (
+                      <div className="space-y-2">
+                        {pagoSeparacion.abonos.map((abono) => (
+                          <div key={abono.id} className="bg-gray-50 border rounded-lg p-3 text-sm">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="font-semibold text-gray-900">{formatMonto(abono.monto)}</div>
+                              <div className="text-gray-600">{formatFecha(abono.fecha_abono)}</div>
+                            </div>
+                            <div className="text-gray-600">{abono.metodo_pago}</div>
+                            {abono.notas && <div className="text-gray-500 text-xs mt-1">{abono.notas}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-800">
+                          ⚠️ La separación fue desmarcada como NO pagada
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
