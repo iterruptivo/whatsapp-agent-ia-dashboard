@@ -634,12 +634,13 @@ export async function saveDatosRegistroVenta(
     console.log('[DATOS VENTA] ✅ Relación lead-local registrada en locales_leads');
 
     // PASO 4: Actualizar local con montos y vendedor_id (SESIÓN 52D)
-    console.log('[DATOS VENTA] 🔄 PASO 4: Actualizando local...', { localId, montoSeparacion, montoVenta });
+    console.log('[DATOS VENTA] 🔄 PASO 4: Actualizando local...', { localId, montoSeparacion, montoVenta, finalLeadId });
     const { error: updateError } = await supabaseAuth
       .from('locales')
       .update({
         monto_separacion: montoSeparacion,
         monto_venta: montoVenta,
+        lead_id: finalLeadId, // FIX: Guardar lead_id para que validación en LocalesTable no reabra modal
         vendedor_actual_id: vendedorData.vendedor_id, // SESIÓN 52D: Usar vendedor_id de la tabla vendedores
         usuario_paso_naranja_id: vendedorId, // Sistema comisiones: vendedor asignado recibe comisión fase vendedor
         fecha_paso_naranja: new Date().toISOString(),
