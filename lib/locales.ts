@@ -34,6 +34,11 @@ export interface Local {
   vendedores_negociando_ids: string[]; // Array de UUIDs de vendedores negociando
   // SESIÓN 54: Flag para control de pagos (post-venta)
   en_control_pagos: boolean; // Si true, local ya fue procesado y está en control de pagos (bloquea acciones)
+  // Sistema de comisiones: Track usuarios que pasaron a NARANJA/ROJO
+  usuario_paso_naranja_id: string | null;
+  fecha_paso_naranja: string | null;
+  usuario_paso_rojo_id: string | null;
+  fecha_paso_rojo: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -377,6 +382,8 @@ export async function updateLocalEstadoQuery(
     if (nuevoEstado === 'naranja') {
       updateData.naranja_timestamp = new Date().toISOString();
       updateData.naranja_vendedor_id = vendedorId || null;
+      updateData.usuario_paso_naranja_id = usuarioId || null;
+      updateData.fecha_paso_naranja = new Date().toISOString();
       // Guardar monto de separación (REQUERIDO desde modal)
       if (montoSeparacion !== undefined && montoSeparacion !== null) {
         updateData.monto_separacion = montoSeparacion;
@@ -396,6 +403,8 @@ export async function updateLocalEstadoQuery(
     // Si pasa a rojo, guardar vendedor que cerró venta
     if (nuevoEstado === 'rojo') {
       updateData.vendedor_cerro_venta_id = vendedorId;
+      updateData.usuario_paso_rojo_id = usuarioId || null;
+      updateData.fecha_paso_rojo = new Date().toISOString();
       // bloqueado y fecha_cierre_venta se setean automáticamente por trigger
     }
 

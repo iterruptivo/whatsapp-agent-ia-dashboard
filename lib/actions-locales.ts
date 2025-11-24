@@ -641,6 +641,8 @@ export async function saveDatosRegistroVenta(
         monto_separacion: montoSeparacion,
         monto_venta: montoVenta,
         vendedor_actual_id: vendedorData.vendedor_id, // SESIÓN 52D: Usar vendedor_id de la tabla vendedores
+        usuario_paso_naranja_id: vendedorId, // Sistema comisiones: vendedor asignado recibe comisión fase vendedor
+        fecha_paso_naranja: new Date().toISOString(),
       })
       .eq('id', localId);
 

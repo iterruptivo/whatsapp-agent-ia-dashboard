@@ -8,82 +8,134 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
-import { DollarSign } from 'lucide-react';
+import ComisionStatsCards from '@/components/comisiones/ComisionStatsCards';
+import ComisionesTable from '@/components/comisiones/ComisionesTable';
+import {
+  getComisionesByUsuario,
+  getAllComisiones,
+  getComisionStats,
+  type Comision,
+  type ComisionStats
+} from '@/lib/actions-comisiones';
 
 export default function ComisionesPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, usuario, loading } = useAuth();
+  const [comisiones, setComisiones] = useState<Comision[]>([]);
+  const [stats, setStats] = useState<ComisionStats>({
+    total_generado: 0,
+    disponible: 0,
+    pagado: 0,
+    pendiente_inicial: 0,
+    count_total: 0,
+    count_disponible: 0,
+    count_pagado: 0,
+    count_pendiente: 0,
+  });
+  const [loadingData, setLoadingData] = useState(true);
 
-  // Redirect if not authenticated
+  const fetchData = async () => {
+    if (!user || !usuario) return;
+
+    setLoadingData(true);
+
+    try {
+      const isAdminOrJefe = usuario.rol === 'admin' || usuario.rol === 'jefe_ventas';
+
+      if (isAdminOrJefe) {
+        const allComisiones = await getAllComisiones();
+        setComisiones(allComisiones);
+
+        // Calculate aggregate stats for all users
+        const totalGenerado = allComisiones.reduce((sum, c) => sum + c.monto_comision, 0);
+        const disponible = allComisiones
+          .filter(c => c.estado === 'disponible')
+          .reduce((sum, c) => sum + c.monto_comision, 0);
+        const pagado = allComisiones
+          .filter(c => c.estado === 'pagada')
+          .reduce((sum, c) => sum + c.monto_comision, 0);
+        const pendienteInicial = allComisiones
+          .filter(c => c.estado === 'pendiente_inicial')
+          .reduce((sum, c) => sum + c.monto_comision, 0);
+
+        setStats({
+          total_generado: totalGenerado,
+          disponible: disponible,
+          pagado: pagado,
+          pendiente_inicial: pendienteInicial,
+          count_total: allComisiones.length,
+          count_disponible: allComisiones.filter(c => c.estado === 'disponible').length,
+          count_pagado: allComisiones.filter(c => c.estado === 'pagada').length,
+          count_pendiente: allComisiones.filter(c => c.estado === 'pendiente_inicial').length,
+        });
+      } else {
+        const userComisiones = await getComisionesByUsuario(user.id);
+        const userStats = await getComisionStats(user.id);
+
+        setComisiones(userComisiones);
+        setStats(userStats);
+      }
+    } catch (error) {
+      console.error('[COMISIONES PAGE] Error fetching data:', error);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
     }
   }, [user, loading, router]);
 
-  // Show loading while auth is loading
-  if (loading || !user) {
+  useEffect(() => {
+    if (!loading && user && usuario) {
+      fetchData();
+    }
+  }, [loading, user, usuario]);
+
+  if (loading || loadingData) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando...</p>
+          <p className="text-gray-600">Cargando comisiones...</p>
         </div>
       </div>
     );
   }
 
+  if (!user || !usuario) {
+    return null;
+  }
+
+  const isAdminOrJefe = usuario.rol === 'admin' || usuario.rol === 'jefe_ventas';
+
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
       {/* Header */}
       <DashboardHeader
-        title="Comisiones"
-        subtitle="Seguimiento de comisiones por ventas realizadas"
+        title={isAdminOrJefe ? 'Comisiones - Todas' : 'Mis Comisiones'}
+        subtitle={
+          isAdminOrJefe
+            ? 'Vista general de todas las comisiones del equipo'
+            : 'Tus comisiones generadas por ventas de locales'
+        }
       />
 
-      {/* Contenido Placeholder */}
+      {/* Content */}
       <div className="max-w-[1400px] mx-auto p-6">
-        <div className="bg-white rounded-lg shadow-md p-8">
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <DollarSign className="w-8 h-8 text-green-600" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Sistema de Comisiones
-            </h2>
-            <p className="text-gray-600 max-w-md mb-4">
-              Esta sección permitirá visualizar y realizar seguimiento de las comisiones
-              generadas por las ventas realizadas, incluyendo cálculos automáticos,
-              estados de pago y histórico de comisiones.
-            </p>
-
-            {/* Info Role-based */}
-            {user.rol === 'admin' || user.rol === 'jefe_ventas' ? (
-              <div className="mt-4 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  Como {user.rol === 'admin' ? 'administrador' : 'jefe de ventas'}, podrás ver
-                  las comisiones de todos los vendedores y gestionar los pagos.
-                </p>
-              </div>
-            ) : (
-              <div className="mt-4 px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  Aquí podrás ver el detalle de tus comisiones por cada venta realizada.
-                </p>
-              </div>
-            )}
-
-            <div className="mt-4 px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                Funcionalidad en desarrollo
-              </p>
-            </div>
-          </div>
-        </div>
+        <ComisionStatsCards stats={stats} />
+        <ComisionesTable
+          comisiones={comisiones}
+          userRole={usuario.rol}
+          userId={user.id}
+          onUpdate={fetchData}
+        />
       </div>
     </div>
   );

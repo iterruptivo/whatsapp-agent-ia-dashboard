@@ -50,7 +50,8 @@
       "Bash(where:*)",
       "Bash(npx next lint --dir app --dir components)",
       "Bash(npx next build:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(E:/Iterruptivo/Proyectos-Clientes/EcoPlaza/AgenteIA-Whatsapp/dashboard/components/control-pagos/PagosPanel.tsx)"
     ],
     "deny": [],
     "ask": []
