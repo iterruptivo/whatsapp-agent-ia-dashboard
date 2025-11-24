@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import ComisionStatsCards from '@/components/comisiones/ComisionStatsCards';
+import ComisionesChart from '@/components/comisiones/ComisionesChart';
 import ComisionesTable from '@/components/comisiones/ComisionesTable';
 import {
   getComisionesByUsuario,
@@ -96,6 +97,7 @@ export default function ComisionesPage() {
       {/* Content */}
       <div className="max-w-[1400px] mx-auto p-6">
         <ComisionStatsCards stats={stats} />
+        <ComisionesChart stats={stats} />
         <ComisionesTable
           comisiones={comisiones}
           userRole={user.rol}

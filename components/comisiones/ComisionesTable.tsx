@@ -84,9 +84,11 @@ export default function ComisionesTable({ comisiones, userRole, userId, onUpdate
 
   const isAdmin = userRole === 'admin';
 
+  // TEMPORAL: Oculto para presentación (Sesión 53)
+  // TODO: Restaurar después de presentación
   if (comisiones.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-8 text-center">
+      <div className="bg-white rounded-lg shadow p-8 text-center" style={{ display: 'none' }}>
         <p className="text-gray-500">No tienes comisiones registradas</p>
       </div>
     );
