@@ -46,6 +46,12 @@ export async function getComisionesByUsuario(usuarioId: string): Promise<Comisio
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
+        set(name: string, value: string, options: any) {
+          cookieStore.set(name, value, options);
+        },
+        remove(name: string, options: any) {
+          cookieStore.set(name, '', options);
+        },
       },
     }
   );
@@ -88,6 +94,12 @@ export async function getAllComisiones(): Promise<Comision[]> {
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set(name, value, options);
+        },
+        remove(name: string, options: any) {
+          cookieStore.set(name, '', options);
         },
       },
     }
@@ -143,6 +155,12 @@ export async function getComisionStats(usuarioId: string): Promise<ComisionStats
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set(name, value, options);
+        },
+        remove(name: string, options: any) {
+          cookieStore.set(name, '', options);
         },
       },
     }
@@ -213,6 +231,12 @@ export async function marcarComisionPagada(comisionId: string, adminId: string) 
         get(name: string) {
           return cookieStore.get(name)?.value;
         },
+        set(name: string, value: string, options: any) {
+          cookieStore.set(name, value, options);
+        },
+        remove(name: string, options: any) {
+          cookieStore.set(name, '', options);
+        },
       },
     }
   );
@@ -267,6 +291,12 @@ export async function updatePorcentajeComision(
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set(name, value, options);
+        },
+        remove(name: string, options: any) {
+          cookieStore.set(name, '', options);
         },
       },
     }
