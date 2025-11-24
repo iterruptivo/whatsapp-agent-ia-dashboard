@@ -146,7 +146,7 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                   Total abonado: {formatMonto(stats?.totalAbonado || 0)}
                 </div>
                 <div className="mt-2 text-sm text-gray-500">
-                  Falta por pagar: {formatMonto((stats?.totalVenta || 0) - (stats?.totalAbonado || 0))}
+                  Falta por pagar: {formatMonto((stats?.totalVenta || 0) + (stats?.totalIntereses || 0) - (stats?.totalAbonado || 0))}
                 </div>
               </div>
             </div>
