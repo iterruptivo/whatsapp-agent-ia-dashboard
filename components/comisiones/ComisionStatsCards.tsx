@@ -45,6 +45,8 @@ export default function ComisionStatsCards({ stats }: ComisionStatsCardsProps) {
       iconColor: 'text-purple-600',
       textColor: 'text-purple-900',
     },
+    // TEMPORAL: Oculto para presentación (Sesión 53)
+    // TODO: Restaurar después de presentación
     {
       title: 'Pendiente Inicial',
       value: stats.pendiente_inicial,
@@ -53,6 +55,7 @@ export default function ComisionStatsCards({ stats }: ComisionStatsCardsProps) {
       bgColor: 'bg-yellow-50',
       iconColor: 'text-yellow-600',
       textColor: 'text-yellow-900',
+      hidden: true, // TEMPORAL
     },
   ];
 
@@ -64,6 +67,7 @@ export default function ComisionStatsCards({ stats }: ComisionStatsCardsProps) {
           <div
             key={card.title}
             className={`${card.bgColor} rounded-lg shadow-sm p-6 border border-gray-200`}
+            style={{ display: (card as any).hidden ? 'none' : 'block' }}
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-gray-600">
