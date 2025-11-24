@@ -44,41 +44,13 @@ export default function ComisionesPage() {
     setLoadingData(true);
 
     try {
-      const isAdminOrJefe = user.rol === 'admin' || user.rol === 'jefe_ventas';
+      // TEMPORAL FIX (Sesión 53): Todos los roles (admin/jefe/vendedor) ven solo SUS comisiones
+      // TODO: Restaurar vista consolidada para admin/jefe después de presentación
+      const userComisiones = await getComisionesByUsuario(user.id);
+      const userStats = await getComisionStats(user.id);
 
-      if (isAdminOrJefe) {
-        const allComisiones = await getAllComisiones();
-        setComisiones(allComisiones);
-
-        // Calculate aggregate stats for all users
-        const totalGenerado = allComisiones.reduce((sum, c) => sum + c.monto_comision, 0);
-        const disponible = allComisiones
-          .filter(c => c.estado === 'disponible')
-          .reduce((sum, c) => sum + c.monto_comision, 0);
-        const pagado = allComisiones
-          .filter(c => c.estado === 'pagada')
-          .reduce((sum, c) => sum + c.monto_comision, 0);
-        const pendienteInicial = allComisiones
-          .filter(c => c.estado === 'pendiente_inicial')
-          .reduce((sum, c) => sum + c.monto_comision, 0);
-
-        setStats({
-          total_generado: totalGenerado,
-          disponible: disponible,
-          pagado: pagado,
-          pendiente_inicial: pendienteInicial,
-          count_total: allComisiones.length,
-          count_disponible: allComisiones.filter(c => c.estado === 'disponible').length,
-          count_pagado: allComisiones.filter(c => c.estado === 'pagada').length,
-          count_pendiente: allComisiones.filter(c => c.estado === 'pendiente_inicial').length,
-        });
-      } else {
-        const userComisiones = await getComisionesByUsuario(user.id);
-        const userStats = await getComisionStats(user.id);
-
-        setComisiones(userComisiones);
-        setStats(userStats);
-      }
+      setComisiones(userComisiones);
+      setStats(userStats);
     } catch (error) {
       console.error('[COMISIONES PAGE] Error fetching data:', error);
     } finally {
@@ -113,18 +85,12 @@ export default function ComisionesPage() {
     return null;
   }
 
-  const isAdminOrJefe = user.rol === 'admin' || user.rol === 'jefe_ventas';
-
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
       {/* Header */}
       <DashboardHeader
-        title={isAdminOrJefe ? 'Comisiones - Todas' : 'Mis Comisiones'}
-        subtitle={
-          isAdminOrJefe
-            ? 'Vista general de todas las comisiones del equipo'
-            : 'Tus comisiones generadas por ventas de locales'
-        }
+        title="Mis Comisiones"
+        subtitle="Tus comisiones generadas por ventas de locales"
       />
 
       {/* Content */}
