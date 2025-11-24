@@ -136,6 +136,11 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
               <div className="text-center">
                 <div className="text-sm text-gray-600 mb-1">
                   Monto total: {formatMonto(stats?.totalVenta || 0)}
+                  {(stats?.totalIntereses || 0) > 0 && (
+                    <span className="ml-2 text-orange-600">
+                      | Intereses: {formatMonto(stats.totalIntereses)}
+                    </span>
+                  )}
                 </div>
                 <div className="text-3xl font-bold text-green-600">
                   Total abonado: {formatMonto(stats?.totalAbonado || 0)}

@@ -54,6 +54,7 @@ export interface PagoStats {
   };
   totalVenta: number;
   totalAbonado: number;
+  totalIntereses: number;
 }
 
 export async function getPagosLocal(controlPagoId: string): Promise<PagoConAbonos[]> {
@@ -144,6 +145,7 @@ export async function getPagoStats(controlPagoId: string): Promise<PagoStats> {
         cuotas: { total: 0, pagadas: 0, parciales: 0, pendientes: 0, vencidas: 0, proximaFecha: null },
         totalVenta,
         totalAbonado: 0,
+        totalIntereses: 0,
       };
     }
 
@@ -161,6 +163,9 @@ export async function getPagoStats(controlPagoId: string): Promise<PagoStats> {
 
     const cuotasPendientesOrdenadas = cuotas.filter(c => c.estado === 'pendiente' && c.fecha_esperada >= hoy);
     const proximaFecha = cuotasPendientesOrdenadas.length > 0 ? cuotasPendientesOrdenadas[0].fecha_esperada : null;
+
+    // Calcular total intereses (solo de cuotas)
+    const totalIntereses = cuotas.reduce((sum, c) => sum + (c.interes_esperado || 0), 0);
 
     // Calcular total abonado (separación + inicial + cuotas)
     const totalAbonado =
@@ -189,6 +194,7 @@ export async function getPagoStats(controlPagoId: string): Promise<PagoStats> {
       },
       totalVenta,
       totalAbonado,
+      totalIntereses,
     };
   } catch (error) {
     console.error('[PAGOS] Error obteniendo stats:', error);
@@ -198,6 +204,7 @@ export async function getPagoStats(controlPagoId: string): Promise<PagoStats> {
       cuotas: { total: 0, pagadas: 0, parciales: 0, pendientes: 0, vencidas: 0, proximaFecha: null },
       totalVenta: 0,
       totalAbonado: 0,
+      totalIntereses: 0,
     };
   }
 }
