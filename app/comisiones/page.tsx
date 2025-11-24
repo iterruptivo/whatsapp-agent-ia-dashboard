@@ -24,7 +24,7 @@ import {
 
 export default function ComisionesPage() {
   const router = useRouter();
-  const { user, usuario, loading } = useAuth();
+  const { user, loading } = useAuth();
   const [comisiones, setComisiones] = useState<Comision[]>([]);
   const [stats, setStats] = useState<ComisionStats>({
     total_generado: 0,
@@ -39,12 +39,12 @@ export default function ComisionesPage() {
   const [loadingData, setLoadingData] = useState(true);
 
   const fetchData = async () => {
-    if (!user || !usuario) return;
+    if (!user) return;
 
     setLoadingData(true);
 
     try {
-      const isAdminOrJefe = usuario.rol === 'admin' || usuario.rol === 'jefe_ventas';
+      const isAdminOrJefe = user.rol === 'admin' || user.rol === 'jefe_ventas';
 
       if (isAdminOrJefe) {
         const allComisiones = await getAllComisiones();
@@ -93,10 +93,10 @@ export default function ComisionesPage() {
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (!loading && user && usuario) {
+    if (!loading && user) {
       fetchData();
     }
-  }, [loading, user, usuario]);
+  }, [loading, user]);
 
   if (loading || loadingData) {
     return (
@@ -109,11 +109,11 @@ export default function ComisionesPage() {
     );
   }
 
-  if (!user || !usuario) {
+  if (!user) {
     return null;
   }
 
-  const isAdminOrJefe = usuario.rol === 'admin' || usuario.rol === 'jefe_ventas';
+  const isAdminOrJefe = user.rol === 'admin' || user.rol === 'jefe_ventas';
 
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
@@ -132,7 +132,7 @@ export default function ComisionesPage() {
         <ComisionStatsCards stats={stats} />
         <ComisionesTable
           comisiones={comisiones}
-          userRole={usuario.rol}
+          userRole={user.rol}
           userId={user.id}
           onUpdate={fetchData}
         />
