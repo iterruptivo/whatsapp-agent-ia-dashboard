@@ -374,7 +374,9 @@ export async function updateLocalEstadoQuery(
     // Preparar update
     const updateData: any = {
       estado: nuevoEstado,
-      vendedor_actual_id: vendedorId || null,
+      // FIX COMISIONES: Solo actualizar vendedor_actual_id si se proporciona explícitamente
+      // NO sobrescribir con null cuando admin pasa a ROJO (preserva vendedor de NARANJA)
+      ...(vendedorId !== undefined && { vendedor_actual_id: vendedorId }),
       vendedores_negociando_ids: vendedoresNegociando, // ← NUEVO: Array de vendedores
     };
 
