@@ -224,7 +224,7 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
 
                 {pagoSeparacion.fue_desmarcado && (
                   <div className="mt-3">
-                    <div className="text-sm font-semibold text-gray-700 mb-2">Historial de Abonos</div>
+                    <div className="text-sm font-semibold text-gray-700 mb-2">Historial de abonos de Separación</div>
                     {pagoSeparacion.abonos.length > 0 ? (
                       <div className="space-y-2">
                         {pagoSeparacion.abonos.map((abono) => (
