@@ -720,8 +720,8 @@ export default function LocalesTable({
   const handleIniciarRegistroVenta = (local: Local) => {
     // SESIÓN 52D: Verificar si faltan los datos necesarios
     // Si el vendedor pasó el local a NARANJA, estos 3 campos ya están completos
-    // Solo falta lead_id si admin pasó directo a ROJO sin pasar por NARANJA
-    const faltanDatos = !local.monto_venta || !local.monto_separacion || !local.lead_id;
+    // Solo si admin pasó directo a ROJO sin pasar por NARANJA faltarían datos
+    const faltanDatos = !local.monto_venta || !local.monto_separacion || !local.vendedor_actual_id;
 
     if (faltanDatos) {
       // Faltan datos → Abrir modal de captura de datos previos
