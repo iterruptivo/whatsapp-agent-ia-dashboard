@@ -8,20 +8,25 @@ interface ComisionesChartProps {
 }
 
 export default function ComisionesChart({ stats }: ComisionesChartProps) {
-  // TEMPORAL: Datos mockeados simples para presentación (Sesión 53)
-  // Solo muestra mes actual con valor total_generado
+  // TEMPORAL: Datos mockeados para presentación (Sesión 53)
+  // Muestra 5 meses atrás + mes actual + 6 meses adelante
+  // Solo mes actual tiene valor real (total_generado), resto en 0
   // TODO: Implementar lógica real de datos por mes después de presentación
   const currentDate = new Date();
   const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-  const currentMonth = monthNames[currentDate.getMonth()];
-  const currentYear = currentDate.getFullYear();
 
-  const chartData = [
-    {
-      mes: `${currentMonth} ${currentYear}`,
-      monto: stats.total_generado,
-    },
-  ];
+  // Generar array de 12 meses (5 atrás + actual + 6 adelante)
+  const chartData = [];
+  for (let i = -5; i <= 6; i++) {
+    const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
+    const month = monthNames[date.getMonth()];
+    const year = date.getFullYear();
+
+    chartData.push({
+      mes: `${month} ${year}`,
+      monto: i === 0 ? stats.total_generado : 0, // Solo mes actual (i=0) tiene valor
+    });
+  }
 
   const formatMonto = (value: number) => {
     return new Intl.NumberFormat('en-US', {
