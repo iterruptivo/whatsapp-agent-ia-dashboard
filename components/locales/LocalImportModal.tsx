@@ -10,7 +10,7 @@
 
 import { useState, useRef } from 'react';
 import { importLocales } from '@/lib/actions-locales';
-import type { Proyecto } from '@/lib/db';
+// SESIÓN 55: Ya no necesitamos importar Proyecto (viene del login)
 import type { LocalImportRow } from '@/lib/locales';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
@@ -21,17 +21,19 @@ interface LocalImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  proyectos: Proyecto[];
+  // SESIÓN 55: Proyecto viene del login (ya no es seleccionable)
+  selectedProyectoId: string;
+  selectedProyectoNombre: string;
 }
 
 export default function LocalImportModal({
   isOpen,
   onClose,
   onSuccess,
-  proyectos,
+  selectedProyectoId,
+  selectedProyectoNombre,
 }: LocalImportModalProps) {
   const [file, setFile] = useState<File | null>(null);
-  const [selectedProyectoId, setSelectedProyectoId] = useState<string>('');
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{
     success: boolean;
@@ -330,28 +332,17 @@ export default function LocalImportModal({
               </p>
             </div>
 
-            {/* Dropdown Proyecto */}
+            {/* SESIÓN 55: Proyecto fijo (viene del login) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Seleccionar proyecto <span className="text-red-500">*</span>
+                Proyecto destino
               </label>
-              <select
-                value={selectedProyectoId}
-                onChange={(e) => setSelectedProyectoId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all"
-              >
-                <option value="">-- Selecciona un proyecto --</option>
-                {proyectos.map((proyecto) => (
-                  <option key={proyecto.id} value={proyecto.id}>
-                    {proyecto.nombre}
-                  </option>
-                ))}
-              </select>
-              {selectedProyectoId && (
-                <p className="text-xs text-gray-600 mt-1">
-                  ✅ Todos los locales se asignarán a este proyecto
-                </p>
-              )}
+              <div className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 font-medium">
+                {selectedProyectoNombre || 'Cargando...'}
+              </div>
+              <p className="text-xs text-gray-600 mt-1">
+                ✅ Todos los locales se importarán a este proyecto
+              </p>
             </div>
 
             {/* File Input */}

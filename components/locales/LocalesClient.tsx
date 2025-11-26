@@ -550,7 +550,8 @@ export default function LocalesClient({
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
           onSuccess={handleImportSuccess}
-          proyectos={proyectos}
+          selectedProyectoId={selectedProyecto?.id || ''}
+          selectedProyectoNombre={selectedProyecto?.nombre || ''}
         />
       )}
 
