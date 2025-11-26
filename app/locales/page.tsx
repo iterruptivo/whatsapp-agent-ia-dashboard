@@ -11,19 +11,27 @@ import { getAllLocales, getLocalesStats } from '@/lib/locales';
 import { getAllProyectos } from '@/lib/db';
 import LocalesClient from '@/components/locales/LocalesClient';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import { getSelectedProyectoId } from '@/lib/server-utils';
 
 export const dynamic = 'force-dynamic'; // Evitar cache agresivo de Next.js 15
 
 export default async function LocalesPage() {
-  // Fetch inicial de datos (TODOS los locales - sin paginación temporal)
+  // SESIÓN 55: Obtener proyecto seleccionado desde cookie
+  const selectedProyectoId = await getSelectedProyectoId();
+
+  // Fetch inicial de datos (filtrado por proyecto seleccionado)
   const [
     { data: locales, count: totalLocales },
     proyectos,
     stats
   ] = await Promise.all([
-    getAllLocales({ page: 1, pageSize: 10000 }), // Traer TODOS los locales
+    getAllLocales({
+      page: 1,
+      pageSize: 10000,
+      proyectoId: selectedProyectoId || undefined // SESIÓN 55: Filtrar por proyecto
+    }),
     getAllProyectos(),
-    getLocalesStats(),
+    getLocalesStats(selectedProyectoId || undefined), // SESIÓN 55: Stats del proyecto
   ]);
 
   return (

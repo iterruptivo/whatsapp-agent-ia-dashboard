@@ -354,6 +354,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               } else {
                 console.warn('[AUTH] Proyecto not found, clearing localStorage');
                 localStorage.removeItem('selected_proyecto_id');
+                // SESIÓN 55: Limpiar cookie también
+                document.cookie = 'selected_proyecto_id=; path=/; max-age=0';
               }
             }
           } else {
@@ -601,6 +603,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // FIX MULTI-TAB: Save proyecto to localStorage (compartido entre tabs)
       localStorage.setItem('selected_proyecto_id', proyectoId);
 
+      // SESIÓN 55: Guardar en cookie para acceso desde Server Components
+      document.cookie = `selected_proyecto_id=${proyectoId}; path=/; max-age=${60 * 60 * 24 * 30}`; // 30 días
+
       // Redirect based on role
       if (userData.rol === 'admin') {
         router.push('/');
@@ -631,6 +636,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSelectedProyecto(null);
       // FIX MULTI-TAB: Limpiar proyecto de localStorage (compartido entre tabs)
       localStorage.removeItem('selected_proyecto_id');
+      // SESIÓN 55: Limpiar cookie también
+      document.cookie = 'selected_proyecto_id=; path=/; max-age=0';
       router.push('/login');
     } catch (error) {
       console.error('Error signing out:', error);
