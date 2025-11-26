@@ -39,7 +39,7 @@ interface ProyectoFormData {
 
 export default function ConfiguracionProyectos() {
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, selectedProyecto } = useAuth();
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedProyectos, setExpandedProyectos] = useState<Set<string>>(new Set());
@@ -71,7 +71,12 @@ export default function ConfiguracionProyectos() {
         return;
       }
 
-      const proyectosData = result.data.map(p => p.proyecto);
+      // SESIÓN 55: Filtrar solo el proyecto seleccionado en login
+      const filteredData = selectedProyecto
+        ? result.data.filter(p => p.proyecto.id === selectedProyecto.id)
+        : result.data;
+
+      const proyectosData = filteredData.map(p => p.proyecto);
       setProyectos(proyectosData);
 
       if (proyectosData.length > 0) {
@@ -79,7 +84,7 @@ export default function ConfiguracionProyectos() {
       }
 
       const initialFormData: Record<string, ProyectoFormData> = {};
-      for (const { proyecto, configuracion } of result.data) {
+      for (const { proyecto, configuracion } of filteredData) {
         initialFormData[proyecto.id] = {
           tea: configuracion?.tea?.toString() || '',
           color: proyecto.color || '#1b967a',
@@ -105,10 +110,10 @@ export default function ConfiguracionProyectos() {
       setLoading(false);
     }
 
-    if (user) {
+    if (user && selectedProyecto) {
       loadData();
     }
-  }, [user]);
+  }, [user, selectedProyecto]);
 
   const toggleProyecto = (proyectoId: string) => {
     setExpandedProyectos((prev) => {
