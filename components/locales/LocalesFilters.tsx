@@ -17,6 +17,7 @@ interface LocalesFiltersProps {
   metrajeMin: number | undefined;
   metrajeMax: number | undefined;
   defaultProyectoId?: string; // Proyecto del login para comparar default
+  selectedProyectoNombre?: string; // SESIÓN 55: Nombre del proyecto seleccionado en login
   onProyectoChange: (value: string) => void;
   onEstadosChange: (estados: string[]) => void; // Ahora recibe array
   onMetrajeMinChange: (value: number | undefined) => void;
@@ -31,6 +32,7 @@ export default function LocalesFilters({
   metrajeMin,
   metrajeMax,
   defaultProyectoId,
+  selectedProyectoNombre,
   onProyectoChange,
   onEstadosChange,
   onMetrajeMinChange,
@@ -97,23 +99,14 @@ export default function LocalesFilters({
 
       {/* SEGUNDA FILA: Proyecto y Metrajes */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        {/* Filtro Proyecto */}
+        {/* SESIÓN 55: Proyecto fijo (no editable) - mostrar nombre del proyecto seleccionado en login */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Proyecto
           </label>
-          <select
-            value={proyectoFilter}
-            onChange={(e) => onProyectoChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
-          >
-            <option value="">Todos los proyectos</option>
-            {proyectos.map((proyecto) => (
-              <option key={proyecto.id} value={proyecto.id}>
-                {proyecto.nombre}
-              </option>
-            ))}
-          </select>
+          <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 font-medium">
+            {selectedProyectoNombre || 'Cargando...'}
+          </div>
         </div>
 
         {/* Filtro Metraje Mín */}
