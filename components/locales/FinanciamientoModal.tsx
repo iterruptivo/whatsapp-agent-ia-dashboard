@@ -11,6 +11,7 @@
 // SESIÓN 52G: Calendario CON financiamiento - Sistema Francés (TEA → TEM, amortización)
 // SESIÓN 52H: Footer buttons reorganizados + Botón "Imprimir en PDF" (placeholder)
 // SESIÓN 52I: Mejora UX - Botón "Procesar" deshabilitado hasta generar calendario
+// SESIÓN 57: Campos editables por venta (TEA, % inicial, cuotas personalizadas)
 // ============================================================================
 
 'use client';
@@ -46,6 +47,11 @@ export default function FinanciamientoModal({
   const [cuotaSeleccionada, setCuotaSeleccionada] = useState<number | null>(null);
   const [porcentajeInicial, setPorcentajeInicial] = useState<number | null>(null);
   const [teaProyecto, setTeaProyecto] = useState<number | null>(null);
+  // SESIÓN 57: Estados para valores editables por venta
+  const [porcentajeInicialDefault, setPorcentajeInicialDefault] = useState<number | null>(null);
+  const [teaProyectoDefault, setTeaProyectoDefault] = useState<number | null>(null);
+  const [usarCuotaPersonalizada, setUsarCuotaPersonalizada] = useState<boolean>(false);
+  const [cuotaPersonalizada, setCuotaPersonalizada] = useState<string>('');
   const [fechaPago, setFechaPago] = useState<string>('');
   const [calendarioCuotas, setCalendarioCuotas] = useState<Array<{
     numero: number;
@@ -100,9 +106,10 @@ export default function FinanciamientoModal({
     async function fetchProyectoConfig() {
       const config = await getProyectoConfiguracion(local!.proyecto_id);
       if (config) {
-        // TEA del proyecto
+        // TEA del proyecto - SESIÓN 57: Guardar default y valor editable
         if (config.tea !== null && config.tea !== undefined) {
           setTeaProyecto(config.tea);
+          setTeaProyectoDefault(config.tea);
         }
 
         // Configuraciones extra
@@ -115,9 +122,10 @@ export default function FinanciamientoModal({
           setCuotasSinInteres(cuotasSin.sort((a: CuotaMeses, b: CuotaMeses) => a.order - b.order));
           setCuotasConInteres(cuotasCon.sort((a: CuotaMeses, b: CuotaMeses) => a.order - b.order));
 
-          // Tomar el primer (y único) porcentaje de inicial
+          // Tomar el primer (y único) porcentaje de inicial - SESIÓN 57: Guardar default
           if (porcentajes.length > 0) {
             setPorcentajeInicial(porcentajes[0].value);
+            setPorcentajeInicialDefault(porcentajes[0].value);
           }
         }
       }
@@ -318,16 +326,43 @@ export default function FinanciamientoModal({
             </div>
           </div>
 
-          {/* Inicial e Inicial Restante */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-orange-50 p-4 rounded-lg">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Inicial ({porcentajeInicial ? `${porcentajeInicial}%` : 'N/A'})
+          {/* SESIÓN 57: Porcentaje Inicial Editable */}
+          <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-semibold text-gray-700">
+                Porcentaje de Inicial
               </label>
-              <div className="text-2xl font-bold text-orange-900">
-                {formatMonto(montoInicial)}
-              </div>
+              {porcentajeInicialDefault && (
+                <span className="text-xs text-gray-500">
+                  (Default proyecto: {porcentajeInicialDefault}%)
+                </span>
+              )}
             </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min="1"
+                max="100"
+                step="0.1"
+                value={porcentajeInicial ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value ? parseFloat(e.target.value) : null;
+                  setPorcentajeInicial(val);
+                  setCalendarioCuotas([]); // Reset calendario
+                }}
+                className="w-24 px-3 py-2 border border-orange-300 rounded-lg text-lg font-bold text-orange-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
+                placeholder="%"
+              />
+              <span className="text-lg font-bold text-orange-900">%</span>
+              <span className="text-gray-500 mx-2">=</span>
+              <span className="text-2xl font-bold text-orange-900">
+                {formatMonto(montoInicial)}
+              </span>
+            </div>
+          </div>
+
+          {/* Inicial Restante y Monto Restante */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="bg-purple-50 p-4 rounded-lg">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Inicial Restante
@@ -335,18 +370,16 @@ export default function FinanciamientoModal({
               <div className="text-2xl font-bold text-purple-900">
                 {formatMonto(inicialRestante)}
               </div>
+              <p className="text-xs text-gray-500 mt-1">Inicial - Separación</p>
             </div>
-          </div>
-
-          {/* Monto Restante destacado */}
-          <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 border-2 border-indigo-300 p-4 rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold text-indigo-900">
-                Monto Restante:
-              </span>
-              <span className="text-3xl font-bold text-indigo-900">
+            <div className="bg-indigo-50 p-4 rounded-lg border-2 border-indigo-300">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Monto Restante
+              </label>
+              <div className="text-2xl font-bold text-indigo-900">
                 {formatMonto(montoRestante)}
-              </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">Precio Venta - Inicial</p>
             </div>
           </div>
 
@@ -364,6 +397,8 @@ export default function FinanciamientoModal({
                   onChange={() => {
                     setConFinanciamiento(true);
                     setCuotaSeleccionada(null);
+                    setUsarCuotaPersonalizada(false);
+                    setCuotaPersonalizada('');
                     setCalendarioCuotas([]); // Reset calendario cuando cambia tipo
                   }}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
@@ -378,6 +413,8 @@ export default function FinanciamientoModal({
                   onChange={() => {
                     setConFinanciamiento(false);
                     setCuotaSeleccionada(null);
+                    setUsarCuotaPersonalizada(false);
+                    setCuotaPersonalizada('');
                     setCalendarioCuotas([]); // Reset calendario cuando cambia tipo
                   }}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
@@ -395,15 +432,20 @@ export default function FinanciamientoModal({
             {conFinanciamiento ? (
               // Cuotas CON intereses
               <>
-                {cuotasConInteres.length > 0 ? (
-                  <div className="flex flex-wrap gap-4">
+                {cuotasConInteres.length > 0 && (
+                  <div className="flex flex-wrap gap-4 mb-3">
                     {cuotasConInteres.map((cuota) => (
                       <label key={cuota.order} className="flex items-center cursor-pointer">
                         <input
                           type="radio"
                           name="cuotas"
-                          checked={cuotaSeleccionada === cuota.value}
-                          onChange={() => setCuotaSeleccionada(cuota.value)}
+                          checked={cuotaSeleccionada === cuota.value && !usarCuotaPersonalizada}
+                          onChange={() => {
+                            setCuotaSeleccionada(cuota.value);
+                            setUsarCuotaPersonalizada(false);
+                            setCuotaPersonalizada('');
+                            setCalendarioCuotas([]);
+                          }}
                           className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                         />
                         <span className="ml-2 text-sm font-medium text-gray-900">
@@ -412,43 +454,143 @@ export default function FinanciamientoModal({
                       </label>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-sm text-gray-500">No hay cuotas con intereses configuradas para este proyecto.</p>
                 )}
+                {/* SESIÓN 57: Input para cuotas personalizadas */}
+                <div className="flex items-center gap-3 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="cuotas"
+                      checked={usarCuotaPersonalizada}
+                      onChange={() => {
+                        setUsarCuotaPersonalizada(true);
+                        setCuotaSeleccionada(null);
+                        setCalendarioCuotas([]);
+                      }}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm font-medium text-gray-700">Otro:</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={cuotaPersonalizada}
+                    onChange={(e) => {
+                      setCuotaPersonalizada(e.target.value);
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val) && val > 0) {
+                        setCuotaSeleccionada(val);
+                        setUsarCuotaPersonalizada(true);
+                      } else {
+                        setCuotaSeleccionada(null);
+                      }
+                      setCalendarioCuotas([]);
+                    }}
+                    onFocus={() => setUsarCuotaPersonalizada(true)}
+                    placeholder="Ej: 24"
+                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                  <span className="text-sm text-gray-600">meses</span>
+                </div>
 
-                {/* Badge TEA del proyecto */}
-                {teaProyecto !== null && (
-                  <div className="mt-3 inline-flex items-center gap-2 px-3 py-2 bg-blue-100 border border-blue-300 rounded-full">
-                    <span className="text-lg">📊</span>
-                    <span className="text-sm font-semibold text-blue-900">
-                      TEA: {teaProyecto}% anual
-                    </span>
+                {/* SESIÓN 57: TEA Editable */}
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-semibold text-gray-700">
+                      TEA (Tasa Efectiva Anual)
+                    </label>
+                    {teaProyectoDefault && (
+                      <span className="text-xs text-gray-500">
+                        (Default proyecto: {teaProyectoDefault}%)
+                      </span>
+                    )}
                   </div>
-                )}
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0.1"
+                      max="100"
+                      step="0.1"
+                      value={teaProyecto ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value ? parseFloat(e.target.value) : null;
+                        setTeaProyecto(val);
+                        setCalendarioCuotas([]);
+                      }}
+                      className="w-20 px-3 py-2 border border-blue-300 rounded-lg text-lg font-bold text-blue-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                      placeholder="%"
+                    />
+                    <span className="text-lg font-bold text-blue-900">% anual</span>
+                  </div>
+                </div>
               </>
 
             ) : (
               // Cuotas SIN intereses
-              cuotasSinInteres.length > 0 ? (
-                <div className="flex flex-wrap gap-4">
-                  {cuotasSinInteres.map((cuota) => (
-                    <label key={cuota.order} className="flex items-center cursor-pointer">
-                      <input
-                        type="radio"
-                        name="cuotas"
-                        checked={cuotaSeleccionada === cuota.value}
-                        onChange={() => setCuotaSeleccionada(cuota.value)}
-                        className="w-4 h-4 text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="ml-2 text-sm font-medium text-gray-900">
-                        {cuota.value} meses
-                      </span>
-                    </label>
-                  ))}
+              <>
+                {cuotasSinInteres.length > 0 && (
+                  <div className="flex flex-wrap gap-4 mb-3">
+                    {cuotasSinInteres.map((cuota) => (
+                      <label key={cuota.order} className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="cuotas"
+                          checked={cuotaSeleccionada === cuota.value && !usarCuotaPersonalizada}
+                          onChange={() => {
+                            setCuotaSeleccionada(cuota.value);
+                            setUsarCuotaPersonalizada(false);
+                            setCuotaPersonalizada('');
+                            setCalendarioCuotas([]);
+                          }}
+                          className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="ml-2 text-sm font-medium text-gray-900">
+                          {cuota.value} meses
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {/* SESIÓN 57: Input para cuotas personalizadas (sin intereses) */}
+                <div className="flex items-center gap-3 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <label className="flex items-center cursor-pointer">
+                    <input
+                      type="radio"
+                      name="cuotas"
+                      checked={usarCuotaPersonalizada}
+                      onChange={() => {
+                        setUsarCuotaPersonalizada(true);
+                        setCuotaSeleccionada(null);
+                        setCalendarioCuotas([]);
+                      }}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="ml-2 text-sm font-medium text-gray-700">Otro:</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="120"
+                    value={cuotaPersonalizada}
+                    onChange={(e) => {
+                      setCuotaPersonalizada(e.target.value);
+                      const val = parseInt(e.target.value);
+                      if (!isNaN(val) && val > 0) {
+                        setCuotaSeleccionada(val);
+                        setUsarCuotaPersonalizada(true);
+                      } else {
+                        setCuotaSeleccionada(null);
+                      }
+                      setCalendarioCuotas([]);
+                    }}
+                    onFocus={() => setUsarCuotaPersonalizada(true)}
+                    placeholder="Ej: 8"
+                    className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                  />
+                  <span className="text-sm text-gray-600">meses</span>
                 </div>
-              ) : (
-                <p className="text-sm text-gray-500">No hay cuotas sin intereses configuradas para este proyecto.</p>
-              )
+              </>
             )}
           </div>
 
