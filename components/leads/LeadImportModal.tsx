@@ -182,7 +182,7 @@ export default function LeadImportModal({
     const templateData = [
       {
         nombre: 'Juan Pérez',
-        telefono: '+51987654321',
+        telefono: '51987654321',
         email_vendedor: 'leo@ecoplaza.com',
         utm: 'facebook',
         email: 'juan.perez@ejemplo.com',
@@ -190,7 +190,7 @@ export default function LeadImportModal({
       },
       {
         nombre: 'María García',
-        telefono: '+51912345678',
+        telefono: '51912345678',
         email_vendedor: 'leo@ecoplaza.com',
         utm: 'instagram',
         email: 'maria.garcia@ejemplo.com',
@@ -256,7 +256,7 @@ export default function LeadImportModal({
                 <tbody>
                   <tr className="border-t border-gray-200 bg-white">
                     <td className="py-2 px-3 text-gray-900">Juan Pérez</td>
-                    <td className="py-2 px-3 text-gray-900">+51987654321</td>
+                    <td className="py-2 px-3 text-gray-900">51987654321</td>
                     <td className="py-2 px-3 text-gray-900">leo@ecoplaza.com</td>
                     <td className="py-2 px-3 text-gray-900">facebook</td>
                     <td className="py-2 px-3 text-gray-600">juan.perez@ejemplo.com</td>
