@@ -81,7 +81,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         // bottomItems: [
         //   { href: '/configuracion-proyectos', label: 'Configurar Proyectos', icon: Settings },
         // ],
-        bottomItems: [],
+        bottomItems: [] as MenuItem[],
       };
     }
 
