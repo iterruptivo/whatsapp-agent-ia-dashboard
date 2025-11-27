@@ -355,11 +355,13 @@ export async function createManualLead(
       };
     }
 
-    // Check if lead with this phone already exists
+    // Check if lead with this phone already exists IN THIS PROJECT
+    // SESIÓN 56: Validación por proyecto (mismo teléfono puede existir en diferentes proyectos)
     const { data: existingLead } = await supabase
       .from('leads')
       .select('id, nombre, telefono')
       .eq('telefono', telefono.trim())
+      .eq('proyecto_id', proyectoId)
       .limit(1);
 
     if (existingLead && existingLead.length > 0) {
@@ -482,11 +484,13 @@ export async function registrarVisitaSinLocal(
     // Validar vendedor solo si viene (admin/jefe_ventas pueden crear sin vendedor)
     // vendedor/vendedor_caseta siempre tendrán vendedor_id
 
-    // PASO 1: Verificar si el lead ya existe por teléfono
+    // PASO 1: Verificar si el lead ya existe por teléfono EN ESTE PROYECTO
+    // SESIÓN 56: Validación por proyecto (mismo teléfono puede existir en diferentes proyectos)
     const { data: existingLead, error: checkError } = await supabase
       .from('leads')
       .select('id, nombre, email, proyecto_id, asistio')
       .eq('telefono', telefono.trim())
+      .eq('proyecto_id', proyectoId)
       .limit(1)
       .single();
 
