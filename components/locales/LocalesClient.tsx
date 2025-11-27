@@ -463,7 +463,6 @@ export default function LocalesClient({
           <div className="flex-1 w-full">
             <LocalesFilters
               proyectos={proyectos}
-        selectedProyectoId={selectedProyecto?.id} // SESIÓN 56: Filtrar búsqueda por proyecto
               proyectoFilter={proyectoFilter}
               estadosFilter={estadosFilter}
               metrajeMin={metrajeMin}
