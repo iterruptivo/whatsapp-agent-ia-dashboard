@@ -16,8 +16,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, Search, User, Phone, Mail, Building2, CheckCircle, AlertCircle, DollarSign, Users } from 'lucide-react';
-import { searchLeadByPhone, getAllProyectos } from '@/lib/db';
-import type { Lead, Proyecto } from '@/lib/db';
+import { searchLeadByPhone } from '@/lib/db';
+import type { Lead } from '@/lib/db';
 import type { Local, VendedorActivo } from '@/lib/locales';
 
 interface DatosRegistroVentaModalProps {
@@ -43,12 +43,12 @@ export default function DatosRegistroVentaModal({
   const [montoVenta, setMontoVenta] = useState('');
   const [phoneInput, setPhoneInput] = useState('');
   const [manualName, setManualName] = useState('');
+  // SESIÓN 56: selectedProyecto ahora viene del local, no de un dropdown
   const [selectedProyecto, setSelectedProyecto] = useState('');
   const [foundLead, setFoundLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   // SESIÓN 52D: Campo vendedor
   const [vendedores, setVendedores] = useState<VendedorActivo[]>([]);
   const [selectedVendedor, setSelectedVendedor] = useState('');
@@ -71,11 +71,8 @@ export default function DatosRegistroVentaModal({
     }
   }, [vendedorDropdownOpen]);
   useEffect(() => {
-    // Cargar proyectos y vendedores al montar
+    // SESIÓN 56: Cargar solo vendedores, proyecto viene del local
     const loadData = async () => {
-      const proyectosData = await getAllProyectos();
-      setProyectos(proyectosData);
-
       // SESIÓN 52D: Cargar vendedores activos
       const { getAllVendedoresActivos } = await import('@/lib/locales');
       const vendedoresData = await getAllVendedoresActivos();
@@ -87,6 +84,8 @@ export default function DatosRegistroVentaModal({
       // Pre-fill montos si ya existen (edit mode)
       if (local?.monto_venta) setMontoVenta(local.monto_venta.toString());
       if (local?.monto_separacion) setMontoSeparacion(local.monto_separacion.toString());
+      // SESIÓN 56: Pre-seleccionar proyecto del local automáticamente
+      if (local?.proyecto_id) setSelectedProyecto(local.proyecto_id);
     }
   }, [isOpen, local]);
 
@@ -105,6 +104,7 @@ export default function DatosRegistroVentaModal({
   const montoVentaNum = parseFloat(montoVenta);
   const montoVentaValido = !isNaN(montoVentaNum) && montoVentaNum > 0;
 
+  // SESIÓN 56: selectedProyecto ya viene del local automáticamente
   const canSubmit =
     montoSeparacionValido &&
     montoVentaValido &&
@@ -112,7 +112,7 @@ export default function DatosRegistroVentaModal({
     telefonoValido &&
     selectedVendedor.trim().length > 0 && // SESIÓN 52D: Validar vendedor seleccionado
     (viewState === 'lead-found' ||
-      (viewState === 'not-found' && manualName.trim().length > 0 && selectedProyecto.trim().length > 0));
+      (viewState === 'not-found' && manualName.trim().length > 0));
 
   // ====== HANDLERS ======
 
@@ -177,8 +177,9 @@ export default function DatosRegistroVentaModal({
         setError('Debe ingresar el nombre del cliente');
         return;
       }
+      // SESIÓN 56: Proyecto viene del local, validar que exista
       if (!selectedProyecto) {
-        setError('Debe seleccionar un proyecto');
+        setError('Error: No se pudo obtener el proyecto del local');
         return;
       }
     }
@@ -527,28 +528,16 @@ export default function DatosRegistroVentaModal({
                       />
                     </div>
 
+                    {/* SESIÓN 56: Proyecto fijo (viene del local) */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Proyecto <span className="text-red-500">*</span>
+                        Proyecto
                       </label>
-                      <select
-                        value={selectedProyecto}
-                        onChange={(e) => {
-                          setSelectedProyecto(e.target.value);
-                          setError(null);
-                        }}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                        disabled={submitting}
-                      >
-                        <option value="">- - -</option>
-                        {proyectos.map((proyecto) => (
-                          <option key={proyecto.id} value={proyecto.id}>
-                            {proyecto.nombre}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 font-medium">
+                        {local?.proyecto_nombre || 'Cargando...'}
+                      </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        Seleccione el proyecto al que pertenece este lead
+                        El lead se creará en el mismo proyecto del local
                       </p>
                     </div>
 

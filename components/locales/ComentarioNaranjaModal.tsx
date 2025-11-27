@@ -12,8 +12,8 @@
 
 import { useState, useEffect } from 'react';
 import { X, AlertCircle, MessageSquare, Phone, Search, User, Mail, Building2, CheckCircle, DollarSign } from 'lucide-react';
-import { searchLeadByPhone, getAllProyectos } from '@/lib/db';
-import type { Lead, Proyecto } from '@/lib/db';
+import { searchLeadByPhone } from '@/lib/db';
+import type { Lead } from '@/lib/db';
 import type { Local } from '@/lib/locales';
 
 interface ComentarioNaranjaModalProps {
@@ -52,23 +52,18 @@ export default function ComentarioNaranjaModal({
   const [error, setError] = useState('');
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+  // SESIÓN 56: proyectoId ahora viene del local, no de un dropdown
   const [proyectoId, setProyectoId] = useState('');
   const [agregarComoLead, setAgregarComoLead] = useState(true);
 
   // ====== EFFECTS ======
   useEffect(() => {
-    // Cargar proyectos al montar el componente
-    const loadProyectos = async () => {
-      const proyectosData = await getAllProyectos();
-      setProyectos(proyectosData);
-      // NO seleccionar ningún proyecto por defecto - usuario debe elegir
-    };
-
-    if (isOpen) {
-      loadProyectos();
+    // SESIÓN 56: Ya no necesitamos cargar proyectos, usamos el proyecto del local
+    if (isOpen && local) {
+      // Pre-seleccionar proyecto del local automáticamente
+      setProyectoId(local.proyecto_id);
     }
-  }, [isOpen]);
+  }, [isOpen, local]);
 
   if (!isOpen || !local) return null;
 
@@ -164,9 +159,9 @@ export default function ComentarioNaranjaModal({
         return;
       }
 
-      // Validar proyecto (SIEMPRE REQUERIDO)
+      // SESIÓN 56: Proyecto viene del local, validar que exista
       if (!proyectoId) {
-        setError('Debe seleccionar un proyecto');
+        setError('Error: No se pudo obtener el proyecto del local');
         return;
       }
     }
@@ -233,6 +228,7 @@ export default function ComentarioNaranjaModal({
   // Mostrar error de teléfono en tiempo real (solo si ya empezó a escribir)
   const mostrarErrorTelefono = telefono.length > 0 && !telefonoValido;
 
+  // SESIÓN 56: proyectoId ya viene del local automáticamente
   const canSubmit =
     comentario.trim().length >= 10 &&
     telefono.trim().length > 0 &&
@@ -241,8 +237,7 @@ export default function ComentarioNaranjaModal({
     montoVentaValido && // Monto venta SIEMPRE requerido
     (viewState === 'lead-found' ||
       (viewState === 'lead-not-found' &&
-        nombreManual.trim().length > 0 &&
-        proyectoId.trim().length > 0 // Proyecto SIEMPRE requerido
+        nombreManual.trim().length > 0
       )
     );
 
@@ -526,29 +521,16 @@ export default function ComentarioNaranjaModal({
                   />
                 </div>
 
-                {/* Dropdown de Proyectos */}
+                {/* SESIÓN 56: Proyecto fijo (viene del local) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Proyecto <span className="text-red-500">*</span>
+                    Proyecto
                   </label>
-                  <select
-                    value={proyectoId}
-                    onChange={(e) => {
-                      setProyectoId(e.target.value);
-                      setError('');
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                    disabled={submitting}
-                  >
-                    <option value="">- - -</option>
-                    {proyectos.map((proyecto) => (
-                      <option key={proyecto.id} value={proyecto.id}>
-                        {proyecto.nombre}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="w-full px-4 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 font-medium">
+                    {local?.proyecto_nombre || 'Cargando...'}
+                  </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Seleccione el proyecto al que pertenece {agregarComoLead ? 'este lead' : 'esta vinculación'}
+                    El lead se creará en el mismo proyecto del local
                   </p>
                 </div>
 

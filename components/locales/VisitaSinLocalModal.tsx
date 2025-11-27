@@ -9,6 +9,7 @@ interface VisitaSinLocalModalProps {
   onConfirm: (telefono: string, nombre: string, proyectoId: string) => Promise<void>;
   proyectos: Array<{ id: string; nombre: string }>;
   selectedProyectoId?: string; // SESIÓN 56: Proyecto del login para filtrar búsqueda
+  selectedProyectoNombre?: string; // SESIÓN 56: Nombre del proyecto para mostrar fijo
 }
 
 interface LeadExistente {
@@ -25,6 +26,7 @@ export default function VisitaSinLocalModal({
   onConfirm,
   proyectos,
   selectedProyectoId,
+  selectedProyectoNombre,
 }: VisitaSinLocalModalProps) {
   const [telefono, setTelefono] = useState('');
   const [telefonoError, setTelefonoError] = useState('');
@@ -42,13 +44,18 @@ export default function VisitaSinLocalModal({
       setTelefono('');
       setTelefonoError('');
       setNombre('');
-      setProyectoId('');
+      setProyectoId(selectedProyectoId || ''); // SESIÓN 56: Usar proyecto del login por defecto
       setLeadExistente(null);
       setSearchCompleted(false);
       setIsSearching(false);
       setError('');
+    } else {
+      // SESIÓN 56: Pre-seleccionar proyecto del login al abrir
+      if (selectedProyectoId) {
+        setProyectoId(selectedProyectoId);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, selectedProyectoId]);
 
   // ====== VALIDACIÓN ======
 
@@ -136,8 +143,9 @@ export default function VisitaSinLocalModal({
       return;
     }
 
+    // SESIÓN 56: Proyecto viene del login, validar que exista
     if (!leadExistente && !proyectoId) {
-      setError('Debes seleccionar un proyecto');
+      setError('Error: No hay proyecto seleccionado en tu sesión');
       return;
     }
 
@@ -295,30 +303,20 @@ export default function VisitaSinLocalModal({
                 />
               </div>
 
-              {/* Proyecto */}
+              {/* SESIÓN 56: Proyecto fijo (viene del login) */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <MapPin className="w-5 h-5 text-blue-600" />
                   <label className="text-sm font-medium text-gray-700">
-                    Proyecto <span className="text-red-500">*</span>
+                    Proyecto
                   </label>
                 </div>
-                <select
-                  value={proyectoId}
-                  onChange={(e) => {
-                    setProyectoId(e.target.value);
-                    setError('');
-                  }}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                  disabled={isSubmitting}
-                >
-                  <option value="">- - -</option>
-                  {proyectos.map((proyecto) => (
-                    <option key={proyecto.id} value={proyecto.id}>
-                      {proyecto.nombre}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 font-medium">
+                  {selectedProyectoNombre || 'Cargando...'}
+                </div>
+                <p className="text-xs text-gray-500">
+                  El lead se creará en el proyecto seleccionado en tu sesión
+                </p>
               </div>
             </>
           )}

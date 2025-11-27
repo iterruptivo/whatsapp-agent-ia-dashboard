@@ -562,6 +562,7 @@ export default function LocalesClient({
         onConfirm={handleRegistrarVisita}
         proyectos={proyectos}
         selectedProyectoId={selectedProyecto?.id} // SESIÓN 56: Filtrar búsqueda por proyecto
+        selectedProyectoNombre={selectedProyecto?.nombre} // SESIÓN 56: Nombre para mostrar fijo
       />
 
       {/* Panel Historial */}
