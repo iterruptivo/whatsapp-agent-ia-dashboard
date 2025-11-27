@@ -8,6 +8,7 @@ interface VisitaSinLocalModalProps {
   onClose: () => void;
   onConfirm: (telefono: string, nombre: string, proyectoId: string) => Promise<void>;
   proyectos: Array<{ id: string; nombre: string }>;
+  selectedProyectoId?: string; // SESIÓN 56: Proyecto del login para filtrar búsqueda
 }
 
 interface LeadExistente {
@@ -23,6 +24,7 @@ export default function VisitaSinLocalModal({
   onClose,
   onConfirm,
   proyectos,
+  selectedProyectoId,
 }: VisitaSinLocalModalProps) {
   const [telefono, setTelefono] = useState('');
   const [telefonoError, setTelefonoError] = useState('');
@@ -87,7 +89,9 @@ export default function VisitaSinLocalModal({
     setSearchCompleted(false);
 
     try {
-      const response = await fetch(`/api/leads/search?telefono=${telefono}`);
+      // SESIÓN 56: Filtrar búsqueda por proyecto del login
+      const url = `/api/leads/search?telefono=${telefono}${selectedProyectoId ? `&proyectoId=${selectedProyectoId}` : ''}`;
+      const response = await fetch(url);
       const data = await response.json();
 
       if (data.found && data.lead) {

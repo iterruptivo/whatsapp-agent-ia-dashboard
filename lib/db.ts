@@ -328,18 +328,25 @@ export async function getChartData() {
  * @param telefono Número de teléfono a buscar
  * @returns Lead encontrado o null
  */
-export async function searchLeadByPhone(telefono: string): Promise<Lead | null> {
+export async function searchLeadByPhone(telefono: string, proyectoId?: string): Promise<Lead | null> {
   try {
     // Limpiar teléfono (remover espacios, guiones, paréntesis)
     const cleanPhone = telefono.replace(/[\s\-\(\)]/g, '');
 
-    const { data, error } = await supabase
+    let query = supabase
       .from('leads')
       .select(`
         *,
         proyecto:proyectos!leads_proyecto_id_fkey(nombre, color)
       `)
-      .eq('telefono', cleanPhone)
+      .eq('telefono', cleanPhone);
+
+    // SESIÓN 56: Filtrar por proyecto si se proporciona
+    if (proyectoId) {
+      query = query.eq('proyecto_id', proyectoId);
+    }
+
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .limit(1)
       .single();

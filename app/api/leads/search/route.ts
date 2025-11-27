@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const telefono = searchParams.get('telefono');
+    const proyectoId = searchParams.get('proyectoId'); // SESIÓN 56: Filtro por proyecto
 
     if (!telefono) {
       return NextResponse.json(
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Buscar lead por teléfono con JOIN a proyecto
-    const { data: lead, error } = await supabase
+    let query = supabase
       .from('leads')
       .select(`
         id,
@@ -23,7 +24,14 @@ export async function GET(request: NextRequest) {
         proyecto_id,
         proyecto_nombre:proyectos(nombre)
       `)
-      .eq('telefono', telefono)
+      .eq('telefono', telefono);
+
+    // SESIÓN 56: Filtrar por proyecto si se proporciona
+    if (proyectoId) {
+      query = query.eq('proyecto_id', proyectoId);
+    }
+
+    const { data: lead, error } = await query
       .limit(1)
       .single();
 

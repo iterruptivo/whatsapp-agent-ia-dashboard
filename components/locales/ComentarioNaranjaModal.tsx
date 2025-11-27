@@ -107,7 +107,8 @@ export default function ComentarioNaranjaModal({
     setTelefonoError('');
 
     try {
-      const lead = await searchLeadByPhone(telefono);
+      // SESIÓN 56: Filtrar búsqueda por proyecto del local
+      const lead = await searchLeadByPhone(telefono, local?.proyecto_id);
 
       if (lead) {
         setFoundLead(lead);

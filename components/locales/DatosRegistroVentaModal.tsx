@@ -131,7 +131,8 @@ export default function DatosRegistroVentaModal({
     setError(null);
 
     try {
-      const lead = await searchLeadByPhone(phoneInput);
+      // SESIÓN 56: Filtrar búsqueda por proyecto del local
+      const lead = await searchLeadByPhone(phoneInput, local?.proyecto_id);
 
       if (lead) {
         setFoundLead(lead);
