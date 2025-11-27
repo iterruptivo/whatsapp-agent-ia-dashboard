@@ -143,8 +143,8 @@ export default function VisitaSinLocalModal({
       return;
     }
 
-    // SESIÓN 56: Proyecto viene del login, validar que exista
-    if (!leadExistente && !proyectoId) {
+    // SESIÓN 56: Proyecto viene del login (prop), validar que exista
+    if (!leadExistente && !selectedProyectoId) {
       setError('Error: No hay proyecto seleccionado en tu sesión');
       return;
     }
@@ -153,7 +153,8 @@ export default function VisitaSinLocalModal({
     setError('');
 
     try {
-      await onConfirm(telefono, nombre, proyectoId);
+      // SESIÓN 56: Usar selectedProyectoId (prop) directamente
+      await onConfirm(telefono, nombre, selectedProyectoId || '');
       onClose();
     } catch (err) {
       setError('Error al registrar visita');
@@ -340,7 +341,7 @@ export default function VisitaSinLocalModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || !searchCompleted || !telefono || !telefonoValido || (!leadExistente && (!nombre || !proyectoId))}
+            disabled={isSubmitting || !searchCompleted || !telefono || !telefonoValido || (!leadExistente && (!nombre || !selectedProyectoId))}
             className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             {isSubmitting ? 'Registrando...' : 'Registrar Visita'}

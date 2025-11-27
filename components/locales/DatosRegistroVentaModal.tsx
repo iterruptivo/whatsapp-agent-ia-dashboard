@@ -177,8 +177,8 @@ export default function DatosRegistroVentaModal({
         setError('Debe ingresar el nombre del cliente');
         return;
       }
-      // SESIÓN 56: Proyecto viene del local, validar que exista
-      if (!selectedProyecto) {
+      // SESIÓN 56: Proyecto viene del local (prop), validar que exista
+      if (!local?.proyecto_id) {
         setError('Error: No se pudo obtener el proyecto del local');
         return;
       }
@@ -200,6 +200,7 @@ export default function DatosRegistroVentaModal({
       // Importar server action dinámicamente
       const { saveDatosRegistroVenta } = await import('@/lib/actions-locales');
 
+      // SESIÓN 56: Usar local.proyecto_id directamente (no el state)
       const result = await saveDatosRegistroVenta(
         local.id,
         montoSeparacionNum,
@@ -209,7 +210,7 @@ export default function DatosRegistroVentaModal({
           ? {
               telefono: phoneInput.trim(),
               nombre: manualName.trim(),
-              proyectoId: selectedProyecto,
+              proyectoId: local.proyecto_id, // Usar proyecto del local directamente
             }
           : null, // newLeadData
         usuarioId,

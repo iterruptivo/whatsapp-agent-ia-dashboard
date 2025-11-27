@@ -159,8 +159,8 @@ export default function ComentarioNaranjaModal({
         return;
       }
 
-      // SESIÓN 56: Proyecto viene del local, validar que exista
-      if (!proyectoId) {
+      // SESIÓN 56: Proyecto viene del local (prop), validar que exista
+      if (!local?.proyecto_id) {
         setError('Error: No se pudo obtener el proyecto del local');
         return;
       }
@@ -171,6 +171,7 @@ export default function ComentarioNaranjaModal({
 
     try {
       // Confirmar con comentario + vinculación + montos
+      // SESIÓN 56: Usar local.proyecto_id directamente (no el state)
       await onConfirm(
         comentario.trim(),
         telefono.trim(),
@@ -178,7 +179,7 @@ export default function ComentarioNaranjaModal({
         montoSeparacionNumerico, // Monto de separación
         montoVentaNumerico, // Monto de venta
         foundLead?.id, // Si existe lead, pasar su ID
-        proyectoId || undefined, // Proyecto seleccionado (solo si lead no encontrado)
+        local?.proyecto_id || undefined, // Proyecto del local (solo si lead no encontrado)
         viewState === 'lead-not-found' ? agregarComoLead : undefined // Checkbox (solo si lead no encontrado)
       );
 
