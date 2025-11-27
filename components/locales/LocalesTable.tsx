@@ -9,10 +9,10 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { updateLocalEstado, desbloquearLocal, updateMontoVenta, autoLiberarLocalesExpirados, salirDeNegociacion } from '@/lib/actions-locales';
+import { updateLocalEstado, desbloquearLocal, updateMontoVenta, autoLiberarLocalesExpirados, salirDeNegociacion, updatePrecioBase } from '@/lib/actions-locales';
 import type { Local, VendedorActivo } from '@/lib/locales';
 import { getAllVendedoresActivos } from '@/lib/locales';
-import { ChevronLeft, ChevronRight, History, Lock, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, History, Lock, Clock, Check } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import VendedorSelectModal from './VendedorSelectModal';
 import ComentarioNaranjaModal from './ComentarioNaranjaModal';
@@ -99,6 +99,23 @@ export default function LocalesTable({
   }>({
     isOpen: false,
     local: null,
+  });
+
+  // SESIÓN 56: State para precio base inline editing
+  const [precioBaseEditing, setPrecioBaseEditing] = useState<{ [localId: string]: string }>({});
+  const [precioBaseUpdating, setPrecioBaseUpdating] = useState<string | null>(null);
+
+  // SESIÓN 56: State para modal confirmación precio base
+  const [precioBaseConfirmModal, setPrecioBaseConfirmModal] = useState<{
+    isOpen: boolean;
+    localId: string | null;
+    localCodigo: string;
+    nuevoPrecio: number | null;
+  }>({
+    isOpen: false,
+    localId: null,
+    localCodigo: '',
+    nuevoPrecio: null,
   });
 
   // OPT: Timer ahora usa componente separado (TimerCountdown) que se re-renderiza solo
@@ -771,6 +788,109 @@ export default function LocalesTable({
     // TODO: Refresh de la tabla se hará con revalidatePath en server action
   };
 
+  // ====== SESIÓN 56: HELPERS - Precio Base ======
+  const handlePrecioBaseChange = (localId: string, value: string) => {
+    // Solo permitir números y punto decimal
+    const cleanValue = value.replace(/[^0-9.]/g, '');
+    // Evitar múltiples puntos decimales
+    const parts = cleanValue.split('.');
+    const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleanValue;
+    setPrecioBaseEditing(prev => ({ ...prev, [localId]: sanitized }));
+  };
+
+  const handlePrecioBaseSubmit = (local: Local) => {
+    const inputValue = precioBaseEditing[local.id];
+
+    // Si no hay valor en el input, usar el valor actual del local
+    if (!inputValue && !local.precio_base) {
+      return; // No hay nada que actualizar
+    }
+
+    const nuevoPrecio = parseFloat(inputValue || '0');
+
+    // Validación: debe ser mayor a 0
+    if (isNaN(nuevoPrecio) || nuevoPrecio <= 0) {
+      setConfirmModal({
+        isOpen: true,
+        local: null,
+        nuevoEstado: null,
+        title: 'Valor Inválido',
+        message: 'El precio base debe ser un número mayor a 0.',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    // Abrir modal de confirmación
+    setPrecioBaseConfirmModal({
+      isOpen: true,
+      localId: local.id,
+      localCodigo: local.codigo,
+      nuevoPrecio: nuevoPrecio,
+    });
+  };
+
+  const handlePrecioBaseConfirm = async () => {
+    if (!precioBaseConfirmModal.localId || !precioBaseConfirmModal.nuevoPrecio) return;
+
+    const localId = precioBaseConfirmModal.localId;
+    const nuevoPrecio = precioBaseConfirmModal.nuevoPrecio;
+
+    // Cerrar modal
+    setPrecioBaseConfirmModal({
+      isOpen: false,
+      localId: null,
+      localCodigo: '',
+      nuevoPrecio: null,
+    });
+
+    // Loading state
+    setPrecioBaseUpdating(localId);
+
+    try {
+      const result = await updatePrecioBase(localId, nuevoPrecio);
+
+      if (!result.success) {
+        setConfirmModal({
+          isOpen: true,
+          local: null,
+          nuevoEstado: null,
+          title: 'Error',
+          message: result.message || 'Error al actualizar precio base.',
+          variant: 'danger',
+        });
+      } else {
+        // Limpiar input después de éxito
+        setPrecioBaseEditing(prev => {
+          const newState = { ...prev };
+          delete newState[localId];
+          return newState;
+        });
+      }
+    } catch (error) {
+      console.error('Error actualizando precio base:', error);
+      setConfirmModal({
+        isOpen: true,
+        local: null,
+        nuevoEstado: null,
+        title: 'Error Inesperado',
+        message: 'Error inesperado al actualizar precio base.',
+        variant: 'danger',
+      });
+    } finally {
+      setPrecioBaseUpdating(null);
+    }
+  };
+
+  const handlePrecioBaseCancel = () => {
+    setPrecioBaseConfirmModal({
+      isOpen: false,
+      localId: null,
+      localCodigo: '',
+      nuevoPrecio: null,
+    });
+  };
+
   // ====== HELPER: Paginación ======
   const renderPagination = () => {
     // Protección: Si no hay páginas válidas, no renderizar
@@ -870,6 +990,7 @@ export default function LocalesTable({
           <thead className="bg-gray-50 border-b">
             <tr>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Código</th>
+              <th className="text-left py-3 px-4 text-gray-600 font-medium">Precio Base</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Proyecto</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Metraje</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Estado</th>
@@ -881,7 +1002,7 @@ export default function LocalesTable({
           <tbody>
             {locales.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">
+                <td colSpan={8} className="text-center py-8 text-gray-500">
                   No hay locales para mostrar
                 </td>
               </tr>
@@ -892,6 +1013,37 @@ export default function LocalesTable({
                     {/* Código */}
                     <td className="py-3 px-4 font-mono font-medium text-gray-900">
                       {local.codigo}
+                    </td>
+
+                    {/* SESIÓN 56: Precio Base - Input + Botón actualizar */}
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={
+                            precioBaseEditing[local.id] !== undefined
+                              ? precioBaseEditing[local.id]
+                              : local.precio_base?.toString() || ''
+                          }
+                          onChange={(e) => handlePrecioBaseChange(local.id, e.target.value)}
+                          placeholder="0.00"
+                          className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                          disabled={precioBaseUpdating === local.id}
+                        />
+                        <button
+                          onClick={() => handlePrecioBaseSubmit(local)}
+                          disabled={precioBaseUpdating === local.id}
+                          className={`p-1.5 rounded transition-colors ${
+                            precioBaseUpdating === local.id
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-green-500 text-white hover:bg-green-600'
+                          }`}
+                          title="Actualizar precio base"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
 
                     {/* Proyecto */}
@@ -992,6 +1144,18 @@ export default function LocalesTable({
         isOpen={financiamientoModal.isOpen}
         local={financiamientoModal.local}
         onClose={() => setFinanciamientoModal({ isOpen: false, local: null })}
+      />
+
+      {/* SESIÓN 56: Modal Confirmación Precio Base */}
+      <ConfirmModal
+        isOpen={precioBaseConfirmModal.isOpen}
+        title="Confirmar Actualización"
+        message={`¿Estás seguro de actualizar el precio base del local ${precioBaseConfirmModal.localCodigo}?\n\nNuevo precio base: $ ${precioBaseConfirmModal.nuevoPrecio?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || '0.00'}`}
+        variant="warning"
+        confirmText="Actualizar"
+        cancelText="Cancelar"
+        onConfirm={handlePrecioBaseConfirm}
+        onCancel={handlePrecioBaseCancel}
       />
     </div>
   );

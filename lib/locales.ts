@@ -17,6 +17,7 @@ export interface Local {
   proyecto_id: string;
   proyecto_nombre?: string; // Via JOIN (opcional)
   metraje: number; // 4.5, 6.0, etc.
+  precio_base: number | null; // SESIÓN 56: Precio base de referencia del local
   estado: 'verde' | 'amarillo' | 'naranja' | 'rojo';
   bloqueado: boolean;
   monto_separacion: number | null; // Monto de separación (REQUERIDO al cambiar a NARANJA)

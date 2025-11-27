@@ -825,3 +825,51 @@ export async function salirDeNegociacion(
     return { success: false, message: 'Error inesperado al salir de la negociación' };
   }
 }
+
+// ============================================================================
+// SESIÓN 56: ACTUALIZAR PRECIO BASE DE LOCAL
+// ============================================================================
+
+/**
+ * Actualizar precio base de un local
+ * @param localId ID del local
+ * @param precioBase Precio base en USD (debe ser > 0)
+ * @returns Success/error con mensaje
+ */
+export async function updatePrecioBase(
+  localId: string,
+  precioBase: number
+): Promise<{ success: boolean; message: string }> {
+  try {
+    // Validar inputs
+    if (!localId) {
+      return { success: false, message: 'ID de local requerido' };
+    }
+
+    if (!precioBase || precioBase <= 0) {
+      return { success: false, message: 'El precio base debe ser mayor a 0' };
+    }
+
+    // Actualizar en BD
+    const { error: updateError } = await supabase
+      .from('locales')
+      .update({ precio_base: precioBase })
+      .eq('id', localId);
+
+    if (updateError) {
+      console.error('[PRECIO BASE] ❌ Error actualizando:', updateError);
+      return { success: false, message: 'Error al actualizar precio base' };
+    }
+
+    // Revalidar página
+    revalidatePath('/locales');
+
+    return {
+      success: true,
+      message: 'Precio base actualizado correctamente',
+    };
+  } catch (error) {
+    console.error('[PRECIO BASE] ❌ Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al actualizar precio base' };
+  }
+}
