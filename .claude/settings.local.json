@@ -51,7 +51,10 @@
       "Bash(npx next lint --dir app --dir components)",
       "Bash(npx next build:*)",
       "Bash(find:*)",
-      "Bash(E:/Iterruptivo/Proyectos-Clientes/EcoPlaza/AgenteIA-Whatsapp/dashboard/components/control-pagos/PagosPanel.tsx)"
+      "Bash(E:/Iterruptivo/Proyectos-Clientes/EcoPlaza/AgenteIA-Whatsapp/dashboard/components/control-pagos/PagosPanel.tsx)",
+      "Bash(git stash:*)",
+      "Bash(python:*)",
+      "Bash(C:UsersLeoAdminAppDataLocalProgramsPythonPython311python.exe -c \"print(''hello'')\")"
     ],
     "deny": [],
     "ask": []

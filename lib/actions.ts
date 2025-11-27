@@ -592,6 +592,24 @@ export async function registrarVisitaSinLocal(
 
     if (insertError) {
       console.error('Error creating lead (visita sin local):', insertError);
+      console.error('Insert data was:', {
+        telefono: telefono.trim(),
+        nombre: nombre.trim(),
+        proyectoId,
+        vendedorId,
+      });
+
+      // SESIÓN 56: Detectar si es error de constraint UNIQUE en telefono
+      if (insertError.code === '23505') {
+        // Si el constraint violado es en telefono, dar mensaje más claro
+        if (insertError.message?.includes('telefono') || insertError.message?.includes('leads_telefono')) {
+          return {
+            success: false,
+            message: 'Este teléfono ya existe en la base de datos. Contacte al administrador para actualizar el constraint de la BD.',
+          };
+        }
+      }
+
       return {
         success: false,
         message: 'Error al crear el lead',
