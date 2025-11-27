@@ -100,6 +100,21 @@ export default function LocalImportModal({
                 }
               }
 
+              // SESIÓN 56: Columna precio_base opcional
+              // - Si está vacío o no existe: null (para entrada manual posterior)
+              // - Si es 0: se marcará como inválido (rechazado en validación posterior)
+              // - Si tiene valor > 0: se usa ese valor
+              if (row.precio_base !== undefined && row.precio_base !== null && row.precio_base !== '') {
+                const precioBase = parseFloat(row.precio_base);
+                if (!isNaN(precioBase)) {
+                  local.precio_base = precioBase; // Incluye 0 para validación posterior
+                } else {
+                  local.precio_base = null; // Valor no numérico = dejar vacío
+                }
+              } else {
+                local.precio_base = null; // Vacío = dejar para entrada manual
+              }
+
               return local;
             });
             resolve(locales);
@@ -138,6 +153,21 @@ export default function LocalImportModal({
               }
             }
 
+            // SESIÓN 56: Columna precio_base opcional
+            // - Si está vacío o no existe: null (para entrada manual posterior)
+            // - Si es 0: se marcará como inválido (rechazado en validación posterior)
+            // - Si tiene valor > 0: se usa ese valor
+            if (row.precio_base !== undefined && row.precio_base !== null && row.precio_base !== '') {
+              const precioBase = parseFloat(row.precio_base);
+              if (!isNaN(precioBase)) {
+                local.precio_base = precioBase; // Incluye 0 para validación posterior
+              } else {
+                local.precio_base = null; // Valor no numérico = dejar vacío
+              }
+            } else {
+              local.precio_base = null; // Vacío = dejar para entrada manual
+            }
+
             return local;
           });
 
@@ -153,10 +183,10 @@ export default function LocalImportModal({
 
   // ====== DOWNLOAD TEMPLATE ======
   const handleDownloadTemplate = () => {
-    // Datos de ejemplo con 2 filas, ambas estado=verde
+    // SESIÓN 56: Datos de ejemplo con precio_base opcional
     const templateData = [
-      { codigo: 'A-101', metraje: 45.5, estado: 'verde' },
-      { codigo: 'B-205', metraje: 67.2, estado: 'verde' },
+      { codigo: 'A-101', metraje: 45.5, estado: 'verde', precio_base: 15000 },
+      { codigo: 'B-205', metraje: 67.2, estado: 'verde', precio_base: '' }, // Vacío = entrada manual
     ];
 
     // Crear workbook y worksheet
@@ -325,10 +355,13 @@ export default function LocalImportModal({
                 <li>
                   <strong>estado:</strong> verde, amarillo, naranja, o rojo (default: verde)
                 </li>
+                <li>
+                  <strong>precio_base:</strong> Precio base en USD (ej: 15000). Si es 0 se rechaza. Si está vacío se puede ingresar manualmente después.
+                </li>
               </ul>
               <p className="text-xs text-blue-700 mt-2">
                 💡 <strong>Importante:</strong> Ya no necesitas la columna "proyecto".
-                Selecciona el proyecto en el dropdown de abajo.
+                Todos los locales se importarán al proyecto de tu sesión.
               </p>
             </div>
 

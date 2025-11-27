@@ -60,6 +60,7 @@ export interface LocalImportRow {
   codigo: string;
   metraje: number;
   estado?: 'verde' | 'amarillo' | 'naranja' | 'rojo'; // Opcional: default = 'verde'
+  precio_base?: number | null; // SESIÓN 56: Opcional - si es 0 se rechaza, si está vacío se deja null
 }
 
 // ============================================================================
@@ -579,19 +580,34 @@ export async function importLocalesQuery(locales: LocalImportRow[], proyectoId: 
         continue;
       }
 
+      // SESIÓN 56: Validar precio_base - rechazar si es 0
+      if (local.precio_base !== undefined && local.precio_base !== null && local.precio_base === 0) {
+        errors.push(`Local ${local.codigo}: precio_base no puede ser 0 (skipped). Usa un valor > 0 o déjalo vacío.`);
+        skipped++;
+        continue;
+      }
+
       // Si estado es rojo, el local debe estar bloqueado
       const bloqueado = estado === 'rojo';
+
+      // Preparar datos para insertar
+      const insertData: any = {
+        codigo: local.codigo,
+        proyecto_id: proyectoId,
+        metraje: local.metraje,
+        estado: estado,
+        bloqueado: bloqueado,
+      };
+
+      // SESIÓN 56: Agregar precio_base si tiene valor válido (> 0)
+      if (local.precio_base !== undefined && local.precio_base !== null && local.precio_base > 0) {
+        insertData.precio_base = local.precio_base;
+      }
 
       // Insertar local
       const { error: insertError } = await supabase
         .from('locales')
-        .insert({
-          codigo: local.codigo,
-          proyecto_id: proyectoId,
-          metraje: local.metraje,
-          estado: estado,
-          bloqueado: bloqueado,
-        });
+        .insert(insertData);
 
       if (insertError) {
         console.error('Error inserting local:', insertError);
