@@ -7,9 +7,9 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 22 Noviembre 2025
-**Sesión:** 54 - 💰 **Sistema Completo de Control de Pagos (Post-Venta)**
-**Estado:** ⏳ **PENDING QA REVIEW**
+**Fecha:** 27 Noviembre 2025
+**Sesión:** 56 - 🔧 **Validación Teléfono Por Proyecto + Precio Base Import + Features UI**
+**Estado:** ✅ **DEPLOYED TO STAGING**
 **Documentación:** Ver "Últimas 5 Sesiones" abajo
 
 ---
@@ -85,7 +85,7 @@ Documentación cronológica completa de todas las sesiones.
   - Búsqueda Exacta + Import Manual (31)
   - Actualización n8n Callao (32)
 
-- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-48C
+- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-56
   - Fix Límite 1000 Leads (33-33C) ✅
   - Emergency Rollback (35B) 🔴
   - Middleware Security (36) ✅
@@ -97,6 +97,7 @@ Documentación cronológica completa de todas las sesiones.
   - **Sistema Auth 100% Estable (45A-45I)** ✅ 🎯
   - **Fix PGRST116 Import Manual + UX (46A-46B)** ✅
   - **Modal Comentario Obligatorio NARANJA (48C)** ✅
+  - **Validación Teléfono Por Proyecto + Precio Base Import (56)** ✅
 
 ---
 
@@ -144,6 +145,86 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 56** (27 Nov) - 🔧 ✅ **Validación Teléfono Por Proyecto + Precio Base Import + Features UI**
+**Feature:** Múltiples mejoras de validación, importación y UX
+**Estado:** ✅ **DEPLOYED TO STAGING**
+
+**Cambios implementados:**
+
+**1. Validación de Teléfono Duplicado: GLOBAL → POR PROYECTO**
+- **Problema:** Teléfono duplicado se validaba globalmente, impidiendo que un lead existiera en múltiples proyectos
+- **Solución:** Cambiar validación a `telefono + proyecto_id` (composite unique)
+- **Archivos:**
+  - `lib/db.ts` - `searchLeadByPhone()` ahora recibe `proyectoId` opcional y filtra por proyecto
+  - `lib/actions.ts` - `createManualLead()` valida duplicados solo dentro del proyecto
+  - `lib/actions-locales.ts` - `saveDatosRegistroVenta()` valida duplicados por proyecto
+  - `app/api/leads/search/route.ts` - API endpoint acepta `proyectoId` en query params
+  - `components/leads/LeadImportModal.tsx` - Import manual valida por proyecto
+- **n8n:** UPSERT cambió a `?on_conflict=telefono,proyecto_id`
+
+**2. Dropdowns de Proyecto Eliminados (Proyecto Fijo del Login/Local)**
+- **Antes:** Modales mostraban dropdown para seleccionar proyecto manualmente
+- **Después:** Proyecto viene automáticamente del login (localStorage) o del local seleccionado
+- **Modales actualizados:**
+  - `ComentarioNaranjaModal.tsx` - Proyecto viene del `local.proyecto_id`
+  - `DatosRegistroVentaModal.tsx` - Proyecto viene del `local.proyecto_id`
+  - `VisitaSinLocalModal.tsx` - Proyecto viene del `selectedProyectoId` (login)
+- **UX:** Campo proyecto mostrado como texto fijo (no editable) con mensaje informativo
+
+**3. Fix: Botón Validación (Usar Props en vez de State)**
+- **Problema:** Botón submit usaba `selectedProyecto` (state) que no se actualizaba
+- **Solución:** Usar `local.proyecto_id` (prop) directamente en validación y submit
+- **Afectados:** ComentarioNaranjaModal, DatosRegistroVentaModal, VisitaSinLocalModal
+
+**4. Fix: PRIMARY KEY Violation en Leads**
+- **Problema:** Tabla `leads` tenía PRIMARY KEY en `telefono` causando conflictos
+- **Solución:** PRIMARY KEY debe ser `id`, con UNIQUE constraint en `(telefono, proyecto_id)`
+- **SQL:** Modificar constraint para permitir mismo teléfono en diferentes proyectos
+
+**5. Precio Base en Import de Locales (Excel)**
+- **Feature:** Nueva columna opcional `precio_base` en importación Excel/CSV
+- **Reglas:**
+  - Si es `0` → Rechazar fila con error
+  - Si está vacío → Dejar `null` para entrada manual posterior
+  - Si tiene valor `> 0` → Usar ese valor
+- **Archivos:**
+  - `lib/locales.ts` - Interface `LocalImportRow` + validación en `importLocalesQuery()`
+  - `LocalImportModal.tsx` - Parsing en `parseCSV()` y `parseExcel()` + plantilla actualizada
+
+**6. Features UI Temporalmente Ocultos → Restaurados**
+- **Temporalmente ocultos (main):**
+  - Sidebar: Control de Pagos, Comisiones, Configurar Proyectos
+  - LocalesTable: "Iniciar Registro de Venta"
+- **Restaurados en staging** (commit `1ff6a91`)
+- **Archivos:** `Sidebar.tsx`, `LocalesTable.tsx`
+
+**7. Fix TypeScript: Empty Array Type Inference**
+- **Error:** `Property 'icon' does not exist on type 'never'`
+- **Causa:** `bottomItems: []` inferido como `never[]`
+- **Solución:** `bottomItems: [] as MenuItem[]`
+
+**Commits:**
+- `543517b` - feat: Add precio_base column support to Excel import
+- `b009235` - feat: Temporarily hide unfinished features
+- `77c566f` - fix: TypeScript error - explicit MenuItem[] type
+- `1ff6a91` - feat: Restore hidden features (staging)
+
+**Merge:** `main` → `staging` (Fast-forward, 16 archivos)
+
+**Archivos modificados:**
+- lib/db.ts, lib/actions.ts, lib/actions-locales.ts, lib/locales.ts
+- app/api/leads/search/route.ts
+- components/leads/LeadImportModal.tsx
+- components/locales/ComentarioNaranjaModal.tsx
+- components/locales/DatosRegistroVentaModal.tsx
+- components/locales/VisitaSinLocalModal.tsx
+- components/locales/LocalImportModal.tsx
+- components/locales/LocalesTable.tsx
+- components/locales/LocalesClient.tsx
+- components/shared/Sidebar.tsx
+
+---
 
 ### **Sesión 54** (22 Nov) - 💰 ⏳ **Sistema Completo de Control de Pagos (Post-Venta)**
 **Feature:** Sistema completo de gestión de pagos para locales vendidos (post-venta)

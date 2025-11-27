@@ -19,6 +19,7 @@
 - [Sesión 41 (8 Nov)](#sesión-41---8-noviembre-2025) - ✅ Columna "Asistió" (Tabla + Panel)
 - [Sesión 41B (10 Nov)](#sesión-41b---10-noviembre-2025) - ✅ Columna "Fecha": created_at
 - [Sesión 42 (10 Nov)](#sesión-42---10-noviembre-2025) - ✅ FIX CRÍTICO: Split useEffect
+- [Sesión 56 (27 Nov)](#sesión-56---27-noviembre-2025) - 🔧 Validación Teléfono Por Proyecto + Precio Base Import
 
 ---
 
@@ -374,6 +375,87 @@ useEffect(() => {
 **Commit:** [Deployed]
 
 **Ver detalles →** [Módulo Auth](../modulos/auth.md#sesion-42)
+
+---
+
+## Sesión 56 - 27 Noviembre 2025
+**🔧 Validación Teléfono Por Proyecto + Precio Base Import + Features UI**
+
+**Estado:** ✅ DEPLOYED TO STAGING
+
+### Cambio 1: Validación Teléfono GLOBAL → POR PROYECTO
+
+**Problema:** Teléfono duplicado se validaba globalmente, impidiendo que un lead existiera en múltiples proyectos.
+
+**Solución:** Validación ahora es `telefono + proyecto_id` (composite unique)
+
+**Archivos modificados:**
+- `lib/db.ts` - `searchLeadByPhone(phone, proyectoId?)` filtra por proyecto
+- `lib/actions.ts` - `createManualLead()` valida duplicados dentro del proyecto
+- `lib/actions-locales.ts` - `saveDatosRegistroVenta()` valida por proyecto
+- `app/api/leads/search/route.ts` - Acepta `proyectoId` en query params
+
+**n8n:** UPSERT cambió a `?on_conflict=telefono,proyecto_id`
+
+### Cambio 2: Dropdowns de Proyecto Eliminados
+
+**Antes:** Modales mostraban dropdown para seleccionar proyecto manualmente
+**Después:** Proyecto viene automáticamente del login o del local seleccionado
+
+**Modales actualizados:**
+- `ComentarioNaranjaModal.tsx` - Usa `local.proyecto_id`
+- `DatosRegistroVentaModal.tsx` - Usa `local.proyecto_id`
+- `VisitaSinLocalModal.tsx` - Usa `selectedProyectoId` (login)
+
+**UX:** Campo proyecto es texto fijo (no editable) con mensaje informativo
+
+### Cambio 3: Fix Botón Validación
+
+**Problema:** Botón submit usaba `selectedProyecto` (state) que no se actualizaba
+**Solución:** Usar `local.proyecto_id` (prop) directamente
+
+### Cambio 4: Fix PRIMARY KEY Violation
+
+**Problema:** Tabla `leads` tenía PRIMARY KEY en `telefono`
+**Solución:** PRIMARY KEY en `id`, UNIQUE constraint en `(telefono, proyecto_id)`
+
+### Cambio 5: Precio Base en Import Excel
+
+**Feature:** Nueva columna opcional `precio_base` en importación
+
+**Reglas:**
+- `0` → Rechazar fila
+- Vacío → Dejar `null` para entrada manual
+- `> 0` → Usar valor
+
+**Archivos:**
+- `lib/locales.ts` - Interface + validación
+- `LocalImportModal.tsx` - Parsing + plantilla
+
+### Cambio 6: Features UI Ocultos → Restaurados
+
+**En main (ocultos temporalmente):**
+- Sidebar: Control de Pagos, Comisiones, Configurar Proyectos
+- LocalesTable: "Iniciar Registro de Venta"
+
+**En staging:** Restaurados (commit `1ff6a91`)
+
+### Cambio 7: Fix TypeScript
+
+**Error:** `Property 'icon' does not exist on type 'never'`
+**Causa:** `bottomItems: []` inferido como `never[]`
+**Solución:** `bottomItems: [] as MenuItem[]`
+
+### Commits
+- `543517b` - feat: Add precio_base column support
+- `b009235` - feat: Temporarily hide unfinished features
+- `77c566f` - fix: TypeScript error
+- `1ff6a91` - feat: Restore hidden features (staging)
+
+### Merge
+`main` → `staging` (Fast-forward, 16 archivos)
+
+**Ver detalles →** [CLAUDE.md - Sesión 56](../../CLAUDE.md#sesión-56)
 
 ---
 
