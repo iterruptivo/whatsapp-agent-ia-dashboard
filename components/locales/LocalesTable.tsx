@@ -765,16 +765,18 @@ export default function LocalesTable({
       return null;
     }
 
-    return (
-      <div className="mt-2">
-        <button
-          onClick={() => handleIniciarRegistroVenta(local)}
-          className="text-xs text-green-600 hover:text-green-800 hover:underline cursor-pointer"
-        >
-          Iniciar Registro de Venta
-        </button>
-      </div>
-    );
+    // SESIÓN 56: TEMPORALMENTE OCULTO (en desarrollo)
+    // return (
+    //   <div className="mt-2">
+    //     <button
+    //       onClick={() => handleIniciarRegistroVenta(local)}
+    //       className="text-xs text-green-600 hover:text-green-800 hover:underline cursor-pointer"
+    //     >
+    //       Iniciar Registro de Venta
+    //     </button>
+    //   </div>
+    // );
+    return null;
   };
 
   // ====== SESIÓN 52C: HANDLER - Callback onSuccess de DatosModal ======
