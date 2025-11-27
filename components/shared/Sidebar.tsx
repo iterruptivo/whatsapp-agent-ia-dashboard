@@ -54,15 +54,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       { href: '/locales', label: 'Gestión de Locales', icon: Home }
     ];
 
-    // SESIÓN 56: TEMPORALMENTE OCULTO (en desarrollo)
     // Control de Pagos: Solo admin y jefe_ventas
-    // if (user?.rol === 'admin' || user?.rol === 'jefe_ventas') {
-    //   finanzasItems.push({ href: '/control-pagos', label: 'Control de Pagos', icon: FileText });
-    // }
+    if (user?.rol === 'admin' || user?.rol === 'jefe_ventas') {
+      finanzasItems.push({ href: '/control-pagos', label: 'Control de Pagos', icon: FileText });
+    }
 
-    // SESIÓN 56: TEMPORALMENTE OCULTO (en desarrollo)
     // Comisiones: Todos los roles
-    // finanzasItems.push({ href: '/comisiones', label: 'Comisiones', icon: DollarSign });
+    finanzasItems.push({ href: '/comisiones', label: 'Comisiones', icon: DollarSign });
 
     const finanzasCategory: MenuCategory = {
       label: 'Finanzas',
@@ -77,11 +75,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
         ],
         categories: [finanzasCategory],
-        // SESIÓN 56: TEMPORALMENTE OCULTO (en desarrollo)
-        // bottomItems: [
-        //   { href: '/configuracion-proyectos', label: 'Configurar Proyectos', icon: Settings },
-        // ],
-        bottomItems: [] as MenuItem[],
+        bottomItems: [
+          { href: '/configuracion-proyectos', label: 'Configurar Proyectos', icon: Settings },
+        ],
       };
     }
 
