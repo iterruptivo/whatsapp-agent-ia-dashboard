@@ -84,7 +84,9 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
   };
 
   const formatFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleDateString('es-PE', {
+    // Agregar T00:00:00 para forzar interpretación como hora local (no UTC)
+    const date = new Date(fecha + 'T00:00:00');
+    return date.toLocaleDateString('es-PE', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
