@@ -815,15 +815,9 @@ export default function FinanciamientoModal({
               const result = await procesarVentaLocal(dataProcesar);
 
               if (result.success) {
-                // Cerrar modal de financiamiento
+                // Cerrar modal de financiamiento y recargar página
                 onClose();
-                // Mostrar mensaje de éxito
-                setAlertModal({
-                  isOpen: true,
-                  title: 'Venta Procesada Exitosamente',
-                  message: result.message || 'El local ahora está en Control de Pagos.',
-                  variant: 'success',
-                });
+                window.location.reload();
               } else {
                 // Mostrar error
                 setAlertModal({
@@ -849,7 +843,7 @@ export default function FinanciamientoModal({
           onCancel={() => setShowConfirmModal(false)}
         />
 
-        {/* SESIÓN 54: AlertModal para errores/éxito */}
+        {/* SESIÓN 54: AlertModal solo para errores */}
         <AlertModal
           isOpen={alertModal.isOpen}
           title={alertModal.title}
@@ -857,10 +851,6 @@ export default function FinanciamientoModal({
           variant={alertModal.variant}
           onOk={() => {
             setAlertModal({ ...alertModal, isOpen: false });
-            // Si fue exitoso, recargar la página
-            if (alertModal.variant === 'success') {
-              window.location.reload();
-            }
           }}
         />
       </div>
