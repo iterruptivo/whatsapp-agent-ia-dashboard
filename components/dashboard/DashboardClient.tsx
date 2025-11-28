@@ -364,17 +364,17 @@ export default function DashboardClient({
           color="secondary"
         />
         {/* Mini tabla: Manual, Incompleto, Abandonado */}
-        <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+        <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
           <div>
-            <div className="flex items-center justify-between pb-2 border-b border-dotted border-gray-300">
+            <div className="flex items-center justify-between pb-1 border-b border-dotted border-gray-300">
               <span className="text-sm text-gray-600">Lead Manual</span>
               <span className="text-lg font-bold text-purple-600">{filteredLeads.filter((l) => l.estado === 'lead_manual').length}</span>
             </div>
-            <div className="flex items-center justify-between py-2 border-b border-dotted border-gray-300">
+            <div className="flex items-center justify-between py-1 border-b border-dotted border-gray-300">
               <span className="text-sm text-gray-600">Lead Incompleto</span>
               <span className="text-lg font-bold text-yellow-600">{stats.incompletos}</span>
             </div>
-            <div className="flex items-center justify-between pt-2">
+            <div className="flex items-center justify-between pt-1">
               <span className="text-sm text-gray-600">Abandonado</span>
               <span className="text-lg font-bold text-gray-500">{filteredLeads.filter((l) => l.estado === 'conversacion_abandonada').length}</span>
             </div>
