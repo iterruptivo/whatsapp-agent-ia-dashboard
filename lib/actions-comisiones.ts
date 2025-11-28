@@ -64,7 +64,7 @@ export async function getComisionesByUsuario(usuarioId: string): Promise<Comisio
         *,
         local_codigo:locales(codigo),
         proyecto_nombre:locales(proyectos(nombre)),
-        usuario_nombre:usuarios(nombre)
+        usuario_nombre:usuarios!comisiones_usuario_id_fkey(nombre)
       `)
       .eq('usuario_id', usuarioId)
       .order('fecha_procesado', { ascending: false });
@@ -126,7 +126,7 @@ export async function getAllComisiones(): Promise<Comision[]> {
         *,
         local_codigo:locales(codigo),
         proyecto_nombre:locales(proyectos(nombre)),
-        usuario_nombre:usuarios(nombre)
+        usuario_nombre:usuarios!comisiones_usuario_id_fkey(nombre)
       `)
       .order('fecha_procesado', { ascending: false });
 
