@@ -119,7 +119,6 @@ export default function DashboardClient({
     const incompletos = filteredLeads.filter((l) => l.estado === 'lead_incompleto').length;
     const conversacion = filteredLeads.filter((l) => l.estado === 'en_conversacion').length;
     const abandonados = filteredLeads.filter((l) => l.estado === 'conversacion_abandonada').length;
-    const manuales = filteredLeads.filter((l) => l.estado === 'lead_manual').length;
     const tasaConversion = total > 0 ? ((completos / total) * 100).toFixed(1) : '0.0';
 
     return {
@@ -128,7 +127,6 @@ export default function DashboardClient({
       incompletos,
       conversacion,
       abandonados,
-      manuales,
       tasaConversion,
     };
   }, [filteredLeads]);
@@ -353,23 +351,12 @@ export default function DashboardClient({
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <StatsCard title="Total Leads" value={stats.total} icon={Users} color="primary" />
-        {/* Mini tabla con 3 estados */}
-        <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Lead Manual</span>
-              <span className="text-lg font-bold text-purple-600">{stats.manuales}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Lead Incompleto</span>
-              <span className="text-lg font-bold text-yellow-600">{stats.incompletos}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Abandonado</span>
-              <span className="text-lg font-bold text-gray-500">{stats.abandonados}</span>
-            </div>
-          </div>
-        </div>
+        <StatsCard
+          title="Leads Completos"
+          value={stats.completos}
+          icon={CheckCircle}
+          color="primary"
+        />
         <StatsCard
           title="En Conversación"
           value={stats.conversacion}
