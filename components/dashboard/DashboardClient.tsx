@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import StatsCard from '@/components/dashboard/StatsCard';
 import PieChartComponent from '@/components/dashboard/PieChart';
+import HorizontalBarChart from '@/components/dashboard/HorizontalBarChart';
 import LeadsTable from '@/components/dashboard/LeadsTable';
 import DateRangeFilter from '@/components/dashboard/DateRangeFilter';
 import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
@@ -188,18 +189,14 @@ export default function DashboardClient({
     ];
   }, [filteredLeads]);
 
-  // Calculate UTM distribution from filtered leads
+  // Calculate UTM distribution from filtered leads - SESIÓN 57: Show ALL UTMs with horizontal bar chart
   const utmData = useMemo(() => {
-    console.log('[UTM] Total filtered leads:', filteredLeads.length);
-
     // Count leads per UTM source
     const utmCounts = filteredLeads.reduce((acc, lead) => {
       const utm = lead.utm || 'Sin UTM';
       acc[utm] = (acc[utm] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
-
-    console.log('[UTM] Counts:', utmCounts);
 
     // Sort by count descending
     const sorted = Object.entries(utmCounts)
@@ -215,46 +212,22 @@ export default function DashboardClient({
       'whatsapp': '#25D366',      // WhatsApp green
       'web': '#fbde17',           // Amarillo EcoPlaza
       'Sin UTM': '#cbd5e1',       // Gris claro
-      'Otros': '#9ca3af',         // Gris medio
     };
 
     // Default color generator for unknown UTMs
     const getColor = (utm: string, index: number): string => {
       if (utmColors[utm]) return utmColors[utm];
       // Fallback to a color palette for unknown UTMs
-      const fallbackColors = ['#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444'];
+      const fallbackColors = ['#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#06b6d4', '#84cc16'];
       return fallbackColors[index % fallbackColors.length];
     };
 
-    // If ≤5 different UTMs: show all
-    if (sorted.length <= 5) {
-      const result = sorted.map(([name, value], index) => ({
-        name,
-        value,
-        color: getColor(name, index),
-      }));
-      console.log('[UTM] Showing all UTMs (≤5):', result.length);
-      return result;
-    }
-
-    // If >5 different UTMs: Top 5 + "Otros"
-    const top5 = sorted.slice(0, 5);
-    const otrosCount = sorted.slice(5).reduce((sum, [_, count]) => sum + count, 0);
-
-    const result = [
-      ...top5.map(([name, value], index) => ({
-        name,
-        value,
-        color: getColor(name, index),
-      })),
-      {
-        name: 'Otros',
-        value: otrosCount,
-        color: utmColors['Otros'],
-      },
-    ];
-    console.log('[UTM] Showing Top 5 + Otros:', result.length);
-    return result;
+    // Return ALL UTMs (no limit) - horizontal bar chart handles many items well
+    return sorted.map(([name, value], index) => ({
+      name,
+      value,
+      color: getColor(name, index),
+    }));
   }, [filteredLeads]);
 
   const handleClearFilters = () => {
@@ -398,7 +371,7 @@ export default function DashboardClient({
           data={asistenciasData}
           title="Asistencias al Proyecto"
         />
-        <PieChartComponent
+        <HorizontalBarChart
           data={utmData}
           title="Distribución por UTM"
         />
