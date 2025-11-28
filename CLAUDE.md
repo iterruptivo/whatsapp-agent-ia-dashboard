@@ -7,8 +7,8 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 27 Noviembre 2025
-**Sesión:** 56 - 🔧 **Validación Teléfono Por Proyecto + Precio Base Import + Features UI**
+**Fecha:** 28 Noviembre 2025
+**Sesión:** 57 - 📊 **Dashboard Admin UX + Horizontal Bar Chart UTM**
 **Estado:** ✅ **DEPLOYED TO STAGING**
 **Documentación:** Ver "Últimas 5 Sesiones" abajo
 
@@ -85,7 +85,7 @@ Documentación cronológica completa de todas las sesiones.
   - Búsqueda Exacta + Import Manual (31)
   - Actualización n8n Callao (32)
 
-- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-56
+- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-57
   - Fix Límite 1000 Leads (33-33C) ✅
   - Emergency Rollback (35B) 🔴
   - Middleware Security (36) ✅
@@ -98,6 +98,7 @@ Documentación cronológica completa de todas las sesiones.
   - **Fix PGRST116 Import Manual + UX (46A-46B)** ✅
   - **Modal Comentario Obligatorio NARANJA (48C)** ✅
   - **Validación Teléfono Por Proyecto + Precio Base Import (56)** ✅
+  - **Dashboard Admin UX + Horizontal Bar Chart UTM (57)** ✅
 
 ---
 
@@ -145,6 +146,72 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 57** (28 Nov) - 📊 ✅ **Dashboard Admin UX + Horizontal Bar Chart UTM**
+**Feature:** Mejoras de UX en dashboard admin + nuevo gráfico de barras horizontales para UTM
+**Estado:** ✅ **DEPLOYED TO STAGING**
+
+**Cambios implementados:**
+
+**1. Swap de Widgets en Stats Grid**
+- **Cambio:** Posiciones intercambiadas entre "Leads Incompletos" y "En Conversación"
+- **Commit:** `3c98c37`
+
+**2. Widget Mini Tabla (reemplaza "Leads Incompletos")**
+- **Nuevo widget:** Mini tabla con 3 filas mostrando estados secundarios
+- **Contenido:**
+  - Lead Manual (púrpura)
+  - Lead Incompleto (amarillo)
+  - Abandonado (gris)
+- **Styling:**
+  - Bordes dotted entre filas (último sin borde)
+  - Padding compacto (`p-4`, `pb-1`, `py-1`, `pt-1`)
+  - Hover effect (`hover:bg-gray-50 transition-all duration-200`)
+- **Commits:** `b44c9fe`, `a12b508`, `e9ba636`, `b47f2ba`, `1823cca`
+
+**3. Horizontal Bar Chart para UTM (reemplaza PieChart)**
+- **Problema:** PieChart limitaba a 5 UTMs + "Otros", ocultando fuentes importantes
+- **Solución:** Nuevo componente `HorizontalBarChart.tsx` que muestra TODAS las fuentes
+- **Características:**
+  - Barras horizontales ordenadas de mayor a menor
+  - Height dinámico según cantidad de items
+  - Labels a la izquierda, valores a la derecha
+  - Colores predefinidos para UTMs conocidos (victoria, facebook, google, etc.)
+  - Fallback colors para UTMs desconocidos
+  - Total de leads al pie del gráfico
+  - Tooltip con detalle al hover
+- **Archivos:**
+  - `components/dashboard/HorizontalBarChart.tsx` (nuevo, 72 líneas)
+  - `components/dashboard/DashboardClient.tsx` (modificado)
+- **Commit:** `8a5da22`
+
+**Visual del nuevo gráfico:**
+```
+victoria      ████████████████████  456
+facebook      ██████████████        312
+google        ████████████          287
+instagram     ██████████            245
+whatsapp      ████████              198
+referido      ██████                156
+...todos los UTMs visibles...
+
+Total: 1,668 leads
+```
+
+**Archivos modificados:**
+- `components/dashboard/DashboardClient.tsx` - Stats grid + import HorizontalBarChart + utmData sin límite
+- `components/dashboard/HorizontalBarChart.tsx` (nuevo)
+
+**Commits:**
+- `3c98c37` - feat: Swap widget positions
+- `b44c9fe` - feat: Replace Leads Incompletos with mini table
+- `a12b508` - fix: Remove space-y-3 class
+- `e9ba636` - feat: Add dotted borders between rows
+- `b47f2ba` - feat: Reduce padding for compact widgets
+- `1823cca` - feat: Add hover background color
+- `8a5da22` - feat: Replace UTM pie chart with horizontal bar chart
+
+---
 
 ### **Sesión 56** (27 Nov) - 🔧 ✅ **Validación Teléfono Por Proyecto + Precio Base Import + Features UI**
 **Feature:** Múltiples mejoras de validación, importación y UX
@@ -368,60 +435,6 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ---
 
-### **Sesión 53** (22 Nov) - 🎨 ✅ **Tercera Columna en Configuración de Proyectos**
-**Feature:** Agregar tercera columna "Mantenimiento de comisiones" a la página `/configuracion-proyectos`
-**Problema resuelto:** Expandir layout de 2 a 3 columnas para agregar nueva sección de configuración
-**Estado:** ✅ **DEPLOYED TO STAGING**
-
-**Cambios implementados:**
-
-1. **Grid layout expandido:**
-   - Cambio: `lg:grid-cols-2` → `lg:grid-cols-3` (línea 410)
-   - Desktop: 3 columnas horizontales con gap-8
-   - Mobile/Tablet: Columnas apiladas verticalmente
-
-2. **Nueva columna 3 agregada (líneas 774-791):**
-   - Título: "Mantenimiento de comisiones"
-   - Subtítulo: "Configuración de comisiones para este proyecto"
-   - Placeholder visual:
-     - Border dashed gris (`border-2 border-dashed border-gray-300`)
-     - Background: `bg-gray-50`
-     - Texto centrado: "Por configurar" (itálico, gris)
-     - Padding: `p-8` para aire visual
-
-3. **Layout final (3 columnas):**
-   - **Columna 1 (izquierda):** TEA + Color + Estado - **SIN CAMBIOS**
-   - **Columna 2 (centro):** Porcentaje Inicial + Cuotas sin/con interés - **SIN CAMBIOS**
-   - **Columna 3 (derecha):** Mantenimiento de comisiones (nuevo)
-
-**Responsive design:**
-- Desktop (>1024px): 3 columnas horizontales
-- Tablet/Mobile (<1024px): Columnas apiladas
-
-**Styling & Consistency:**
-- Usa misma estructura `space-y-6` de otras columnas
-- Tipografía y colores consistentes con diseño existente
-- Border dashed para indicar "pendiente de configurar"
-
-**Archivos modificados:**
-- `app/configuracion-proyectos/page.tsx` (+21 líneas, -2 líneas)
-
-**Commits:**
-- `38eaffc` - "feat: Add third column 'Mantenimiento de comisiones' to project configuration"
-
-**Testing QA:**
-- ⏳ Pendiente validación @QADev:
-  - Layout 3 columnas en desktop
-  - Responsive design correcto
-  - Columnas 1 y 2 sin modificaciones
-  - Funcionalidad existente intacta
-
-**Beneficio:**
-- Espacio preparado para futura funcionalidad de gestión de comisiones
-- Layout escalable y modular
-
----
-
 ### **Sesión 53C** (22 Nov) - 🎨 ⏳ **UX Mejora: Modal Financiamiento con Header/Footer Sticky**
 **Feature:** Mejorar experiencia de usuario en modal de financiamiento con sticky header/footer
 **Problema resuelto:** Header y footer no permanecían visibles al scrollear contenido largo del modal
@@ -632,197 +645,6 @@ INCORRECTO (intentado en 53):
 - **b84f16e** (Sesión 53B - Hotfix build error)
 
 **Deploy:** ✅ STAGING (build success)
-
----
-
-### **Sesión 53** (22 Nov) - 🔧 ✅ **CORRECCIÓN: Items Separados en Sidebar (Control Pagos + Comisiones)**
-**Tipo:** Corrección urgente de implementación incorrecta
-**Problema:** Se implementaron tabs DENTRO de `/locales` cuando lo correcto era crear items SEPARADOS en el sidebar
-**Root cause:** Malinterpretación de requerimiento del usuario
-
-**Implementación incorrecta (REVERTIDA):**
-- Sistema de tabs con LocalesClientWrapper
-- TabButton component
-- 3 tabs: Gestión | Control de Pagos | Comisiones
-- Navegación interna en `/locales`
-
-**Implementación correcta (APLICADA):**
-- 2 nuevas páginas separadas con rutas propias
-- Items agregados al dropdown "Finanzas" en sidebar
-- Navegación desde menú lateral (no tabs internos)
-
-**Archivos ELIMINADOS (reversión):**
-- `components/locales/LocalesClientWrapper.tsx` (92 líneas)
-- `components/shared/TabButton.tsx` (26 líneas)
-- `components/locales/ControlPagosTab.tsx` (56 líneas)
-- `components/locales/ComisionesTab.tsx` (67 líneas)
-- `components/locales/LocalesGestionTab.tsx` (529 líneas)
-
-**Archivos CREADOS:**
-- `app/control-pagos/page.tsx` (62 líneas)
-  - Placeholder profesional con icono FileText
-  - Solo accesible para admin y jefe_ventas
-  - Validación role-based con redirect
-  - Mensaje "Funcionalidad en desarrollo"
-- `app/comisiones/page.tsx` (70 líneas)
-  - Placeholder profesional con icono DollarSign
-  - Accesible para todos los roles
-  - Mensaje personalizado según rol del usuario
-  - Mensaje "Funcionalidad en desarrollo"
-
-**Archivos MODIFICADOS:**
-- `app/locales/page.tsx` (1 línea)
-  - Restaurar: `import LocalesClient` (en vez de LocalesClientWrapper)
-- `components/shared/Sidebar.tsx` (+16 líneas)
-  - Import FileText icon
-  - Lógica condicional en `getMenuStructure()`:
-    - Crear array `finanzasItems` dinámico según rol
-    - Item 1: "Gestión de Locales" (todos)
-    - Item 2: "Control de Pagos" (solo admin/jefe_ventas)
-    - Item 3: "Comisiones" (todos)
-
-**Estructura final del Sidebar:**
-```
-Finanzas ▼ (dropdown DollarSign icon)
-  ├─ Gestión de Locales → /locales (todos)
-  ├─ Control de Pagos → /control-pagos (solo admin/jefe_ventas)
-  └─ Comisiones → /comisiones (todos)
-```
-
-**Role-based access control:**
-- `admin`: Ve los 3 items
-- `jefe_ventas`: Ve los 3 items
-- `vendedor`: Ve Gestión + Comisiones (NO ve Control de Pagos)
-- `vendedor_caseta`: Ve Gestión + Comisiones (NO ve Control de Pagos)
-
-**Cambios netos:**
-- Líneas eliminadas: 770
-- Líneas agregadas: 155
-- Balance: -615 líneas de código
-- Archivos eliminados: 5
-- Archivos creados: 2
-
-**Testing:**
-- ✅ Sidebar muestra items correctos según rol
-- ✅ Navegación a páginas funciona
-- ✅ Placeholders se renderizan correctamente
-- ✅ Validación role-based en `/control-pagos` funciona
-- ✅ `/locales` sigue funcionando como antes
-
-**Lecciones aprendidas:**
-- Verificar SIEMPRE el contexto exacto del usuario antes de implementar
-- "Tabs dentro de Gestión de Locales" ≠ "Items en el sidebar bajo Finanzas"
-- Tabs internos = navegación dentro de UNA página
-- Items sidebar = navegación entre DIFERENTES páginas
-- Cuando hay duda, PREGUNTAR al usuario antes de implementar
-
-**Commit:** 7e3d887
-**Deploy:** ✅ STAGING
-
----
-
-### **Sesión 52I** (22 Nov) - ✅ ⚡ **Mejora UX: Botón "Procesar" Deshabilitado hasta Generar Calendario**
-**Feature:** Validación preventiva en modal de financiamiento
-**Problema resuelto:** Usuarios podían intentar procesar venta sin calendario de pagos generado
-**Pattern:** Disabled State Pattern - Client-side validation con feedback visual
-
-**Comportamiento del botón "Procesar":**
-
-**DESHABILITADO (inicial):**
-- Condición: `calendarioCuotas.length === 0`
-- Estilos: `bg-gray-300 text-gray-500 cursor-not-allowed`
-- Interacción: No responde a clicks (atributo `disabled`)
-
-**HABILITADO:**
-- Condición: `calendarioCuotas.length > 0`
-- Estilos: `bg-[#1b967a] text-white hover:bg-[#157a63]` (verde corporativo)
-- Interacción: Click abre modal de confirmación
-
-**Reset triggers (vuelve a deshabilitado):**
-1. Usuario cambia "¿Con financiamiento?" (toggle Sí/No)
-2. Usuario cambia fecha de pago
-3. Usuario cambia número de cuotas
-
-**Implementación técnica:**
-```typescript
-<button
-  onClick={() => setShowConfirmModal(true)}
-  disabled={calendarioCuotas.length === 0}
-  className={`px-6 py-2 font-semibold rounded-lg transition-colors ${
-    calendarioCuotas.length === 0
-      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-      : 'bg-[#1b967a] text-white hover:bg-[#157a63]'
-  }`}
->
-  Procesar
-</button>
-```
-
-**Validaciones:**
-- ✅ Client-side: Validación reactiva con `calendarioCuotas.length`
-- ✅ Atributo HTML `disabled` previene clicks
-- ✅ Cursor `not-allowed` indica estado deshabilitado
-- ✅ Colores dinámicos (gris vs verde) según estado
-
-**Flujo correcto:**
-1. Usuario abre modal → Botón GRIS deshabilitado
-2. Usuario completa datos (financiamiento, cuotas, fecha)
-3. Usuario click "Generar calendario de pagos" → Tabla aparece
-4. Botón cambia a VERDE habilitado
-5. Usuario click "Procesar" → Modal de confirmación
-6. Usuario confirma → Procesamiento de venta
-
-**Beneficios:**
-- ✅ Previene errores de flujo incompleto
-- ✅ Feedback visual claro (gris = falta algo)
-- ✅ Garantiza integridad de datos
-- ✅ Reduce frustración por errores evitables
-- ✅ Guía intuitiva del proceso
-
-**Archivos:** FinanciamientoModal.tsx (+7 líneas)
-**Commit:** `708354b`
-**Testing:** ✅ QA approved (5 escenarios)
-**Deploy:** ✅ STAGING
-**[📖 Ver documentación completa →](docs/sesiones/SESION_52I_BOTON_PROCESAR_DISABLED.md)**
-
----
-
-### **Sesión 52H** (22 Nov) - 📄 ✅ **Sistema Completo de Generación de PDF para Financiamiento**
-**Feature:** Generación de PDF profesional con branding EcoPlaza para calendario de pagos de financiamiento
-**Problema resuelto:** Vendedores y gerentes necesitan documentos PDF para compartir con clientes
-**Librería:** jsPDF + jspdf-autotable
-
-**Contenido del PDF:**
-1. **Header navy** - Logo EcoPlaza + título "Financiamiento de Local"
-2. **Sección: Información del Local** - Código, proyecto, precio venta, separación, lead vinculado (Cliente)
-3. **Sección: Cálculos Financieros** - Inicial (%), restante inicial, monto restante
-4. **Sección: Detalles de Financiamiento** - ¿Con financiamiento?, cuotas, TEA, fecha de pago
-5. **Sección: Calendario de Pagos** - Tabla con autoTable
-
-**Tablas calendario:**
-- **SIN financiamiento (3 columnas):** # Cuota | Fecha de Pago | Monto
-- **CON financiamiento (6 columnas):** # Cuota | Fecha | Interés (rojo) | Amortización (azul) | Cuota (verde bold) | Saldo
-
-**Colores corporativos:**
-- Verde: #1b967a (headers, cuota)
-- Navy: #192c4d (header PDF, headers tabla)
-- Amarillo: #fbde17 (futuro uso)
-
-**Problemas resueltos:**
-1. **TypeScript tuple types** - Cambiar `const verde = [27, 150, 122]` a `const verde: [number, number, number] = [27, 150, 122]`
-2. **Tabla desbordada** - Margins 15px (igual que headers) en vez de 5px
-3. **Texto desalineado** - Todo centrado (modal y PDF): headers + body cells
-4. **Headers PDF no centrados** - Agregar `halign: 'center'` a headStyles
-
-**Formato profesional:**
-- Zebra striping (gris/blanco alternado)
-- Colores semánticos (rojo=interés, azul=amortización, verde=cuota)
-- Footer con fecha de generación
-- Nombre archivo: `Local-{codigo}-Financiamiento.pdf`
-
-**Archivos:** lib/pdf-generator.ts (nuevo, 293 líneas), FinanciamientoModal.tsx (+50 líneas), package.json (jspdf deps)
-**Commits:** 6c6ffd0, 3c85a7c, 0e4ac2a, 4fb89fa, 2291ec8
-**[📖 Ver documentación completa →](docs/sesiones/SESION_52H_PDF_FINANCIAMIENTO.md)**
 
 ---
 
