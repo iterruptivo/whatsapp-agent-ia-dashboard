@@ -365,7 +365,7 @@ export default function DashboardClient({
         />
         {/* Mini tabla: Manual, Incompleto, Abandonado */}
         <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-          <div className="space-y-3">
+          <div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-600">Lead Manual</span>
               <span className="text-lg font-bold text-purple-600">{filteredLeads.filter((l) => l.estado === 'lead_manual').length}</span>
