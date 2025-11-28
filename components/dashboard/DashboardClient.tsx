@@ -363,12 +363,23 @@ export default function DashboardClient({
           icon={Clock}
           color="secondary"
         />
-        <StatsCard
-          title="Leads Incompletos"
-          value={stats.incompletos}
-          icon={AlertCircle}
-          color="accent"
-        />
+        {/* Mini tabla: Manual, Incompleto, Abandonado */}
+        <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Lead Manual</span>
+              <span className="text-lg font-bold text-purple-600">{filteredLeads.filter((l) => l.estado === 'lead_manual').length}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Lead Incompleto</span>
+              <span className="text-lg font-bold text-yellow-600">{stats.incompletos}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Abandonado</span>
+              <span className="text-lg font-bold text-gray-500">{filteredLeads.filter((l) => l.estado === 'conversacion_abandonada').length}</span>
+            </div>
+          </div>
+        </div>
         <StatsCard
           title="Tasa Conversión"
           value={`${stats.tasaConversion}%`}
