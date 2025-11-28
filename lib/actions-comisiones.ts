@@ -15,6 +15,7 @@ export interface Comision {
   monto_comision: number;
   estado: 'pendiente_inicial' | 'disponible' | 'pagada';
   fecha_procesado: string;
+  fecha_disponible: string | null;
   fecha_inicial_completa: string | null;
   fecha_pago_comision: string | null;
   pagado_por: string | null;

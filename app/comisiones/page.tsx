@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/auth-context';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import ComisionStatsCards from '@/components/comisiones/ComisionStatsCards';
 import ComisionesChart from '@/components/comisiones/ComisionesChart';
+import ComisionesDesgloseMensual from '@/components/comisiones/ComisionesDesgloseMensual';
 import ComisionesTable from '@/components/comisiones/ComisionesTable';
 import {
   getComisionesByUsuario,
@@ -98,6 +99,7 @@ export default function ComisionesPage() {
       <div className="max-w-[1400px] mx-auto p-6">
         <ComisionStatsCards stats={stats} />
         <ComisionesChart stats={stats} />
+        <ComisionesDesgloseMensual comisiones={comisiones} />
         <ComisionesTable
           comisiones={comisiones}
           userRole={user.rol}

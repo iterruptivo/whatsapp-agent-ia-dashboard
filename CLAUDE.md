@@ -8,8 +8,8 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 28 Noviembre 2025
-**Sesión:** 57 - 📊 **Dashboard Admin UX + Horizontal Bar Chart UTM**
-**Estado:** ✅ **DEPLOYED TO STAGING**
+**Sesión:** 58 - 📅 **Sistema Desglose Mensual de Comisiones**
+**Estado:** ⏳ **PENDING QA REVIEW**
 **Documentación:** Ver "Últimas 5 Sesiones" abajo
 
 ---
@@ -146,6 +146,132 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 58** (28 Nov) - 📅 ⏳ **Sistema Desglose Mensual de Comisiones**
+**Feature:** Vista mensual accordion de comisiones con filtros inteligentes y lazy loading
+**Estado:** ⏳ **PENDING QA REVIEW**
+**QA Document:** `QA_TESTING_SESSION_58.md`
+
+**Implementación completa en 3 FASES:**
+
+**FASE 1: Backend (BackDev)**
+- Archivo: `lib/actions-comisiones.ts` (+1 línea)
+- Cambio: Agregado campo `fecha_disponible: string | null` a interface `Comision`
+- SQL: Columna ya existente en DB (migration previa)
+- No se modificaron queries (SELECT ya incluye el campo)
+
+**FASE 2: Frontend - Componente Nuevo (FrontDev)**
+- Archivo: `components/comisiones/ComisionesDesgloseMensual.tsx` (NUEVO, 460 líneas)
+
+**Características implementadas:**
+
+1. **Lógica de agrupación híbrida por mes:**
+   - **Pendiente Inicial:** Aparece en mes de `fecha_procesado` (mes de venta)
+   - **Disponible:** SE MUEVE a mes de `fecha_disponible` (mes que se completó inicial)
+   - **Pagada:** PERMANECE en mes de `fecha_pago_comision` (mes de pago)
+
+   **Ejemplo de flujo:**
+   - Venta procesada 15 nov → Comisión en "Noviembre 2025" (pendiente)
+   - Inicial completa 20 dic → Comisión SE MUEVE a "Diciembre 2025" (disponible)
+   - Admin paga 28 dic → Comisión permanece en "Diciembre 2025" (pagada)
+
+2. **Sistema de filtros:**
+   - **Búsqueda:** Por código de local o nombre de proyecto (input con icon Search)
+   - **Estado:** Dropdown (Todos, Pendiente Inicial, Disponible, Pagada)
+   - **Año:** Dropdown dinámico con años disponibles en los datos
+   - Combinación de filtros funciona simultáneamente
+
+3. **Accordions por mes:**
+   - **Header clickeable:**
+     - Icon ChevronDown/Up (expande/colapsa)
+     - Nombre del mes (ej: "Noviembre 2025")
+     - Count + total (ej: "5 comisiones • Total: $4,250.00")
+     - Badges de estado con counts y montos:
+       - 🟡 Pendiente: N ($X)
+       - 🟢 Disponible: N ($X)
+       - 🟣 Pagada: N ($X)
+   - **Body expandible:** Tabla detallada (9 columnas)
+   - **Mes actual expandido por defecto** (useEffect inicial)
+   - Múltiples meses pueden estar expandidos simultáneamente
+
+4. **Tabla detallada (9 columnas):**
+   - Código Local
+   - Proyecto
+   - Monto Venta (formato USD)
+   - Fase (badge: Vendedor/Gestión)
+   - % Comisión
+   - Monto Comisión (bold verde)
+   - Estado (badge: Pendiente/Disponible/Pagada)
+   - Fecha Procesado
+   - **Fecha Disponible** (muestra "-" si es null)
+
+5. **Lazy loading:**
+   - Muestra últimos **6 meses** por defecto
+   - Botón "Cargar 6 meses más antiguos" al final
+   - Ordenamiento descendente (más reciente primero)
+   - Si no hay más meses, botón desaparece
+
+6. **Empty states:**
+   - Sin comisiones: Icon Calendar + mensaje "No hay comisiones para mostrar"
+   - Filtros sin resultados: Mensaje "Intenta ajustar los filtros"
+
+**FASE 3: Integración (FrontDev)**
+- Archivo: `app/comisiones/page.tsx` (+2 líneas)
+- Cambios:
+  1. Import `ComisionesDesgloseMensual`
+  2. Agregar componente entre `ComisionesChart` y `ComisionesTable`
+- **Orden visual final:**
+  1. ComisionStatsCards (widgets totales)
+  2. ComisionesChart (gráfico de barras)
+  3. **ComisionesDesgloseMensual** (NUEVO - accordions mensuales)
+  4. ComisionesTable (tabla existente - SIN MODIFICAR)
+
+**Componentes NO modificados (verified):**
+- `ComisionStatsCards.tsx` - Widgets funcionan igual
+- `ComisionesChart.tsx` - Gráfico funciona igual (datos mockeados Sesión 53)
+- `ComisionesTable.tsx` - Tabla funciona igual (botón "Marcar Pagada", etc.)
+
+**Design System:**
+- **Colores corporativos:**
+  - Verde comisiones: `text-green-600` (bold)
+  - Badges pendiente: `bg-yellow-100 text-yellow-800`
+  - Badges disponible: `bg-green-100 text-green-800`
+  - Badges pagada: `bg-purple-100 text-purple-800`
+  - Badges vendedor: `bg-blue-100 text-blue-800`
+  - Badges gestión: `bg-indigo-100 text-indigo-800`
+- **Icons:** Search, Filter, Calendar, ChevronDown, ChevronUp (Lucide React)
+- **Formato montos:** USD con 2 decimales (`$1,234.56`)
+- **Formato fechas:** `DD/MM/YYYY` (locale es-PE)
+
+**Beneficios:**
+- ✅ Vista temporal clara de evolución de comisiones
+- ✅ Filtros permiten análisis rápido por estado/año
+- ✅ Lazy loading previene sobrecarga con muchos meses
+- ✅ Lógica híbrida de agrupación refleja ciclo de vida real de comisión
+- ✅ No rompe funcionalidad existente (componentes intactos)
+
+**Testing pendiente (QADev):**
+- Ver `QA_TESTING_SESSION_58.md` para checklist completo (8 categorías, 30+ test cases)
+- Categorías: Agrupación, Filtros, Accordions, Lazy loading, Responsive, Edge cases, Integración, Performance
+
+**Próximos pasos (futuro):**
+- Integrar datos reales en `ComisionesChart` (actualmente usa mocks Sesión 53)
+- Vista consolidada admin/jefe_ventas (actualmente todos ven solo SUS comisiones)
+- Columna "Cliente" en tabla detallada (si se requiere)
+- Exportar reporte mensual a PDF/Excel
+
+**Archivos modificados:**
+- lib/actions-comisiones.ts (+1 línea)
+- app/comisiones/page.tsx (+2 líneas)
+
+**Archivos creados:**
+- components/comisiones/ComisionesDesgloseMensual.tsx (460 líneas)
+- QA_TESTING_SESSION_58.md (checklist completo)
+
+**Líneas totales:** +463 líneas netas
+**Commit:** Pendiente (después de QA approval)
+
+---
 
 ### **Sesión 57** (28 Nov) - 📊 ✅ **Dashboard Admin UX + Horizontal Bar Chart UTM**
 **Feature:** Mejoras de UX en dashboard admin + nuevo gráfico de barras horizontales para UTM
