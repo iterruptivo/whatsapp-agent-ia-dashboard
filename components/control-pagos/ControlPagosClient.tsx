@@ -78,6 +78,9 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
                   Cliente
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                  Precio Base
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
                   Monto Venta
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -118,6 +121,17 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
                   <td className="px-4 py-3">
                     <div className="text-sm font-medium text-gray-900">{cp.lead_nombre}</div>
                     <div className="text-xs text-gray-500">{cp.lead_telefono}</div>
+                  </td>
+
+                  {/* Precio Base */}
+                  <td className="px-4 py-3 text-right">
+                    {cp.precio_base ? (
+                      <span className="text-sm font-medium text-gray-700">
+                        {formatMonto(cp.precio_base)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
                   </td>
 
                   {/* Monto Total */}

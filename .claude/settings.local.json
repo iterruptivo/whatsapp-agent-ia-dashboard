@@ -54,7 +54,9 @@
       "Bash(E:/Iterruptivo/Proyectos-Clientes/EcoPlaza/AgenteIA-Whatsapp/dashboard/components/control-pagos/PagosPanel.tsx)",
       "Bash(git stash:*)",
       "Bash(python:*)",
-      "Bash(C:UsersLeoAdminAppDataLocalProgramsPythonPython311python.exe -c \"print(''hello'')\")"
+      "Bash(C:UsersLeoAdminAppDataLocalProgramsPythonPython311python.exe -c \"print(''hello'')\")",
+      "Bash(git revert:*)",
+      "Bash(node_modules/.bin/next build)"
     ],
     "deny": [],
     "ask": []

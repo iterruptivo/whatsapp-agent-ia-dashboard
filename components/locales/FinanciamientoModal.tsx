@@ -793,6 +793,7 @@ export default function FinanciamientoModal({
                 proyectoId: local.proyecto_id,
                 proyectoNombre: local.proyecto_nombre || 'N/A',
                 metraje: local.metraje,
+                precioBase: local.precio_base ?? null, // SESIÓN 57: Snapshot precio_base (puede ser null)
                 leadId: local.lead_id!,
                 leadNombre: leadNombre,
                 leadTelefono: leadTelefono,
