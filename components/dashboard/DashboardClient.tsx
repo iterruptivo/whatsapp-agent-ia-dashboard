@@ -358,16 +358,16 @@ export default function DashboardClient({
           color="primary"
         />
         <StatsCard
-          title="Leads Incompletos"
-          value={stats.incompletos}
-          icon={AlertCircle}
-          color="accent"
-        />
-        <StatsCard
           title="En Conversación"
           value={stats.conversacion}
           icon={Clock}
           color="secondary"
+        />
+        <StatsCard
+          title="Leads Incompletos"
+          value={stats.incompletos}
+          icon={AlertCircle}
+          color="accent"
         />
         <StatsCard
           title="Tasa Conversión"
