@@ -364,7 +364,7 @@ export default function DashboardClient({
           color="secondary"
         />
         {/* Mini tabla: Manual, Incompleto, Abandonado */}
-        <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-shadow">
+        <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg hover:bg-gray-50 transition-all duration-200">
           <div>
             <div className="flex items-center justify-between pb-1 border-b border-dotted border-gray-300">
               <span className="text-sm text-gray-600">Lead Manual</span>
