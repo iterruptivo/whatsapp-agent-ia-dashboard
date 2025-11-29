@@ -419,6 +419,14 @@ export async function autoLiberarLocalesExpirados() {
             naranja_vendedor_id: null,
             bloqueado: false,
             monto_venta: null, // Limpiar monto también (nueva negociación = nuevo monto)
+            monto_separacion: null, // SESIÓN 59: Limpiar monto de separación también
+            // SESIÓN 59: Limpiar campos de trazabilidad (sistema de comisiones)
+            usuario_paso_naranja_id: null,
+            usuario_paso_rojo_id: null,
+            fecha_paso_naranja: null,
+            fecha_paso_rojo: null,
+            vendedor_cerro_venta_id: null,
+            fecha_cierre_venta: null,
           })
           .eq('id', local.id);
 
@@ -776,14 +784,30 @@ export async function salirDeNegociacion(
     const nuevoEstado = vendedoresNuevos.length === 0 ? 'verde' : 'amarillo';
 
     // PASO 6: Actualizar local
+    const updateData: any = {
+      estado: nuevoEstado,
+      vendedores_negociando_ids: vendedoresNuevos,
+    };
+
+    // SESIÓN 59: Si vuelve a VERDE, limpiar TODOS los campos de trazabilidad
+    if (nuevoEstado === 'verde') {
+      updateData.vendedor_actual_id = null;
+      updateData.usuario_paso_naranja_id = null;
+      updateData.usuario_paso_rojo_id = null;
+      updateData.fecha_paso_naranja = null;
+      updateData.fecha_paso_rojo = null;
+      updateData.vendedor_cerro_venta_id = null;
+      updateData.fecha_cierre_venta = null;
+      updateData.monto_separacion = null;
+      updateData.monto_venta = null;
+      updateData.naranja_timestamp = null;
+      updateData.naranja_vendedor_id = null;
+      updateData.bloqueado = false;
+    }
+
     const { error: updateError } = await supabase
       .from('locales')
-      .update({
-        estado: nuevoEstado,
-        vendedores_negociando_ids: vendedoresNuevos,
-        // Si vuelve a VERDE, limpiar vendedor_actual_id
-        ...(nuevoEstado === 'verde' && { vendedor_actual_id: null }),
-      })
+      .update(updateData)
       .eq('id', localId);
 
     if (updateError) {

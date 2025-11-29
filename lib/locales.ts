@@ -422,6 +422,12 @@ export async function updateLocalEstadoQuery(
       // SESIÓN 48: Limpiar timer NARANJA también
       updateData.naranja_timestamp = null;
       updateData.naranja_vendedor_id = null;
+      // SESIÓN 59: Limpiar campos de trazabilidad (sistema de comisiones)
+      updateData.vendedor_actual_id = null;
+      updateData.usuario_paso_naranja_id = null;
+      updateData.usuario_paso_rojo_id = null;
+      updateData.fecha_paso_naranja = null;
+      updateData.fecha_paso_rojo = null;
     }
 
     // Ejecutar update
