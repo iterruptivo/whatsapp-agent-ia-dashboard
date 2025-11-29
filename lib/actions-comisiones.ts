@@ -496,3 +496,97 @@ export async function updatePorcentajeComision(
     return { success: false, message: 'Error inesperado' };
   }
 }
+
+// ============================================================================
+// QUERIES - TRAZABILIDAD DE COMISIONES
+// ============================================================================
+
+export interface ComisionConTrazabilidad extends Comision {
+  vendedor_asignado_nombre?: string;
+  usuario_naranja_nombre?: string;
+  usuario_rojo_nombre?: string;
+  usuario_procesado_nombre?: string;
+}
+
+export async function getComisionesByLocalId(localId: string): Promise<ComisionConTrazabilidad[]> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set(name, value, options);
+        },
+        remove(name: string, options: any) {
+          cookieStore.set(name, '', options);
+        },
+      },
+    }
+  );
+
+  try {
+    // Fetch comisiones del local
+    const { data: comisiones, error: comisionesError } = await supabase
+      .from('comisiones')
+      .select('*')
+      .eq('local_id', localId)
+      .order('fase', { ascending: true }); // vendedor primero, gestión después
+
+    if (comisionesError || !comisiones) {
+      console.error('[GET COMISIONES BY LOCAL] Error:', comisionesError);
+      return [];
+    }
+
+    // Fetch datos del local con trazabilidad
+    const { data: local, error: localError } = await supabase
+      .from('locales')
+      .select('vendedor_actual_id, usuario_paso_naranja_id, usuario_paso_rojo_id')
+      .eq('id', localId)
+      .single();
+
+    if (localError || !local) {
+      console.error('[GET LOCAL TRAZABILIDAD] Error:', localError);
+      return comisiones; // Retornar comisiones sin trazabilidad
+    }
+
+    // Fetch control_pagos para obtener procesado_por
+    const { data: controlPago } = await supabase
+      .from('control_pagos')
+      .select('procesado_por')
+      .eq('local_id', localId)
+      .single();
+
+    // Recopilar todos los IDs de usuarios únicos
+    const usuarioIds = new Set<string>();
+    if (local.vendedor_actual_id) usuarioIds.add(local.vendedor_actual_id);
+    if (local.usuario_paso_naranja_id) usuarioIds.add(local.usuario_paso_naranja_id);
+    if (local.usuario_paso_rojo_id) usuarioIds.add(local.usuario_paso_rojo_id);
+    if (controlPago?.procesado_por) usuarioIds.add(controlPago.procesado_por);
+    comisiones.forEach(c => { if (c.usuario_id) usuarioIds.add(c.usuario_id); });
+
+    // Fetch nombres de todos los usuarios
+    const { data: usuarios } = await supabase
+      .from('usuarios')
+      .select('id, nombre')
+      .in('id', Array.from(usuarioIds));
+
+    const usuariosMap = new Map(usuarios?.map(u => [u.id, u.nombre]) || []);
+
+    // Mapear comisiones con trazabilidad
+    return comisiones.map((c: any) => ({
+      ...c,
+      usuario_nombre: usuariosMap.get(c.usuario_id),
+      vendedor_asignado_nombre: local.vendedor_actual_id ? usuariosMap.get(local.vendedor_actual_id) : undefined,
+      usuario_naranja_nombre: local.usuario_paso_naranja_id ? usuariosMap.get(local.usuario_paso_naranja_id) : undefined,
+      usuario_rojo_nombre: local.usuario_paso_rojo_id ? usuariosMap.get(local.usuario_paso_rojo_id) : undefined,
+      usuario_procesado_nombre: controlPago?.procesado_por ? usuariosMap.get(controlPago.procesado_por) : undefined,
+    }));
+  } catch (error) {
+    console.error('[GET COMISIONES BY LOCAL] Error:', error);
+    return [];
+  }
+}

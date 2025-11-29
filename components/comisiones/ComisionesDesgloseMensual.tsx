@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Search, Filter, Calendar, Check } from 'lucide-react';
 import type { Comision } from '@/lib/actions-comisiones';
 import { marcarComisionPagada } from '@/lib/actions-comisiones';
+import SplitComisionesModal from './SplitComisionesModal';
 
 interface ComisionesDesgloseMensualProps {
   comisiones: Comision[];
@@ -44,6 +45,7 @@ export default function ComisionesDesgloseMensual({
   const [mesesExpandidos, setMesesExpandidos] = useState<Set<string>>(new Set());
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [modalData, setModalData] = useState<{localId: string, codigo: string, monto: number} | null>(null);
 
   const isAdmin = userRole === 'admin';
 
@@ -466,8 +468,17 @@ export default function ComisionesDesgloseMensual({
                               {comision.proyecto_nombre || 'N/A'}
                             </td>
                             {showVendedorColumn && (
-                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                                {comision.usuario_nombre || 'N/A'}
+                              <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                <button
+                                  onClick={() => setModalData({
+                                    localId: comision.local_id,
+                                    codigo: comision.local_codigo || 'N/A',
+                                    monto: comision.monto_venta
+                                  })}
+                                  className="text-blue-600 hover:text-blue-800 hover:underline font-medium transition-colors"
+                                >
+                                  {comision.usuario_nombre || 'N/A'}
+                                </button>
                               </td>
                             )}
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
@@ -561,6 +572,16 @@ export default function ComisionesDesgloseMensual({
             Cargar 6 meses más antiguos
           </button>
         </div>
+      )}
+
+      {/* Modal de Trazabilidad */}
+      {modalData && (
+        <SplitComisionesModal
+          localId={modalData.localId}
+          localCodigo={modalData.codigo}
+          montoVenta={modalData.monto}
+          onClose={() => setModalData(null)}
+        />
       )}
     </div>
   );
