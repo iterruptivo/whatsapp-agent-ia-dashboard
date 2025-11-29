@@ -75,19 +75,27 @@ export async function getComisionesByUsuario(usuarioId: string): Promise<Comisio
     const usuarioIds = [...new Set(comisiones.map(c => c.usuario_id))];
 
     const [{ data: locales }, { data: usuarios }] = await Promise.all([
-      supabase.from('locales').select('id, codigo, proyectos(nombre)').in('id', localIds),
+      supabase.from('locales').select('id, codigo, proyecto_id').in('id', localIds),
       supabase.from('usuarios').select('id, nombre_completo').in('id', usuarioIds),
     ]);
+
+    // Fetch proyectos
+    const proyectoIds = [...new Set(locales?.map(l => l.proyecto_id).filter(Boolean) || [])];
+    const { data: proyectos } = await supabase
+      .from('proyectos')
+      .select('id, nombre')
+      .in('id', proyectoIds);
 
     // Map comisiones with related data
     return comisiones.map((c: any) => {
       const local = locales?.find(l => l.id === c.local_id);
+      const proyecto = proyectos?.find(p => p.id === local?.proyecto_id);
       const usuario = usuarios?.find(u => u.id === c.usuario_id);
 
       return {
         ...c,
         local_codigo: local?.codigo,
-        proyecto_nombre: local?.proyectos?.nombre,
+        proyecto_nombre: proyecto?.nombre,
         usuario_nombre: usuario?.nombre_completo,
       };
     });
@@ -147,19 +155,27 @@ export async function getAllComisiones(): Promise<Comision[]> {
     const usuarioIds = [...new Set(comisiones.map(c => c.usuario_id))];
 
     const [{ data: locales }, { data: usuarios }] = await Promise.all([
-      supabase.from('locales').select('id, codigo, proyectos(nombre)').in('id', localIds),
+      supabase.from('locales').select('id, codigo, proyecto_id').in('id', localIds),
       supabase.from('usuarios').select('id, nombre_completo').in('id', usuarioIds),
     ]);
+
+    // Fetch proyectos
+    const proyectoIds = [...new Set(locales?.map(l => l.proyecto_id).filter(Boolean) || [])];
+    const { data: proyectos } = await supabase
+      .from('proyectos')
+      .select('id, nombre')
+      .in('id', proyectoIds);
 
     // Map comisiones with related data
     return comisiones.map((c: any) => {
       const local = locales?.find(l => l.id === c.local_id);
+      const proyecto = proyectos?.find(p => p.id === local?.proyecto_id);
       const usuario = usuarios?.find(u => u.id === c.usuario_id);
 
       return {
         ...c,
         local_codigo: local?.codigo,
-        proyecto_nombre: local?.proyectos?.nombre,
+        proyecto_nombre: proyecto?.nombre,
         usuario_nombre: usuario?.nombre_completo,
       };
     });
