@@ -123,30 +123,22 @@ export default function SplitComisionesModal({
                     Trazabilidad del Proceso
                   </h3>
                   <div className="grid grid-cols-2 gap-3 text-sm">
-                    {comisiones[0].vendedor_asignado_nombre && (
-                      <div>
-                        <span className="text-blue-700 font-medium">Lead asignado a:</span>
-                        <p className="text-blue-900">{comisiones[0].vendedor_asignado_nombre}</p>
-                      </div>
-                    )}
-                    {comisiones[0].usuario_naranja_nombre && (
-                      <div>
-                        <span className="text-blue-700 font-medium">Confirmó local (🟠):</span>
-                        <p className="text-blue-900">{comisiones[0].usuario_naranja_nombre}</p>
-                      </div>
-                    )}
-                    {comisiones[0].usuario_rojo_nombre && (
-                      <div>
-                        <span className="text-blue-700 font-medium">Bloqueó local (🔴):</span>
-                        <p className="text-blue-900">{comisiones[0].usuario_rojo_nombre}</p>
-                      </div>
-                    )}
-                    {comisiones[0].usuario_procesado_nombre && (
-                      <div>
-                        <span className="text-blue-700 font-medium">Procesó venta:</span>
-                        <p className="text-blue-900">{comisiones[0].usuario_procesado_nombre}</p>
-                      </div>
-                    )}
+                    <div>
+                      <span className="text-blue-700 font-medium">Lead asignado a:</span>
+                      <p className="text-blue-900">{comisiones[0].vendedor_asignado_nombre || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-700 font-medium">Confirmó local (🟠):</span>
+                      <p className="text-blue-900">{comisiones[0].usuario_naranja_nombre || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-700 font-medium">Bloqueó local (🔴):</span>
+                      <p className="text-blue-900">{comisiones[0].usuario_rojo_nombre || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-700 font-medium">Procesó venta:</span>
+                      <p className="text-blue-900">{comisiones[0].usuario_procesado_nombre || '-'}</p>
+                    </div>
                   </div>
                 </div>
               )}
