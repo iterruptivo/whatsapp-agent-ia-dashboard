@@ -99,13 +99,19 @@ export default function ComisionesPage() {
       <div className="max-w-[1400px] mx-auto p-6">
         <ComisionStatsCards stats={stats} />
         <ComisionesChart stats={stats} />
-        <ComisionesDesgloseMensual comisiones={comisiones} />
-        <ComisionesTable
+        <ComisionesDesgloseMensual
           comisiones={comisiones}
           userRole={user.rol}
           userId={user.id}
           onUpdate={fetchData}
         />
+        {/* TABLA ANTIGUA OCULTA - Funcionalidad migrada a ComisionesDesgloseMensual */}
+        {/* <ComisionesTable
+          comisiones={comisiones}
+          userRole={user.rol}
+          userId={user.id}
+          onUpdate={fetchData}
+        /> */}
       </div>
     </div>
   );

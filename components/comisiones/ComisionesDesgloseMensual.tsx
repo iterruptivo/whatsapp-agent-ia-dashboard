@@ -1,11 +1,15 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Search, Filter, Calendar } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, Filter, Calendar, Check } from 'lucide-react';
 import type { Comision } from '@/lib/actions-comisiones';
+import { marcarComisionPagada } from '@/lib/actions-comisiones';
 
 interface ComisionesDesgloseMensualProps {
   comisiones: Comision[];
+  userRole: string;
+  userId: string;
+  onUpdate: () => void;
 }
 
 interface MonthGroup {
@@ -21,13 +25,17 @@ interface MonthGroup {
   montoPagada: number;
 }
 
-export default function ComisionesDesgloseMensual({ comisiones }: ComisionesDesgloseMensualProps) {
+export default function ComisionesDesgloseMensual({ comisiones, userRole, userId, onUpdate }: ComisionesDesgloseMensualProps) {
   // Estados
   const [filtroEstado, setFiltroEstado] = useState<string>('todos');
   const [filtroAnio, setFiltroAnio] = useState<string>('2025');
   const [busqueda, setBusqueda] = useState<string>('');
   const [mesesVisibles, setMesesVisibles] = useState<number>(6);
   const [mesesExpandidos, setMesesExpandidos] = useState<Set<string>>(new Set());
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+
+  const isAdmin = userRole === 'admin';
 
   // Helper: Obtener la clave de mes según lógica híbrida
   const getMonthKey = (comision: Comision): string => {
@@ -202,6 +210,22 @@ export default function ComisionesDesgloseMensual({ comisiones }: ComisionesDesg
     setMesesVisibles(prev => prev + 6);
   };
 
+  // Marcar comisión como pagada (solo admin)
+  const handleMarcarPagada = async (comisionId: string) => {
+    setLoadingId(comisionId);
+    setOpenDropdown(null);
+
+    const result = await marcarComisionPagada(comisionId, userId);
+
+    if (result.success) {
+      onUpdate();
+    } else {
+      alert(result.message || 'Error al marcar comisión como pagada');
+    }
+
+    setLoadingId(null);
+  };
+
   // Obtener años disponibles para filtro
   const aniosDisponibles = useMemo(() => {
     const anios = new Set<string>();
@@ -374,6 +398,11 @@ export default function ComisionesDesgloseMensual({ comisiones }: ComisionesDesg
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Fecha Disponible
                           </th>
+                          {isAdmin && (
+                            <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Acciones
+                            </th>
+                          )}
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
@@ -406,6 +435,54 @@ export default function ComisionesDesgloseMensual({ comisiones }: ComisionesDesg
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                               {formatFecha(comision.fecha_disponible)}
                             </td>
+                            {isAdmin && (
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
+                                {comision.estado === 'disponible' && (
+                                  <div className="relative">
+                                    <button
+                                      onClick={() => setOpenDropdown(openDropdown === comision.id ? null : comision.id)}
+                                      disabled={loadingId === comision.id}
+                                      className="inline-flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-xs"
+                                    >
+                                      {loadingId === comision.id ? (
+                                        'Procesando...'
+                                      ) : (
+                                        <>
+                                          Marcar Pagada
+                                          <ChevronDown className="h-3 w-3" />
+                                        </>
+                                      )}
+                                    </button>
+
+                                    {openDropdown === comision.id && (
+                                      <>
+                                        <div
+                                          className="fixed inset-0 z-10"
+                                          onClick={() => setOpenDropdown(null)}
+                                        />
+                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200">
+                                          <button
+                                            onClick={() => handleMarcarPagada(comision.id)}
+                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                                          >
+                                            <Check className="h-4 w-4 text-green-600" />
+                                            Confirmar Pago
+                                          </button>
+                                        </div>
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                                {comision.estado === 'pagada' && (
+                                  <span className="text-xs text-gray-400">
+                                    {comision.fecha_pago_comision ? formatFecha(comision.fecha_pago_comision) : 'Pagada'}
+                                  </span>
+                                )}
+                                {comision.estado === 'pendiente_inicial' && (
+                                  <span className="text-xs text-gray-400">-</span>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         ))}
                       </tbody>
