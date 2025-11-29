@@ -114,7 +114,7 @@ export default function ComisionesPage() {
     <div className="min-h-screen bg-[#f4f4f4]">
       {/* Header */}
       <DashboardHeader
-        title={activeTab === 'control' && isAdminOrJefe ? 'Control de Todas las Comisiones' : 'Mis Comisiones'}
+        title={activeTab === 'control' && isAdminOrJefe ? 'Control de Comisiones' : 'Mis Comisiones'}
         subtitle={activeTab === 'control' && isAdminOrJefe ? 'Vista consolidada de comisiones de todos los vendedores' : 'Tus comisiones generadas por ventas de locales'}
       />
 
@@ -141,7 +141,7 @@ export default function ComisionesPage() {
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              Control de Todas
+              Control Comisiones
             </button>
           </div>
         )}
@@ -151,10 +151,12 @@ export default function ComisionesPage() {
           stats={activeTab === 'control' && isAdminOrJefe ? allStats : stats}
         />
 
-        {/* Chart - cambiar según tab */}
-        <ComisionesChart
-          stats={activeTab === 'control' && isAdminOrJefe ? allStats : stats}
-        />
+        {/* Chart - Solo mostrar en tab "Mis Comisiones" (no tiene sentido en vista consolidada) */}
+        {!(activeTab === 'control' && isAdminOrJefe) && (
+          <ComisionesChart
+            stats={stats}
+          />
+        )}
 
         {/* Tabla - cambiar según tab + props condicionales */}
         <ComisionesDesgloseMensual
