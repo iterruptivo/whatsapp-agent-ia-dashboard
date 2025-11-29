@@ -20,6 +20,7 @@ import {
   getComisionesByUsuario,
   getAllComisiones,
   getComisionStats,
+  getAllComisionStats,
   type Comision,
   type ComisionStats
 } from '@/lib/actions-comisiones';
@@ -27,8 +28,20 @@ import {
 export default function ComisionesPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const [activeTab, setActiveTab] = useState<'mis' | 'control'>('mis');
   const [comisiones, setComisiones] = useState<Comision[]>([]);
   const [stats, setStats] = useState<ComisionStats>({
+    total_generado: 0,
+    disponible: 0,
+    pagado: 0,
+    pendiente_inicial: 0,
+    count_total: 0,
+    count_disponible: 0,
+    count_pagado: 0,
+    count_pendiente: 0,
+  });
+  const [allComisiones, setAllComisiones] = useState<Comision[]>([]);
+  const [allStats, setAllStats] = useState<ComisionStats>({
     total_generado: 0,
     disponible: 0,
     pagado: 0,
@@ -46,13 +59,21 @@ export default function ComisionesPage() {
     setLoadingData(true);
 
     try {
-      // TEMPORAL FIX (Sesión 53): Todos los roles (admin/jefe/vendedor) ven solo SUS comisiones
-      // TODO: Restaurar vista consolidada para admin/jefe después de presentación
+      // SIEMPRE fetch de comisiones propias
       const userComisiones = await getComisionesByUsuario(user.id);
       const userStats = await getComisionStats(user.id);
 
       setComisiones(userComisiones);
       setStats(userStats);
+
+      // Admin/Jefe: TAMBIÉN fetch de todas las comisiones
+      if (user.rol === 'admin' || user.rol === 'jefe_ventas') {
+        const allCom = await getAllComisiones();
+        const allSt = await getAllComisionStats();
+
+        setAllComisiones(allCom);
+        setAllStats(allSt);
+      }
     } catch (error) {
       console.error('[COMISIONES PAGE] Error fetching data:', error);
     } finally {
@@ -87,24 +108,64 @@ export default function ComisionesPage() {
     return null;
   }
 
+  const isAdminOrJefe = user.rol === 'admin' || user.rol === 'jefe_ventas';
+
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
       {/* Header */}
       <DashboardHeader
-        title="Mis Comisiones"
-        subtitle="Tus comisiones generadas por ventas de locales"
+        title={activeTab === 'control' && isAdminOrJefe ? 'Control de Todas las Comisiones' : 'Mis Comisiones'}
+        subtitle={activeTab === 'control' && isAdminOrJefe ? 'Vista consolidada de comisiones de todos los vendedores' : 'Tus comisiones generadas por ventas de locales'}
       />
 
       {/* Content */}
       <div className="max-w-[1400px] mx-auto p-6">
-        <ComisionStatsCards stats={stats} />
-        <ComisionesChart stats={stats} />
+        {/* Tabs - Solo para admin y jefe_ventas */}
+        {isAdminOrJefe && (
+          <div className="flex gap-2 mb-6 border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('mis')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'mis'
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Mis Comisiones
+            </button>
+            <button
+              onClick={() => setActiveTab('control')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'control'
+                  ? 'border-b-2 border-primary text-primary'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Control de Todas
+            </button>
+          </div>
+        )}
+
+        {/* Stats Cards - cambiar según tab */}
+        <ComisionStatsCards
+          stats={activeTab === 'control' && isAdminOrJefe ? allStats : stats}
+        />
+
+        {/* Chart - cambiar según tab */}
+        <ComisionesChart
+          stats={activeTab === 'control' && isAdminOrJefe ? allStats : stats}
+        />
+
+        {/* Tabla - cambiar según tab + props condicionales */}
         <ComisionesDesgloseMensual
-          comisiones={comisiones}
+          comisiones={activeTab === 'control' && isAdminOrJefe ? allComisiones : comisiones}
           userRole={user.rol}
           userId={user.id}
           onUpdate={fetchData}
+          showVendedorColumn={activeTab === 'control' && isAdminOrJefe}
+          showVendedorFilter={activeTab === 'control' && isAdminOrJefe}
         />
+
         {/* TABLA ANTIGUA OCULTA - Funcionalidad migrada a ComisionesDesgloseMensual */}
         {/* <ComisionesTable
           comisiones={comisiones}

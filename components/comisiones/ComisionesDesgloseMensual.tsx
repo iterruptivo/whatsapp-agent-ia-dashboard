@@ -10,6 +10,8 @@ interface ComisionesDesgloseMensualProps {
   userRole: string;
   userId: string;
   onUpdate: () => void;
+  showVendedorColumn?: boolean;
+  showVendedorFilter?: boolean;
 }
 
 interface MonthGroup {
@@ -25,10 +27,18 @@ interface MonthGroup {
   montoPagada: number;
 }
 
-export default function ComisionesDesgloseMensual({ comisiones, userRole, userId, onUpdate }: ComisionesDesgloseMensualProps) {
+export default function ComisionesDesgloseMensual({
+  comisiones,
+  userRole,
+  userId,
+  onUpdate,
+  showVendedorColumn = false,
+  showVendedorFilter = false
+}: ComisionesDesgloseMensualProps) {
   // Estados
   const [filtroEstado, setFiltroEstado] = useState<string>('todos');
   const [filtroAnio, setFiltroAnio] = useState<string>('2025');
+  const [filtroVendedor, setFiltroVendedor] = useState<string>('todos');
   const [busqueda, setBusqueda] = useState<string>('');
   const [mesesVisibles, setMesesVisibles] = useState<number>(6);
   const [mesesExpandidos, setMesesExpandidos] = useState<Set<string>>(new Set());
@@ -117,10 +127,29 @@ export default function ComisionesDesgloseMensual({ comisiones, userRole, userId
     );
   };
 
+  // Obtener lista única de vendedores
+  const vendedoresUnicos = useMemo(() => {
+    if (!showVendedorFilter) return [];
+
+    const vendedores = new Map<string, string>();
+    comisiones.forEach(c => {
+      if (c.usuario_id && c.usuario_nombre) {
+        vendedores.set(c.usuario_id, c.usuario_nombre);
+      }
+    });
+
+    return Array.from(vendedores.entries()).map(([id, nombre]) => ({ id, nombre }));
+  }, [comisiones, showVendedorFilter]);
+
   // Agrupar comisiones por mes
   const comisionesPorMes = useMemo(() => {
     // 1. Filtrar comisiones
     let filtradas = comisiones;
+
+    // Filtro por vendedor (si aplica)
+    if (showVendedorFilter && filtroVendedor !== 'todos') {
+      filtradas = filtradas.filter(c => c.usuario_id === filtroVendedor);
+    }
 
     // Filtro por estado
     if (filtroEstado !== 'todos') {
@@ -186,7 +215,7 @@ export default function ComisionesDesgloseMensual({ comisiones, userRole, userId
     return Array.from(grupos.values()).sort((a, b) => {
       return b.monthKey.localeCompare(a.monthKey);
     });
-  }, [comisiones, filtroEstado, filtroAnio, busqueda]);
+  }, [comisiones, filtroEstado, filtroAnio, filtroVendedor, busqueda, showVendedorFilter]);
 
   // Expandir mes actual por defecto
   useEffect(() => {
@@ -257,7 +286,7 @@ export default function ComisionesDesgloseMensual({ comisiones, userRole, userId
       </div>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className={`grid grid-cols-1 ${showVendedorFilter ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4 mb-6`}>
         {/* Búsqueda */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -269,6 +298,23 @@ export default function ComisionesDesgloseMensual({ comisiones, userRole, userId
             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
         </div>
+
+        {/* Filtro Vendedor (condicional) */}
+        {showVendedorFilter && (
+          <div className="relative">
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <select
+              value={filtroVendedor}
+              onChange={(e) => setFiltroVendedor(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent appearance-none"
+            >
+              <option value="todos">Todos los vendedores</option>
+              {vendedoresUnicos.map(v => (
+                <option key={v.id} value={v.id}>{v.nombre}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Filtro Estado */}
         <div className="relative">
@@ -377,6 +423,11 @@ export default function ComisionesDesgloseMensual({ comisiones, userRole, userId
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Proyecto
                           </th>
+                          {showVendedorColumn && (
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                              Vendedor
+                            </th>
+                          )}
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Monto Venta
                           </th>
@@ -414,6 +465,11 @@ export default function ComisionesDesgloseMensual({ comisiones, userRole, userId
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
                               {comision.proyecto_nombre || 'N/A'}
                             </td>
+                            {showVendedorColumn && (
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                                {comision.usuario_nombre || 'N/A'}
+                              </td>
+                            )}
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
                               {formatMonto(comision.monto_venta)}
                             </td>

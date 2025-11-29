@@ -260,6 +260,114 @@ export async function getComisionStats(usuarioId: string): Promise<ComisionStats
   }
 }
 
+export async function getAllComisionStats(): Promise<ComisionStats> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options: any) {
+          cookieStore.set(name, value, options);
+        },
+        remove(name: string, options: any) {
+          cookieStore.set(name, '', options);
+        },
+      },
+    }
+  );
+
+  try {
+    // Validar que el usuario sea admin o jefe_ventas
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return {
+      total_generado: 0,
+      disponible: 0,
+      pagado: 0,
+      pendiente_inicial: 0,
+      count_total: 0,
+      count_disponible: 0,
+      count_pagado: 0,
+      count_pendiente: 0,
+    };
+
+    const { data: usuario } = await supabase
+      .from('usuarios')
+      .select('rol')
+      .eq('id', user.id)
+      .single();
+
+    if (!usuario || !['admin', 'jefe_ventas'].includes(usuario.rol)) {
+      return {
+        total_generado: 0,
+        disponible: 0,
+        pagado: 0,
+        pendiente_inicial: 0,
+        count_total: 0,
+        count_disponible: 0,
+        count_pagado: 0,
+        count_pendiente: 0,
+      };
+    }
+
+    // Fetch TODAS las comisiones (sin filtro por usuario)
+    const { data: comisiones } = await supabase
+      .from('comisiones')
+      .select('*');
+
+    if (!comisiones || comisiones.length === 0) {
+      return {
+        total_generado: 0,
+        disponible: 0,
+        pagado: 0,
+        pendiente_inicial: 0,
+        count_total: 0,
+        count_disponible: 0,
+        count_pagado: 0,
+        count_pendiente: 0,
+      };
+    }
+
+    // Calcular stats consolidados
+    const total_generado = comisiones.reduce((sum, c) => sum + c.monto_comision, 0);
+    const disponible = comisiones
+      .filter(c => c.estado === 'disponible')
+      .reduce((sum, c) => sum + c.monto_comision, 0);
+    const pagado = comisiones
+      .filter(c => c.estado === 'pagada')
+      .reduce((sum, c) => sum + c.monto_comision, 0);
+    const pendiente_inicial = comisiones
+      .filter(c => c.estado === 'pendiente_inicial')
+      .reduce((sum, c) => sum + c.monto_comision, 0);
+
+    return {
+      total_generado,
+      disponible,
+      pagado,
+      pendiente_inicial,
+      count_total: comisiones.length,
+      count_disponible: comisiones.filter(c => c.estado === 'disponible').length,
+      count_pagado: comisiones.filter(c => c.estado === 'pagada').length,
+      count_pendiente: comisiones.filter(c => c.estado === 'pendiente_inicial').length,
+    };
+  } catch (error) {
+    console.error('[ALL COMISIONES STATS] Error:', error);
+    return {
+      total_generado: 0,
+      disponible: 0,
+      pagado: 0,
+      pendiente_inicial: 0,
+      count_total: 0,
+      count_disponible: 0,
+      count_pagado: 0,
+      count_pendiente: 0,
+    };
+  }
+}
+
 export async function marcarComisionPagada(comisionId: string, adminId: string) {
   const cookieStore = await cookies();
   const supabase = createServerClient(

@@ -8,7 +8,7 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 28 Noviembre 2025
-**Sesión:** 58 - 📅 **Sistema Desglose Mensual de Comisiones**
+**Sesión:** 59 - 👥 **Sistema de Vista Dual para /comisiones (Tabs Admin/Jefe)**
 **Estado:** ⏳ **PENDING QA REVIEW**
 **Documentación:** Ver "Últimas 5 Sesiones" abajo
 
@@ -146,6 +146,180 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 59** (28 Nov) - 👥 ⏳ **Sistema de Vista Dual para /comisiones (Tabs Admin/Jefe)**
+**Feature:** Tabs "Mis Comisiones" / "Control de Todas" para admin y jefe_ventas
+**Problema resuelto:** Admin y jefe_ventas necesitan ver tanto sus comisiones como las de todo el equipo
+**Estado:** ⏳ **PENDING QA REVIEW**
+**QA Document:** `QA_TESTING_SESSION_59.md`
+
+**Implementación completa en 3 FASES:**
+
+**FASE 1: Backend (BackDev)**
+- Archivo: `lib/actions-comisiones.ts` (+82 líneas)
+- **Nueva función:** `getAllComisionStats()`
+  - Calcula stats consolidados de TODAS las comisiones (sin filtro por usuario)
+  - Validación: Solo admin y jefe_ventas pueden ejecutarla
+  - Retorna: `ComisionStats` con totales globales
+- Export agregado al módulo
+
+**FASE 2: Frontend - Page.tsx con Tabs (FrontDev)**
+- Archivo: `app/comisiones/page.tsx` (+60 líneas)
+
+**Cambios implementados:**
+
+1. **State para tabs:**
+   ```typescript
+   const [activeTab, setActiveTab] = useState<'mis' | 'control'>('mis');
+   ```
+
+2. **State para datos duales:**
+   - `comisiones` + `stats` (propias del usuario)
+   - `allComisiones` + `allStats` (todas las comisiones - solo admin/jefe)
+
+3. **Fetch dual en `fetchData()`:**
+   - SIEMPRE fetch de comisiones propias (todos los roles)
+   - Admin/Jefe: TAMBIÉN fetch de todas las comisiones (paralelo)
+   ```typescript
+   if (user.rol === 'admin' || user.rol === 'jefe_ventas') {
+     const allCom = await getAllComisiones();
+     const allSt = await getAllComisionStats();
+     setAllComisiones(allCom);
+     setAllStats(allSt);
+   }
+   ```
+
+4. **UI de tabs (solo admin/jefe):**
+   - Botón "Mis Comisiones" (default activo)
+   - Botón "Control de Todas"
+   - Border verde en tab activo (color primary)
+   - Vendedores NO ven tabs (vista simple)
+
+5. **Headers dinámicos:**
+   - Tab "Mis": "Mis Comisiones" / "Tus comisiones generadas por ventas de locales"
+   - Tab "Control": "Control de Todas las Comisiones" / "Vista consolidada de comisiones de todos los vendedores"
+
+6. **Renderizado condicional:**
+   - Stats Cards: Reciben `allStats` en tab "Control", `stats` en tab "Mis"
+   - Chart: Reciben `allStats` en tab "Control", `stats` en tab "Mis"
+   - Tabla: Recibe `allComisiones` en tab "Control", `comisiones` en tab "Mis"
+   - Props adicionales a tabla: `showVendedorColumn` y `showVendedorFilter` en tab "Control"
+
+**FASE 3: Frontend - Modificar ComisionesDesgloseMensual (FrontDev)**
+- Archivo: `components/comisiones/ComisionesDesgloseMensual.tsx` (+50 líneas)
+
+**Cambios implementados:**
+
+1. **Nuevas props opcionales:**
+   ```typescript
+   showVendedorColumn?: boolean;  // Default: false
+   showVendedorFilter?: boolean;  // Default: false
+   ```
+
+2. **State nuevo:**
+   ```typescript
+   const [filtroVendedor, setFiltroVendedor] = useState<string>('todos');
+   ```
+
+3. **Helper `vendedoresUnicos`:**
+   - Extrae lista única de vendedores (Map<id, nombre>)
+   - Solo se ejecuta si `showVendedorFilter === true`
+   - Retorna array de objetos `{ id, nombre }`
+
+4. **Lógica de filtrado:**
+   - Agregado filtro por vendedor (ANTES de otros filtros)
+   - Solo aplica si `showVendedorFilter === true` y `filtroVendedor !== 'todos'`
+   - Filtra por `comision.usuario_id === filtroVendedor`
+
+5. **Grid de filtros (barra superior):**
+   - **Sin filtro vendedor:** 3 columnas (búsqueda, estado, año)
+   - **Con filtro vendedor:** 4 columnas (búsqueda, vendedor, estado, año)
+   - Grid responsivo: `md:grid-cols-3` o `md:grid-cols-4`
+
+6. **Dropdown filtro vendedor:**
+   - Opción default: "Todos los vendedores"
+   - Opciones dinámicas generadas de `vendedoresUnicos`
+   - Icon Filter a la izquierda
+   - Styling consistente con otros dropdowns
+
+7. **Columna VENDEDOR en tabla (condicional):**
+   - **Header:** "Vendedor" (entre Proyecto y Monto Venta)
+   - **Body:** `{comision.usuario_nombre || 'N/A'}`
+   - Solo visible si `showVendedorColumn === true`
+   - Styling: `text-sm text-gray-700`
+
+**FLUJO COMPLETO (End-to-End):**
+
+**1. Vendedor/Vendedor Caseta:**
+- Abre `/comisiones`
+- NO ve tabs (vista simple)
+- Ve solo SUS comisiones
+- Tabla NO muestra columna VENDEDOR
+- Filtros NO incluyen dropdown vendedor
+- Comportamiento: IGUAL que antes
+
+**2. Admin - Tab "Mis Comisiones":**
+- Abre `/comisiones` (tab "Mis" activo por default)
+- Stats cards: Solo SUS totales
+- Chart: Solo SUS datos
+- Tabla: Solo SUS comisiones
+- NO ve columna VENDEDOR
+- NO ve filtro por vendedor
+- NO ve columna ACCIONES (solo en tab "Control")
+
+**3. Admin - Tab "Control de Todas":**
+- Click en tab "Control de Todas"
+- Stats cards: Totales consolidados de TODOS los vendedores
+- Chart: Datos consolidados
+- Tabla: TODAS las comisiones del sistema
+- VE columna VENDEDOR (con nombres)
+- VE filtro por vendedor (dropdown)
+- VE columna ACCIONES (botón "Marcar Pagada")
+- Puede filtrar por vendedor específico
+- Puede marcar comisiones como pagadas
+
+**4. Jefe Ventas - Tab "Mis Comisiones":**
+- Comportamiento IDÉNTICO a Admin (caso 2)
+
+**5. Jefe Ventas - Tab "Control de Todas":**
+- Stats consolidados: SÍ
+- Tabla completa con VENDEDOR: SÍ
+- Filtro por vendedor: SÍ
+- **Columna ACCIONES: NO** (solo admin puede marcar como pagadas)
+
+**Beneficios:**
+- ✅ Admin/jefe pueden ver tanto sus comisiones como las del equipo completo
+- ✅ Cambio de tab instantáneo (datos pre-cargados en mount)
+- ✅ Filtro por vendedor permite análisis rápido por persona
+- ✅ Vendedores mantienen vista simple sin cambios
+- ✅ RBAC correcto (solo admin marca como pagadas)
+- ✅ Componentes existentes intactos (backward compatible)
+
+**Testing pendiente (QADev):**
+- Ver `QA_TESTING_SESSION_59.md` para checklist completo (21 test cases)
+- **Test cases críticos:**
+  1. Vendedor no accede a "Control de Todas" (security)
+  2. Jefe no puede marcar como pagada (security)
+  3. Admin tab "Control" muestra todas las comisiones correctamente
+  4. Integración: Marcar pagada actualiza DB y stats
+
+**Próximos pasos (futuro):**
+- Persistir tab activo en localStorage (refresh mantiene tab)
+- Exportar vista consolidada a Excel (admin)
+- Dashboard de comisiones por vendedor (analytics)
+
+**Archivos modificados:**
+- lib/actions-comisiones.ts (+82 líneas)
+- app/comisiones/page.tsx (+60 líneas)
+- components/comisiones/ComisionesDesgloseMensual.tsx (+50 líneas)
+
+**Archivos nuevos:**
+- QA_TESTING_SESSION_59.md (checklist completo)
+
+**Líneas totales:** +192 líneas netas
+**Commit:** Pendiente (después de QA approval)
+
+---
 
 ### **Sesión 58** (28 Nov) - 📅 ⏳ **Sistema Desglose Mensual de Comisiones**
 **Feature:** Vista mensual accordion de comisiones con filtros inteligentes y lazy loading
