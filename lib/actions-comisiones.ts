@@ -58,28 +58,39 @@ export async function getComisionesByUsuario(usuarioId: string): Promise<Comisio
   );
 
   try {
+    // Fetch comisiones
     const { data: comisiones, error } = await supabase
       .from('comisiones')
-      .select(`
-        *,
-        local_codigo:locales(codigo),
-        proyecto_nombre:locales(proyectos(nombre)),
-        usuario_nombre:usuarios!comisiones_usuario_id_fkey(nombre)
-      `)
+      .select('*')
       .eq('usuario_id', usuarioId)
       .order('fecha_procesado', { ascending: false });
 
-    if (error) {
+    if (error || !comisiones) {
       console.error('[COMISIONES] Error:', error);
       return [];
     }
 
-    return (comisiones || []).map((c: any) => ({
-      ...c,
-      local_codigo: c.local_codigo?.codigo,
-      proyecto_nombre: c.proyecto_nombre?.nombre,
-      usuario_nombre: c.usuario_nombre?.nombre,
-    }));
+    // Fetch related data separately
+    const localIds = [...new Set(comisiones.map(c => c.local_id))];
+    const usuarioIds = [...new Set(comisiones.map(c => c.usuario_id))];
+
+    const [{ data: locales }, { data: usuarios }] = await Promise.all([
+      supabase.from('locales').select('id, codigo, proyectos(nombre)').in('id', localIds),
+      supabase.from('usuarios').select('id, nombre_completo').in('id', usuarioIds),
+    ]);
+
+    // Map comisiones with related data
+    return comisiones.map((c: any) => {
+      const local = locales?.find(l => l.id === c.local_id);
+      const usuario = usuarios?.find(u => u.id === c.usuario_id);
+
+      return {
+        ...c,
+        local_codigo: local?.codigo,
+        proyecto_nombre: local?.proyectos?.nombre,
+        usuario_nombre: usuario?.nombre_completo,
+      };
+    });
   } catch (error) {
     console.error('[COMISIONES] Error:', error);
     return [];
@@ -120,27 +131,38 @@ export async function getAllComisiones(): Promise<Comision[]> {
       return [];
     }
 
+    // Fetch comisiones
     const { data: comisiones, error } = await supabase
       .from('comisiones')
-      .select(`
-        *,
-        local_codigo:locales(codigo),
-        proyecto_nombre:locales(proyectos(nombre)),
-        usuario_nombre:usuarios!comisiones_usuario_id_fkey(nombre)
-      `)
-      .order('fecha_procesado', { ascending: false });
+      .select('*')
+      .order('fecha_procesado', { ascending: false});
 
-    if (error) {
+    if (error || !comisiones) {
       console.error('[COMISIONES] Error:', error);
       return [];
     }
 
-    return (comisiones || []).map((c: any) => ({
-      ...c,
-      local_codigo: c.local_codigo?.codigo,
-      proyecto_nombre: c.proyecto_nombre?.nombre,
-      usuario_nombre: c.usuario_nombre?.nombre,
-    }));
+    // Fetch related data separately
+    const localIds = [...new Set(comisiones.map(c => c.local_id))];
+    const usuarioIds = [...new Set(comisiones.map(c => c.usuario_id))];
+
+    const [{ data: locales }, { data: usuarios }] = await Promise.all([
+      supabase.from('locales').select('id, codigo, proyectos(nombre)').in('id', localIds),
+      supabase.from('usuarios').select('id, nombre_completo').in('id', usuarioIds),
+    ]);
+
+    // Map comisiones with related data
+    return comisiones.map((c: any) => {
+      const local = locales?.find(l => l.id === c.local_id);
+      const usuario = usuarios?.find(u => u.id === c.usuario_id);
+
+      return {
+        ...c,
+        local_codigo: local?.codigo,
+        proyecto_nombre: local?.proyectos?.nombre,
+        usuario_nombre: usuario?.nombre_completo,
+      };
+    });
   } catch (error) {
     console.error('[COMISIONES] Error:', error);
     return [];
