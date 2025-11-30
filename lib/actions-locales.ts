@@ -146,13 +146,30 @@ export async function updateLocalEstado(
         console.log('[NARANJA] ✅ Lead vinculado (historial ya guardado en updateLocalEstadoQuery)');
 
         // ============================================================================
+        // OBTENER VENDEDOR ASIGNADO AL LEAD (para trazabilidad de comisiones)
+        // ============================================================================
+        let vendedorAsignadoId: string | undefined;
+        if (finalLeadId) {
+          const { data: leadData } = await supabase
+            .from('leads')
+            .select('vendedor_asignado_id')
+            .eq('id', finalLeadId)
+            .single();
+
+          if (leadData?.vendedor_asignado_id) {
+            vendedorAsignadoId = leadData.vendedor_asignado_id;
+            console.log('[NARANJA] 📋 Vendedor asignado al lead:', vendedorAsignadoId);
+          }
+        }
+
+        // ============================================================================
         // REGISTRAR EN TABLA RELACIONAL locales_leads
         // ============================================================================
         const relationResult = await registerLocalLeadRelation(
           localId,
           telefono,
           finalLeadId,  // leadId existente o recién creado (puede ser undefined)
-          vendedorId,
+          vendedorAsignadoId,  // Vendedor asignado al lead (NO el usuario que confirma)
           usuarioId,
           montoSeparacion,
           montoVenta
