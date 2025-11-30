@@ -8,6 +8,7 @@ interface SplitComisionesModalProps {
   localId: string;
   localCodigo: string;
   montoVenta: number;
+  userRole: string;
   onClose: () => void;
 }
 
@@ -15,6 +16,7 @@ export default function SplitComisionesModal({
   localId,
   localCodigo,
   montoVenta,
+  userRole,
   onClose
 }: SplitComisionesModalProps) {
   const [comisiones, setComisiones] = useState<ComisionConTrazabilidad[]>([]);
@@ -65,12 +67,20 @@ export default function SplitComisionesModal({
     );
   };
 
-  const totalComisiones = comisiones.reduce((sum, c) => sum + parseFloat(c.monto_comision.toString()), 0);
+  // Filtrar comisiones según rol del usuario
+  // Vendedor/vendedor_caseta solo ven comisiones de fase "vendedor"
+  // Admin/jefe_ventas ven todas las comisiones
+  const isVendedorRole = userRole === 'vendedor' || userRole === 'vendedor_caseta';
+  const comisionesFiltradas = isVendedorRole
+    ? comisiones.filter(c => c.fase === 'vendedor')
+    : comisiones;
+
+  const totalComisiones = comisionesFiltradas.reduce((sum, c) => sum + parseFloat(c.monto_comision.toString()), 0);
   const porcentajeTotal = ((totalComisiones / montoVenta) * 100).toFixed(2);
 
-  // Detectar si hubo split
-  const vendedorComisiones = comisiones.filter(c => c.fase === 'vendedor');
-  const gestionComisiones = comisiones.filter(c => c.fase === 'gestion');
+  // Detectar si hubo split (usando comisiones filtradas)
+  const vendedorComisiones = comisionesFiltradas.filter(c => c.fase === 'vendedor');
+  const gestionComisiones = comisionesFiltradas.filter(c => c.fase === 'gestion');
   const hubSplitVendedor = vendedorComisiones.length > 1;
   const hubSplitGestion = gestionComisiones.length > 1;
 
@@ -100,7 +110,7 @@ export default function SplitComisionesModal({
             <div className="flex items-center justify-center py-12">
               <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
             </div>
-          ) : comisiones.length === 0 ? (
+          ) : comisionesFiltradas.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <Users className="h-12 w-12 mx-auto mb-3 text-gray-400" />
               <p>No se encontraron comisiones para este local</p>
@@ -116,7 +126,7 @@ export default function SplitComisionesModal({
               </div>
 
               {/* Trazabilidad */}
-              {comisiones[0] && (
+              {comisionesFiltradas[0] && (
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                   <h3 className="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
                     <Users className="h-4 w-4" />
@@ -125,19 +135,19 @@ export default function SplitComisionesModal({
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <span className="text-blue-700 font-medium">Lead asignado a:</span>
-                      <p className="text-blue-900">{comisiones[0].vendedor_lead_nombre || '-'}</p>
+                      <p className="text-blue-900">{comisionesFiltradas[0].vendedor_lead_nombre || '-'}</p>
                     </div>
                     <div>
                       <span className="text-blue-700 font-medium">Confirmó local (🟠):</span>
-                      <p className="text-blue-900">{comisiones[0].usuario_naranja_nombre || '-'}</p>
+                      <p className="text-blue-900">{comisionesFiltradas[0].usuario_naranja_nombre || '-'}</p>
                     </div>
                     <div>
                       <span className="text-blue-700 font-medium">Bloqueó local (🔴):</span>
-                      <p className="text-blue-900">{comisiones[0].usuario_rojo_nombre || '-'}</p>
+                      <p className="text-blue-900">{comisionesFiltradas[0].usuario_rojo_nombre || '-'}</p>
                     </div>
                     <div>
                       <span className="text-blue-700 font-medium">Procesó venta:</span>
-                      <p className="text-blue-900">{comisiones[0].usuario_procesado_nombre || '-'}</p>
+                      <p className="text-blue-900">{comisionesFiltradas[0].usuario_procesado_nombre || '-'}</p>
                     </div>
                   </div>
                 </div>
@@ -150,7 +160,7 @@ export default function SplitComisionesModal({
                   Distribución de Comisiones
                 </h3>
                 <div className="space-y-3">
-                  {comisiones.map((comision) => (
+                  {comisionesFiltradas.map((comision) => (
                     <div
                       key={comision.id}
                       className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
@@ -191,7 +201,7 @@ export default function SplitComisionesModal({
         </div>
 
         {/* Footer */}
-        {!loading && comisiones.length > 0 && (
+        {!loading && comisionesFiltradas.length > 0 && (
           <div className="border-t border-gray-200 bg-gray-50 px-6 py-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700">Total Comisiones:</span>

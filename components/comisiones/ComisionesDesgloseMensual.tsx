@@ -479,20 +479,16 @@ export default function ComisionesDesgloseMensual({
                               {getFaseBadge(comision.fase)}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-medium">
-                              {showVendedorColumn ? (
-                                <button
-                                  onClick={() => setModalData({
-                                    localId: comision.local_id,
-                                    codigo: comision.local_codigo || 'N/A',
-                                    monto: comision.monto_venta
-                                  })}
-                                  className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
-                                >
-                                  {comision.porcentaje_comision.toFixed(2)}%
-                                </button>
-                              ) : (
-                                <span className="text-gray-900">{comision.porcentaje_comision.toFixed(2)}%</span>
-                              )}
+                              <button
+                                onClick={() => setModalData({
+                                  localId: comision.local_id,
+                                  codigo: comision.local_codigo || 'N/A',
+                                  monto: comision.monto_venta
+                                })}
+                                className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                              >
+                                {comision.porcentaje_comision.toFixed(2)}%
+                              </button>
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-green-600">
                               {formatMonto(comision.monto_comision)}
@@ -584,6 +580,7 @@ export default function ComisionesDesgloseMensual({
           localId={modalData.localId}
           localCodigo={modalData.codigo}
           montoVenta={modalData.monto}
+          userRole={userRole}
           onClose={() => setModalData(null)}
         />
       )}
