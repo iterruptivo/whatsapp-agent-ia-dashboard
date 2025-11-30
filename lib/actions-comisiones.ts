@@ -502,7 +502,7 @@ export async function updatePorcentajeComision(
 // ============================================================================
 
 export interface ComisionConTrazabilidad extends Comision {
-  vendedor_asignado_nombre?: string;
+  vendedor_lead_nombre?: string;  // Vendedor asignado al lead (de locales_leads)
   usuario_naranja_nombre?: string;
   usuario_rojo_nombre?: string;
   usuario_procesado_nombre?: string;
@@ -544,7 +544,7 @@ export async function getComisionesByLocalId(localId: string): Promise<ComisionC
     // Fetch datos del local con trazabilidad
     const { data: local, error: localError } = await supabase
       .from('locales')
-      .select('vendedor_actual_id, usuario_paso_naranja_id, usuario_paso_rojo_id')
+      .select('usuario_paso_naranja_id, usuario_paso_rojo_id')
       .eq('id', localId)
       .single();
 
@@ -552,6 +552,15 @@ export async function getComisionesByLocalId(localId: string): Promise<ComisionC
       console.error('[GET LOCAL TRAZABILIDAD] Error:', localError);
       return comisiones; // Retornar comisiones sin trazabilidad
     }
+
+    // Fetch locales_leads para obtener vendedor asignado al lead
+    const { data: localLead } = await supabase
+      .from('locales_leads')
+      .select('vendedor_id')
+      .eq('local_id', localId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
     // Fetch control_pagos para obtener procesado_por
     const { data: controlPago } = await supabase
@@ -562,7 +571,7 @@ export async function getComisionesByLocalId(localId: string): Promise<ComisionC
 
     // Recopilar todos los IDs de usuarios únicos
     const usuarioIds = new Set<string>();
-    if (local.vendedor_actual_id) usuarioIds.add(local.vendedor_actual_id);
+    if (localLead?.vendedor_id) usuarioIds.add(localLead.vendedor_id);
     if (local.usuario_paso_naranja_id) usuarioIds.add(local.usuario_paso_naranja_id);
     if (local.usuario_paso_rojo_id) usuarioIds.add(local.usuario_paso_rojo_id);
     if (controlPago?.procesado_por) usuarioIds.add(controlPago.procesado_por);
@@ -580,7 +589,7 @@ export async function getComisionesByLocalId(localId: string): Promise<ComisionC
     return comisiones.map((c: any) => ({
       ...c,
       usuario_nombre: usuariosMap.get(c.usuario_id),
-      vendedor_asignado_nombre: local.vendedor_actual_id ? usuariosMap.get(local.vendedor_actual_id) : undefined,
+      vendedor_lead_nombre: localLead?.vendedor_id ? usuariosMap.get(localLead.vendedor_id) : undefined,
       usuario_naranja_nombre: local.usuario_paso_naranja_id ? usuariosMap.get(local.usuario_paso_naranja_id) : undefined,
       usuario_rojo_nombre: local.usuario_paso_rojo_id ? usuariosMap.get(local.usuario_paso_rojo_id) : undefined,
       usuario_procesado_nombre: controlPago?.procesado_por ? usuariosMap.get(controlPago.procesado_por) : undefined,

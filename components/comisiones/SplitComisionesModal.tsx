@@ -125,7 +125,7 @@ export default function SplitComisionesModal({
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
                       <span className="text-blue-700 font-medium">Lead asignado a:</span>
-                      <p className="text-blue-900">{comisiones[0].vendedor_asignado_nombre || '-'}</p>
+                      <p className="text-blue-900">{comisiones[0].vendedor_lead_nombre || '-'}</p>
                     </div>
                     <div>
                       <span className="text-blue-700 font-medium">Confirmó local (🟠):</span>
