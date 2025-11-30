@@ -468,17 +468,8 @@ export default function ComisionesDesgloseMensual({
                               {comision.proyecto_nombre || 'N/A'}
                             </td>
                             {showVendedorColumn && (
-                              <td className="px-4 py-3 whitespace-nowrap text-sm">
-                                <button
-                                  onClick={() => setModalData({
-                                    localId: comision.local_id,
-                                    codigo: comision.local_codigo || 'N/A',
-                                    monto: comision.monto_venta
-                                  })}
-                                  className="text-blue-600 hover:text-blue-800 hover:underline font-medium transition-colors"
-                                >
-                                  {comision.usuario_nombre || 'N/A'}
-                                </button>
+                              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
+                                {comision.usuario_nombre || 'N/A'}
                               </td>
                             )}
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
@@ -487,8 +478,21 @@ export default function ComisionesDesgloseMensual({
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
                               {getFaseBadge(comision.fase)}
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-medium text-gray-900">
-                              {comision.porcentaje_comision.toFixed(2)}%
+                            <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-medium">
+                              {showVendedorColumn ? (
+                                <button
+                                  onClick={() => setModalData({
+                                    localId: comision.local_id,
+                                    codigo: comision.local_codigo || 'N/A',
+                                    monto: comision.monto_venta
+                                  })}
+                                  className="text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                                >
+                                  {comision.porcentaje_comision.toFixed(2)}%
+                                </button>
+                              ) : (
+                                <span className="text-gray-900">{comision.porcentaje_comision.toFixed(2)}%</span>
+                              )}
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-bold text-green-600">
                               {formatMonto(comision.monto_comision)}
