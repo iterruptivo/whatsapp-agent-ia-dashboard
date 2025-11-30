@@ -571,25 +571,35 @@ export async function getComisionesByLocalId(localId: string): Promise<ComisionC
 
     // Recopilar todos los IDs de usuarios únicos
     const usuarioIds = new Set<string>();
-    if (localLead?.vendedor_id) usuarioIds.add(localLead.vendedor_id);
     if (local.usuario_paso_naranja_id) usuarioIds.add(local.usuario_paso_naranja_id);
     if (local.usuario_paso_rojo_id) usuarioIds.add(local.usuario_paso_rojo_id);
     if (controlPago?.procesado_por) usuarioIds.add(controlPago.procesado_por);
     comisiones.forEach(c => { if (c.usuario_id) usuarioIds.add(c.usuario_id); });
 
-    // Fetch nombres de todos los usuarios
+    // Fetch nombres de todos los usuarios (por id)
     const { data: usuarios } = await supabase
       .from('usuarios')
-      .select('id, nombre')
+      .select('id, nombre, vendedor_id')
       .in('id', Array.from(usuarioIds));
 
     const usuariosMap = new Map(usuarios?.map(u => [u.id, u.nombre]) || []);
+
+    // Buscar nombre del vendedor asignado al lead (por vendedor_id, no por id)
+    let vendedorLeadNombre: string | undefined;
+    if (localLead?.vendedor_id) {
+      const { data: usuarioVendedor } = await supabase
+        .from('usuarios')
+        .select('nombre')
+        .eq('vendedor_id', localLead.vendedor_id)
+        .single();
+      vendedorLeadNombre = usuarioVendedor?.nombre;
+    }
 
     // Mapear comisiones con trazabilidad
     return comisiones.map((c: any) => ({
       ...c,
       usuario_nombre: usuariosMap.get(c.usuario_id),
-      vendedor_lead_nombre: localLead?.vendedor_id ? usuariosMap.get(localLead.vendedor_id) : undefined,
+      vendedor_lead_nombre: vendedorLeadNombre,
       usuario_naranja_nombre: local.usuario_paso_naranja_id ? usuariosMap.get(local.usuario_paso_naranja_id) : undefined,
       usuario_rojo_nombre: local.usuario_paso_rojo_id ? usuariosMap.get(local.usuario_paso_rojo_id) : undefined,
       usuario_procesado_nombre: controlPago?.procesado_por ? usuariosMap.get(controlPago.procesado_por) : undefined,
