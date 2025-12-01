@@ -257,8 +257,9 @@ export default function FinanciamientoModal({
     }
   };
 
-  // Fecha mínima (hoy)
-  const fechaMinima = new Date().toISOString().split('T')[0];
+  // Fecha mínima (hoy) - usar métodos locales para evitar bug de timezone
+  const hoy = new Date();
+  const fechaMinima = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
