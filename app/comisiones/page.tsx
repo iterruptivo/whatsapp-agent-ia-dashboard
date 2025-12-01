@@ -154,7 +154,7 @@ export default function ComisionesPage() {
         {/* Chart - Solo mostrar en tab "Mis Comisiones" (no tiene sentido en vista consolidada) */}
         {!(activeTab === 'control' && isAdminOrJefe) && (
           <ComisionesChart
-            stats={stats}
+            comisiones={comisiones}
           />
         )}
 

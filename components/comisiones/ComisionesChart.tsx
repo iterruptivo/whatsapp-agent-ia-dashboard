@@ -1,30 +1,71 @@
 'use client';
 
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import type { ComisionStats } from '@/lib/actions-comisiones';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import type { Comision } from '@/lib/actions-comisiones';
 
 interface ComisionesChartProps {
-  stats: ComisionStats;
+  comisiones: Comision[];
 }
 
-export default function ComisionesChart({ stats }: ComisionesChartProps) {
-  // TEMPORAL: Datos mockeados para presentación (Sesión 53)
-  // Muestra 5 meses atrás + mes actual + 6 meses adelante
-  // Solo mes actual tiene valor real (total_generado), resto en 0
-  // TODO: Implementar lógica real de datos por mes después de presentación
-  const currentDate = new Date();
+// Determinar el mes de una comisión según su estado (lógica híbrida de agrupación)
+function getMesComision(comision: Comision): string {
+  let fechaStr: string;
+
+  if (comision.estado === 'pagada' && comision.fecha_pago_comision) {
+    fechaStr = comision.fecha_pago_comision;
+  } else if (comision.estado === 'disponible' && comision.fecha_disponible) {
+    fechaStr = comision.fecha_disponible;
+  } else {
+    fechaStr = comision.fecha_procesado;
+  }
+
+  // Parseo manual para evitar problemas de timezone
+  const [year, month] = fechaStr.split('-').map(Number);
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+export default function ComisionesChart({ comisiones }: ComisionesChartProps) {
   const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
+  // Agrupar comisiones por mes y calcular totales por estado
+  const datosPorMes = new Map<string, { disponible: number; pagado: number; pendiente: number }>();
+
+  comisiones.forEach(comision => {
+    const mesKey = getMesComision(comision);
+
+    if (!datosPorMes.has(mesKey)) {
+      datosPorMes.set(mesKey, { disponible: 0, pagado: 0, pendiente: 0 });
+    }
+
+    const datos = datosPorMes.get(mesKey)!;
+
+    if (comision.estado === 'disponible') {
+      datos.disponible += comision.monto_comision;
+    } else if (comision.estado === 'pagada') {
+      datos.pagado += comision.monto_comision;
+    } else if (comision.estado === 'pendiente_inicial') {
+      datos.pendiente += comision.monto_comision;
+    }
+  });
+
   // Generar array de 12 meses (5 atrás + actual + 6 adelante)
+  const currentDate = new Date();
   const chartData = [];
+
   for (let i = -5; i <= 6; i++) {
     const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + i, 1);
-    const month = monthNames[date.getMonth()];
     const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const mesKey = `${year}-${String(month).padStart(2, '0')}`;
+    const mesLabel = `${monthNames[date.getMonth()]} ${year}`;
+
+    const datos = datosPorMes.get(mesKey) || { disponible: 0, pagado: 0, pendiente: 0 };
 
     chartData.push({
-      mes: `${month} ${year}`,
-      monto: i === 0 ? stats.total_generado : 0, // Solo mes actual (i=0) tiene valor
+      mes: mesLabel,
+      disponible: datos.disponible,
+      pagado: datos.pagado,
+      pendiente: datos.pendiente,
     });
   }
 
@@ -56,7 +97,25 @@ export default function ComisionesChart({ stats }: ComisionesChartProps) {
               borderRadius: '0.375rem',
             }}
           />
-          <Bar dataKey="monto" fill="#1b967a" radius={[8, 8, 0, 0]} />
+          <Legend />
+          <Bar
+            dataKey="disponible"
+            name="Disponible"
+            fill="#10b981"
+            radius={[4, 4, 0, 0]}
+          />
+          <Bar
+            dataKey="pagado"
+            name="Pagado"
+            fill="#8b5cf6"
+            radius={[4, 4, 0, 0]}
+          />
+          <Bar
+            dataKey="pendiente"
+            name="Pendiente Inicial"
+            fill="#f59e0b"
+            radius={[4, 4, 0, 0]}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>
