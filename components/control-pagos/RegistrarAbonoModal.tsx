@@ -162,6 +162,7 @@ export default function RegistrarAbonoModal({
                   type="number"
                   value={monto}
                   onChange={(e) => setMonto(e.target.value)}
+                  onWheel={(e) => e.currentTarget.blur()}
                   step="0.01"
                   min="0.01"
                   required

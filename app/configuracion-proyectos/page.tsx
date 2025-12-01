@@ -600,6 +600,7 @@ export default function ConfiguracionProyectos() {
                               id={`tea-${proyecto.id}`}
                               value={data.tea}
                               onChange={(e) => updateFormData(proyecto.id, 'tea', e.target.value)}
+                              onWheel={(e) => e.currentTarget.blur()}
                               placeholder="Ej: 18.5"
                               min="0.01"
                               max="100"
@@ -695,6 +696,7 @@ export default function ConfiguracionProyectos() {
                                 handleAgregarPorcentaje(proyecto.id);
                               }
                             }}
+                            onWheel={(e) => e.currentTarget.blur()}
                             placeholder="Ej: 30"
                             min="0.01"
                             max="100"
@@ -773,6 +775,7 @@ export default function ConfiguracionProyectos() {
                                   handleAgregarCuotaSinInteres(proyecto.id);
                                 }
                               }}
+                              onWheel={(e) => e.currentTarget.blur()}
                               placeholder="Ej: 12"
                               min="1"
                               step="1"
@@ -869,6 +872,7 @@ export default function ConfiguracionProyectos() {
                                   handleAgregarCuotaConInteres(proyecto.id);
                                 }
                               }}
+                              onWheel={(e) => e.currentTarget.blur()}
                               placeholder="Ej: 36"
                               min="1"
                               step="1"
@@ -1051,6 +1055,7 @@ export default function ConfiguracionProyectos() {
                                             type="number"
                                             value={data.nuevaComision_porcentaje}
                                             onChange={(e) => updateFormData(proyecto.id, 'nuevaComision_porcentaje', e.target.value)}
+                                            onWheel={(e) => e.currentTarget.blur()}
                                             placeholder="10.5"
                                             min="0.01"
                                             max="100"

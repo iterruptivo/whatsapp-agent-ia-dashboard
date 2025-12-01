@@ -122,6 +122,7 @@ export default function LocalesFilters({
             onChange={(e) =>
               onMetrajeMinChange(e.target.value ? parseFloat(e.target.value) : undefined)
             }
+            onWheel={(e) => e.currentTarget.blur()}
             placeholder="Ej: 4.0"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           />
@@ -140,6 +141,7 @@ export default function LocalesFilters({
             onChange={(e) =>
               onMetrajeMaxChange(e.target.value ? parseFloat(e.target.value) : undefined)
             }
+            onWheel={(e) => e.currentTarget.blur()}
             placeholder="Ej: 10.0"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
           />

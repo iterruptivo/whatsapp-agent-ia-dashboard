@@ -320,6 +320,7 @@ export default function ComentarioNaranjaModal({
                   setMontoSeparacion(e.target.value);
                   setError('');
                 }}
+                onWheel={(e) => e.currentTarget.blur()}
                 placeholder="Ej: 5000.00"
                 className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${
                   error && (!montoSeparacion.trim() || parseFloat(montoSeparacion) <= 0)
@@ -357,6 +358,7 @@ export default function ComentarioNaranjaModal({
                   setMontoVenta(e.target.value);
                   setError('');
                 }}
+                onWheel={(e) => e.currentTarget.blur()}
                 placeholder="Ej: 150000.00"
                 className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${
                   error && (!montoVenta.trim() || parseFloat(montoVenta) <= 0)

@@ -351,6 +351,7 @@ export default function FinanciamientoModal({
                   setPorcentajeInicial(val);
                   setCalendarioCuotas([]); // Reset calendario
                 }}
+                onWheel={(e) => e.currentTarget.blur()}
                 className="w-24 px-3 py-2 border border-orange-300 rounded-lg text-lg font-bold text-orange-900 focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none"
                 placeholder="%"
               />
@@ -489,6 +490,7 @@ export default function FinanciamientoModal({
                       setCalendarioCuotas([]);
                     }}
                     onFocus={() => setUsarCuotaPersonalizada(true)}
+                    onWheel={(e) => e.currentTarget.blur()}
                     placeholder="Ej: 24"
                     className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   />
@@ -519,6 +521,7 @@ export default function FinanciamientoModal({
                         setTeaProyecto(val);
                         setCalendarioCuotas([]);
                       }}
+                      onWheel={(e) => e.currentTarget.blur()}
                       className="w-20 px-3 py-2 border border-blue-300 rounded-lg text-lg font-bold text-blue-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                       placeholder="%"
                     />
@@ -586,6 +589,7 @@ export default function FinanciamientoModal({
                       setCalendarioCuotas([]);
                     }}
                     onFocus={() => setUsarCuotaPersonalizada(true)}
+                    onWheel={(e) => e.currentTarget.blur()}
                     placeholder="Ej: 8"
                     className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   />

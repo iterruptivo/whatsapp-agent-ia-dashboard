@@ -313,6 +313,7 @@ export default function DatosRegistroVentaModal({
                     setMontoSeparacion(e.target.value);
                     setError(null);
                   }}
+                  onWheel={(e) => e.currentTarget.blur()}
                   placeholder="Ej: 5000.00"
                   className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${
                     error && !montoSeparacionValido
@@ -350,6 +351,7 @@ export default function DatosRegistroVentaModal({
                     setMontoVenta(e.target.value);
                     setError(null);
                   }}
+                  onWheel={(e) => e.currentTarget.blur()}
                   placeholder="Ej: 45000.00"
                   className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${
                     error && !montoVentaValido
