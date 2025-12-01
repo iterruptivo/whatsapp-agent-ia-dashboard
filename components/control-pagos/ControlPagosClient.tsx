@@ -12,6 +12,7 @@ import { useState } from 'react';
 import type { ControlPago } from '@/lib/actions-control-pagos';
 import { FileText, Calendar, Eye } from 'lucide-react';
 import PagosPanel from './PagosPanel';
+import PrecioComparativoModal from './PrecioComparativoModal';
 
 interface ControlPagosClientProps {
   initialData: ControlPago[];
@@ -20,6 +21,13 @@ interface ControlPagosClientProps {
 export default function ControlPagosClient({ initialData }: ControlPagosClientProps) {
   const [controlPagos] = useState<ControlPago[]>(initialData);
   const [pagosPanel, setPagosPanel] = useState<{
+    isOpen: boolean;
+    controlPago: ControlPago | null;
+  }>({
+    isOpen: false,
+    controlPago: null,
+  });
+  const [precioModal, setPrecioModal] = useState<{
     isOpen: boolean;
     controlPago: ControlPago | null;
   }>({
@@ -125,13 +133,13 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
 
                   {/* Precio Base */}
                   <td className="px-4 py-3 text-right">
-                    {cp.precio_base ? (
-                      <span className="text-sm font-medium text-gray-700">
-                        {formatMonto(cp.precio_base)}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-gray-400">-</span>
-                    )}
+                    <button
+                      onClick={() => setPrecioModal({ isOpen: true, controlPago: cp })}
+                      title="Ver comparativo de precios"
+                      className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                    >
+                      {cp.precio_base ? formatMonto(cp.precio_base) : '-'}
+                    </button>
                   </td>
 
                   {/* Monto Total */}
@@ -217,6 +225,18 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
         controlPago={pagosPanel.controlPago}
         onClose={() => setPagosPanel({ isOpen: false, controlPago: null })}
       />
+
+      {precioModal.controlPago && (
+        <PrecioComparativoModal
+          isOpen={precioModal.isOpen}
+          onClose={() => setPrecioModal({ isOpen: false, controlPago: null })}
+          codigoLocal={precioModal.controlPago.codigo_local}
+          metraje={precioModal.controlPago.metraje}
+          cliente={precioModal.controlPago.lead_nombre}
+          precioBase={precioModal.controlPago.precio_base}
+          montoVenta={precioModal.controlPago.monto_venta}
+        />
+      )}
     </div>
   );
 }
