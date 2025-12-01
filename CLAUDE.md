@@ -7,9 +7,9 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 28 Noviembre 2025
-**Sesión:** 59 - 👥 **Sistema de Vista Dual para /comisiones (Tabs Admin/Jefe)**
-**Estado:** ⏳ **PENDING QA REVIEW**
+**Fecha:** 30 Noviembre 2025
+**Sesión:** 63 - 🛠️ **Múltiples mejoras UX + Fix timezone**
+**Estado:** ✅ **DEPLOYED TO STAGING**
 **Documentación:** Ver "Últimas 5 Sesiones" abajo
 
 ---
@@ -85,7 +85,7 @@ Documentación cronológica completa de todas las sesiones.
   - Búsqueda Exacta + Import Manual (31)
   - Actualización n8n Callao (32)
 
-- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-57
+- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-62
   - Fix Límite 1000 Leads (33-33C) ✅
   - Emergency Rollback (35B) 🔴
   - Middleware Security (36) ✅
@@ -99,6 +99,11 @@ Documentación cronológica completa de todas las sesiones.
   - **Modal Comentario Obligatorio NARANJA (48C)** ✅
   - **Validación Teléfono Por Proyecto + Precio Base Import (56)** ✅
   - **Dashboard Admin UX + Horizontal Bar Chart UTM (57)** ✅
+  - **Sistema Desglose Mensual Comisiones (58)** ✅
+  - **Vista Dual Comisiones Tabs Admin/Jefe (59)** ✅
+  - **🔐 RLS Policy + Modal Trazabilidad Vendedores (61)** ✅
+  - **🐛 Fix Trigger Cascade Comisiones (62)** ✅
+  - **🛠️ Múltiples mejoras UX + Fix timezone (63)** ✅
 
 ---
 
@@ -146,6 +151,278 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 63** (30 Nov) - 🛠️ ✅ **Múltiples mejoras UX + Fix timezone**
+**Tipo:** Mejoras de UX + Fixes
+**Estado:** ✅ **DEPLOYED TO STAGING**
+
+**Fixes implementados:**
+
+| Fix | Descripción | Commit |
+|-----|-------------|--------|
+| Timezone fecha pago | `new Date().toISOString()` convertía a UTC causando salto de día | `599d6c0` |
+| Botón Marcar Pagada | Dropdown se cortaba al final de tabla → botón directo | `77d430a` |
+| Limpieza teléfonos | Import Excel ahora limpia +, espacios, guiones | `704c871` |
+
+**Features implementados:**
+
+| Feature | Descripción | Commit |
+|---------|-------------|--------|
+| Gráfico 3 barras | Chart comisiones muestra Disponible/Pagado/Pendiente por mes | `80aa914` |
+| Modal comparativo | Click en Precio Base abre modal con barras comparativas | `a5226f0` |
+| Tooltip personalizado | Componente reutilizable con animación y flecha | `5724901` |
+
+**Archivos nuevos:**
+- `components/control-pagos/PrecioComparativoModal.tsx`
+- `components/shared/Tooltip.tsx`
+
+**Archivos modificados:**
+- `components/locales/FinanciamientoModal.tsx` - Fix timezone
+- `components/comisiones/ComisionesChart.tsx` - 3 barras agrupadas
+- `components/comisiones/ComisionesDesgloseMensual.tsx` - Botón directo
+- `components/leads/LeadImportModal.tsx` - Limpieza teléfonos
+- `components/control-pagos/ControlPagosClient.tsx` - Modal + Tooltip
+- `app/globals.css` - Animación fade-in
+
+**Ver detalles →** [Sesiones Noviembre](docs/sesiones/2025-11-noviembre.md#sesión-63---30-noviembre-2025)
+
+---
+
+### **Sesión 62** (30 Nov) - 🐛 ✅ **Fix Trigger Comisiones: PostgreSQL Cascade Issue**
+**Tipo:** Bug crítico - Análisis + Fix permanente
+**Problema reportado:** Al completar pago inicial de 3 locales (PRUEBA-11, PRUEBA-14, PRUEBA-15), solo PRUEBA-11 pasó comisiones a "Disponible"
+**Estado:** ✅ **DEPLOYED & VERIFIED**
+
+**Síntomas del bug (iniciales):**
+- PRUEBA-11: Inicial completada ($4,250) → Comisiones en "Disponible" ✅
+- PRUEBA-14: Inicial completada ($4,000) → Comisiones en "Pendiente" ❌
+- PRUEBA-15: Inicial completada ($4,000) → Comisiones en "Pendiente" ❌
+
+**Root Cause Identificado: PostgreSQL Trigger Cascade Issue**
+
+**Hipótesis inicial descartada:** Precisión decimal (NO era el problema)
+- Los montos eran exactos (diferencia = 0.00)
+- Estado de `pagos_local` era `completado` en todos los casos
+
+**Causa raíz real: Triggers anidados no se disparan consistentemente**
+
+```
+FLUJO PROBLEMÁTICO:
+INSERT en abonos_pago
+↓
+TRIGGER 1: update_monto_abonado_and_estado() [AFTER INSERT on abonos_pago]
+  → UPDATE pagos_local SET estado = 'completado'
+  ↓
+  TRIGGER 2: actualizar_comisiones_inicial_pagado() [AFTER UPDATE on pagos_local]
+  → ⚠️ NO SE DISPARABA CONSISTENTEMENTE (trigger cascade issue)
+```
+
+**Patrón del bug:**
+- PRUEBA-11 tenía **2 abonos**: `pendiente` → `parcial` → `completado` ✅
+- PRUEBA-14/15 tenían **1 abono**: `pendiente` → `completado` ❌
+
+Con 2 abonos, el segundo UPDATE disparaba el trigger correctamente.
+Con 1 abono, el UPDATE dentro del trigger 1 no disparaba el trigger 2.
+
+**Solución implementada: Integrar lógica en función única**
+
+En lugar de depender del trigger cascade, se movió la lógica de actualización de comisiones directamente a `update_monto_abonado_and_estado()`:
+
+```sql
+CREATE OR REPLACE FUNCTION update_monto_abonado_and_estado()
+RETURNS TRIGGER AS $$
+DECLARE
+  pago_record RECORD;
+  total_abonado NUMERIC;
+  nuevo_estado VARCHAR(20);
+BEGIN
+  SELECT * INTO pago_record FROM pagos_local WHERE id = NEW.pago_id;
+
+  SELECT COALESCE(SUM(monto), 0) INTO total_abonado
+  FROM abonos_pago WHERE pago_id = NEW.pago_id;
+
+  nuevo_estado := CASE
+    WHEN total_abonado >= pago_record.monto_esperado THEN 'completado'
+    WHEN total_abonado > 0 AND total_abonado < pago_record.monto_esperado THEN 'parcial'
+    ELSE 'pendiente'
+  END;
+
+  UPDATE pagos_local
+  SET monto_abonado = total_abonado, estado = nuevo_estado, updated_at = NOW()
+  WHERE id = NEW.pago_id;
+
+  -- NUEVO: Actualizar comisiones directamente si inicial se completa
+  IF pago_record.tipo = 'inicial'
+     AND nuevo_estado = 'completado'
+     AND pago_record.estado != 'completado' THEN
+    UPDATE comisiones
+    SET estado = 'disponible', fecha_disponible = NOW()
+    WHERE control_pago_id = pago_record.control_pago_id
+      AND estado = 'pendiente_inicial';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Fix temporal aplicado a datos existentes:**
+```sql
+UPDATE comisiones
+SET estado = 'disponible', fecha_disponible = NOW()
+WHERE control_pago_id IN (
+  '8c2dfdd5-7f16-47f0-8c29-b374e02afd03', -- PRUEBA-14
+  '92a450ea-4748-4073-91a4-7bf58b24bc2c'  -- PRUEBA-15
+)
+AND estado = 'pendiente_inicial';
+```
+
+**Testing realizado:**
+
+| Escenario | Local | Resultado |
+|-----------|-------|-----------|
+| Pago único (100%) | PRUEBA-12 | ✅ Comisiones → disponible |
+| Pago parcial + final | PRUEBA-10 | ✅ Comisiones → disponible |
+| Verificación datos anteriores | PRUEBA-11/14/15 | ✅ Todas en disponible |
+
+**Estado final verificado:**
+- 19 comisiones totales ahora en estado `disponible`
+- `fecha_disponible` poblada correctamente
+- Sistema funcionando para pagos únicos y parciales
+
+**Bug secundario investigado: "Usuario equivocado en trazabilidad"**
+- Usuario reportó que "Bloqueó local (🔴)" mostraba admin en vez de jefe_ventas
+- Investigación de `locales_historial` confirmó que admin (gerente) SÍ realizó las acciones
+- NO era bug - el usuario había confundido quién ejecutó las acciones
+- Trazabilidad funcionando correctamente
+
+**Archivos modificados:**
+- `supabase/migrations/20251123_create_pagos_system.sql` - Función actualizada en Supabase directamente
+
+**Lecciones aprendidas:**
+- **PostgreSQL trigger cascades** no son confiables para lógica crítica de negocio
+- Integrar lógica relacionada en la misma función es más robusto
+- Siempre probar con **diferentes patrones de datos** (1 abono vs múltiples)
+- Verificar historial antes de asumir bugs de trazabilidad
+
+---
+
+### **Sesión 61** (30 Nov) - 🔐 ✅ **RLS Policy + Modal Trazabilidad para Vendedores**
+**Feature:** Permitir a vendedores ver comisiones de otros vendedores en el modal de trazabilidad
+**Problema resuelto:** Vendedores solo veían SUS comisiones en el modal, no las de otros participantes del mismo local
+**Estado:** ✅ **DEPLOYED & TESTED**
+
+**Contexto del problema:**
+- En la página `/comisiones`, cuando un vendedor hacía click en "% COM" para ver el desglose
+- El modal "Desglose de Comisiones" solo mostraba SU comisión
+- No podía ver las comisiones de otros vendedores que participaron en el mismo local
+- Ejemplo: Local PRUEBA-11 con Leo D Leon y Alonso → Leo solo veía su comisión, no la de Alonso
+
+**Root Cause:**
+- RLS policy original solo permitía ver comisiones donde `usuario_id = auth.uid()`
+- No contemplaba el caso de ver comisiones de locales donde el usuario participó
+
+**Solución implementada en 3 FASES:**
+
+**FASE 1: Mover trigger del modal (Frontend)**
+- Archivo: `components/comisiones/ComisionesDesgloseMensual.tsx`
+- Cambio: Click en columna "% COM" abre el modal (antes era columna vendedor)
+- El porcentaje ahora es clickeable con estilo `text-blue-600 hover:underline`
+
+**FASE 2: Habilitar modal para todos los roles (Frontend)**
+- Archivo: `components/comisiones/SplitComisionesModal.tsx`
+- Agregada prop `userRole` para filtrar comisiones por fase
+- Vendedor/vendedor_caseta solo ven fase "vendedor" (no "gestión")
+- Admin/jefe_ventas ven todas las fases
+
+**FASE 3: Nueva RLS Policy (Database)**
+- **Policy anterior:**
+```sql
+CREATE POLICY "Usuarios pueden ver sus propias comisiones" ON comisiones
+FOR SELECT TO authenticated
+USING (
+  (usuario_id = auth.uid())
+  OR
+  (EXISTS (SELECT 1 FROM usuarios WHERE usuarios.id = auth.uid() AND usuarios.rol IN ('admin', 'jefe_ventas')))
+);
+```
+
+- **Policy nueva:**
+```sql
+CREATE POLICY "Usuarios pueden ver comisiones de locales donde participaron" ON comisiones
+FOR SELECT TO authenticated
+USING (
+  -- Admin y jefe_ventas ven TODO
+  (EXISTS (SELECT 1 FROM usuarios WHERE usuarios.id = auth.uid() AND usuarios.rol IN ('admin', 'jefe_ventas')))
+  OR
+  -- Usuario ve sus propias comisiones
+  (usuario_id = auth.uid())
+  OR
+  -- Usuario confirmó local NARANJA
+  (local_id IN (SELECT l.id FROM locales l WHERE l.usuario_paso_naranja_id = auth.uid()))
+  OR
+  -- Usuario es vendedor asignado al lead (via locales_leads)
+  (local_id IN (
+    SELECT ll.local_id
+    FROM locales_leads ll
+    INNER JOIN usuarios u ON u.vendedor_id = ll.vendedor_id
+    WHERE u.id = auth.uid()
+  ))
+);
+```
+
+**Análisis técnico de la RLS:**
+
+| Caso | ¿Cubierto? | Cómo |
+|------|------------|------|
+| Admin/Jefe ve todo | ✅ | `EXISTS` en tabla `usuarios` |
+| Usuario ve SUS comisiones | ✅ | `usuario_id = auth.uid()` |
+| "Confirmó local (🟠)" | ✅ | `locales.usuario_paso_naranja_id = auth.uid()` |
+| "Lead asignado a" | ✅ | JOIN `locales_leads` → `usuarios` donde `usuarios.id = auth.uid()` |
+
+**¿Por qué NO hay recursión?**
+- La policy de `comisiones` consulta: `usuarios`, `locales`, `locales_leads`
+- Ninguna consulta la tabla `comisiones` dentro de su propia policy
+- Esto evita el error `42P17: infinite recursion detected`
+
+**Intentos fallidos documentados:**
+1. **Service role key bypass** - Error: `supabaseKey is required` (no disponible en client-side)
+2. **Subquery en misma tabla** - Error: `42P17: infinite recursion detected`
+
+**Beneficios:**
+- ✅ Vendedores ven comisiones de todos los participantes en el modal
+- ✅ Tabla principal sigue mostrando solo SUS comisiones (sin cambio)
+- ✅ Filtro por fase funciona (vendedores no ven fase "gestión")
+- ✅ No rompe funcionalidad existente de admin/jefe
+- ✅ Performance OK (queries usan índices existentes)
+
+**SQL de rollback (backup):**
+```sql
+DROP POLICY IF EXISTS "Usuarios pueden ver comisiones de locales donde participaron" ON comisiones;
+
+CREATE POLICY "Usuarios pueden ver sus propias comisiones" ON comisiones
+FOR SELECT TO authenticated
+USING (
+  (usuario_id = auth.uid())
+  OR
+  (EXISTS (SELECT 1 FROM usuarios WHERE usuarios.id = auth.uid() AND usuarios.rol IN ('admin', 'jefe_ventas')))
+);
+```
+
+**Archivos modificados:**
+- `components/comisiones/ComisionesDesgloseMensual.tsx` - Click en % COM abre modal
+- `components/comisiones/SplitComisionesModal.tsx` - Filtro por userRole
+- Supabase RLS Policy en tabla `comisiones`
+
+**Testing realizado:**
+- ✅ Vendedor Leo D Leon puede ver comisiones de Alonso en mismo local
+- ✅ Vendedor solo ve fase "vendedor" en modal
+- ✅ Admin ve todas las fases en modal
+- ✅ Tabla principal sin cambios (cada quien ve solo sus comisiones)
+
+**Commit:** Pendiente (cambios en frontend listos, RLS ya aplicada en Supabase)
+
+---
 
 ### **Sesión 59** (28 Nov) - 👥 ⏳ **Sistema de Vista Dual para /comisiones (Tabs Admin/Jefe)**
 **Feature:** Tabs "Mis Comisiones" / "Control de Todas" para admin y jefe_ventas
@@ -1090,6 +1367,12 @@ INCORRECTO (intentado en 53):
 - **SELECT policies restrictivas pueden bloquear UPDATE/DELETE** - Si SELECT policy usa `activo = true`, no podrá UPDATE a `activo = false`
 - **Server Actions sin auth context fallan RLS** - NUNCA usar browser client en Server Actions, usar createServerClient con cookies
 - **Service role key bypass es anti-patrón** - Evitar supabaseAdmin, siempre buscar solución con RLS correcto
+- **RLS recursión infinita (error 42P17)** - NUNCA hacer subquery a la misma tabla dentro de su policy (ej: `SELECT FROM comisiones WHERE... IN (SELECT FROM comisiones)` causa recursión). Usar tablas diferentes como `locales`, `usuarios`, `locales_leads` para las condiciones
+
+### **PostgreSQL Triggers**
+- **Trigger cascades NO son confiables** - Un UPDATE dentro de un trigger NO garantiza disparar otro trigger AFTER UPDATE en la misma transacción
+- **Integrar lógica relacionada en la misma función** es más robusto que depender de triggers encadenados
+- **Probar con diferentes patrones de datos** - Un bug puede manifestarse solo con 1 registro pero funcionar con 2+ (ej: pago único vs pagos parciales)
 
 ### **Desarrollo**
 - Rollback es herramienta válida (no temer usarlo)

@@ -20,6 +20,10 @@
 - [Sesión 41B (10 Nov)](#sesión-41b---10-noviembre-2025) - ✅ Columna "Fecha": created_at
 - [Sesión 42 (10 Nov)](#sesión-42---10-noviembre-2025) - ✅ FIX CRÍTICO: Split useEffect
 - [Sesión 56 (27 Nov)](#sesión-56---27-noviembre-2025) - 🔧 Validación Teléfono Por Proyecto + Precio Base Import
+- [Sesión 58 (28 Nov)](#sesión-58---28-noviembre-2025) - 📅 Sistema Desglose Mensual de Comisiones
+- [Sesión 59 (28 Nov)](#sesión-59---28-noviembre-2025) - 👥 Vista Dual Comisiones (Tabs Admin/Jefe)
+- [Sesión 61 (30 Nov)](#sesión-61---30-noviembre-2025) - 🔐 RLS Policy + Modal Trazabilidad para Vendedores
+- [Sesión 63 (30 Nov)](#sesión-63---30-noviembre-2025) - 🛠️ Múltiples mejoras UX + Fix timezone
 
 ---
 
@@ -456,6 +460,171 @@ useEffect(() => {
 `main` → `staging` (Fast-forward, 16 archivos)
 
 **Ver detalles →** [CLAUDE.md - Sesión 56](../../CLAUDE.md#sesión-56)
+
+---
+
+## Sesión 58 - 28 Noviembre 2025
+**📅 Sistema Desglose Mensual de Comisiones**
+
+**Feature:** Vista mensual accordion de comisiones con filtros inteligentes y lazy loading
+
+**Características implementadas:**
+- Lógica de agrupación híbrida por mes (pendiente/disponible/pagada)
+- Sistema de filtros (búsqueda, estado, año)
+- Accordions por mes con badges de estado
+- Tabla detallada con 9 columnas
+- Lazy loading (6 meses por defecto)
+
+**Archivos:**
+- `components/comisiones/ComisionesDesgloseMensual.tsx` (nuevo, 460 líneas)
+- `lib/actions-comisiones.ts` (+1 línea)
+- `app/comisiones/page.tsx` (+2 líneas)
+
+**Ver detalles →** [CLAUDE.md - Sesión 58](../../CLAUDE.md#sesión-58)
+
+---
+
+## Sesión 59 - 28 Noviembre 2025
+**👥 Vista Dual Comisiones (Tabs Admin/Jefe)**
+
+**Feature:** Tabs "Mis Comisiones" / "Control de Todas" para admin y jefe_ventas
+
+**Implementación:**
+- Backend: Nueva función `getAllComisionStats()`
+- Frontend: Tabs con state dual (propias vs todas)
+- Componente: Props `showVendedorColumn` y `showVendedorFilter`
+
+**Archivos:**
+- `lib/actions-comisiones.ts` (+82 líneas)
+- `app/comisiones/page.tsx` (+60 líneas)
+- `components/comisiones/ComisionesDesgloseMensual.tsx` (+50 líneas)
+
+**Ver detalles →** [CLAUDE.md - Sesión 59](../../CLAUDE.md#sesión-59)
+
+---
+
+## Sesión 61 - 30 Noviembre 2025
+**🔐 RLS Policy + Modal Trazabilidad para Vendedores**
+
+**Problema:** Vendedores solo veían SUS comisiones en el modal de trazabilidad, no las de otros participantes del mismo local.
+
+**Root Cause:** RLS policy original solo permitía `usuario_id = auth.uid()`
+
+**Solución:**
+1. Frontend: Click en "% COM" abre modal + filtro por fase según rol
+2. RLS: Nueva policy que permite ver comisiones de locales donde el usuario:
+   - Es el usuario de la comisión (`usuario_id = auth.uid()`)
+   - Confirmó el local NARANJA (`locales.usuario_paso_naranja_id`)
+   - Es vendedor asignado al lead (`locales_leads.vendedor_id` via JOIN con `usuarios`)
+
+**Intentos fallidos:**
+1. Service role key bypass → Error: `supabaseKey is required`
+2. Subquery en misma tabla → Error: `42P17: infinite recursion detected`
+
+**Policy nueva:**
+```sql
+CREATE POLICY "Usuarios pueden ver comisiones de locales donde participaron" ON comisiones
+FOR SELECT TO authenticated
+USING (
+  (EXISTS (SELECT 1 FROM usuarios WHERE usuarios.id = auth.uid() AND usuarios.rol IN ('admin', 'jefe_ventas')))
+  OR
+  (usuario_id = auth.uid())
+  OR
+  (local_id IN (SELECT l.id FROM locales l WHERE l.usuario_paso_naranja_id = auth.uid()))
+  OR
+  (local_id IN (
+    SELECT ll.local_id
+    FROM locales_leads ll
+    INNER JOIN usuarios u ON u.vendedor_id = ll.vendedor_id
+    WHERE u.id = auth.uid()
+  ))
+);
+```
+
+**Archivos:**
+- `components/comisiones/ComisionesDesgloseMensual.tsx` - Click en % COM
+- `components/comisiones/SplitComisionesModal.tsx` - Filtro por userRole
+- Supabase RLS Policy (ejecutada en SQL Editor)
+
+**Ver detalles →** [CLAUDE.md - Sesión 61](../../CLAUDE.md#sesión-61)
+
+---
+
+## Sesión 63 - 30 Noviembre 2025
+**🛠️ Múltiples mejoras UX + Fix timezone**
+
+### Fixes
+
+**1. Fix Timezone Fecha Primer Pago (`599d6c0`)**
+- **Bug:** Usuario en Perú (UTC-5) a las 20:58 del 30 nov, el sistema guardaba "01 dic 2025"
+- **Causa:** `new Date().toISOString().split('T')[0]` convierte a UTC antes de extraer fecha
+- **Solución:** Usar métodos locales `getFullYear()`, `getMonth()`, `getDate()`
+- **Archivo:** `components/locales/FinanciamientoModal.tsx` (línea 261)
+
+**2. Fix Botón Marcar Pagada (`77d430a`)**
+- **Bug:** Dropdown se cortaba al estar al final de la tabla
+- **Solución:** Convertir a botón único que ejecuta acción directamente
+- **Archivo:** `components/comisiones/ComisionesDesgloseMensual.tsx`
+
+**3. Limpieza Teléfonos Import Excel (`704c871`)**
+- **Feature:** Al importar Excel/CSV, teléfonos se limpian automáticamente
+- **Ejemplos:** `+51987654321` → `51987654321`, `+51 987-654-321` → `51987654321`
+- **Archivo:** `components/leads/LeadImportModal.tsx`
+
+### Features
+
+**4. Gráfico 3 Barras Comisiones (`80aa914`)**
+- **Feature:** Chart muestra 3 barras agrupadas por mes
+  - 🟢 Disponible (verde `#10b981`)
+  - 🟣 Pagado (púrpura `#8b5cf6`)
+  - 🟡 Pendiente Inicial (amarillo `#f59e0b`)
+- **Archivos:** `components/comisiones/ComisionesChart.tsx`, `app/comisiones/page.tsx`
+
+**5. Modal Comparativo Precio Base vs Monto Venta (`a5226f0`)**
+- **Feature:** Click en Precio Base en /control-pagos abre modal
+- **Contenido:**
+  - Barras horizontales comparativas
+  - Diferencia porcentual (verde = ganancia, naranja = descuento)
+  - Info del local y cliente
+- **Archivos:**
+  - `components/control-pagos/PrecioComparativoModal.tsx` (nuevo)
+  - `components/control-pagos/ControlPagosClient.tsx`
+
+**6. Componente Tooltip Personalizado (`5724901`)**
+- **Feature:** Tooltip reutilizable con animación suave
+- **Características:**
+  - Sigue posición del mouse
+  - Delay 200ms (evita activación accidental)
+  - Flecha indicadora apuntando al cursor
+  - Animación fade-in + scale
+- **Archivo:** `components/shared/Tooltip.tsx` (nuevo)
+
+### Commits
+| Commit | Descripción |
+|--------|-------------|
+| `599d6c0` | fix(financiamiento): Use local timezone for fechaMinima |
+| `80aa914` | feat(comisiones): Show 3 grouped bars per month in chart |
+| `77d430a` | fix(comisiones): Replace dropdown with direct button |
+| `704c871` | fix(import): Strip non-numeric characters from phone |
+| `a5226f0` | feat(control-pagos): Add price comparison modal |
+| `528f6ad` | feat(ui): Add custom Tooltip component |
+| `b291e01` | feat(tooltip): Follow mouse position |
+| `5724901` | fix(tooltip): Add arrow indicator |
+
+### Archivos Nuevos
+- `components/control-pagos/PrecioComparativoModal.tsx`
+- `components/shared/Tooltip.tsx`
+
+### Archivos Modificados
+- `components/locales/FinanciamientoModal.tsx`
+- `components/comisiones/ComisionesChart.tsx`
+- `components/comisiones/ComisionesDesgloseMensual.tsx`
+- `components/leads/LeadImportModal.tsx`
+- `components/control-pagos/ControlPagosClient.tsx`
+- `app/comisiones/page.tsx`
+- `app/globals.css`
+
+**Estado:** ✅ DEPLOYED TO STAGING
 
 ---
 
