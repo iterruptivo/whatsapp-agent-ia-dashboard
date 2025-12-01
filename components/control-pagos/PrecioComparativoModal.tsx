@@ -6,7 +6,7 @@ interface PrecioComparativoModalProps {
   isOpen: boolean;
   onClose: () => void;
   codigoLocal: string;
-  metraje: string;
+  metraje: number;
   cliente: string;
   precioBase: number | null;
   montoVenta: number;
