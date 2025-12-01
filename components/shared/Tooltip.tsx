@@ -40,15 +40,26 @@ export default function Tooltip({ children, text, delay = 200 }: TooltipProps) {
       {children}
       {isVisible && (
         <div
-          className="fixed z-[9999] px-3 py-1.5 text-xs font-medium text-white bg-gray-800 rounded-md shadow-lg whitespace-nowrap pointer-events-none transition-all duration-150 ease-out"
+          className="fixed z-[9999] pointer-events-none"
           style={{
-            left: position.x + 12,
-            top: position.y - 8,
-            opacity: isVisible ? 1 : 0,
-            transform: isVisible ? 'scale(1)' : 'scale(0.95)',
+            left: position.x + 8,
+            top: position.y - 40,
           }}
         >
-          {text}
+          {/* Tooltip body */}
+          <div
+            className="px-3 py-1.5 text-xs font-medium text-white bg-gray-800 rounded-md shadow-lg whitespace-nowrap transition-all duration-150 ease-out"
+            style={{
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? 'scale(1)' : 'scale(0.95)',
+            }}
+          >
+            {text}
+          </div>
+          {/* Arrow */}
+          <div
+            className="w-0 h-0 ml-3 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-gray-800"
+          />
         </div>
       )}
     </div>
