@@ -44,7 +44,6 @@ export default function ComisionesDesgloseMensual({
   const [mesesVisibles, setMesesVisibles] = useState<number>(6);
   const [mesesExpandidos, setMesesExpandidos] = useState<Set<string>>(new Set());
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [modalData, setModalData] = useState<{localId: string, codigo: string, monto: number} | null>(null);
 
   const isAdmin = userRole === 'admin';
@@ -505,40 +504,20 @@ export default function ComisionesDesgloseMensual({
                             {isAdmin && (
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
                                 {comision.estado === 'disponible' && (
-                                  <div className="relative">
-                                    <button
-                                      onClick={() => setOpenDropdown(openDropdown === comision.id ? null : comision.id)}
-                                      disabled={loadingId === comision.id}
-                                      className="inline-flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-xs"
-                                    >
-                                      {loadingId === comision.id ? (
-                                        'Procesando...'
-                                      ) : (
-                                        <>
-                                          Marcar Pagada
-                                          <ChevronDown className="h-3 w-3" />
-                                        </>
-                                      )}
-                                    </button>
-
-                                    {openDropdown === comision.id && (
+                                  <button
+                                    onClick={() => handleMarcarPagada(comision.id)}
+                                    disabled={loadingId === comision.id}
+                                    className="inline-flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 text-xs"
+                                  >
+                                    {loadingId === comision.id ? (
+                                      'Procesando...'
+                                    ) : (
                                       <>
-                                        <div
-                                          className="fixed inset-0 z-10"
-                                          onClick={() => setOpenDropdown(null)}
-                                        />
-                                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200">
-                                          <button
-                                            onClick={() => handleMarcarPagada(comision.id)}
-                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
-                                          >
-                                            <Check className="h-4 w-4 text-green-600" />
-                                            Confirmar Pago
-                                          </button>
-                                        </div>
+                                        <Check className="h-3 w-3" />
+                                        Marcar Pagada
                                       </>
                                     )}
-                                  </div>
+                                  </button>
                                 )}
                                 {comision.estado === 'pagada' && (
                                   <span className="text-xs text-gray-400">
