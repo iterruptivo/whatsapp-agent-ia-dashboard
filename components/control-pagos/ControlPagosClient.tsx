@@ -134,7 +134,7 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
 
                   {/* Precio Base */}
                   <td className="px-4 py-3 text-right">
-                    <Tooltip text="Ver comparativo de precios" position="top">
+                    <Tooltip text="Ver comparativo de precios">
                       <button
                         onClick={() => setPrecioModal({ isOpen: true, controlPago: cp })}
                         className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
