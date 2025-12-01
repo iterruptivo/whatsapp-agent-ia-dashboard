@@ -13,6 +13,7 @@ import type { ControlPago } from '@/lib/actions-control-pagos';
 import { FileText, Calendar, Eye } from 'lucide-react';
 import PagosPanel from './PagosPanel';
 import PrecioComparativoModal from './PrecioComparativoModal';
+import Tooltip from '@/components/shared/Tooltip';
 
 interface ControlPagosClientProps {
   initialData: ControlPago[];
@@ -133,13 +134,14 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
 
                   {/* Precio Base */}
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => setPrecioModal({ isOpen: true, controlPago: cp })}
-                      title="Ver comparativo de precios"
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
-                    >
-                      {cp.precio_base ? formatMonto(cp.precio_base) : '-'}
-                    </button>
+                    <Tooltip text="Ver comparativo de precios" position="top">
+                      <button
+                        onClick={() => setPrecioModal({ isOpen: true, controlPago: cp })}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline cursor-pointer transition-colors"
+                      >
+                        {cp.precio_base ? formatMonto(cp.precio_base) : '-'}
+                      </button>
+                    </Tooltip>
                   </td>
 
                   {/* Monto Total */}
