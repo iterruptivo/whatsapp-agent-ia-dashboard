@@ -243,7 +243,6 @@ export default function ComisionesDesgloseMensual({
   // Marcar comisión como pagada (solo admin)
   const handleMarcarPagada = async (comisionId: string) => {
     setLoadingId(comisionId);
-    setOpenDropdown(null);
 
     const result = await marcarComisionPagada(comisionId, userId);
 
