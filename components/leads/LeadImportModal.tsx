@@ -102,7 +102,7 @@ export default function LeadImportModal({
           complete: (results) => {
             const leads = results.data.map((row: any) => ({
               nombre: row.nombre || '',
-              telefono: row.telefono || '',
+              telefono: String(row.telefono || '').replace(/\D/g, ''), // Solo dígitos
               email_vendedor: row.email_vendedor || '',
               utm: row.utm || '', // REQUERIDO
               email: row.email || '',
@@ -120,7 +120,7 @@ export default function LeadImportModal({
 
         const leads = jsonData.map((row: any) => ({
           nombre: row.nombre || '',
-          telefono: row.telefono || '',
+          telefono: String(row.telefono || '').replace(/\D/g, ''), // Solo dígitos
           email_vendedor: row.email_vendedor || '',
           utm: row.utm || '', // REQUERIDO
           email: row.email || '',
