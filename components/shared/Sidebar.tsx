@@ -228,6 +228,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                         <button
                           key={item.href}
                           onClick={() => handleNavigate(item.href)}
+                          data-menu-item={item.href.replace('/', '')}
                           className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-all ${
                             isActive
                               ? 'bg-primary text-white shadow-md'
@@ -254,6 +255,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               <button
                 key={item.href}
                 onClick={() => handleNavigate(item.href)}
+                data-menu-item={item.href.replace('/', '')}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
                   isActive
                     ? 'bg-primary text-white shadow-md'
