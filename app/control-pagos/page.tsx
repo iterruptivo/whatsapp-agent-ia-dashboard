@@ -19,26 +19,9 @@ import type { ControlPago } from '@/lib/actions-control-pagos';
 
 export default function ControlPagosPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, selectedProyecto } = useAuth();
   const [controlPagos, setControlPagos] = useState<ControlPago[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(true);
-  const [selectedProyectoId, setSelectedProyectoId] = useState<string>('');
-  const [selectedProyectoNombre, setSelectedProyectoNombre] = useState<string>('');
-
-  // Obtener proyecto seleccionado desde localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem('selectedProyecto');
-    if (stored) {
-      try {
-        const proyecto = JSON.parse(stored);
-        setSelectedProyectoId(proyecto.id || '');
-        setSelectedProyectoNombre(proyecto.nombre || '');
-      } catch {
-        setSelectedProyectoId('');
-        setSelectedProyectoNombre('');
-      }
-    }
-  }, []);
 
   // Redirect if not authenticated or not admin/jefe_ventas
   useEffect(() => {
@@ -53,16 +36,16 @@ export default function ControlPagosPage() {
 
   // Fetch control_pagos data filtrado por proyecto
   useEffect(() => {
-    if (user && (user.rol === 'admin' || user.rol === 'jefe_ventas') && selectedProyectoId) {
+    if (user && (user.rol === 'admin' || user.rol === 'jefe_ventas') && selectedProyecto?.id) {
       async function fetchData() {
         setLoadingData(true);
-        const data = await getAllControlPagos(selectedProyectoId);
+        const data = await getAllControlPagos(selectedProyecto.id);
         setControlPagos(data);
         setLoadingData(false);
       }
       fetchData();
     }
-  }, [user, selectedProyectoId]);
+  }, [user, selectedProyecto?.id]);
 
   // Show loading while auth is loading
   if (loading || !user) {
@@ -81,7 +64,7 @@ export default function ControlPagosPage() {
       {/* Header */}
       <DashboardHeader
         title="Control de Pagos"
-        subtitle={`Seguimiento y gestión de pagos de locales vendidos${selectedProyectoNombre ? ` - ${selectedProyectoNombre}` : ''}`}
+        subtitle={`Seguimiento y gestión de pagos de locales vendidos${selectedProyecto?.nombre ? ` - ${selectedProyecto.nombre}` : ''}`}
       />
 
       {/* Contenido */}
