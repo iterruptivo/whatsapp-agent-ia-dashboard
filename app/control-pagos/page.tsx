@@ -22,6 +22,20 @@ export default function ControlPagosPage() {
   const { user, loading } = useAuth();
   const [controlPagos, setControlPagos] = useState<ControlPago[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(true);
+  const [selectedProyectoNombre, setSelectedProyectoNombre] = useState<string>('');
+
+  // Obtener nombre del proyecto seleccionado desde localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('selectedProyecto');
+    if (stored) {
+      try {
+        const proyecto = JSON.parse(stored);
+        setSelectedProyectoNombre(proyecto.nombre || '');
+      } catch {
+        setSelectedProyectoNombre('');
+      }
+    }
+  }, []);
 
   // Redirect if not authenticated or not admin/jefe_ventas
   useEffect(() => {
@@ -64,7 +78,7 @@ export default function ControlPagosPage() {
       {/* Header */}
       <DashboardHeader
         title="Control de Pagos"
-        subtitle="Seguimiento y gestión de pagos de locales vendidos"
+        subtitle={`Seguimiento y gestión de pagos de locales vendidos${selectedProyectoNombre ? ` - ${selectedProyectoNombre}` : ''}`}
       />
 
       {/* Contenido */}

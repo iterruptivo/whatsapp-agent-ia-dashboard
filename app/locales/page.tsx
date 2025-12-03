@@ -34,12 +34,17 @@ export default async function LocalesPage() {
     getLocalesStats(selectedProyectoId || undefined), // SESIÓN 55: Stats del proyecto
   ]);
 
+  // Obtener nombre del proyecto seleccionado
+  const selectedProyectoNombre = selectedProyectoId
+    ? proyectos.find(p => p.id === selectedProyectoId)?.nombre || ''
+    : '';
+
   return (
     <div className="min-h-screen bg-[#f4f4f4]">
       {/* Header */}
       <DashboardHeader
         title="Gestión de Locales"
-        subtitle="Control de estados en tiempo real"
+        subtitle={`Control de estados en tiempo real${selectedProyectoNombre ? ` - ${selectedProyectoNombre}` : ''}`}
       />
 
       {/* Client Component con Realtime */}

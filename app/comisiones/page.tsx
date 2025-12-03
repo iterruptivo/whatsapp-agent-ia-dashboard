@@ -52,6 +52,20 @@ export default function ComisionesPage() {
     count_pendiente: 0,
   });
   const [loadingData, setLoadingData] = useState(true);
+  const [selectedProyectoNombre, setSelectedProyectoNombre] = useState<string>('');
+
+  // Obtener nombre del proyecto seleccionado desde localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('selectedProyecto');
+    if (stored) {
+      try {
+        const proyecto = JSON.parse(stored);
+        setSelectedProyectoNombre(proyecto.nombre || '');
+      } catch {
+        setSelectedProyectoNombre('');
+      }
+    }
+  }, []);
 
   const fetchData = async () => {
     if (!user) return;
@@ -115,7 +129,7 @@ export default function ComisionesPage() {
       {/* Header */}
       <DashboardHeader
         title={activeTab === 'control' && isAdminOrJefe ? 'Control de Comisiones' : 'Mis Comisiones'}
-        subtitle={activeTab === 'control' && isAdminOrJefe ? 'Vista consolidada de comisiones de todos los vendedores' : 'Tus comisiones generadas por ventas de locales'}
+        subtitle={`${activeTab === 'control' && isAdminOrJefe ? 'Vista consolidada de comisiones de todos los vendedores' : 'Tus comisiones generadas por ventas de locales'}${selectedProyectoNombre ? ` - ${selectedProyectoNombre}` : ''}`}
       />
 
       {/* Content */}
