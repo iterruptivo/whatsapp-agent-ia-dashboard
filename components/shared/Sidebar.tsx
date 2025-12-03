@@ -233,11 +233,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                             isActive
                               ? 'bg-primary text-white shadow-md'
                               : 'text-gray-600 hover:bg-gray-100'
-                          } ${
-                            // Sesión 64: Ocultar temporalmente items no listos para producción
-                            ['control-pagos', 'comisiones'].includes(item.href.replace('/', ''))
-                              ? 'hidden'
-                              : ''
                           }`}
                         >
                           <ItemIcon className="w-4 h-4" />
@@ -265,9 +260,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   isActive
                     ? 'bg-primary text-white shadow-md'
                     : 'text-gray-700 hover:bg-gray-100'
-                } ${
-                  // Sesión 64: Ocultar temporalmente items no listos para producción
-                  item.href === '/configuracion-proyectos' ? 'hidden' : ''
                 }`}
               >
                 <Icon className="w-5 h-5" />
