@@ -24,6 +24,7 @@ export interface Comision {
   local_codigo?: string;
   proyecto_nombre?: string;
   usuario_nombre?: string;
+  proyecto_id?: string; // Sesión 64: Filtro por proyecto
 }
 
 export interface ComisionStats {
@@ -37,7 +38,7 @@ export interface ComisionStats {
   count_pendiente: number;
 }
 
-export async function getComisionesByUsuario(usuarioId: string): Promise<Comision[]> {
+export async function getComisionesByUsuario(usuarioId: string, proyectoId?: string): Promise<Comision[]> {
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -58,11 +59,17 @@ export async function getComisionesByUsuario(usuarioId: string): Promise<Comisio
   );
 
   try {
-    // Fetch comisiones
-    const { data: comisiones, error } = await supabase
+    // Fetch comisiones (con filtro opcional por proyecto - Sesión 64)
+    let query = supabase
       .from('comisiones')
       .select('*')
-      .eq('usuario_id', usuarioId)
+      .eq('usuario_id', usuarioId);
+
+    if (proyectoId) {
+      query = query.eq('proyecto_id', proyectoId);
+    }
+
+    const { data: comisiones, error } = await query
       .order('fecha_procesado', { ascending: false });
 
     if (error || !comisiones) {
@@ -105,7 +112,7 @@ export async function getComisionesByUsuario(usuarioId: string): Promise<Comisio
   }
 }
 
-export async function getAllComisiones(): Promise<Comision[]> {
+export async function getAllComisiones(proyectoId?: string): Promise<Comision[]> {
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -139,10 +146,16 @@ export async function getAllComisiones(): Promise<Comision[]> {
       return [];
     }
 
-    // Fetch comisiones
-    const { data: comisiones, error } = await supabase
+    // Fetch comisiones (con filtro opcional por proyecto - Sesión 64)
+    let query = supabase
       .from('comisiones')
-      .select('*')
+      .select('*');
+
+    if (proyectoId) {
+      query = query.eq('proyecto_id', proyectoId);
+    }
+
+    const { data: comisiones, error } = await query
       .order('fecha_procesado', { ascending: false});
 
     if (error || !comisiones) {
@@ -185,7 +198,7 @@ export async function getAllComisiones(): Promise<Comision[]> {
   }
 }
 
-export async function getComisionStats(usuarioId: string): Promise<ComisionStats> {
+export async function getComisionStats(usuarioId: string, proyectoId?: string): Promise<ComisionStats> {
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -206,10 +219,17 @@ export async function getComisionStats(usuarioId: string): Promise<ComisionStats
   );
 
   try {
-    const { data: comisiones } = await supabase
+    // Sesión 64: Filtro opcional por proyecto
+    let query = supabase
       .from('comisiones')
       .select('*')
       .eq('usuario_id', usuarioId);
+
+    if (proyectoId) {
+      query = query.eq('proyecto_id', proyectoId);
+    }
+
+    const { data: comisiones } = await query;
 
     if (!comisiones || comisiones.length === 0) {
       return {
@@ -260,7 +280,7 @@ export async function getComisionStats(usuarioId: string): Promise<ComisionStats
   }
 }
 
-export async function getAllComisionStats(): Promise<ComisionStats> {
+export async function getAllComisionStats(proyectoId?: string): Promise<ComisionStats> {
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -313,10 +333,16 @@ export async function getAllComisionStats(): Promise<ComisionStats> {
       };
     }
 
-    // Fetch TODAS las comisiones (sin filtro por usuario)
-    const { data: comisiones } = await supabase
+    // Fetch TODAS las comisiones (con filtro opcional por proyecto - Sesión 64)
+    let query = supabase
       .from('comisiones')
       .select('*');
+
+    if (proyectoId) {
+      query = query.eq('proyecto_id', proyectoId);
+    }
+
+    const { data: comisiones } = await query;
 
     if (!comisiones || comisiones.length === 0) {
       return {

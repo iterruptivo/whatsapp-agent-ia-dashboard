@@ -27,7 +27,7 @@ import {
 
 export default function ComisionesPage() {
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, loading, selectedProyecto } = useAuth(); // Sesión 64: Agregar selectedProyecto
   const [activeTab, setActiveTab] = useState<'mis' | 'control'>('mis');
   const [comisiones, setComisiones] = useState<Comision[]>([]);
   const [stats, setStats] = useState<ComisionStats>({
@@ -52,38 +52,26 @@ export default function ComisionesPage() {
     count_pendiente: 0,
   });
   const [loadingData, setLoadingData] = useState(true);
-  const [selectedProyectoNombre, setSelectedProyectoNombre] = useState<string>('');
 
-  // Obtener nombre del proyecto seleccionado desde localStorage
-  useEffect(() => {
-    const stored = localStorage.getItem('selectedProyecto');
-    if (stored) {
-      try {
-        const proyecto = JSON.parse(stored);
-        setSelectedProyectoNombre(proyecto.nombre || '');
-      } catch {
-        setSelectedProyectoNombre('');
-      }
-    }
-  }, []);
-
+  // Sesión 64: Función fetchData con filtro por proyecto
   const fetchData = async () => {
-    if (!user) return;
+    if (!user || !selectedProyecto?.id) return;
 
+    const proyectoId = selectedProyecto.id;
     setLoadingData(true);
 
     try {
-      // SIEMPRE fetch de comisiones propias
-      const userComisiones = await getComisionesByUsuario(user.id);
-      const userStats = await getComisionStats(user.id);
+      // SIEMPRE fetch de comisiones propias (filtradas por proyecto)
+      const userComisiones = await getComisionesByUsuario(user.id, proyectoId);
+      const userStats = await getComisionStats(user.id, proyectoId);
 
       setComisiones(userComisiones);
       setStats(userStats);
 
-      // Admin/Jefe: TAMBIÉN fetch de todas las comisiones
+      // Admin/Jefe: TAMBIÉN fetch de todas las comisiones (filtradas por proyecto)
       if (user.rol === 'admin' || user.rol === 'jefe_ventas') {
-        const allCom = await getAllComisiones();
-        const allSt = await getAllComisionStats();
+        const allCom = await getAllComisiones(proyectoId);
+        const allSt = await getAllComisionStats(proyectoId);
 
         setAllComisiones(allCom);
         setAllStats(allSt);
@@ -101,11 +89,12 @@ export default function ComisionesPage() {
     }
   }, [user, loading, router]);
 
+  // Sesión 64: Refetch cuando cambia el proyecto seleccionado
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && selectedProyecto?.id) {
       fetchData();
     }
-  }, [loading, user]);
+  }, [loading, user, selectedProyecto?.id]);
 
   if (loading || loadingData) {
     return (
@@ -129,7 +118,7 @@ export default function ComisionesPage() {
       {/* Header */}
       <DashboardHeader
         title={activeTab === 'control' && isAdminOrJefe ? 'Control de Comisiones' : 'Mis Comisiones'}
-        subtitle={`${activeTab === 'control' && isAdminOrJefe ? 'Vista consolidada de comisiones de todos los vendedores' : 'Tus comisiones generadas por ventas de locales'}${selectedProyectoNombre ? ` - ${selectedProyectoNombre}` : ''}`}
+        subtitle={`${activeTab === 'control' && isAdminOrJefe ? 'Vista consolidada de comisiones de todos los vendedores' : 'Tus comisiones generadas por ventas de locales'}${selectedProyecto?.nombre ? ` - ${selectedProyecto.nombre}` : ''}`}
       />
 
       {/* Content */}
