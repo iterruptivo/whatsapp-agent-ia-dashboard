@@ -7,10 +7,10 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 30 Noviembre 2025
-**Sesión:** 63 - 🛠️ **Múltiples mejoras UX + Fix timezone**
-**Estado:** ✅ **DEPLOYED TO STAGING**
-**Documentación:** Ver "Últimas 5 Sesiones" abajo
+**Fecha:** 2 Diciembre 2025
+**Sesión:** 64 - 📄 **Sistema Generación de Documentos (Análisis + DB)**
+**Estado:** ⏳ **EN DESARROLLO**
+**Documentación:** Ver [Módulo Documentos](docs/modulos/documentos.md)
 
 ---
 
@@ -25,6 +25,7 @@
 | [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | Sesión 40D (8 Nov) | 22 usuarios |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
+| [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 64 (2 Dic)** | docx-templates |
 
 ### **Métricas Globales (Actualizado: 10 Nov 2025)**
 ```
@@ -72,6 +73,11 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Última sesión: 43 (Rubro opcional Callao)
   - Estado: OPERATIVO (3 flujos activos)
 
+- **[Documentos](docs/modulos/documentos.md)** - Generación automática de documentos legales
+  - Última sesión: **64 (Análisis + Migración DB)**
+  - Estado: EN DESARROLLO (2/8 fases completadas)
+  - Tecnología: docx-templates para templates Word
+
 ---
 
 ### **📅 Sesiones de Desarrollo**
@@ -85,7 +91,7 @@ Documentación cronológica completa de todas las sesiones.
   - Búsqueda Exacta + Import Manual (31)
   - Actualización n8n Callao (32)
 
-- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-62
+- **[Noviembre 2025](docs/sesiones/2025-11-noviembre.md)** - Sesiones 33-63
   - Fix Límite 1000 Leads (33-33C) ✅
   - Emergency Rollback (35B) 🔴
   - Middleware Security (36) ✅
@@ -104,6 +110,9 @@ Documentación cronológica completa de todas las sesiones.
   - **🔐 RLS Policy + Modal Trazabilidad Vendedores (61)** ✅
   - **🐛 Fix Trigger Cascade Comisiones (62)** ✅
   - **🛠️ Múltiples mejoras UX + Fix timezone (63)** ✅
+
+- **[Diciembre 2025](docs/sesiones/2025-12-diciembre.md)** - Sesiones 64+
+  - **📄 Sistema Generación Documentos (64)** ⏳ EN DESARROLLO
 
 ---
 

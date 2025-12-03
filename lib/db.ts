@@ -1,5 +1,19 @@
 import { supabase } from './supabase';
 
+// Sesión 64: Interfaces para datos legales de documentos
+export interface RepresentanteLegal {
+  nombre: string;
+  dni: string;
+  cargo: string;
+}
+
+export interface CuentaBancaria {
+  banco: string;
+  numero: string;
+  tipo: 'Corriente' | 'Ahorros';
+  moneda: 'USD' | 'PEN';
+}
+
 // Proyecto interface matching Supabase proyectos table
 export interface Proyecto {
   id: string;
@@ -8,6 +22,17 @@ export interface Proyecto {
   color: string | null;
   activo: boolean;
   created_at?: string;
+  // Sesión 64: Campos para generación de documentos legales
+  razon_social?: string | null;
+  ruc?: string | null;
+  domicilio_fiscal?: string | null;
+  ubicacion_terreno?: string | null;
+  partida_electronica?: string | null;
+  zona_registral?: string | null;
+  plazo_firma_dias?: number;
+  penalidad_porcentaje?: number;
+  representantes_legales?: RepresentanteLegal[];
+  cuentas_bancarias?: CuentaBancaria[];
 }
 
 // Updated Lead interface matching Supabase schema

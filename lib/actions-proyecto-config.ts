@@ -3,6 +3,20 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
+// Sesión 64: Interfaces para datos legales de documentos
+export interface RepresentanteLegal {
+  nombre: string;
+  dni: string;
+  cargo: string;
+}
+
+export interface CuentaBancaria {
+  banco: string;
+  numero: string;
+  tipo: 'Corriente' | 'Ahorros';
+  moneda: 'USD' | 'PEN';
+}
+
 // Types
 export interface Proyecto {
   id: string;
@@ -11,6 +25,17 @@ export interface Proyecto {
   color: string | null;
   activo: boolean;
   created_at: string | null;
+  // Sesión 64: Campos para generación de documentos legales
+  razon_social?: string | null;
+  ruc?: string | null;
+  domicilio_fiscal?: string | null;
+  ubicacion_terreno?: string | null;
+  partida_electronica?: string | null;
+  zona_registral?: string | null;
+  plazo_firma_dias?: number;
+  penalidad_porcentaje?: number;
+  representantes_legales?: RepresentanteLegal[];
+  cuentas_bancarias?: CuentaBancaria[];
 }
 
 export interface PorcentajeInicial {
@@ -153,10 +178,10 @@ export async function getProyectosWithConfigurations(): Promise<{
       };
     }
 
-    // Fetch all proyectos
+    // Fetch all proyectos (incluye campos legales - Sesión 64)
     const { data: proyectos, error: proyectosError } = await supabaseAuth
       .from('proyectos')
-      .select('id, nombre, slug, color, activo, created_at')
+      .select('id, nombre, slug, color, activo, created_at, razon_social, ruc, domicilio_fiscal, ubicacion_terreno, partida_electronica, zona_registral, plazo_firma_dias, penalidad_porcentaje, representantes_legales, cuentas_bancarias')
       .order('created_at', { ascending: true });
 
     if (proyectosError) {
@@ -209,6 +234,17 @@ export async function saveProyectoConfiguracion(
     cuotas_sin_interes?: CuotaMeses[];
     cuotas_con_interes?: CuotaMeses[];
     comisiones?: ComisionRol[]; // SESIÓN 54
+    // SESIÓN 64: Datos para trámites legales
+    razon_social?: string;
+    ruc?: string;
+    domicilio_fiscal?: string;
+    ubicacion_terreno?: string;
+    partida_electronica?: string;
+    zona_registral?: string;
+    plazo_firma_dias?: number;
+    penalidad_porcentaje?: number;
+    representantes_legales?: RepresentanteLegal[];
+    cuentas_bancarias?: CuentaBancaria[];
   }
 ) {
   try {
@@ -361,11 +397,23 @@ export async function saveProyectoConfiguracion(
     }
 
     // Update proyecto table with supabaseAuth (authenticated context)
+    // SESIÓN 64: Incluir campos de trámites legales
     const { error: proyectoError } = await supabaseAuth
       .from('proyectos')
       .update({
         color: data.color,
-        activo: data.activo
+        activo: data.activo,
+        // Campos legales (Sesión 64)
+        razon_social: data.razon_social || null,
+        ruc: data.ruc || null,
+        domicilio_fiscal: data.domicilio_fiscal || null,
+        ubicacion_terreno: data.ubicacion_terreno || null,
+        partida_electronica: data.partida_electronica || null,
+        zona_registral: data.zona_registral || null,
+        plazo_firma_dias: data.plazo_firma_dias || 5,
+        penalidad_porcentaje: data.penalidad_porcentaje || 100,
+        representantes_legales: data.representantes_legales || [],
+        cuentas_bancarias: data.cuentas_bancarias || [],
       })
       .eq('id', proyectoId);
 

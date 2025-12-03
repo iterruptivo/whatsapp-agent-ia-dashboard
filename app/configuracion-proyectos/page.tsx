@@ -13,9 +13,11 @@ import {
   PorcentajeInicial,
   CuotaMeses,
   ComisionRol,
-  Usuario
+  Usuario,
+  RepresentanteLegal,
+  CuentaBancaria
 } from '@/lib/actions-proyecto-config';
-import { Save, ChevronDown, ChevronUp, ChevronUp as ArrowUp, ChevronDown as ArrowDown, X, Plus, Users, Search } from 'lucide-react';
+import { Save, ChevronDown, ChevronUp, ChevronUp as ArrowUp, ChevronDown as ArrowDown, X, Plus, Users, Search, FileText, Building2, Banknote, UserCheck } from 'lucide-react';
 
 interface ProyectoFormData {
   tea: string;
@@ -29,10 +31,28 @@ interface ProyectoFormData {
   nuevaCuotaConInteres: string;
   // SESIÓN 54: Comisiones por rol
   comisiones: ComisionRol[];
-  nuevaComision_rol: string; // rol seleccionado en dropdown
-  nuevaComision_usuarios: Set<string>; // IDs de usuarios checked
-  nuevaComision_porcentaje: string; // input valor porcentaje
-  nuevaComision_searchTerm: string; // búsqueda en dropdown
+  nuevaComision_rol: string;
+  nuevaComision_usuarios: Set<string>;
+  nuevaComision_porcentaje: string;
+  nuevaComision_searchTerm: string;
+  // SESIÓN 64: Datos para trámites legales
+  razon_social: string;
+  ruc: string;
+  domicilio_fiscal: string;
+  ubicacion_terreno: string;
+  partida_electronica: string;
+  zona_registral: string;
+  plazo_firma_dias: string;
+  penalidad_porcentaje: string;
+  representantes_legales: RepresentanteLegal[];
+  nuevoRepresentante_nombre: string;
+  nuevoRepresentante_dni: string;
+  nuevoRepresentante_cargo: string;
+  cuentas_bancarias: CuentaBancaria[];
+  nuevaCuenta_banco: string;
+  nuevaCuenta_numero: string;
+  nuevaCuenta_tipo: 'Corriente' | 'Ahorros' | '';
+  nuevaCuenta_moneda: 'USD' | 'PEN' | '';
   saving: boolean;
   message: { type: 'success' | 'error'; text: string } | null;
 }
@@ -101,6 +121,24 @@ export default function ConfiguracionProyectos() {
           nuevaComision_usuarios: new Set<string>(),
           nuevaComision_porcentaje: '',
           nuevaComision_searchTerm: '',
+          // SESIÓN 64: Inicializar datos legales
+          razon_social: proyecto.razon_social || '',
+          ruc: proyecto.ruc || '',
+          domicilio_fiscal: proyecto.domicilio_fiscal || '',
+          ubicacion_terreno: proyecto.ubicacion_terreno || '',
+          partida_electronica: proyecto.partida_electronica || '',
+          zona_registral: proyecto.zona_registral || '',
+          plazo_firma_dias: proyecto.plazo_firma_dias?.toString() || '5',
+          penalidad_porcentaje: proyecto.penalidad_porcentaje?.toString() || '100',
+          representantes_legales: proyecto.representantes_legales || [],
+          nuevoRepresentante_nombre: '',
+          nuevoRepresentante_dni: '',
+          nuevoRepresentante_cargo: '',
+          cuentas_bancarias: proyecto.cuentas_bancarias || [],
+          nuevaCuenta_banco: '',
+          nuevaCuenta_numero: '',
+          nuevaCuenta_tipo: '',
+          nuevaCuenta_moneda: 'USD',
           saving: false,
           message: null,
         };
@@ -170,6 +208,17 @@ export default function ConfiguracionProyectos() {
       cuotas_sin_interes: data.cuotas_sin_interes,
       cuotas_con_interes: data.cuotas_con_interes,
       comisiones: data.comisiones, // SESIÓN 54
+      // SESIÓN 64: Datos para trámites legales
+      razon_social: data.razon_social || undefined,
+      ruc: data.ruc || undefined,
+      domicilio_fiscal: data.domicilio_fiscal || undefined,
+      ubicacion_terreno: data.ubicacion_terreno || undefined,
+      partida_electronica: data.partida_electronica || undefined,
+      zona_registral: data.zona_registral || undefined,
+      plazo_firma_dias: data.plazo_firma_dias ? parseInt(data.plazo_firma_dias) : undefined,
+      penalidad_porcentaje: data.penalidad_porcentaje ? parseInt(data.penalidad_porcentaje) : undefined,
+      representantes_legales: data.representantes_legales,
+      cuentas_bancarias: data.cuentas_bancarias,
     });
 
     updateFormData(proyectoId, 'saving', false);
@@ -1179,6 +1228,331 @@ export default function ConfiguracionProyectos() {
                             {data.comisiones.length === 0 && !data.nuevaComision_rol && (
                               <p className="text-sm text-gray-400 italic mt-4">
                                 No hay comisiones configuradas. Selecciona un rol para comenzar.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* ================================================================== */}
+                      {/* SESIÓN 64: Sección Datos para Trámites Legales */}
+                      {/* ================================================================== */}
+                      <div className="border-t border-gray-200 mt-8 pt-8">
+                        <div className="flex items-center gap-3 mb-6">
+                          <FileText className="w-6 h-6 text-primary" />
+                          <h3 className="text-xl font-bold text-gray-900">Datos para Trámites Legales</h3>
+                        </div>
+                        <p className="text-sm text-gray-500 mb-6">
+                          Información legal de la empresa para generación automática de documentos (Acuerdo de Separación, contratos, etc.)
+                        </p>
+
+                        {/* Grid responsive: 3 columnas en desktop, 2 en tablet, 1 en mobile */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                          {/* Razón Social */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Razón Social
+                            </label>
+                            <input
+                              type="text"
+                              value={data.razon_social}
+                              onChange={(e) => updateFormData(proyecto.id, 'razon_social', e.target.value)}
+                              placeholder="Ej: ECO PLAZA S.A.C."
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                            />
+                          </div>
+
+                          {/* RUC */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              RUC
+                            </label>
+                            <input
+                              type="text"
+                              value={data.ruc}
+                              onChange={(e) => updateFormData(proyecto.id, 'ruc', e.target.value)}
+                              placeholder="Ej: 20612345678"
+                              maxLength={11}
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors font-mono"
+                            />
+                          </div>
+
+                          {/* Zona Registral */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Zona Registral
+                            </label>
+                            <input
+                              type="text"
+                              value={data.zona_registral}
+                              onChange={(e) => updateFormData(proyecto.id, 'zona_registral', e.target.value)}
+                              placeholder="Ej: Lima"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                            />
+                          </div>
+
+                          {/* Domicilio Fiscal - ocupa 2 columnas en desktop */}
+                          <div className="lg:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Domicilio Fiscal
+                            </label>
+                            <input
+                              type="text"
+                              value={data.domicilio_fiscal}
+                              onChange={(e) => updateFormData(proyecto.id, 'domicilio_fiscal', e.target.value)}
+                              placeholder="Ej: Av. Javier Prado 4567, San Isidro, Lima"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                            />
+                          </div>
+
+                          {/* Partida Electrónica */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Partida Electrónica
+                            </label>
+                            <input
+                              type="text"
+                              value={data.partida_electronica}
+                              onChange={(e) => updateFormData(proyecto.id, 'partida_electronica', e.target.value)}
+                              placeholder="Ej: P12345678"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors font-mono"
+                            />
+                          </div>
+
+                          {/* Ubicación del Terreno - ocupa 3 columnas en desktop */}
+                          <div className="lg:col-span-3">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Ubicación del Terreno (Proyecto)
+                            </label>
+                            <input
+                              type="text"
+                              value={data.ubicacion_terreno}
+                              onChange={(e) => updateFormData(proyecto.id, 'ubicacion_terreno', e.target.value)}
+                              placeholder="Ej: Mz. A Lt. 1, Urbanización San Gabriel, Carabayllo, Lima"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                            />
+                          </div>
+
+                          {/* Plazo Firma (días) */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Plazo para Firma (días)
+                            </label>
+                            <input
+                              type="number"
+                              value={data.plazo_firma_dias}
+                              onChange={(e) => updateFormData(proyecto.id, 'plazo_firma_dias', e.target.value)}
+                              onWheel={(e) => e.currentTarget.blur()}
+                              placeholder="5"
+                              min="1"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Días para firmar contrato de compraventa</p>
+                          </div>
+
+                          {/* Penalidad % */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Penalidad por Desistimiento (%)
+                            </label>
+                            <input
+                              type="number"
+                              value={data.penalidad_porcentaje}
+                              onChange={(e) => updateFormData(proyecto.id, 'penalidad_porcentaje', e.target.value)}
+                              onWheel={(e) => e.currentTarget.blur()}
+                              placeholder="100"
+                              min="0"
+                              max="100"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">% del monto de separación</p>
+                          </div>
+                        </div>
+
+                        {/* Sección Representantes Legales y Cuentas Bancarias - 2 columnas */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                          {/* Representantes Legales */}
+                          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center gap-2 mb-4">
+                              <UserCheck className="w-5 h-5 text-primary" />
+                              <h4 className="text-lg font-semibold text-gray-900">Representantes Legales</h4>
+                            </div>
+
+                            {/* Form para agregar representante */}
+                            <div className="space-y-3 mb-4">
+                              <input
+                                type="text"
+                                value={data.nuevoRepresentante_nombre}
+                                onChange={(e) => updateFormData(proyecto.id, 'nuevoRepresentante_nombre', e.target.value)}
+                                placeholder="Nombre completo"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
+                              />
+                              <div className="grid grid-cols-2 gap-3">
+                                <input
+                                  type="text"
+                                  value={data.nuevoRepresentante_dni}
+                                  onChange={(e) => updateFormData(proyecto.id, 'nuevoRepresentante_dni', e.target.value)}
+                                  placeholder="DNI"
+                                  maxLength={8}
+                                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-mono"
+                                />
+                                <input
+                                  type="text"
+                                  value={data.nuevoRepresentante_cargo}
+                                  onChange={(e) => updateFormData(proyecto.id, 'nuevoRepresentante_cargo', e.target.value)}
+                                  placeholder="Cargo (Ej: Gerente General)"
+                                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!data.nuevoRepresentante_nombre || !data.nuevoRepresentante_dni || !data.nuevoRepresentante_cargo) {
+                                    updateFormData(proyecto.id, 'message', { type: 'error', text: 'Complete todos los campos del representante' });
+                                    return;
+                                  }
+                                  const nuevoRep: RepresentanteLegal = {
+                                    nombre: data.nuevoRepresentante_nombre,
+                                    dni: data.nuevoRepresentante_dni,
+                                    cargo: data.nuevoRepresentante_cargo
+                                  };
+                                  updateFormData(proyecto.id, 'representantes_legales', [...data.representantes_legales, nuevoRep]);
+                                  updateFormData(proyecto.id, 'nuevoRepresentante_nombre', '');
+                                  updateFormData(proyecto.id, 'nuevoRepresentante_dni', '');
+                                  updateFormData(proyecto.id, 'nuevoRepresentante_cargo', '');
+                                  updateFormData(proyecto.id, 'message', null);
+                                }}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Agregar Representante
+                              </button>
+                            </div>
+
+                            {/* Lista de representantes */}
+                            {data.representantes_legales.length > 0 ? (
+                              <div className="space-y-2">
+                                {data.representantes_legales.map((rep, index) => (
+                                  <div key={index} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                                    <div>
+                                      <p className="font-medium text-gray-900">{rep.nombre}</p>
+                                      <p className="text-sm text-gray-500">DNI: {rep.dni} • {rep.cargo}</p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = data.representantes_legales.filter((_, i) => i !== index);
+                                        updateFormData(proyecto.id, 'representantes_legales', updated);
+                                      }}
+                                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-400 italic text-center py-4">
+                                No hay representantes configurados
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Cuentas Bancarias */}
+                          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                            <div className="flex items-center gap-2 mb-4">
+                              <Banknote className="w-5 h-5 text-primary" />
+                              <h4 className="text-lg font-semibold text-gray-900">Cuentas Bancarias</h4>
+                            </div>
+
+                            {/* Form para agregar cuenta */}
+                            <div className="space-y-3 mb-4">
+                              <input
+                                type="text"
+                                value={data.nuevaCuenta_banco}
+                                onChange={(e) => updateFormData(proyecto.id, 'nuevaCuenta_banco', e.target.value)}
+                                placeholder="Nombre del banco"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm"
+                              />
+                              <input
+                                type="text"
+                                value={data.nuevaCuenta_numero}
+                                onChange={(e) => updateFormData(proyecto.id, 'nuevaCuenta_numero', e.target.value)}
+                                placeholder="Número de cuenta"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm font-mono"
+                              />
+                              <div className="grid grid-cols-2 gap-3">
+                                <select
+                                  value={data.nuevaCuenta_tipo}
+                                  onChange={(e) => updateFormData(proyecto.id, 'nuevaCuenta_tipo', e.target.value)}
+                                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm bg-white"
+                                >
+                                  <option value="">Tipo de cuenta</option>
+                                  <option value="Corriente">Corriente</option>
+                                  <option value="Ahorros">Ahorros</option>
+                                </select>
+                                <select
+                                  value={data.nuevaCuenta_moneda}
+                                  onChange={(e) => updateFormData(proyecto.id, 'nuevaCuenta_moneda', e.target.value)}
+                                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm bg-white"
+                                >
+                                  <option value="USD">USD (Dólares)</option>
+                                  <option value="PEN">PEN (Soles)</option>
+                                </select>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!data.nuevaCuenta_banco || !data.nuevaCuenta_numero || !data.nuevaCuenta_tipo) {
+                                    updateFormData(proyecto.id, 'message', { type: 'error', text: 'Complete todos los campos de la cuenta bancaria' });
+                                    return;
+                                  }
+                                  const nuevaCuenta: CuentaBancaria = {
+                                    banco: data.nuevaCuenta_banco,
+                                    numero: data.nuevaCuenta_numero,
+                                    tipo: data.nuevaCuenta_tipo as 'Corriente' | 'Ahorros',
+                                    moneda: (data.nuevaCuenta_moneda || 'USD') as 'USD' | 'PEN'
+                                  };
+                                  updateFormData(proyecto.id, 'cuentas_bancarias', [...data.cuentas_bancarias, nuevaCuenta]);
+                                  updateFormData(proyecto.id, 'nuevaCuenta_banco', '');
+                                  updateFormData(proyecto.id, 'nuevaCuenta_numero', '');
+                                  updateFormData(proyecto.id, 'nuevaCuenta_tipo', '');
+                                  updateFormData(proyecto.id, 'nuevaCuenta_moneda', 'USD');
+                                  updateFormData(proyecto.id, 'message', null);
+                                }}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                              >
+                                <Plus className="w-4 h-4" />
+                                Agregar Cuenta
+                              </button>
+                            </div>
+
+                            {/* Lista de cuentas */}
+                            {data.cuentas_bancarias.length > 0 ? (
+                              <div className="space-y-2">
+                                {data.cuentas_bancarias.map((cuenta, index) => (
+                                  <div key={index} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg">
+                                    <div>
+                                      <p className="font-medium text-gray-900">{cuenta.banco}</p>
+                                      <p className="text-sm text-gray-500 font-mono">{cuenta.numero}</p>
+                                      <p className="text-xs text-gray-400">{cuenta.tipo} • {cuenta.moneda}</p>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const updated = data.cuentas_bancarias.filter((_, i) => i !== index);
+                                        updateFormData(proyecto.id, 'cuentas_bancarias', updated);
+                                      }}
+                                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-400 italic text-center py-4">
+                                No hay cuentas configuradas
                               </p>
                             )}
                           </div>
