@@ -1023,6 +1023,8 @@ export default function ConfiguracionProyectos() {
                                   <option value="jefe_ventas">Jefe de Ventas</option>
                                   <option value="vendedor">Vendedor</option>
                                   <option value="vendedor_caseta">Vendedor Caseta</option>
+                                  <option value="coordinador">Coordinador</option>
+                                  <option value="finanzas">Finanzas</option>
                                 </select>
                                 <Users className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
                               </div>
@@ -1163,7 +1165,9 @@ export default function ConfiguracionProyectos() {
                                               <p className="text-base font-semibold text-gray-900">
                                                 {comision.rol === 'admin' ? 'Admin' :
                                                  comision.rol === 'jefe_ventas' ? 'Jefe de Ventas' :
-                                                 comision.rol === 'vendedor' ? 'Vendedor' : 'Vendedor Caseta'}
+                                                 comision.rol === 'vendedor' ? 'Vendedor' :
+                                                 comision.rol === 'vendedor_caseta' ? 'Vendedor Caseta' :
+                                                 comision.rol === 'coordinador' ? 'Coordinador' : 'Finanzas'}
                                                 {' - '}
                                                 <span className="text-primary">
                                                   {comision.usuarios_ids.length} usuario{comision.usuarios_ids.length !== 1 ? 's' : ''}

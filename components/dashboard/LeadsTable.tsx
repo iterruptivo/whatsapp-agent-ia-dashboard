@@ -12,7 +12,7 @@ interface LeadsTableProps {
   vendedores?: Vendedor[];
   currentVendedorId?: string | null;
   onAssignLead?: (leadId: string, vendedorId: string) => Promise<void>;
-  userRole?: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | null;
+  userRole?: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | null;
 }
 
 export default function LeadsTable({

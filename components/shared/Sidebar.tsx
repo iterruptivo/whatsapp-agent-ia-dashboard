@@ -162,7 +162,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               ? 'Vendedor'
               : user?.rol === 'jefe_ventas'
               ? 'Jefe de Ventas'
-              : 'Vendedor Caseta'}
+              : user?.rol === 'vendedor_caseta'
+              ? 'Vendedor Caseta'
+              : user?.rol === 'coordinador'
+              ? 'Coordinador'
+              : 'Finanzas'}
           </span>
         </div>
 

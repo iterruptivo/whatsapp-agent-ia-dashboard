@@ -110,7 +110,7 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/', req.url));
       } else if (userData?.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
-      } else if (userData?.rol === 'jefe_ventas' || userData?.rol === 'vendedor_caseta') {
+      } else if (userData?.rol === 'jefe_ventas' || userData?.rol === 'vendedor_caseta' || userData?.rol === 'coordinador' || userData?.rol === 'finanzas') {
         return NextResponse.redirect(new URL('/locales', req.url));
       }
     }
@@ -201,8 +201,8 @@ export async function middleware(req: NextRequest) {
     if (userData.rol === 'vendedor') {
       // Vendedor trying to access admin dashboard - redirect to operativo
       return NextResponse.redirect(new URL('/operativo', req.url));
-    } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta') {
-      // Jefe/Caseta trying to access admin - redirect to locales
+    } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador' || userData.rol === 'finanzas') {
+      // Jefe/Caseta/Coordinador/Finanzas trying to access admin - redirect to locales
       return NextResponse.redirect(new URL('/locales', req.url));
     }
     // Admin can access
@@ -215,7 +215,7 @@ export async function middleware(req: NextRequest) {
       // Non-admin trying to access configuracion - redirect based on role
       if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
-      } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta') {
+      } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador' || userData.rol === 'finanzas') {
         return NextResponse.redirect(new URL('/locales', req.url));
       }
     }
@@ -229,8 +229,8 @@ export async function middleware(req: NextRequest) {
     if (userData.rol === 'admin' || userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta') {
       return res;
     }
-    // Jefe trying to access operativo - redirect to locales
-    if (userData.rol === 'jefe_ventas') {
+    // Jefe/Coordinador/Finanzas trying to access operativo - redirect to locales
+    if (userData.rol === 'jefe_ventas' || userData.rol === 'coordinador' || userData.rol === 'finanzas') {
       return NextResponse.redirect(new URL('/locales', req.url));
     }
     return res;
@@ -238,7 +238,7 @@ export async function middleware(req: NextRequest) {
 
   // LOCALES ROUTES (/locales)
   if (isLocalesRoute) {
-    // ALL authenticated users can access locales (admin, vendedor, jefe_ventas, vendedor_caseta)
+    // ALL authenticated users can access locales (admin, vendedor, jefe_ventas, vendedor_caseta, coordinador, finanzas)
     return res;
   }
 
@@ -248,7 +248,7 @@ export async function middleware(req: NextRequest) {
       // Non-authorized user trying to access control-pagos - redirect based on role
       if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
-      } else if (userData.rol === 'vendedor_caseta') {
+      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador' || userData.rol === 'finanzas') {
         return NextResponse.redirect(new URL('/locales', req.url));
       }
     }

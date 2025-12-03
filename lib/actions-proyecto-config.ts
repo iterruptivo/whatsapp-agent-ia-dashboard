@@ -59,7 +59,7 @@ export interface Usuario {
 }
 
 export interface ComisionRol {
-  rol: 'admin' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta';
+  rol: 'admin' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta' | 'coordinador' | 'finanzas';
   usuarios_ids: string[]; // IDs de usuarios seleccionados
   porcentaje: number; // Puede ser decimal (10.5)
   order: number;

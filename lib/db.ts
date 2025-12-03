@@ -61,7 +61,7 @@ export interface Lead {
   proyecto_nombre?: string | null; // Nombre del proyecto (obtenido via JOIN, opcional)
   proyecto_color?: string | null; // Color del proyecto (obtenido via JOIN, opcional)
   asistio: boolean; // Indica si el lead visitó físicamente el proyecto (default: false)
-  utm: string; // Origen del lead (victoria, facebook, google, referido, etc.) - default: 'victoria'
+  utm: string | null; // Origen del lead (referral desde n8n: facebook, google, trapiche, etc.) - nullable
 }
 
 // Vendedor interface matching Supabase vendedores table
@@ -77,7 +77,7 @@ export interface Usuario {
   id: string;
   email: string;
   nombre: string;
-  rol: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta';
+  rol: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas';
   vendedor_id: string | null;
   activo: boolean;
 }

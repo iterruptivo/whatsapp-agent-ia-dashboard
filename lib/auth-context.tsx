@@ -14,7 +14,7 @@ interface Usuario {
   id: string;
   email: string;
   nombre: string;
-  rol: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta';
+  rol: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas';
   vendedor_id: string | null;
   activo: boolean;
 }
@@ -611,7 +611,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push('/');
       } else if (userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta') {
         router.push('/operativo');
-      } else if (userData.rol === 'jefe_ventas') {
+      } else if (userData.rol === 'jefe_ventas' || userData.rol === 'coordinador' || userData.rol === 'finanzas') {
         router.push('/locales');
       }
 
@@ -688,7 +688,7 @@ export function useRequireAuth() {
   return { user, loading };
 }
 
-export function useRequireRole(requiredRole: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta') {
+export function useRequireRole(requiredRole: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas') {
   const { user, loading } = useAuth();
   const router = useRouter();
 
@@ -697,10 +697,10 @@ export function useRequireRole(requiredRole: 'admin' | 'vendedor' | 'jefe_ventas
       // Redirect based on role
       if (user?.rol === 'vendedor' && requiredRole === 'admin') {
         router.push('/operativo'); // Vendedor trying to access admin
-      } else if ((user?.rol === 'jefe_ventas' || user?.rol === 'vendedor_caseta') && requiredRole === 'admin') {
-        router.push('/locales'); // Jefe/Caseta trying to access admin
-      } else if ((user?.rol === 'jefe_ventas' || user?.rol === 'vendedor_caseta') && requiredRole === 'vendedor') {
-        router.push('/locales'); // Jefe/Caseta trying to access vendedor routes
+      } else if ((user?.rol === 'jefe_ventas' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador' || user?.rol === 'finanzas') && requiredRole === 'admin') {
+        router.push('/locales'); // Jefe/Caseta/Coordinador/Finanzas trying to access admin
+      } else if ((user?.rol === 'jefe_ventas' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador' || user?.rol === 'finanzas') && requiredRole === 'vendedor') {
+        router.push('/locales'); // Jefe/Caseta/Coordinador/Finanzas trying to access vendedor routes
       } else {
         router.push('/login'); // Not authenticated
       }
