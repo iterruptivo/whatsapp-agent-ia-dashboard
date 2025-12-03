@@ -56,7 +56,12 @@
       "Bash(python:*)",
       "Bash(C:UsersLeoAdminAppDataLocalProgramsPythonPython311python.exe -c \"print(''hello'')\")",
       "Bash(git revert:*)",
-      "Bash(node_modules/.bin/next build)"
+      "Bash(node_modules/.bin/next build)",
+      "Bash(echo:*)",
+      "Bash(if exist \"d:\\Iterruptivo\\Proyectos-Clientes\\EcoPlaza\\AgenteIA-Whatsapp\\dashboard\\ANALISIS_BUG_TRAZABILIDAD_COMISIONES.md\" del \"d:\\Iterruptivo\\Proyectos-Clientes\\EcoPlaza\\AgenteIA-Whatsapp\\dashboard\\ANALISIS_BUG_TRAZABILIDAD_COMISIONES.md\")",
+      "Bash(nvm list)",
+      "Bash(\"C:\\Users\\josel\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe\" -c \"import pandas; print(''ok'')\")",
+      "Bash(git merge:*)"
     ],
     "deny": [],
     "ask": []

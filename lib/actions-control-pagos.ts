@@ -241,11 +241,12 @@ export async function procesarVentaLocal(data: ProcesarVentaData) {
 // ============================================================================
 
 /**
- * Obtener todos los control_pagos activos
+ * Obtener todos los control_pagos activos filtrados por proyecto
  *
+ * @param proyectoId ID del proyecto para filtrar (REQUERIDO por regla de proyecto)
  * @returns Array de control_pagos ordenados por fecha de creación DESC
  */
-export async function getAllControlPagos(): Promise<ControlPago[]> {
+export async function getAllControlPagos(proyectoId: string): Promise<ControlPago[]> {
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -260,9 +261,11 @@ export async function getAllControlPagos(): Promise<ControlPago[]> {
   );
 
   try {
+    // Filtrar siempre por proyecto (regla de proyecto obligatoria)
     const { data, error } = await supabase
       .from('control_pagos')
       .select('*')
+      .eq('proyecto_id', proyectoId)
       .eq('estado', 'activo')
       .order('created_at', { ascending: false });
 

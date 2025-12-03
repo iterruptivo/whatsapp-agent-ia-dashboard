@@ -1384,11 +1384,31 @@ INCORRECTO (intentado en 53):
 - Leer páginas existentes (page.tsx, operativo/page.tsx) para seguir mismo patrón de auth
 - NO asumir que archivos existen sin verificar - build errors tienen prioridad
 
+### **Regla de Filtro por Proyecto (OBLIGATORIA - Sesión 64)**
+- **TODO se filtra por proyecto seleccionado** - Todas las funciones de query (getAllControlPagos, getAllComisiones, etc.) DEBEN recibir `proyectoId` y filtrar por proyecto
+- **NUNCA mostrar datos globales** a menos que el usuario lo solicite explícitamente
+- **El proyecto viene de localStorage** (`selectedProyecto.id`) en client components
+- **El proyecto viene de cookies** (`getSelectedProyectoId()`) en server components
+- Ejemplo correcto: `getAllControlPagos(proyectoId)` con filtro `.eq('proyecto_id', proyectoId)`
+- Ejemplo incorrecto: `getAllControlPagos()` sin filtro (mostraría todos los proyectos)
+
 ### **TypeScript & PDF Generation**
 - **Tuple types explícitos** para arrays de tamaño fijo: `const color: [number, number, number] = [255, 0, 0]` en vez de `const color = [255, 0, 0]`
 - **jsPDF autoTable alignment** requiere configuración en DOS lugares: `headStyles.halign` para headers Y `columnStyles[n].halign` para body
 - **Margin consistency** entre secciones y tablas: usar mismo valor de margin para alinear elementos
 - **Colores semánticos** en tablas mejoran legibilidad: rojo=gasto, azul=reducción deuda, verde=valor total
+
+### **Convenciones UI/UX (OBLIGATORIAS)**
+- **Input type="number"**: SIEMPRE agregar `onWheel={(e) => e.currentTarget.blur()}` para evitar cambios accidentales con scroll wheel
+  ```tsx
+  <input
+    type="number"
+    onWheel={(e) => e.currentTarget.blur()}
+    // ... otros props
+  />
+  ```
+- **Tooltips personalizados**: Usar componente `@/components/shared/Tooltip` en vez del title nativo del navegador
+- **Fechas locales**: Usar `getFullYear()`, `getMonth()`, `getDate()` en vez de `toISOString()` para evitar problemas de timezone
 
 ---
 

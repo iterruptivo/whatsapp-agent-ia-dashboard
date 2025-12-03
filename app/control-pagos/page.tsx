@@ -22,16 +22,19 @@ export default function ControlPagosPage() {
   const { user, loading } = useAuth();
   const [controlPagos, setControlPagos] = useState<ControlPago[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(true);
+  const [selectedProyectoId, setSelectedProyectoId] = useState<string>('');
   const [selectedProyectoNombre, setSelectedProyectoNombre] = useState<string>('');
 
-  // Obtener nombre del proyecto seleccionado desde localStorage
+  // Obtener proyecto seleccionado desde localStorage
   useEffect(() => {
     const stored = localStorage.getItem('selectedProyecto');
     if (stored) {
       try {
         const proyecto = JSON.parse(stored);
+        setSelectedProyectoId(proyecto.id || '');
         setSelectedProyectoNombre(proyecto.nombre || '');
       } catch {
+        setSelectedProyectoId('');
         setSelectedProyectoNombre('');
       }
     }
@@ -48,18 +51,18 @@ export default function ControlPagosPage() {
     }
   }, [user, loading, router]);
 
-  // Fetch control_pagos data
+  // Fetch control_pagos data filtrado por proyecto
   useEffect(() => {
-    if (user && (user.rol === 'admin' || user.rol === 'jefe_ventas')) {
+    if (user && (user.rol === 'admin' || user.rol === 'jefe_ventas') && selectedProyectoId) {
       async function fetchData() {
         setLoadingData(true);
-        const data = await getAllControlPagos();
+        const data = await getAllControlPagos(selectedProyectoId);
         setControlPagos(data);
         setLoadingData(false);
       }
       fetchData();
     }
-  }, [user]);
+  }, [user, selectedProyectoId]);
 
   // Show loading while auth is loading
   if (loading || !user) {
