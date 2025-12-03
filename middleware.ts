@@ -225,12 +225,12 @@ export async function middleware(req: NextRequest) {
 
   // OPERATIVO ROUTES (/operativo)
   if (isOperativoRoute) {
-    // Admin and vendedor can access operativo
-    if (userData.rol === 'admin' || userData.rol === 'vendedor') {
+    // Admin, vendedor and vendedor_caseta can access operativo
+    if (userData.rol === 'admin' || userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta') {
       return res;
     }
-    // Jefe/Caseta trying to access operativo - redirect to locales
-    if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta') {
+    // Jefe trying to access operativo - redirect to locales
+    if (userData.rol === 'jefe_ventas') {
       return NextResponse.redirect(new URL('/locales', req.url));
     }
     return res;

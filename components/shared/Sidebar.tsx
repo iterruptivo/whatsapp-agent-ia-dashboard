@@ -81,7 +81,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    if (user?.rol === 'vendedor') {
+    if (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') {
       return {
         directItems: [{ href: '/operativo', label: 'Dashboard Operativo', icon: Users }],
         categories: [finanzasCategory],
@@ -89,7 +89,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // jefe_ventas y vendedor_caseta solo ven Finanzas
+    // jefe_ventas solo ve Finanzas
     return {
       directItems: [],
       categories: [finanzasCategory],

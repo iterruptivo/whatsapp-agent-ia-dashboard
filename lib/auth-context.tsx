@@ -609,9 +609,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Redirect based on role
       if (userData.rol === 'admin') {
         router.push('/');
-      } else if (userData.rol === 'vendedor') {
+      } else if (userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta') {
         router.push('/operativo');
-      } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta') {
+      } else if (userData.rol === 'jefe_ventas') {
         router.push('/locales');
       }
 
