@@ -231,8 +231,8 @@ export default function OperativoClient({
           >
             Sin Asignar
           </button>
-          {/* Only show "Mis Leads" for vendedor role */}
-          {user?.rol === 'vendedor' && (
+          {/* Only show "Mis Leads" for vendedor and vendedor_caseta roles */}
+          {(user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') && (
             <button
               onClick={() => setAssignmentFilter('mis_leads')}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -284,8 +284,8 @@ export default function OperativoClient({
 
         {/* Export & Import Buttons */}
         <div className="flex items-center gap-2 ml-auto">
-          {/* Import Dropdown (Admin + Vendedor) */}
-          {(user?.rol === 'admin' || user?.rol === 'vendedor') && (
+          {/* Import Dropdown (Admin + Vendedor + Vendedor Caseta) */}
+          {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') && (
             <div className="relative">
               <button
                 onClick={() => setIsImportDropdownOpen(!isImportDropdownOpen)}
@@ -378,8 +378,8 @@ export default function OperativoClient({
       {/* Lead Detail Panel */}
       <LeadDetailPanel lead={selectedLead} isOpen={isPanelOpen} onClose={handleClosePanel} />
 
-      {/* Manual Lead Panel (Admin + Vendedor) */}
-      {(user?.rol === 'admin' || user?.rol === 'vendedor') && selectedProyecto && (
+      {/* Manual Lead Panel (Admin + Vendedor + Vendedor Caseta) */}
+      {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') && selectedProyecto && (
         <ManualLeadPanel
           isOpen={isManualPanelOpen}
           onClose={() => setIsManualPanelOpen(false)}
@@ -410,8 +410,8 @@ export default function OperativoClient({
         showCancel={config.showCancel}
       />
 
-      {/* Import Modal (Admin + Vendedor) */}
-      {(user?.rol === 'admin' || user?.rol === 'vendedor') && selectedProyecto && (
+      {/* Import Modal (Admin + Vendedor + Vendedor Caseta) */}
+      {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') && selectedProyecto && (
         <LeadImportModal
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
