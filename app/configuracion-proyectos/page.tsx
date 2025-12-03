@@ -528,7 +528,7 @@ export default function ConfiguracionProyectos() {
     <div className="min-h-screen bg-gray-50">
       <DashboardHeader
         title="Configuración de Proyectos"
-        subtitle="Gestiona la configuración de todos los proyectos"
+        subtitle={`Gestiona la configuración del proyecto${selectedProyecto ? ` - ${selectedProyecto.nombre}` : ''}`}
       />
 
       <main className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
