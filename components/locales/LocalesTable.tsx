@@ -755,13 +755,8 @@ export default function LocalesTable({
       return null;
     }
 
-    // Solo mostrar si:
-    // 1. Local está en ROJO (vendido/bloqueado)
-    // 2. Usuario es admin o jefe_ventas
-    if (
-      local.estado !== 'rojo' ||
-      (user?.rol !== 'admin' && user?.rol !== 'jefe_ventas')
-    ) {
+    // Solo mostrar si local está en ROJO (vendido/bloqueado)
+    if (local.estado !== 'rojo') {
       return null;
     }
 

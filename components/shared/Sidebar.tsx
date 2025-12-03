@@ -85,15 +85,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       return {
         directItems: [{ href: '/operativo', label: 'Dashboard Operativo', icon: Users }],
         categories: [finanzasCategory],
-        bottomItems: [],
+        bottomItems: [] as MenuItem[],
       };
     }
 
-    // jefe_ventas solo ve Finanzas
+    // jefe_ventas, coordinador y finanzas solo ven Finanzas (locales, comisiones, etc)
+    if (user?.rol === 'jefe_ventas' || user?.rol === 'coordinador' || user?.rol === 'finanzas') {
+      return {
+        directItems: [],
+        categories: [finanzasCategory],
+        bottomItems: [] as MenuItem[],
+      };
+    }
+
+    // Fallback (no debería llegar aquí si el rol está definido)
     return {
       directItems: [],
       categories: [finanzasCategory],
-      bottomItems: [],
+      bottomItems: [] as MenuItem[],
     };
   };
 
