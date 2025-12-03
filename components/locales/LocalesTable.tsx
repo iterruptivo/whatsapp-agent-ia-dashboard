@@ -284,7 +284,13 @@ export default function LocalesTable({
     local: Local,
     nuevoEstado: 'verde' | 'amarillo' | 'naranja' | 'rojo'
   ) => {
-    const vendedorId = user?.vendedor_id || undefined;
+    // SESIÓN 65: jefe_ventas y coordinador NO envían vendedorId cuando bloquean (ROJO)
+    // Esto preserva el vendedor_actual_id del vendedor que hizo NARANJA
+    // Solo vendedor y vendedor_caseta actualizan vendedor_actual_id
+    const esRolQueNoActualizaVendedor = user?.rol === 'jefe_ventas' || user?.rol === 'coordinador';
+    const vendedorId = (nuevoEstado === 'rojo' && esRolQueNoActualizaVendedor)
+      ? undefined
+      : (user?.vendedor_id || undefined);
 
     // Loading state
     setChangingLocalId(local.id);
