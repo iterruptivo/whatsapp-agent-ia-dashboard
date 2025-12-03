@@ -36,10 +36,11 @@ export default function ControlPagosPage() {
 
   // Fetch control_pagos data filtrado por proyecto
   useEffect(() => {
-    if (user && (user.rol === 'admin' || user.rol === 'jefe_ventas') && selectedProyecto?.id) {
+    const proyectoId = selectedProyecto?.id;
+    if (user && (user.rol === 'admin' || user.rol === 'jefe_ventas') && proyectoId) {
       async function fetchData() {
         setLoadingData(true);
-        const data = await getAllControlPagos(selectedProyecto.id);
+        const data = await getAllControlPagos(proyectoId);
         setControlPagos(data);
         setLoadingData(false);
       }
