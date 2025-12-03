@@ -82,11 +82,12 @@ export async function updateLocalEstado(
       }
     }
 
-    // VALIDACIÓN CRÍTICA: Vendedor NO puede cambiar desde NARANJA
+    // VALIDACIÓN CRÍTICA: Vendedor y Coordinador NO pueden cambiar desde NARANJA
+    // (Coordinador tiene mismas restricciones que jefe_ventas para cambio de estados)
     if (
       local.estado === 'naranja' &&
       userRole &&
-      (userRole === 'vendedor' || userRole === 'vendedor_caseta')
+      (userRole === 'vendedor' || userRole === 'vendedor_caseta' || userRole === 'coordinador')
     ) {
       return {
         success: false,

@@ -199,8 +199,8 @@ export default function LocalesTable({
       // Verde y Rojo siguen el flujo normal (verde = liberar, rojo = bloquear)
     }
 
-    // 🚫 RESTRICCIÓN: Jefe Ventas solo puede bloquear (rojo) y desbloquear (rojo->verde)
-    if (user.rol === 'jefe_ventas') {
+    // 🚫 RESTRICCIÓN: Jefe Ventas y Coordinador solo pueden bloquear (rojo) y desbloquear (rojo->verde)
+    if (user.rol === 'jefe_ventas' || user.rol === 'coordinador') {
       const esBloqueo = nuevoEstado === 'rojo';
       const esDesbloqueo = local.estado === 'rojo' && local.bloqueado && nuevoEstado === 'verde';
 
@@ -211,7 +211,7 @@ export default function LocalesTable({
           local: null,
           nuevoEstado: null,
           title: 'Acción Restringida',
-          message: 'Los jefes de ventas solo pueden:\n\n• Bloquear locales (cambiar a VENDIDO)\n• Desbloquear locales bloqueados\n\nLos cambios de estado intermedios son exclusivos de los vendedores.',
+          message: 'Los jefes de ventas y coordinadores solo pueden:\n\n• Bloquear locales (cambiar a VENDIDO)\n• Desbloquear locales bloqueados\n\nLos cambios de estado intermedios son exclusivos de los vendedores.',
           variant: 'warning',
         });
         return;
@@ -220,8 +220,8 @@ export default function LocalesTable({
       // Si es desbloqueo, continuar con el flujo especial de desbloqueo abajo
     }
 
-    // 🔓 CASO ESPECIAL: Admin o Jefe de Ventas desbloquea local en ROJO
-    if (local.estado === 'rojo' && local.bloqueado && (user.rol === 'admin' || user.rol === 'jefe_ventas')) {
+    // 🔓 CASO ESPECIAL: Admin, Jefe de Ventas o Coordinador desbloquea local en ROJO
+    if (local.estado === 'rojo' && local.bloqueado && (user.rol === 'admin' || user.rol === 'jefe_ventas' || user.rol === 'coordinador')) {
       setConfirmModal({
         isOpen: true,
         local,
@@ -234,8 +234,8 @@ export default function LocalesTable({
       return;
     }
 
-    // Validar que local no esté bloqueado (solo admin y jefe_ventas pueden desbloquear)
-    if (local.bloqueado && user.rol !== 'admin' && user.rol !== 'jefe_ventas') {
+    // Validar que local no esté bloqueado (solo admin, jefe_ventas y coordinador pueden desbloquear)
+    if (local.bloqueado && user.rol !== 'admin' && user.rol !== 'jefe_ventas' && user.rol !== 'coordinador') {
       setConfirmModal({
         isOpen: true,
         local: null,
@@ -587,12 +587,13 @@ export default function LocalesTable({
 
     const isChanging = changingLocalId === local.id;
     const isBlocked = local.bloqueado;
-    const canUnblock = user?.rol === 'admin' || user?.rol === 'jefe_ventas';
+    const canUnblock = user?.rol === 'admin' || user?.rol === 'jefe_ventas' || user?.rol === 'coordinador';
 
-    // SESIÓN 48: Validación UI - Vendedor NO puede cambiar desde NARANJA
+    // SESIÓN 48: Validación UI - Vendedor y Coordinador NO pueden cambiar desde NARANJA
+    // (Coordinador tiene mismas restricciones que jefe_ventas para cambio de estados)
     const vendedorNoPuedeCambiarNaranja =
       local.estado === 'naranja' &&
-      (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta');
+      (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador');
 
     // SESIÓN 48D: Calcular cantidad de vendedores negociando
     const cantidadNegociando = (local.vendedores_negociando_ids || []).length;
@@ -669,8 +670,8 @@ export default function LocalesTable({
           }
         />
 
-        {/* Círculo Rojo - Solo Admin y Jefe de Ventas pueden bloquear */}
-        {(user?.rol === 'admin' || user?.rol === 'jefe_ventas') && (
+        {/* Círculo Rojo - Solo Admin, Jefe de Ventas y Coordinador pueden bloquear */}
+        {(user?.rol === 'admin' || user?.rol === 'jefe_ventas' || user?.rol === 'coordinador') && (
           <button
             onClick={() => handleEstadoChange(local, 'rojo')}
             disabled={isChanging || (isBlocked && !canUnblock)}
@@ -757,6 +758,11 @@ export default function LocalesTable({
 
     // Solo mostrar si local está en ROJO (vendido/bloqueado)
     if (local.estado !== 'rojo') {
+      return null;
+    }
+
+    // Solo admin y jefe_ventas pueden iniciar registro de venta
+    if (user?.rol !== 'admin' && user?.rol !== 'jefe_ventas') {
       return null;
     }
 
