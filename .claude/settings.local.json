@@ -61,7 +61,8 @@
       "Bash(if exist \"d:\\Iterruptivo\\Proyectos-Clientes\\EcoPlaza\\AgenteIA-Whatsapp\\dashboard\\ANALISIS_BUG_TRAZABILIDAD_COMISIONES.md\" del \"d:\\Iterruptivo\\Proyectos-Clientes\\EcoPlaza\\AgenteIA-Whatsapp\\dashboard\\ANALISIS_BUG_TRAZABILIDAD_COMISIONES.md\")",
       "Bash(nvm list)",
       "Bash(\"C:\\Users\\josel\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe\" -c \"import pandas; print(''ok'')\")",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(start chrome \"e:\\Iterruptivo\\Proyectos-Clientes\\EcoPlaza\\AgenteIA-Whatsapp\\dashboard\\templates\\ficha-inscripcion\\preview-proyecto-pruebas.html\")"
     ],
     "deny": [],
     "ask": []
