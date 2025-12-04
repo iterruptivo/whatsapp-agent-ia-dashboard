@@ -1,7 +1,8 @@
 # 📅 SESIONES DICIEMBRE 2025
 
 ## Índice
-- [Sesión 64](#sesión-64---2-diciembre-2025) - Sistema Generación Documentos
+- [Sesión 64](#sesión-64---2-diciembre-2025) - Sistema Generación Documentos (Análisis + DB + UI)
+- [Sesión 64B](#sesión-64b---3-diciembre-2025) - Template HTML Ficha de Inscripción
 
 ---
 
@@ -203,7 +204,152 @@ ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS cuentas_bancarias JSONB DEFAULT '
 
 **Commit:** `f8afd2a`
 **Deploy:** ✅ STAGING
-**Próxima sesión:** DNI/dirección en control_pagos + docx-templates
+
+---
+
+## Sesión 64B - 3 Diciembre 2025
+
+### 📄 Template HTML Ficha de Inscripción
+
+**Tipo:** Feature - Diseño de Template
+**Estado:** ✅ TEMPLATE COMPLETO
+**Archivos:** `templates/ficha-inscripcion/`
+
+---
+
+### Objetivo
+
+Crear un template HTML responsive y printable para la "Ficha de Inscripción" de clientes, que servirá como base para la generación dinámica de documentos.
+
+---
+
+### Trabajo Realizado
+
+#### Estructura del Template
+
+**Archivo principal:** `templates/ficha-inscripcion/preview-proyecto-pruebas.html`
+
+**Secciones implementadas:**
+
+| # | Sección | Descripción |
+|---|---------|-------------|
+| 1 | Datos del Proyecto | Proyecto, rubro, área, local, nivel, ubicación |
+| 2 | Datos del Cliente (Titular) | Información completa del comprador (20+ campos) |
+| 3 | Datos del Cónyuge | Información del cónyuge si aplica |
+| 3B | Otros Copropietarios | **NUEVO** - Tabla compacta para copropietarios adicionales |
+| 4 | UIN | Modalidad pago, precios, financiamiento, cuotas |
+| 5 | ¿Cómo se enteró? | Grid 8x2 con opciones de marketing |
+| 6 | Datos del Asesor | Nombre, código, fecha de registro |
+| - | Firmas | Titular, cónyuge, copropietarios, asesor, jefe ventas |
+
+#### Campos Implementados
+
+**Sección 2 - Datos del Cliente:**
+- Nombres (apellido paterno, materno, nombres)
+- Documento (DNI/CE/Pasaporte + número)
+- Nacimiento (fecha, lugar)
+- Estado civil (checkboxes)
+- Nacionalidad
+- Dirección domiciliaria (completa con distrito, provincia, departamento, referencia)
+- Contacto (celular, email)
+- Ocupación y centro de trabajo
+- Género y edad
+- Ingresos y nivel de estudios
+- Tipo de trabajador y puesto
+- Cantidad de hijos
+- ¿Cuenta con propiedades?
+- ¿Cuenta con tarjeta de crédito?
+- Motivo de la compra
+
+**Sección 3 - Datos del Cónyuge:**
+- Mismos campos que titular + parentesco
+
+**Sección 3B - Copropietarios (NUEVO):**
+- Tabla compacta con 5 columnas:
+  - Nombre completo
+  - Documento
+  - Teléfono
+  - Email
+  - Parentesco
+- Soporta N copropietarios adicionales
+- Firmas dinámicas generadas automáticamente
+
+**Sección 4 - UIN (actualizada):**
+- Modalidad de pago (Contado/Financiado)
+- Precio Local / Puesto / Lote
+- T. Cambio (tipo de cambio USD/PEN)
+- Monto de Separación (formato: $X,XXX.XX - S/ X,XXX.XX)
+- Fecha de Separación
+- Cuota Inicial (USD y %)
+- Saldo a Financiar
+- Número de Cuotas
+- TEA (%)
+- Cuota Mensual
+- Entidad Bancaria
+- Fecha Inicio de Pago
+- Compromiso Pago (detalle)
+
+**Sección 5 - Marketing:**
+Grid 8x2 con opciones:
+| Caseta | Facebook | Instagram | WhatsApp | Pag. Web | Volante | Panel Publicitario | Ferias |
+| Evento Presencial | Publicidad en Buses | Panel de Ruta | TikTok | Referido | Programa TV | Radio | Revistas |
+
+#### Estilos CSS
+
+- **Responsive:** Media queries para 768px y 480px
+- **Print-ready:** Estilos específicos para impresión
+- **Colores corporativos:**
+  - Verde principal: `#1b967a`
+  - Azul secundario: `#192c4d`
+- **Checkboxes:** Estilo visual con ✓ en casillas marcadas
+- **Tables:** `.marketing-table`, `.copropietarios-table`, `.data-table`
+- **Signatures:** Grid 2x2 con líneas de firma
+
+#### Archivos en carpeta templates/
+
+```
+templates/ficha-inscripcion/
+├── preview-proyecto-pruebas.html  # Template HTML completo
+├── config-proyecto-pruebas.json   # Configuración + datos de ejemplo
+└── template-base.html             # (referencia)
+```
+
+---
+
+### Decisiones de Diseño
+
+| Decisión | Opción Elegida | Razón |
+|----------|----------------|-------|
+| Copropietarios múltiples | Opción Híbrida | Cónyuge en sección completa + tabla compacta para otros |
+| Sección Observaciones | Eliminada | No requerida por el negocio |
+| Marketing | Tabla 8x2 | Mejor visualización que grid CSS |
+| Tipo de cambio | Campo separado | Permite mostrar monto en USD y PEN |
+| Firmas dinámicas | Por copropietario | Cada copropietario firma individualmente |
+
+---
+
+### Próximos Pasos (Integración con Sistema)
+
+| # | Tarea | Descripción |
+|---|-------|-------------|
+| 1 | Campo "¿Copropietarios?" | Toggle Sí/No + cantidad |
+| 2 | Formulario dinámico | Generar N filas según cantidad |
+| 3 | Array en JSON | `copropietarios: [{...}, {...}]` |
+| 4 | Generador iterativo | Loop para crear filas en tabla y firmas |
+| 5 | Integración control_pagos | Usar datos de venta para rellenar template |
+
+---
+
+### Vista Previa
+
+Para ver el template, abrir en navegador:
+```
+templates/ficha-inscripcion/preview-proyecto-pruebas.html
+```
+
+---
+
+**Próxima sesión:** Integración con sistema de generación de documentos
 
 ---
 

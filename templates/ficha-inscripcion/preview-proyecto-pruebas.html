@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ficha de Inscripción - Urbanización San Gabriel - PRUEBAS</title>
+  <style>
+    /* ========== RESET & BASE ========== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.4;
+      color: #000;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+
+    /* ========== CONTAINER ========== */
+    .ficha-container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    /* ========== HEADER ========== */
+    .ficha-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #1b967a;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+
+    .logo-container {
+      width: 120px;
+    }
+
+    .logo-container img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .logo-placeholder {
+      width: 120px;
+      height: 60px;
+      background: #1b967a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #fff;
+      font-weight: bold;
+      border-radius: 5px;
+    }
+
+    .ficha-title {
+      text-align: center;
+      flex: 1;
+    }
+
+    .ficha-title .empresa-nombre {
+      font-size: 14px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 2px;
+    }
+
+    .ficha-title .empresa-ruc {
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 5px;
+    }
+
+    .ficha-title h1 {
+      font-size: 20px;
+      font-weight: bold;
+      color: #1b967a;
+      text-transform: uppercase;
+    }
+
+    .ficha-codigo {
+      text-align: right;
+      min-width: 120px;
+    }
+
+    .ficha-codigo .codigo-label {
+      font-size: 10px;
+      color: #666;
+    }
+
+    .ficha-codigo .codigo-value {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1b967a;
+      border: 1px solid #1b967a;
+      padding: 5px 10px;
+      display: inline-block;
+      margin-top: 5px;
+    }
+
+    /* ========== SECTIONS ========== */
+    .section {
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+
+    .section-header {
+      background: #1b967a;
+      color: #fff;
+      padding: 8px 15px;
+      font-weight: bold;
+      font-size: 13px;
+      text-transform: uppercase;
+    }
+
+    .section-header.secondary {
+      background: #192c4d;
+    }
+
+    .section-content {
+      padding: 15px;
+    }
+
+    /* ========== FORM GRID ========== */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .form-grid.three-cols {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .form-grid.four-cols {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-group.span-2 {
+      grid-column: span 2;
+    }
+
+    .form-group.span-3 {
+      grid-column: span 3;
+    }
+
+    .form-label {
+      font-size: 10px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+    }
+
+    .form-value {
+      border-bottom: 1px solid #333;
+      min-height: 22px;
+      padding: 3px 5px;
+      font-size: 12px;
+      background: #fafafa;
+    }
+
+    .form-value.empty {
+      color: #999;
+      font-style: italic;
+    }
+
+    /* ========== CHECKBOX GROUP ========== */
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .checkbox-box {
+      width: 16px;
+      height: 16px;
+      border: 1px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+    }
+
+    .checkbox-box.checked {
+      background: #1b967a;
+      color: #fff;
+      border-color: #1b967a;
+    }
+
+    .checkbox-label {
+      font-size: 11px;
+    }
+
+    /* Marketing Table - 8 columnas como en la imagen */
+    .marketing-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 2px solid #1b967a;
+    }
+
+    .marketing-table td {
+      border: 1px solid #1b967a;
+      padding: 12px 6px;
+      text-align: center;
+      vertical-align: middle;
+      width: 12.5%;
+    }
+
+    .marketing-table .checkbox-box {
+      display: block;
+      margin: 0 auto 6px auto;
+    }
+
+    .marketing-table .checkbox-label {
+      display: block;
+      font-size: 9px;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: #333;
+      line-height: 1.3;
+    }
+
+    /* ========== TABLE STYLES ========== */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    .data-table th,
+    .data-table td {
+      border: 1px solid #ddd;
+      padding: 6px 8px;
+      text-align: left;
+    }
+
+    .data-table th {
+      background: #f0f0f0;
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 10px;
+    }
+
+    .data-table td {
+      background: #fff;
+    }
+
+    /* ========== COPROPIETARIOS TABLE ========== */
+    .copropietarios-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      margin-top: 10px;
+    }
+
+    .copropietarios-table th {
+      background: #192c4d;
+      color: #fff;
+      padding: 8px 10px;
+      text-align: left;
+      font-weight: bold;
+      text-transform: uppercase;
+      font-size: 10px;
+      border: 1px solid #192c4d;
+    }
+
+    .copropietarios-table td {
+      border: 1px solid #ddd;
+      padding: 8px 10px;
+      background: #fafafa;
+    }
+
+    .copropietarios-table tr:nth-child(even) td {
+      background: #fff;
+    }
+
+    .copropietarios-empty {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-style: italic;
+      background: #f9f9f9;
+      border: 1px dashed #ddd;
+      border-radius: 5px;
+    }
+
+    /* ========== SIGNATURE SECTION ========== */
+    .signature-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 40px;
+      margin-top: 30px;
+    }
+
+    .signature-box {
+      text-align: center;
+    }
+
+    .signature-line {
+      border-top: 1px solid #333;
+      margin-top: 60px;
+      padding-top: 10px;
+    }
+
+    .signature-label {
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .signature-sublabel {
+      font-size: 10px;
+      color: #666;
+    }
+
+    /* ========== FOOTER ========== */
+    .ficha-footer {
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+      font-size: 10px;
+      color: #666;
+      text-align: center;
+    }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .ficha-container {
+        padding: 15px;
+      }
+
+      .ficha-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+      }
+
+      .logo-container {
+        order: 1;
+      }
+
+      .ficha-title {
+        order: 2;
+      }
+
+      .ficha-codigo {
+        order: 3;
+        text-align: center;
+      }
+
+      .form-grid,
+      .form-grid.three-cols,
+      .form-grid.four-cols {
+        grid-template-columns: 1fr;
+      }
+
+      .form-group.span-2,
+      .form-group.span-3 {
+        grid-column: 1;
+      }
+
+      .signature-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+      }
+
+      .checkbox-group {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .ficha-title h1 {
+        font-size: 16px;
+      }
+
+      .ficha-title h2 {
+        font-size: 12px;
+      }
+
+      .section-header {
+        font-size: 12px;
+        padding: 6px 10px;
+      }
+
+      .form-label {
+        font-size: 9px;
+      }
+
+      .form-value {
+        font-size: 11px;
+      }
+    }
+
+    /* ========== PRINT STYLES ========== */
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+
+      .ficha-container {
+        box-shadow: none;
+        max-width: 100%;
+      }
+
+      .section {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ficha-container">
+
+    <!-- ========== HEADER ========== -->
+    <header class="ficha-header">
+      <div class="logo-container">
+        <div class="logo-placeholder">ECOPLAZA</div>
+      </div>
+      <div class="ficha-title">
+        <p class="empresa-nombre">EcoPlaza Inmobiliaria S.A.C.</p>
+        <p class="empresa-ruc">RUC: 20612345678</p>
+        <h1>Ficha de Inscripción</h1>
+      </div>
+      <div class="ficha-codigo">
+        <div class="codigo-label">N° de Ficha</div>
+        <div class="codigo-value">PRUEBA-001</div>
+      </div>
+    </header>
+
+    <!-- ========== SECCIÓN 1: DATOS DEL PROYECTO ========== -->
+    <section class="section">
+      <div class="section-header">1. Datos del Proyecto</div>
+      <div class="section-content">
+        <div class="form-grid three-cols">
+          <div class="form-group">
+            <span class="form-label">Proyecto</span>
+            <span class="form-value">Urbanización San Gabriel - PRUEBAS</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Rubro</span>
+            <span class="form-value">Comercio</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Área (m²)</span>
+            <span class="form-value">120.50</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Local / Puesto / Lote</span>
+            <span class="form-value">PRUEBA-001</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Nivel</span>
+            <span class="form-value">1er Piso</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Ubicación</span>
+            <span class="form-value">Zona A - Entrada Principal</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== SECCIÓN 2: DATOS DEL CLIENTE ========== -->
+    <section class="section">
+      <div class="section-header">2. Datos del Cliente (Titular)</div>
+      <div class="section-content">
+        <div class="form-grid">
+          <!-- Fila 1: Nombres -->
+          <div class="form-group">
+            <span class="form-label">Apellido Paterno</span>
+            <span class="form-value">García</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Apellido Materno</span>
+            <span class="form-value">López</span>
+          </div>
+          <div class="form-group span-2">
+            <span class="form-label">Nombres</span>
+            <span class="form-value">Juan Carlos</span>
+          </div>
+
+          <!-- Fila 2: Documento -->
+          <div class="form-group">
+            <span class="form-label">Tipo de Documento</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <span class="checkbox-box checked">✓</span>
+                <span class="checkbox-label">DNI</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">CE</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">Pasaporte</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Número de Documento</span>
+            <span class="form-value">12345678</span>
+          </div>
+
+          <!-- Fila 3: Nacimiento -->
+          <div class="form-group">
+            <span class="form-label">Fecha de Nacimiento</span>
+            <span class="form-value">15/03/1985</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Lugar de Nacimiento</span>
+            <span class="form-value">Lima</span>
+          </div>
+
+          <!-- Fila 4: Estado Civil y Nacionalidad -->
+          <div class="form-group">
+            <span class="form-label">Estado Civil</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">Soltero(a)</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box checked">✓</span>
+                <span class="checkbox-label">Casado(a)</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">Viudo(a)</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">Divorciado(a)</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Nacionalidad</span>
+            <span class="form-value">Peruana</span>
+          </div>
+
+          <!-- Fila 5: Dirección -->
+          <div class="form-group full-width">
+            <span class="form-label">Dirección Domiciliaria</span>
+            <span class="form-value">Jr. Las Flores 456, Dpto 302</span>
+          </div>
+
+          <!-- Fila 6: Ubicación -->
+          <div class="form-group">
+            <span class="form-label">Distrito</span>
+            <span class="form-value">San Isidro</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Provincia</span>
+            <span class="form-value">Lima</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Departamento</span>
+            <span class="form-value">Lima</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Referencia</span>
+            <span class="form-value">A 2 cuadras del parque principal</span>
+          </div>
+
+          <!-- Fila 7: Contacto -->
+          <div class="form-group">
+            <span class="form-label">Teléfono Celular</span>
+            <span class="form-value">999 888 777</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Correo Electrónico</span>
+            <span class="form-value">juan.garcia@email.com</span>
+          </div>
+
+          <!-- Fila 8: Ocupación -->
+          <div class="form-group">
+            <span class="form-label">Ocupación / Profesión</span>
+            <span class="form-value">Ingeniero Civil</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Centro de Trabajo</span>
+            <span class="form-value">Constructora ABC S.A.</span>
+          </div>
+
+          <!-- Fila 9: Género y Edad -->
+          <div class="form-group">
+            <span class="form-label">Género</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <span class="checkbox-box checked">✓</span>
+                <span class="checkbox-label">Masculino</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">Femenino</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Edad</span>
+            <span class="form-value">38 años</span>
+          </div>
+
+          <!-- Fila 10: Ingresos y Estudios -->
+          <div class="form-group">
+            <span class="form-label">Ingresos Salariales (S/.)</span>
+            <span class="form-value">8,500.00</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Nivel de Estudios</span>
+            <span class="form-value">Superior Universitario</span>
+          </div>
+
+          <!-- Fila 11: Tipo de trabajo -->
+          <div class="form-group">
+            <span class="form-label">Tipo de Trabajador</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">Dependiente</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box checked">✓</span>
+                <span class="checkbox-label">Independiente</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Puesto de Trabajo</span>
+            <span class="form-value">Gerente de Proyectos</span>
+          </div>
+
+          <!-- Fila 12: Hijos y Propiedades -->
+          <div class="form-group">
+            <span class="form-label">Cantidad de Hijos</span>
+            <span class="form-value">2</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">¿Cuenta con Propiedades?</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <span class="checkbox-box checked">✓</span>
+                <span class="checkbox-label">Sí</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">No</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fila 13: Tarjeta y Motivo -->
+          <div class="form-group">
+            <span class="form-label">¿Cuenta con Tarjeta de Crédito?</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <span class="checkbox-box checked">✓</span>
+                <span class="checkbox-label">Sí</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">No</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Motivo de la Compra</span>
+            <span class="form-value">Inversión</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== SECCIÓN 3: DATOS DEL CÓNYUGE ========== -->
+    <section class="section" id="seccion-conyuge">
+      <div class="section-header secondary">3. Datos del Cónyuge (Si aplica)</div>
+      <div class="section-content">
+        <div class="form-grid">
+          <!-- Fila 1: Nombres -->
+          <div class="form-group">
+            <span class="form-label">Apellido Paterno</span>
+            <span class="form-value">Mendoza</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Apellido Materno</span>
+            <span class="form-value">Ríos</span>
+          </div>
+          <div class="form-group span-2">
+            <span class="form-label">Nombres</span>
+            <span class="form-value">María Elena</span>
+          </div>
+
+          <!-- Fila 2: Documento -->
+          <div class="form-group">
+            <span class="form-label">Tipo de Documento</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <span class="checkbox-box checked">✓</span>
+                <span class="checkbox-label">DNI</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">CE</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">Pasaporte</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Número de Documento</span>
+            <span class="form-value">87654321</span>
+          </div>
+
+          <!-- Fila 3: Nacimiento -->
+          <div class="form-group">
+            <span class="form-label">Fecha de Nacimiento</span>
+            <span class="form-value">22/07/1988</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Lugar de Nacimiento</span>
+            <span class="form-value">Arequipa</span>
+          </div>
+
+          <!-- Fila 4: Nacionalidad -->
+          <div class="form-group">
+            <span class="form-label">Nacionalidad</span>
+            <span class="form-value">Peruana</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Ocupación / Profesión</span>
+            <span class="form-value">Contadora</span>
+          </div>
+
+          <!-- Fila 5: Contacto -->
+          <div class="form-group">
+            <span class="form-label">Teléfono Celular</span>
+            <span class="form-value">999 777 666</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Correo Electrónico</span>
+            <span class="form-value">maria.mendoza@email.com</span>
+          </div>
+
+          <!-- Fila 6: Género -->
+          <div class="form-group">
+            <span class="form-label">Género</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">Masculino</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box checked">✓</span>
+                <span class="checkbox-label">Femenino</span>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <!-- Espacio vacío para alineación -->
+          </div>
+
+          <!-- Fila 7: Dirección Domiciliaria -->
+          <div class="form-group full-width">
+            <span class="form-label">Dirección Domiciliaria</span>
+            <span class="form-value">Av. Arequipa 1520, Dpto 401</span>
+          </div>
+
+          <!-- Fila 8: Distrito y Provincia -->
+          <div class="form-group">
+            <span class="form-label">Distrito</span>
+            <span class="form-value">Lince</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Provincia</span>
+            <span class="form-value">Lima</span>
+          </div>
+
+          <!-- Fila 9: Departamento y Referencia -->
+          <div class="form-group">
+            <span class="form-label">Departamento</span>
+            <span class="form-value">Lima</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Referencia</span>
+            <span class="form-value">Cerca al Parque Castilla</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== SECCIÓN 3B: OTROS COPROPIETARIOS ========== -->
+    <section class="section" id="seccion-copropietarios">
+      <div class="section-header secondary">3B. Otros Copropietarios (Si aplica)</div>
+      <div class="section-content">
+        <!-- OPCIÓN A: Con copropietarios adicionales -->
+        <table class="copropietarios-table">
+          <thead>
+            <tr>
+              <th>Nombre Completo</th>
+              <th>Documento</th>
+              <th>Teléfono</th>
+              <th>Email</th>
+              <th>Parentesco</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Carlos Alberto García López</td>
+              <td>DNI 45678901</td>
+              <td>999 111 222</td>
+              <td>carlos.garcia@email.com</td>
+              <td>Hermano</td>
+            </tr>
+            <tr>
+              <td>Ana María García López</td>
+              <td>DNI 56789012</td>
+              <td>999 333 444</td>
+              <td>ana.garcia@email.com</td>
+              <td>Hermana</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- OPCIÓN B: Sin copropietarios adicionales (descomentar si aplica)
+        <div class="copropietarios-empty">
+          No hay copropietarios adicionales registrados
+        </div>
+        -->
+      </div>
+    </section>
+
+    <!-- ========== SECCIÓN 4: FORMA DE PAGO ========== -->
+    <section class="section">
+      <div class="section-header">4. UIN</div>
+      <div class="section-content">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <span class="form-label">Modalidad de Pago</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item">
+                <span class="checkbox-box"></span>
+                <span class="checkbox-label">Contado</span>
+              </div>
+              <div class="checkbox-item">
+                <span class="checkbox-box checked">✓</span>
+                <span class="checkbox-label">Financiado</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <span class="form-label">Precio Local / Puesto / Lote</span>
+            <span class="form-value">42,500.00</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">T. Cambio</span>
+            <span class="form-value">3.75</span>
+          </div>
+
+          <div class="form-group">
+            <span class="form-label">Monto de Separación</span>
+            <span class="form-value">$1,000.00 - S/ 3,750.00</span>
+          </div>
+
+          <div class="form-group">
+            <span class="form-label">Fecha de Separación</span>
+            <span class="form-value">01/12/2025</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Cuota Inicial (USD)</span>
+            <span class="form-value">8,500.00</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Porcentaje Inicial (%)</span>
+            <span class="form-value">20%</span>
+          </div>
+
+          <div class="form-group">
+            <span class="form-label">Saldo a Financiar (USD)</span>
+            <span class="form-value">33,000.00</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Número de Cuotas</span>
+            <span class="form-value">36</span>
+          </div>
+
+          <div class="form-group">
+            <span class="form-label">TEA (%)</span>
+            <span class="form-value">12%</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Cuota Mensual (USD)</span>
+            <span class="form-value">1,095.45</span>
+          </div>
+
+          <div class="form-group">
+            <span class="form-label">Entidad Bancaria</span>
+            <span class="form-value">BCP</span>
+          </div>
+
+          <div class="form-group">
+            <span class="form-label">Fecha Inicio de Pago</span>
+            <span class="form-value">15/01/2026</span>
+          </div>
+          <div class="form-group full-width">
+            <span class="form-label">Compromiso Pago (Detalle)</span>
+            <span class="form-value">Pago mensual los días 15 de cada mes mediante transferencia bancaria</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== SECCIÓN 5: INFORMACIÓN DE MARKETING ========== -->
+    <section class="section">
+      <div class="section-header secondary">5. ¿Cómo se enteró del proyecto?</div>
+      <div class="section-content">
+        <table class="marketing-table">
+          <tr>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Caseta</span></td>
+            <td><span class="checkbox-box checked">✓</span><span class="checkbox-label">Facebook</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Instagram</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">WhatsApp</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Pag. Web</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Volante</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Panel Publicitario</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Ferias</span></td>
+          </tr>
+          <tr>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Evento Presencial</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Publicidad en Buses</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Panel de Ruta</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">TikTok</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Referido</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Programa TV</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Radio</span></td>
+            <td><span class="checkbox-box"></span><span class="checkbox-label">Revistas</span></td>
+          </tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ========== SECCIÓN 6: DATOS DEL ASESOR ========== -->
+    <section class="section">
+      <div class="section-header secondary">6. Datos del Asesor de Ventas</div>
+      <div class="section-content">
+        <div class="form-grid three-cols">
+          <div class="form-group">
+            <span class="form-label">Nombre del Asesor</span>
+            <span class="form-value">Pedro Ramírez</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Código / ID</span>
+            <span class="form-value">VEN-001</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Fecha de Registro</span>
+            <span class="form-value">03/12/2025</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== FIRMAS ========== -->
+    <section class="section">
+      <div class="section-header">Firmas</div>
+      <div class="section-content">
+        <div class="signature-grid">
+          <div class="signature-box">
+            <div class="signature-line">
+              <div class="signature-label">Juan Carlos García López</div>
+              <div class="signature-sublabel">Cliente / Titular</div>
+              <div class="signature-sublabel">DNI: 12345678</div>
+            </div>
+          </div>
+          <div class="signature-box" id="firma-conyuge">
+            <div class="signature-line">
+              <div class="signature-label">María Elena Mendoza Ríos</div>
+              <div class="signature-sublabel">Cónyuge</div>
+              <div class="signature-sublabel">DNI: 87654321</div>
+            </div>
+          </div>
+          <!-- FIRMAS COPROPIETARIOS (dinámico) -->
+          <div class="signature-box" id="firma-copropietario-1">
+            <div class="signature-line">
+              <div class="signature-label">Carlos Alberto García López</div>
+              <div class="signature-sublabel">Copropietario</div>
+              <div class="signature-sublabel">DNI: 45678901</div>
+            </div>
+          </div>
+          <div class="signature-box" id="firma-copropietario-2">
+            <div class="signature-line">
+              <div class="signature-label">Ana María García López</div>
+              <div class="signature-sublabel">Copropietaria</div>
+              <div class="signature-sublabel">DNI: 56789012</div>
+            </div>
+          </div>
+          <!-- FIN FIRMAS COPROPIETARIOS -->
+          <div class="signature-box">
+            <div class="signature-line">
+              <div class="signature-label">Pedro Ramírez</div>
+              <div class="signature-sublabel">Asesor de Ventas</div>
+            </div>
+          </div>
+          <div class="signature-box">
+            <div class="signature-line">
+              <div class="signature-label">Jefe de Ventas</div>
+              <div class="signature-sublabel">V°B° Supervisión</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="ficha-footer">
+      <p>EcoPlaza Inmobiliaria S.A.C. | Av. Principal 123, Lima, Perú</p>
+      <p>Documento generado el 03/12/2025 10:30 AM | Sistema EcoPlaza Dashboard</p>
+    </footer>
+
+  </div>
+</body>
+</html>

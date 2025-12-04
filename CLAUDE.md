@@ -7,8 +7,8 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 2 Diciembre 2025
-**Sesión:** 64 - 📄 **Sistema Generación de Documentos (Análisis + DB)**
+**Fecha:** 3 Diciembre 2025
+**Sesión:** 64B - 📄 **Template HTML Ficha de Inscripción**
 **Estado:** ⏳ **EN DESARROLLO**
 **Documentación:** Ver [Módulo Documentos](docs/modulos/documentos.md)
 
@@ -74,9 +74,9 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: OPERATIVO (3 flujos activos)
 
 - **[Documentos](docs/modulos/documentos.md)** - Generación automática de documentos legales
-  - Última sesión: **64 (Análisis + Migración DB)**
-  - Estado: EN DESARROLLO (2/8 fases completadas)
-  - Tecnología: docx-templates para templates Word
+  - Última sesión: **64B (Template HTML Ficha de Inscripción)**
+  - Estado: EN DESARROLLO (5/8 fases completadas)
+  - Tecnología: docx-templates para templates Word + HTML templates
 
 ---
 
@@ -112,7 +112,8 @@ Documentación cronológica completa de todas las sesiones.
   - **🛠️ Múltiples mejoras UX + Fix timezone (63)** ✅
 
 - **[Diciembre 2025](docs/sesiones/2025-12-diciembre.md)** - Sesiones 64+
-  - **📄 Sistema Generación Documentos (64)** ⏳ EN DESARROLLO
+  - **📄 Sistema Generación Documentos (64)** ✅
+  - **📄 Template HTML Ficha de Inscripción (64B)** ✅
 
 ---
 
