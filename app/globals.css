@@ -32,10 +32,3 @@ body {
 .animate-fade-in {
   animation: fade-in 0.15s ease-out;
 }
-
-/* TEMP: Hide unfinished features in production */
-[data-menu-item="control-pagos"],
-[data-menu-item="comisiones"],
-[data-menu-item="configuracion-proyectos"] {
-  display: none !important;
-}

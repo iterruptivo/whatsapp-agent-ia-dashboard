@@ -773,7 +773,7 @@ export default function LocalesTable({
     }
 
     return (
-      <div className="mt-2 hidden"> {/* TEMP: hidden for production */}
+      <div className="mt-2">
         <button
           onClick={() => handleIniciarRegistroVenta(local)}
           className="text-xs text-green-600 hover:text-green-800 hover:underline cursor-pointer"
