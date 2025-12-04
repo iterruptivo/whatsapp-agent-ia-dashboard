@@ -276,9 +276,9 @@ export default function ManualLeadPanel({
 
   if (!isOpen) return null;
 
-  // Filtrar usuarios activos con rol "vendedor"
+  // Filtrar usuarios activos con rol "vendedor" o "vendedor_caseta"
   const activeVendedores = usuarios.filter(
-    (u) => u.activo && u.rol === 'vendedor'
+    (u) => u.activo && (u.rol === 'vendedor' || u.rol === 'vendedor_caseta')
   );
 
   return (
