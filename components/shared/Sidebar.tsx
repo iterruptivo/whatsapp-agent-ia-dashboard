@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -76,6 +76,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         ],
         categories: [finanzasCategory],
         bottomItems: [
+          { href: '/repulse', label: 'Repulse', icon: Zap },
           { href: '/configuracion-proyectos', label: 'Configurar Proyectos', icon: Settings },
         ],
       };
@@ -89,8 +90,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // jefe_ventas, coordinador y finanzas solo ven Finanzas (locales, comisiones, etc)
-    if (user?.rol === 'jefe_ventas' || user?.rol === 'coordinador' || user?.rol === 'finanzas') {
+    // jefe_ventas tiene acceso a Repulse
+    if (user?.rol === 'jefe_ventas') {
+      return {
+        directItems: [],
+        categories: [finanzasCategory],
+        bottomItems: [
+          { href: '/repulse', label: 'Repulse', icon: Zap },
+        ],
+      };
+    }
+
+    // coordinador y finanzas solo ven Finanzas (locales, comisiones, etc)
+    if (user?.rol === 'coordinador' || user?.rol === 'finanzas') {
       return {
         directItems: [],
         categories: [finanzasCategory],

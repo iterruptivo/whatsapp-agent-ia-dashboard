@@ -195,6 +195,7 @@ export async function middleware(req: NextRequest) {
   const isLocalesRoute = pathname.startsWith('/locales');
   const isControlPagosRoute = pathname.startsWith('/control-pagos');
   const isComisionesRoute = pathname.startsWith('/comisiones');
+  const isRepulseRoute = pathname.startsWith('/repulse');
 
   // ADMIN ROUTES (/)
   if (isAdminRoute) {
@@ -259,6 +260,21 @@ export async function middleware(req: NextRequest) {
   // COMISIONES ROUTES (/comisiones)
   if (isComisionesRoute) {
     // ALL authenticated users can access comisiones
+    return res;
+  }
+
+  // REPULSE ROUTES (/repulse) - Admin and jefe_ventas only
+  // Nota: Preparado para incluir vendedor en el futuro
+  if (isRepulseRoute) {
+    if (userData.rol !== 'admin' && userData.rol !== 'jefe_ventas') {
+      // Non-authorized user trying to access repulse - redirect based on role
+      if (userData.rol === 'vendedor') {
+        return NextResponse.redirect(new URL('/operativo', req.url));
+      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador' || userData.rol === 'finanzas') {
+        return NextResponse.redirect(new URL('/locales', req.url));
+      }
+    }
+    // Admin and jefe_ventas can access
     return res;
   }
 
