@@ -748,6 +748,116 @@ export async function ejecutarDeteccionRepulse(
 }
 
 // ============================================================================
+// ENVÍO VIA WEBHOOK N8N
+// ============================================================================
+
+/**
+ * Enviar mensajes de repulse via webhook n8n
+ * El webhook debe estar configurado en n8n para:
+ * 1. Recibir array de leads con mensaje
+ * 2. Enviar WhatsApp via Graph API
+ * 3. Retornar confirmación
+ */
+export async function enviarRepulseViaWebhook(
+  leadsParaN8n: Array<{
+    repulse_lead_id: string;
+    lead_id: string;
+    telefono: string;
+    nombre: string | null;
+    mensaje: string;
+  }>
+): Promise<{
+  success: boolean;
+  enviados: number;
+  errores: number;
+  detalles: Array<{ telefono: string; status: 'ok' | 'error'; error?: string }>;
+}> {
+  // URL del webhook de n8n - debe configurarse en variables de entorno
+  const webhookUrl = process.env.N8N_REPULSE_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    console.error('N8N_REPULSE_WEBHOOK_URL no está configurado');
+    return {
+      success: false,
+      enviados: 0,
+      errores: leadsParaN8n.length,
+      detalles: leadsParaN8n.map((l) => ({
+        telefono: l.telefono,
+        status: 'error' as const,
+        error: 'Webhook no configurado',
+      })),
+    };
+  }
+
+  try {
+    // Llamar al webhook de n8n con todos los leads
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        leads: leadsParaN8n,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error en webhook n8n:', errorText);
+      return {
+        success: false,
+        enviados: 0,
+        errores: leadsParaN8n.length,
+        detalles: leadsParaN8n.map((l) => ({
+          telefono: l.telefono,
+          status: 'error' as const,
+          error: `HTTP ${response.status}`,
+        })),
+      };
+    }
+
+    // n8n debería retornar el resultado del envío
+    const result = await response.json();
+
+    // Si n8n retorna detalles por lead
+    if (result.detalles && Array.isArray(result.detalles)) {
+      const enviados = result.detalles.filter((d: { status: string }) => d.status === 'ok').length;
+      const errores = result.detalles.filter((d: { status: string }) => d.status === 'error').length;
+      return {
+        success: enviados > 0,
+        enviados,
+        errores,
+        detalles: result.detalles,
+      };
+    }
+
+    // Si n8n solo retorna success general
+    return {
+      success: true,
+      enviados: leadsParaN8n.length,
+      errores: 0,
+      detalles: leadsParaN8n.map((l) => ({
+        telefono: l.telefono,
+        status: 'ok' as const,
+      })),
+    };
+  } catch (error) {
+    console.error('Error llamando webhook n8n:', error);
+    return {
+      success: false,
+      enviados: 0,
+      errores: leadsParaN8n.length,
+      detalles: leadsParaN8n.map((l) => ({
+        telefono: l.telefono,
+        status: 'error' as const,
+        error: error instanceof Error ? error.message : 'Error desconocido',
+      })),
+    };
+  }
+}
+
+// ============================================================================
 // LEADS CANDIDATOS (para agregar manualmente desde /operativo)
 // ============================================================================
 
