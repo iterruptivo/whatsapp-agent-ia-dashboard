@@ -373,31 +373,6 @@ export default function OperativoClient({
           </select>
         </div>
 
-        {/* Repulse Selection Button (visible when leads are selected) */}
-        {(user?.rol === 'admin' || user?.rol === 'jefe_ventas') && selectedLeadIdsForRepulse.length > 0 && (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">
-              {selectedLeadIdsForRepulse.length} lead(s) seleccionados
-            </span>
-            <button
-              onClick={handleSendMultipleToRepulse}
-              disabled={isAddingToRepulse}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 font-medium transition-all duration-200 disabled:opacity-50"
-            >
-              <Zap className="w-5 h-5" />
-              <span className="hidden sm:inline">
-                {isAddingToRepulse ? 'Agregando...' : 'Enviar a Repulse'}
-              </span>
-            </button>
-            <button
-              onClick={() => setSelectedLeadIdsForRepulse([])}
-              className="px-3 py-2 text-gray-600 hover:text-gray-800 text-sm"
-            >
-              Limpiar
-            </button>
-          </div>
-        )}
-
         {/* Export & Import Buttons */}
         <div className="flex items-center gap-2 ml-auto">
           {/* Import Dropdown (Admin + Vendedor + Vendedor Caseta) */}
@@ -493,6 +468,8 @@ export default function OperativoClient({
         showRepulseSelection={user?.rol === 'admin' || user?.rol === 'jefe_ventas'}
         selectedLeadIds={selectedLeadIdsForRepulse}
         onSelectionChange={setSelectedLeadIdsForRepulse}
+        onSendToRepulse={handleSendMultipleToRepulse}
+        isAddingToRepulse={isAddingToRepulse}
       />
 
       {/* Lead Detail Panel */}

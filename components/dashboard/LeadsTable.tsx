@@ -17,6 +17,8 @@ interface LeadsTableProps {
   showRepulseSelection?: boolean;
   selectedLeadIds?: string[];
   onSelectionChange?: (leadIds: string[]) => void;
+  onSendToRepulse?: () => void;
+  isAddingToRepulse?: boolean;
 }
 
 export default function LeadsTable({
@@ -30,6 +32,8 @@ export default function LeadsTable({
   showRepulseSelection = false,
   selectedLeadIds = [],
   onSelectionChange,
+  onSendToRepulse,
+  isAddingToRepulse = false,
 }: LeadsTableProps) {
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -153,16 +157,41 @@ export default function LeadsTable({
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800">Leads Recientes</h3>
-          <p className="text-sm text-gray-500 mt-1">
-            Mostrando {displayStart}-{displayEnd} de {filteredLeads.length} leads
-            {filteredLeads.length !== (totalLeads || leads.length) && (
-              <span className="ml-1 text-primary font-medium">
-                (filtrado de {totalLeads || leads.length} totales)
+        <div className="flex items-center gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800">Leads Recientes</h3>
+            <p className="text-sm text-gray-500 mt-1">
+              Mostrando {displayStart}-{displayEnd} de {filteredLeads.length} leads
+              {filteredLeads.length !== (totalLeads || leads.length) && (
+                <span className="ml-1 text-primary font-medium">
+                  (filtrado de {totalLeads || leads.length} totales)
+                </span>
+              )}
+            </p>
+          </div>
+
+          {/* Repulse Selection Actions - appears when leads are selected */}
+          {showRepulseSelection && selectedLeadIds.length > 0 && (
+            <div className="flex items-center gap-2 ml-4 pl-4 border-l border-gray-300">
+              <span className="text-sm text-gray-600 whitespace-nowrap">
+                {selectedLeadIds.length} lead(s) seleccionados
               </span>
-            )}
-          </p>
+              <button
+                onClick={onSendToRepulse}
+                disabled={isAddingToRepulse}
+                className="flex items-center gap-2 px-3 py-1.5 bg-amber-500 text-white rounded-lg hover:bg-amber-600 font-medium text-sm transition-all duration-200 disabled:opacity-50"
+              >
+                <Zap className="w-4 h-4" />
+                {isAddingToRepulse ? 'Agregando...' : 'Enviar a Repulse'}
+              </button>
+              <button
+                onClick={() => onSelectionChange?.([])}
+                className="px-2 py-1.5 text-gray-500 hover:text-gray-700 text-sm"
+              >
+                Limpiar
+              </button>
+            </div>
+          )}
         </div>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
