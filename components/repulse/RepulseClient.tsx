@@ -32,6 +32,7 @@ import {
 } from '@/lib/actions-repulse';
 import RepulseTemplateModal from './RepulseTemplateModal';
 import RepulseEnvioModal from './RepulseEnvioModal';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 
 interface RepulseClientProps {
   initialLeads: RepulseLead[];
@@ -66,6 +67,17 @@ export default function RepulseClient({
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showEnvioModal, setShowEnvioModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // State para ConfirmModal
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'remove' | 'excluir' | null;
+    targetId: string | null;
+  }>({
+    isOpen: false,
+    type: null,
+    targetId: null,
+  });
 
   // Filtrar leads
   const filteredLeads = useMemo(() => {
@@ -114,34 +126,45 @@ export default function RepulseClient({
     }
   };
 
-  // Eliminar lead de repulse
-  const handleRemoveLead = async (repulseLeadId: string) => {
-    if (!confirm('¿Eliminar este lead de la lista de repulse?')) return;
-
-    setIsLoading(true);
-    const result = await removeLeadFromRepulse(repulseLeadId);
-    setIsLoading(false);
-
-    if (result.success) {
-      onRefresh();
-    } else {
-      alert(result.error || 'Error al eliminar');
-    }
+  // Abrir modal de confirmación para eliminar
+  const openRemoveConfirm = (repulseLeadId: string) => {
+    setConfirmModal({ isOpen: true, type: 'remove', targetId: repulseLeadId });
   };
 
-  // Excluir lead permanentemente
-  const handleExcluirLead = async (leadId: string) => {
-    if (!confirm('¿Excluir este lead de futuros repulses? No recibirá más mensajes.')) return;
+  // Abrir modal de confirmación para excluir
+  const openExcluirConfirm = (leadId: string) => {
+    setConfirmModal({ isOpen: true, type: 'excluir', targetId: leadId });
+  };
+
+  // Cerrar modal de confirmación
+  const closeConfirmModal = () => {
+    setConfirmModal({ isOpen: false, type: null, targetId: null });
+  };
+
+  // Ejecutar acción confirmada
+  const handleConfirmAction = async () => {
+    if (!confirmModal.targetId || !confirmModal.type) return;
 
     setIsLoading(true);
-    const result = await excluirLeadDeRepulse(leadId);
-    setIsLoading(false);
+    closeConfirmModal();
 
-    if (result.success) {
-      onRefresh();
-    } else {
-      alert(result.error || 'Error al excluir');
+    if (confirmModal.type === 'remove') {
+      const result = await removeLeadFromRepulse(confirmModal.targetId);
+      if (result.success) {
+        onRefresh();
+      } else {
+        alert(result.error || 'Error al eliminar');
+      }
+    } else if (confirmModal.type === 'excluir') {
+      const result = await excluirLeadDeRepulse(confirmModal.targetId);
+      if (result.success) {
+        onRefresh();
+      } else {
+        alert(result.error || 'Error al excluir');
+      }
     }
+
+    setIsLoading(false);
   };
 
   // Obtener badge de estado
@@ -437,7 +460,7 @@ export default function RepulseClient({
                       <div className="flex items-center gap-1">
                         {repulseLead.estado !== 'excluido' && (
                           <button
-                            onClick={() => handleExcluirLead(repulseLead.lead_id)}
+                            onClick={() => openExcluirConfirm(repulseLead.lead_id)}
                             title="Excluir de futuros repulses"
                             className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                           >
@@ -445,7 +468,7 @@ export default function RepulseClient({
                           </button>
                         )}
                         <button
-                          onClick={() => handleRemoveLead(repulseLead.id)}
+                          onClick={() => openRemoveConfirm(repulseLead.id)}
                           title="Eliminar de la lista"
                           className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                         >
@@ -489,6 +512,26 @@ export default function RepulseClient({
           }}
         />
       )}
+
+      {/* Modal de confirmación */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={
+          confirmModal.type === 'remove'
+            ? 'Eliminar de Repulse'
+            : 'Excluir Lead Permanentemente'
+        }
+        message={
+          confirmModal.type === 'remove'
+            ? '¿Estás seguro de eliminar este lead de la lista de repulse?\n\nEl lead podrá volver a aparecer si cumple las condiciones.'
+            : '¿Excluir este lead de futuros repulses?\n\nNo recibirá más mensajes de re-engagement.'
+        }
+        variant={confirmModal.type === 'excluir' ? 'danger' : 'warning'}
+        confirmText={confirmModal.type === 'remove' ? 'Eliminar' : 'Excluir'}
+        cancelText="Cancelar"
+        onConfirm={handleConfirmAction}
+        onCancel={closeConfirmModal}
+      />
     </div>
   );
 }
