@@ -545,6 +545,7 @@ export async function prepararEnvioRepulseBatch(
   leadsParaN8n: Array<{
     repulse_lead_id: string;
     lead_id: string;
+    proyecto_id: string;
     telefono: string;
     nombre: string | null;
     mensaje: string;
@@ -599,6 +600,7 @@ export async function prepararEnvioRepulseBatch(
     leadsParaN8n.push({
       repulse_lead_id: rl.id,
       lead_id: rl.lead_id,
+      proyecto_id: rl.proyecto_id,
       telefono: leadTyped.telefono,
       nombre: leadTyped.nombre,
       mensaje: mensajePersonalizado,
@@ -762,6 +764,7 @@ export async function enviarRepulseViaWebhook(
   leadsParaN8n: Array<{
     repulse_lead_id: string;
     lead_id: string;
+    proyecto_id: string;
     telefono: string;
     nombre: string | null;
     mensaje: string;
@@ -789,72 +792,62 @@ export async function enviarRepulseViaWebhook(
     };
   }
 
-  try {
-    // Llamar al webhook de n8n con todos los leads
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        leads: leadsParaN8n,
-        timestamp: new Date().toISOString(),
-      }),
-    });
+  const detalles: Array<{ telefono: string; status: 'ok' | 'error'; error?: string }> = [];
+  let enviados = 0;
+  let errores = 0;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Error en webhook n8n:', errorText);
-      return {
-        success: false,
-        enviados: 0,
-        errores: leadsParaN8n.length,
-        detalles: leadsParaN8n.map((l) => ({
-          telefono: l.telefono,
-          status: 'error' as const,
+  // Enviar cada lead individualmente al webhook
+  // (n8n espera un lead por request para el Switch de proyectos)
+  for (const lead of leadsParaN8n) {
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          telefono: lead.telefono,
+          mensaje: lead.mensaje,
+          nombre: lead.nombre,
+          proyectoId: lead.proyecto_id,
+          lead_id: lead.lead_id,
+          repulse_lead_id: lead.repulse_lead_id,
+        }),
+      });
+
+      if (response.ok) {
+        detalles.push({ telefono: lead.telefono, status: 'ok' });
+        enviados++;
+      } else {
+        const errorText = await response.text();
+        console.error(`Error enviando a ${lead.telefono}:`, errorText);
+        detalles.push({
+          telefono: lead.telefono,
+          status: 'error',
           error: `HTTP ${response.status}`,
-        })),
-      };
-    }
-
-    // n8n debería retornar el resultado del envío
-    const result = await response.json();
-
-    // Si n8n retorna detalles por lead
-    if (result.detalles && Array.isArray(result.detalles)) {
-      const enviados = result.detalles.filter((d: { status: string }) => d.status === 'ok').length;
-      const errores = result.detalles.filter((d: { status: string }) => d.status === 'error').length;
-      return {
-        success: enviados > 0,
-        enviados,
-        errores,
-        detalles: result.detalles,
-      };
-    }
-
-    // Si n8n solo retorna success general
-    return {
-      success: true,
-      enviados: leadsParaN8n.length,
-      errores: 0,
-      detalles: leadsParaN8n.map((l) => ({
-        telefono: l.telefono,
-        status: 'ok' as const,
-      })),
-    };
-  } catch (error) {
-    console.error('Error llamando webhook n8n:', error);
-    return {
-      success: false,
-      enviados: 0,
-      errores: leadsParaN8n.length,
-      detalles: leadsParaN8n.map((l) => ({
-        telefono: l.telefono,
-        status: 'error' as const,
+        });
+        errores++;
+      }
+    } catch (error) {
+      console.error(`Error enviando a ${lead.telefono}:`, error);
+      detalles.push({
+        telefono: lead.telefono,
+        status: 'error',
         error: error instanceof Error ? error.message : 'Error desconocido',
-      })),
-    };
+      });
+      errores++;
+    }
+
+    // Pequeña pausa entre envíos para no saturar la API de WhatsApp
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
+
+  return {
+    success: enviados > 0,
+    enviados,
+    errores,
+    detalles,
+  };
 }
 
 // ============================================================================
