@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Lead, Vendedor } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
-import { Search, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Calendar, UserCheck, Mail, Check, Zap } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Calendar, UserCheck, Mail, Check, Zap, X } from 'lucide-react';
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -186,8 +186,9 @@ export default function LeadsTable({
               </button>
               <button
                 onClick={() => onSelectionChange?.([])}
-                className="px-2 py-1.5 text-gray-500 hover:text-gray-700 text-sm"
+                className="flex items-center gap-1 px-2 py-1.5 text-gray-600 hover:text-gray-800 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
               >
+                <X className="w-3.5 h-3.5" />
                 Limpiar
               </button>
             </div>
