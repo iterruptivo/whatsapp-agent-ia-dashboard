@@ -14,7 +14,7 @@ import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { exportLeadsToExcel } from '@/lib/exportToExcel';
 import LeadImportModal from '@/components/leads/LeadImportModal';
 import ManualLeadPanel from '@/components/leads/ManualLeadPanel';
-import { addMultipleLeadsToRepulse } from '@/lib/actions-repulse';
+import { addMultipleLeadsToRepulse, excluirLeadDeRepulse, reincluirLeadEnRepulse } from '@/lib/actions-repulse';
 
 interface OperativoClientProps {
   initialLeads: Lead[];
@@ -266,6 +266,52 @@ export default function OperativoClient({
     }
   };
 
+  // Handler: Toggle lead exclusion from Repulse
+  const handleToggleExcludeRepulse = async (leadId: string, exclude: boolean) => {
+    try {
+      const result = exclude
+        ? await excluirLeadDeRepulse(leadId)
+        : await reincluirLeadEnRepulse(leadId);
+
+      if (result.success) {
+        handleClosePanel();
+        showDialog({
+          title: exclude ? 'Lead excluido' : 'Lead reincluido',
+          message: exclude
+            ? 'El lead ha sido excluido permanentemente del sistema de Repulse.'
+            : 'El lead ahora puede ser agregado al sistema de Repulse.',
+          type: 'success',
+          variant: 'success',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        });
+        // Refresh leads to update excluido_repulse state
+        if (onRefresh) {
+          await onRefresh(dateFrom, dateTo);
+        }
+      } else {
+        showDialog({
+          title: 'Error',
+          message: result.error || 'No se pudo actualizar el estado del lead',
+          type: 'error',
+          variant: 'danger',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling repulse exclusion:', error);
+      showDialog({
+        title: 'Error inesperado',
+        message: 'Ocurrió un error al actualizar el estado del lead.',
+        type: 'error',
+        variant: 'danger',
+        confirmText: 'Aceptar',
+        showCancel: false,
+      });
+    }
+  };
+
   // Handler: Export filtered leads to Excel
   const handleExportToExcel = () => {
     if (!user) return;
@@ -479,6 +525,7 @@ export default function OperativoClient({
         onClose={handleClosePanel}
         showRepulseButton={user?.rol === 'admin' || user?.rol === 'jefe_ventas'}
         onSendToRepulse={handleSendToRepulse}
+        onToggleExcludeRepulse={handleToggleExcludeRepulse}
       />
 
       {/* Manual Lead Panel (Admin + Vendedor + Vendedor Caseta) */}

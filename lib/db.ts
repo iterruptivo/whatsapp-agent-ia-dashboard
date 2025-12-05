@@ -62,6 +62,7 @@ export interface Lead {
   proyecto_color?: string | null; // Color del proyecto (obtenido via JOIN, opcional)
   asistio: boolean; // Indica si el lead visitó físicamente el proyecto (default: false)
   utm: string | null; // Origen del lead (referral desde n8n: facebook, google, trapiche, etc.) - nullable
+  excluido_repulse: boolean; // Indica si el lead está excluido permanentemente del sistema de repulse
 }
 
 // Vendedor interface matching Supabase vendedores table
