@@ -1083,7 +1083,7 @@ export default function LocalesTable({
                       {local.estado === 'naranja' && local.naranja_timestamp && (
                         <button
                           onClick={() => setFichaModal({ isOpen: true, local })}
-                          className="mt-1 flex items-center gap-1 text-xs text-[#1b967a] border border-[#1b967a] rounded px-2 py-0.5 hover:bg-[#1b967a] hover:text-white transition-colors"
+                          className="mt-1 flex items-center gap-1 text-xs font-medium text-[#1b967a] border border-[#1b967a] rounded px-2 py-0.5 hover:bg-[#1b967a] hover:text-white transition-colors"
                         >
                           <FileText className="w-3 h-3" />
                           <span>Iniciar ficha de inscripción</span>
