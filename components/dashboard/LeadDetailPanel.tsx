@@ -2,13 +2,15 @@
 
 import { Lead } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
-import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check } from 'lucide-react';
+import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface LeadDetailPanelProps {
   lead: Lead | null;
   isOpen: boolean;
   onClose: () => void;
+  onSendToRepulse?: (leadId: string) => void;
+  showRepulseButton?: boolean;
 }
 
 // Message type for chat bubbles
@@ -78,7 +80,7 @@ function parseMessages(historial: string | null): ChatMessage[] {
   return messages;
 }
 
-export default function LeadDetailPanel({ lead, isOpen, onClose }: LeadDetailPanelProps) {
+export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse, showRepulseButton = false }: LeadDetailPanelProps) {
   // State for dropdown toggles
   const [isHistorialRecienteOpen, setIsHistorialRecienteOpen] = useState(false);
   const [isHistorialCompletoOpen, setIsHistorialCompletoOpen] = useState(false);
@@ -326,6 +328,22 @@ export default function LeadDetailPanel({ lead, isOpen, onClose }: LeadDetailPan
                 <p className="text-xs text-gray-500 italic mt-2">
                   Este lead no ha sido notificado a vendedores aún.
                 </p>
+              )}
+
+              {/* Botón Enviar a Repulse */}
+              {showRepulseButton && onSendToRepulse && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => onSendToRepulse(lead.id)}
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium"
+                  >
+                    <Zap className="w-4 h-4" />
+                    Enviar a Repulse
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Agregar este lead al sistema de re-engagement para enviar mensaje de seguimiento.
+                  </p>
+                </div>
               )}
             </div>
           </section>
