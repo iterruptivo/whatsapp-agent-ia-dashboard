@@ -575,13 +575,16 @@ export async function prepararEnvioRepulseBatch(
   const leadsParaN8n = [];
 
   for (const rl of repulseLeads) {
-    const lead = rl.lead as { nombre: string | null; telefono: string } | null;
-    if (!lead) continue;
+    // Supabase puede retornar array o objeto dependiendo de la relación
+    const leadData = rl.lead as unknown;
+    const lead = Array.isArray(leadData) ? leadData[0] : leadData;
+    if (!lead || typeof lead !== 'object') continue;
+    const leadTyped = lead as { nombre: string | null; telefono: string };
 
     // Personalizar mensaje con variables
     const mensajePersonalizado = mensaje
-      .replace(/\{\{nombre\}\}/g, lead.nombre || 'Cliente')
-      .replace(/\{\{telefono\}\}/g, lead.telefono);
+      .replace(/\{\{nombre\}\}/g, leadTyped.nombre || 'Cliente')
+      .replace(/\{\{telefono\}\}/g, leadTyped.telefono);
 
     // Registrar el envío
     await registrarEnvioRepulse(
@@ -596,8 +599,8 @@ export async function prepararEnvioRepulseBatch(
     leadsParaN8n.push({
       repulse_lead_id: rl.id,
       lead_id: rl.lead_id,
-      telefono: lead.telefono,
-      nombre: lead.nombre,
+      telefono: leadTyped.telefono,
+      nombre: leadTyped.nombre,
       mensaje: mensajePersonalizado,
     });
   }
