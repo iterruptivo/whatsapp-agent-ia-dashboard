@@ -372,7 +372,7 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
                       {onToggleExcludeRepulse && (
                         <button
                           onClick={() => onToggleExcludeRepulse(lead.id, true)}
-                          className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors"
+                          className="flex items-center gap-2 text-sm text-red-600 border border-red-300 rounded-lg px-3 py-1.5 hover:bg-red-50 hover:border-red-400 transition-colors"
                         >
                           <Ban className="w-3.5 h-3.5" />
                           Excluir permanentemente de Repulse
