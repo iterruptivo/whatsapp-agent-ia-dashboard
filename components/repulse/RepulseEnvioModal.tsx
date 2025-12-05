@@ -6,8 +6,12 @@
 
 'use client';
 
-import { useState } from 'react';
-import { X, Zap, Send, FileText, Edit, AlertCircle } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { X, Zap, Send, FileText, Edit, AlertCircle, Smile } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// Dynamic import para evitar SSR issues con emoji-picker-react
+const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
 import { type RepulseTemplate, prepararEnvioRepulseBatch } from '@/lib/actions-repulse';
 
 interface RepulseEnvioModalProps {
@@ -44,8 +48,33 @@ export default function RepulseEnvioModal({
       mensaje: string;
     }>;
   } | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
+
+  // Insertar emoji en la posición del cursor
+  const handleEmojiClick = (emojiData: { emoji: string }) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setCustomMessage((prev) => prev + emojiData.emoji);
+      setShowEmojiPicker(false);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = customMessage.slice(0, start) + emojiData.emoji + customMessage.slice(end);
+    setCustomMessage(newText);
+    setShowEmojiPicker(false);
+
+    // Restaurar el foco y posición del cursor después del emoji
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + emojiData.emoji.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
 
   const getMensaje = () => {
     if (useCustomMessage) {
@@ -239,13 +268,43 @@ export default function RepulseEnvioModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Escribe tu mensaje
                   </label>
-                  <textarea
-                    value={customMessage}
-                    onChange={(e) => setCustomMessage(e.target.value)}
-                    placeholder="Escribe el mensaje. Usa {{nombre}} para insertar el nombre del lead."
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                  />
+                  <div className="relative">
+                    <textarea
+                      ref={textareaRef}
+                      value={customMessage}
+                      onChange={(e) => setCustomMessage(e.target.value)}
+                      placeholder="Escribe el mensaje. Usa {{nombre}} para insertar el nombre del lead."
+                      rows={4}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className="absolute right-2 top-2 p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Agregar emoji"
+                    >
+                      <Smile className="w-5 h-5" />
+                    </button>
+
+                    {/* Emoji Picker Popover */}
+                    {showEmojiPicker && (
+                      <div className="absolute right-0 top-12 z-50">
+                        <div
+                          className="fixed inset-0"
+                          onClick={() => setShowEmojiPicker(false)}
+                        />
+                        <div className="relative">
+                          <EmojiPicker
+                            onEmojiClick={handleEmojiClick}
+                            width={320}
+                            height={400}
+                            searchPlaceholder="Buscar emoji..."
+                            previewConfig={{ showPreview: false }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <p className="mt-1 text-xs text-gray-500">
                     Variables disponibles: {"{{nombre}}"} - Nombre del lead
                   </p>
