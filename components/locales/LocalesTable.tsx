@@ -19,6 +19,8 @@ import ComentarioNaranjaModal from './ComentarioNaranjaModal';
 import FinanciamientoModal from './FinanciamientoModal'; // SESIÓN 52: Modal para iniciar financiamiento
 import DatosRegistroVentaModal from './DatosRegistroVentaModal'; // SESIÓN 52C: Modal previo para capturar datos faltantes
 import TimerCountdown from './TimerCountdown'; // OPT: Componente separado para evitar re-render global
+import FichaInscripcionModal from './FichaInscripcionModal'; // SESIÓN 65: Modal ficha de inscripción
+import { FileText } from 'lucide-react'; // SESIÓN 65: Icono para enlace ficha
 
 interface LocalesTableProps {
   locales: Local[];
@@ -116,6 +118,15 @@ export default function LocalesTable({
     localId: null,
     localCodigo: '',
     nuevoPrecio: null,
+  });
+
+  // SESIÓN 65: State para modal de ficha de inscripción
+  const [fichaModal, setFichaModal] = useState<{
+    isOpen: boolean;
+    local: Local | null;
+  }>({
+    isOpen: false,
+    local: null,
   });
 
   // OPT: Timer ahora usa componente separado (TimerCountdown) que se re-renderiza solo
@@ -1068,6 +1079,16 @@ export default function LocalesTable({
                       {renderIniciarFinanciamiento(local)}
                       {/* OPT: Componente separado para timer (solo se re-renderiza él, no toda la tabla) */}
                       {local.estado === 'naranja' && <TimerCountdown naranjaTimestamp={local.naranja_timestamp} />}
+                      {/* SESIÓN 65: Enlace para iniciar ficha de inscripción (solo en NARANJA con timer activo) */}
+                      {local.estado === 'naranja' && local.naranja_timestamp && (
+                        <button
+                          onClick={() => setFichaModal({ isOpen: true, local })}
+                          className="mt-1 flex items-center gap-1 text-xs text-[#1b967a] hover:text-[#157a64] hover:underline"
+                        >
+                          <FileText className="w-3 h-3" />
+                          <span>Iniciar ficha de inscripción</span>
+                        </button>
+                      )}
                     </td>
 
                     {/* Monto Venta - Solo lectura (se establece en modal NARANJA) */}
@@ -1151,6 +1172,13 @@ export default function LocalesTable({
         isOpen={financiamientoModal.isOpen}
         local={financiamientoModal.local}
         onClose={() => setFinanciamientoModal({ isOpen: false, local: null })}
+      />
+
+      {/* SESIÓN 65: Modal Ficha de Inscripción */}
+      <FichaInscripcionModal
+        isOpen={fichaModal.isOpen}
+        local={fichaModal.local}
+        onClose={() => setFichaModal({ isOpen: false, local: null })}
       />
 
       {/* SESIÓN 56: Modal Confirmación Precio Base */}
