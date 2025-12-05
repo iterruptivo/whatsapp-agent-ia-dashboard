@@ -3,6 +3,7 @@
 ## Índice
 - [Sesión 64](#sesión-64---2-diciembre-2025) - Sistema Generación Documentos (Análisis + DB + UI)
 - [Sesión 64B](#sesión-64b---3-diciembre-2025) - Template HTML Ficha de Inscripción
+- [Sesión 65](#sesión-65---5-diciembre-2025) - Sistema Repulse: Integración /operativo + Exclusiones
 
 ---
 
@@ -349,7 +350,142 @@ templates/ficha-inscripcion/preview-proyecto-pruebas.html
 
 ---
 
-**Próxima sesión:** Integración con sistema de generación de documentos
+## Sesión 65 - 5 Diciembre 2025
+
+### 🔄 Sistema Repulse: Integración /operativo + Exclusiones
+
+**Tipo:** Feature - Integración UI
+**Estado:** ✅ COMPLETADO
+**Branch:** `feature/repulse`
+**Documentación completa:** [Módulo Repulse](../modulos/repulse.md)
+
+---
+
+### Objetivo
+
+Integrar el sistema Repulse en la página `/operativo` permitiendo:
+1. Agregar leads a repulse de forma individual y masiva
+2. Excluir leads permanentemente del sistema de repulse
+3. Visualizar estado de exclusión en panel de detalles
+
+---
+
+### Trabajo Realizado
+
+#### FASE 1: Selección Múltiple en LeadsTable ✅
+
+**Archivo:** `components/dashboard/LeadsTable.tsx`
+
+- Checkboxes en cada fila de la tabla
+- Checkbox "Select All" en header
+- Contador de leads seleccionados
+- Botón "Enviar a Repulse" (color amber/amarillo)
+- Botón "Limpiar" con icono X y borde
+
+**Nuevas props agregadas:**
+```typescript
+showRepulseSelection?: boolean;
+selectedLeadIds?: string[];
+onSelectionChange?: (ids: string[]) => void;
+onSendToRepulse?: () => void;
+isAddingToRepulse?: boolean;
+```
+
+#### FASE 2: Botón Individual en LeadDetailPanel ✅
+
+**Archivo:** `components/dashboard/LeadDetailPanel.tsx`
+
+- Sección "Repulse" al final del panel
+- Botón "Enviar a Repulse" (individual)
+- Botón "Excluir permanentemente de Repulse" con borde rojo
+- Badge rojo cuando lead está excluido
+- Link "Reincluir" para quitar exclusión
+
+**Nuevas props agregadas:**
+```typescript
+onSendToRepulse?: (leadId: string) => void;
+onToggleExcludeRepulse?: (leadId: string, exclude: boolean) => void;
+showRepulseButton?: boolean;
+```
+
+#### FASE 3: Campo excluido_repulse en Interface ✅
+
+**Archivo:** `lib/db.ts`
+
+```typescript
+export interface Lead {
+  // ... campos existentes ...
+  excluido_repulse: boolean;
+}
+```
+
+#### FASE 4: Handlers en OperativoClient ✅
+
+**Archivo:** `components/dashboard/OperativoClient.tsx`
+
+Handlers implementados:
+- `handleSendToRepulse(leadId)` - Agregar individual
+- `handleSendMultipleToRepulse()` - Agregar batch
+- `handleToggleExcludeRepulse(leadId, exclude)` - Toggle exclusión
+
+---
+
+### Decisiones Técnicas
+
+| Decisión | Opción Elegida | Razón |
+|----------|----------------|-------|
+| Ubicación botones selección | Junto a "Leads Recientes" | Mejor UX, visible sin scroll |
+| Color botón repulse | Amber/Amarillo | Diferencia de acciones principales |
+| Exclusión | Campo en tabla `leads` | Persiste aunque se elimine de `repulse_leads` |
+| Borde botón excluir | Rojo | Indicar acción destructiva |
+
+---
+
+### Archivos Modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `lib/db.ts` | +1 campo `excluido_repulse` en interface Lead |
+| `components/dashboard/LeadsTable.tsx` | +100 líneas (checkboxes, selección, botones) |
+| `components/dashboard/LeadDetailPanel.tsx` | +60 líneas (sección repulse) |
+| `components/dashboard/OperativoClient.tsx` | +80 líneas (handlers) |
+| `docs/modulos/repulse.md` | Nuevo - Documentación completa |
+
+---
+
+### Commits
+
+| Hash | Mensaje |
+|------|---------|
+| `4e210fc` | feat: add repulse integration in /operativo page |
+| `86c9ab2` | fix: correct property names for addMultipleLeadsToRepulse response |
+| `6d32171` | refactor: move repulse selection actions next to table title |
+| `9702f8c` | style: add border and X icon to "Limpiar" button |
+| `a3d9a2f` | feat: add repulse exclusion toggle in LeadDetailPanel |
+| `a9fbb2f` | style: add red border to exclude repulse button |
+
+---
+
+### Fixes Durante la Sesión
+
+**Error TypeScript en Vercel:**
+```
+Property 'error' does not exist on type
+'{ success: boolean; added: number; skipped: number; errors: string[]; }'
+```
+
+**Solución:** Actualizar acceso a propiedades del response:
+- `result.error` → `result.errors[0]`
+- `result.insertedCount` → `result.added`
+- `result.duplicateCount` → `result.skipped`
+
+---
+
+### Próximos Pasos
+
+1. Configurar cron job (cada 10 días) para `detectar_leads_repulse()`
+2. Integrar webhook n8n en RepulseEnvioModal
+3. Testing completo del flujo end-to-end
 
 ---
 

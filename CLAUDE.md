@@ -7,10 +7,10 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 3 Diciembre 2025
-**Sesión:** 64B - 📄 **Template HTML Ficha de Inscripción**
-**Estado:** ⏳ **EN DESARROLLO**
-**Documentación:** Ver [Módulo Documentos](docs/modulos/documentos.md)
+**Fecha:** 5 Diciembre 2025
+**Sesión:** 65 - 🔄 **Sistema Repulse: Integración /operativo + Exclusiones**
+**Estado:** ✅ **COMPLETADO** (branch: `feature/repulse`)
+**Documentación:** Ver [Módulo Repulse](docs/modulos/repulse.md)
 
 ---
 
@@ -26,6 +26,7 @@
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
 | [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 64 (2 Dic)** | docx-templates |
+| [Repulse](docs/modulos/repulse.md) | ⏳ **EN DESARROLLO** | **Sesión 65 (5 Dic)** | re-engagement leads |
 
 ### **Métricas Globales (Actualizado: 10 Nov 2025)**
 ```
@@ -78,6 +79,11 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: EN DESARROLLO (5/8 fases completadas)
   - Tecnología: docx-templates para templates Word + HTML templates
 
+- **[Repulse](docs/modulos/repulse.md)** - Sistema de re-engagement de leads
+  - Última sesión: **65 (Integración /operativo + Exclusiones)**
+  - Estado: EN DESARROLLO (branch: `feature/repulse`)
+  - Features: detección automática (30+ días), envío batch, exclusión permanente
+
 ---
 
 ### **📅 Sesiones de Desarrollo**
@@ -114,6 +120,7 @@ Documentación cronológica completa de todas las sesiones.
 - **[Diciembre 2025](docs/sesiones/2025-12-diciembre.md)** - Sesiones 64+
   - **📄 Sistema Generación Documentos (64)** ✅
   - **📄 Template HTML Ficha de Inscripción (64B)** ✅
+  - **🔄 Sistema Repulse: Integración /operativo + Exclusiones (65)** ✅
 
 ---
 
