@@ -201,7 +201,7 @@ export default function OperativoClient({
       } else {
         showDialog({
           title: 'Error al agregar',
-          message: result.error || 'No se pudo agregar el lead a repulse',
+          message: result.errors.length > 0 ? result.errors[0] : 'No se pudo agregar el lead a repulse',
           type: 'error',
           variant: 'danger',
           confirmText: 'Aceptar',
@@ -235,7 +235,7 @@ export default function OperativoClient({
         setSelectedLeadIdsForRepulse([]);
         showDialog({
           title: '¡Leads agregados a Repulse!',
-          message: `Se han agregado ${result.insertedCount} leads al sistema de re-engagement.${result.duplicateCount > 0 ? ` (${result.duplicateCount} ya estaban en repulse)` : ''}`,
+          message: `Se han agregado ${result.added} leads al sistema de re-engagement.${result.skipped > 0 ? ` (${result.skipped} ya estaban en repulse)` : ''}`,
           type: 'success',
           variant: 'success',
           confirmText: 'Aceptar',
@@ -244,7 +244,7 @@ export default function OperativoClient({
       } else {
         showDialog({
           title: 'Error al agregar',
-          message: result.error || 'No se pudieron agregar los leads a repulse',
+          message: result.errors.length > 0 ? result.errors.join(', ') : 'No se pudieron agregar los leads a repulse',
           type: 'error',
           variant: 'danger',
           confirmText: 'Aceptar',
