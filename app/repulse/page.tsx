@@ -2,24 +2,42 @@
 // PÁGINA: Repulse
 // ============================================================================
 // Ruta: /repulse
-// Descripción: Página de Repulse (en desarrollo)
+// Descripción: Sistema de reimpulso de leads que no compraron
 // Acceso: admin y jefe_ventas (preparado para incluir vendedor en el futuro)
 // ============================================================================
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import RepulseClient from '@/components/repulse/RepulseClient';
+import {
+  getRepulseLeads,
+  getRepulseTemplates,
+  getRepulseStats,
+  type RepulseLead,
+  type RepulseTemplate,
+} from '@/lib/actions-repulse';
 
 // Roles que tienen acceso a esta página
-// Para añadir vendedor en el futuro, simplemente agregar 'vendedor' al array
 const ALLOWED_ROLES = ['admin', 'jefe_ventas'] as const;
 
 export default function RepulsePage() {
   const router = useRouter();
   const { user, loading, selectedProyecto } = useAuth();
+  const [repulseLeads, setRepulseLeads] = useState<RepulseLead[]>([]);
+  const [templates, setTemplates] = useState<RepulseTemplate[]>([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    pendientes: 0,
+    enviados: 0,
+    respondieron: 0,
+    sinRespuesta: 0,
+    excluidos: 0,
+  });
+  const [loadingData, setLoadingData] = useState(true);
 
   // Redirect if not authenticated or not authorized
   useEffect(() => {
@@ -27,7 +45,6 @@ export default function RepulsePage() {
       if (!user) {
         router.push('/login');
       } else if (!ALLOWED_ROLES.includes(user.rol as typeof ALLOWED_ROLES[number])) {
-        // Redirigir según el rol
         if (user.rol === 'vendedor') {
           router.push('/operativo');
         } else {
@@ -36,6 +53,34 @@ export default function RepulsePage() {
       }
     }
   }, [user, loading, router]);
+
+  // Fetch data when project changes
+  useEffect(() => {
+    if (user && selectedProyecto?.id) {
+      fetchData();
+    }
+  }, [user, selectedProyecto?.id]);
+
+  const fetchData = async () => {
+    if (!selectedProyecto?.id) return;
+
+    setLoadingData(true);
+    try {
+      const [leadsData, templatesData, statsData] = await Promise.all([
+        getRepulseLeads(selectedProyecto.id),
+        getRepulseTemplates(selectedProyecto.id),
+        getRepulseStats(selectedProyecto.id),
+      ]);
+
+      setRepulseLeads(leadsData);
+      setTemplates(templatesData);
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error fetching repulse data:', error);
+    } finally {
+      setLoadingData(false);
+    }
+  };
 
   // Show loading while auth is loading
   if (loading || !user) {
@@ -54,20 +99,26 @@ export default function RepulsePage() {
       {/* Header */}
       <DashboardHeader
         title="Repulse"
-        subtitle={`Gestión de Repulse${selectedProyecto?.nombre ? ` - ${selectedProyecto.nombre}` : ''}`}
+        subtitle={`Reimpulso de leads${selectedProyecto?.nombre ? ` - ${selectedProyecto.nombre}` : ''}`}
       />
 
       {/* Contenido */}
       <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
-          <div className="text-gray-400 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
+        {loadingData ? (
+          <div className="bg-white rounded-lg shadow-md p-12 text-center">
+            <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando datos de repulse...</p>
           </div>
-          <h2 className="text-xl font-semibold text-gray-700 mb-2">Página en desarrollo</h2>
-          <p className="text-gray-500">El contenido de Repulse estará disponible próximamente.</p>
-        </div>
+        ) : (
+          <RepulseClient
+            initialLeads={repulseLeads}
+            initialTemplates={templates}
+            initialStats={stats}
+            proyectoId={selectedProyecto?.id || ''}
+            userId={user.id}
+            onRefresh={fetchData}
+          />
+        )}
       </div>
     </div>
   );

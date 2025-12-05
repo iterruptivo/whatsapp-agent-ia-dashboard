@@ -1,0 +1,284 @@
+// ============================================================================
+// COMPONENT: RepulseEnvioModal
+// ============================================================================
+// Descripción: Modal para configurar y enviar mensajes de repulse
+// ============================================================================
+
+'use client';
+
+import { useState } from 'react';
+import { X, Zap, Send, FileText, Edit, AlertCircle } from 'lucide-react';
+import { type RepulseTemplate, prepararEnvioRepulseBatch } from '@/lib/actions-repulse';
+
+interface RepulseEnvioModalProps {
+  selectedLeadIds: string[];
+  templates: RepulseTemplate[];
+  proyectoId: string;
+  userId: string;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export default function RepulseEnvioModal({
+  selectedLeadIds,
+  templates,
+  proyectoId,
+  userId,
+  onClose,
+  onSuccess,
+}: RepulseEnvioModalProps) {
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
+    templates.length > 0 ? templates[0].id : ''
+  );
+  const [customMessage, setCustomMessage] = useState('');
+  const [useCustomMessage, setUseCustomMessage] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<{
+    success: boolean;
+    leadsParaN8n: Array<{
+      repulse_lead_id: string;
+      lead_id: string;
+      telefono: string;
+      nombre: string | null;
+      mensaje: string;
+    }>;
+  } | null>(null);
+
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId);
+
+  const getMensaje = () => {
+    if (useCustomMessage) {
+      return customMessage;
+    }
+    return selectedTemplate?.mensaje || '';
+  };
+
+  const handleEnviar = async () => {
+    const mensaje = getMensaje();
+
+    if (!mensaje.trim()) {
+      setError('Debes seleccionar un template o escribir un mensaje personalizado');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await prepararEnvioRepulseBatch(
+        selectedLeadIds,
+        mensaje,
+        useCustomMessage ? null : selectedTemplateId,
+        userId
+      );
+
+      if (response.success) {
+        setResult(response);
+        // Aquí enviaríamos a n8n
+        // Por ahora solo mostramos el resultado
+        console.log('Datos para n8n:', response.leadsParaN8n);
+      } else {
+        setError(response.error || 'Error al preparar envío');
+      }
+    } catch (err) {
+      setError('Error inesperado');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Vista de resultado
+  if (result) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onSuccess} />
+        <div className="relative min-h-screen flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Zap className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">
+                Repulse preparado
+              </h2>
+              <p className="text-gray-600 mb-4">
+                Se han preparado {result.leadsParaN8n.length} mensajes para enviar.
+              </p>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 text-left">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-medium">Integración con n8n pendiente</p>
+                    <p className="mt-1">
+                      Los datos están listos para enviarse a n8n. Configura el webhook en tu flujo
+                      de n8n para completar el envío automático.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-3 text-left text-sm">
+                <p className="font-medium text-gray-700 mb-2">Datos preparados:</p>
+                <ul className="space-y-1 text-gray-600">
+                  {result.leadsParaN8n.slice(0, 3).map((lead) => (
+                    <li key={lead.lead_id} className="flex items-center gap-2">
+                      <span className="w-2 h-2 bg-green-500 rounded-full" />
+                      {lead.nombre || 'Sin nombre'} - {lead.telefono}
+                    </li>
+                  ))}
+                  {result.leadsParaN8n.length > 3 && (
+                    <li className="text-gray-400">
+                      y {result.leadsParaN8n.length - 3} más...
+                    </li>
+                  )}
+                </ul>
+              </div>
+
+              <button
+                onClick={onSuccess}
+                className="mt-6 w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="relative min-h-screen flex items-center justify-center p-4">
+        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-primary" />
+              Enviar Repulse
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="p-4 space-y-4">
+            {/* Info */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>{selectedLeadIds.length}</strong> leads seleccionados para enviar mensaje
+                de repulse.
+              </p>
+            </div>
+
+            {/* Selector de template o mensaje personalizado */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={!useCustomMessage}
+                    onChange={() => setUseCustomMessage(false)}
+                    className="w-4 h-4 text-primary"
+                  />
+                  <span className="text-sm text-gray-700">Usar template</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    checked={useCustomMessage}
+                    onChange={() => setUseCustomMessage(true)}
+                    className="w-4 h-4 text-primary"
+                  />
+                  <span className="text-sm text-gray-700">Mensaje personalizado</span>
+                </label>
+              </div>
+
+              {!useCustomMessage ? (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Seleccionar template
+                  </label>
+                  {templates.length === 0 ? (
+                    <div className="p-3 bg-gray-50 rounded-lg text-center text-gray-500 text-sm">
+                      No hay templates disponibles. Crea uno primero.
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        value={selectedTemplateId}
+                        onChange={(e) => setSelectedTemplateId(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                      >
+                        {templates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedTemplate && (
+                        <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                          <p className="text-sm text-gray-600">{selectedTemplate.mensaje}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Escribe tu mensaje
+                  </label>
+                  <textarea
+                    value={customMessage}
+                    onChange={(e) => setCustomMessage(e.target.value)}
+                    placeholder="Escribe el mensaje. Usa {{nombre}} para insertar el nombre del lead."
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Variables disponibles: {"{{nombre}}"} - Nombre del lead
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {error}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="flex justify-end gap-3 p-4 border-t border-gray-200">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleEnviar}
+              disabled={isLoading || (!useCustomMessage && templates.length === 0)}
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
+            >
+              <Send className="w-4 h-4" />
+              {isLoading ? 'Enviando...' : 'Enviar Repulse'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
