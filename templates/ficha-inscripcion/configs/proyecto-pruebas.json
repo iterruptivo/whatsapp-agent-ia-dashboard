@@ -4,7 +4,8 @@
     "nombre": "Urbanización San Gabriel - PRUEBAS",
     "empresa": "EcoPlaza Inmobiliaria S.A.C.",
     "direccion": "Av. Principal 123, Lima, Perú",
-    "logo_url": "/images/logo-ecoplaza.png"
+    "logo_url": "/images/logo-ecoplaza.png",
+    "template": "template-estandar"
   },
   "campos_visibles": {
     "seccion_conyuge": true,
