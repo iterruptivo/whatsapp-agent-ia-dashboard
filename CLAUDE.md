@@ -7,10 +7,10 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 3 Diciembre 2025
-**Sesión:** 64B - 📄 **Template HTML Ficha de Inscripción**
-**Estado:** ⏳ **EN DESARROLLO**
-**Documentación:** Ver [Módulo Documentos](docs/modulos/documentos.md)
+**Fecha:** 5 Diciembre 2025
+**Sesión:** 65 - 🔐 **Rol Finanzas + Ficha Inscripción Modal**
+**Estado:** ✅ **DEPLOYED TO MAIN**
+**Documentación:** Ver detalles abajo
 
 ---
 
@@ -22,20 +22,21 @@
 | [Autenticación](docs/modulos/auth.md) | ✅ **100% ESTABLE** | **Sesión 45I (13 Nov)** | **Uptime: 100% • 2+ hrs sesión** |
 | [Leads](docs/modulos/leads.md) | ✅ OPERATIVO | Sesión 44 (12 Nov) | 1,417 leads |
 | [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 52H (22 Nov)** | 823 locales |
-| [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | Sesión 40D (8 Nov) | 22 usuarios |
+| [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | **Sesión 65 (5 Dic)** | 23 usuarios |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
 | [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 64 (2 Dic)** | docx-templates |
 
-### **Métricas Globales (Actualizado: 10 Nov 2025)**
+### **Métricas Globales (Actualizado: 5 Dic 2025)**
 ```
 Total Leads:        1,417
 Total Locales:      823
-Usuarios Activos:   22
+Usuarios Activos:   23
   - Admins:         2 (gerente, bryan)
   - Jefe Ventas:    1
   - Vendedores:     8
   - Vendedor Caseta: 11
+  - Finanzas:       1 (Rosa Quispe)
 Proyectos:          7
 Flujos n8n Activos: 3
 Uptime General:     99.9%
@@ -114,6 +115,7 @@ Documentación cronológica completa de todas las sesiones.
 - **[Diciembre 2025](docs/sesiones/2025-12-diciembre.md)** - Sesiones 64+
   - **📄 Sistema Generación Documentos (64)** ✅
   - **📄 Template HTML Ficha de Inscripción (64B)** ✅
+  - **🔐 Rol Finanzas + Ficha Inscripción Modal (65)** ✅
 
 ---
 
@@ -161,6 +163,103 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 65** (5 Dic) - 🔐 ✅ **Rol Finanzas + Ficha Inscripción Modal + Nueva Tabla clientes_ficha**
+**Tipo:** Feature + RBAC + Database
+**Estado:** ✅ **DEPLOYED TO MAIN**
+
+**Cambios implementados:**
+
+**1. Rol `finanzas` - Acceso restringido a solo /control-pagos**
+
+| Archivo | Cambio |
+|---------|--------|
+| `middleware.ts` | Finanzas redirigido a `/control-pagos` desde todas las rutas |
+| `Sidebar.tsx` | Finanzas solo ve "Control de Pagos" en menú |
+| `app/control-pagos/page.tsx` | Agregado `finanzas` a validaciones de rol |
+
+**Acceso por rol actualizado:**
+| Rol | / | /operativo | /locales | /control-pagos | /comisiones |
+|-----|---|------------|----------|----------------|-------------|
+| admin | ✅ | ✅ | ✅ | ✅ | ✅ |
+| vendedor | ❌→/operativo | ✅ | ✅ | ❌ | ✅ |
+| jefe_ventas | ❌→/locales | ❌→/locales | ✅ | ✅ | ✅ |
+| vendedor_caseta | ❌→/locales | ✅ | ✅ | ❌ | ✅ |
+| coordinador | ❌→/locales | ❌→/locales | ✅ | ❌ | ✅ |
+| **finanzas** | ❌→/control-pagos | ❌→/control-pagos | ❌→/control-pagos | ✅ | ❌→/control-pagos |
+
+**2. Nuevo usuario creado:**
+- **Rosa Quispe** (rosaquispef@ecoplaza.com)
+- Rol: `finanzas`
+- Password: `u$432##faYh1`
+- vendedor_id: `null` (no es vendedor, no tiene relación con tabla vendedores)
+
+**3. Nueva tabla `clientes_ficha` (ejecutado en Supabase)**
+```sql
+CREATE TABLE clientes_ficha (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  local_id UUID NOT NULL REFERENCES locales(id) ON DELETE CASCADE,
+  lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
+
+  -- Datos Titular (19 campos)
+  titular_nombres, titular_apellido_paterno, titular_apellido_materno,
+  titular_tipo_documento, titular_numero_documento, titular_fecha_nacimiento,
+  titular_lugar_nacimiento, titular_estado_civil, titular_nacionalidad,
+  titular_direccion, titular_distrito, titular_provincia, titular_departamento,
+  titular_celular, titular_telefono_fijo, titular_email,
+  titular_ocupacion, titular_centro_trabajo, titular_ruc,
+
+  -- Datos Cónyuge (11 campos)
+  tiene_conyuge BOOLEAN DEFAULT false,
+  conyuge_nombres, conyuge_apellido_paterno, conyuge_apellido_materno,
+  conyuge_tipo_documento, conyuge_numero_documento, conyuge_fecha_nacimiento,
+  conyuge_lugar_nacimiento, conyuge_nacionalidad, conyuge_ocupacion,
+  conyuge_celular, conyuge_email,
+
+  -- Marketing y metadata
+  utm_source, utm_detalle, observaciones, vendedor_id,
+  created_at, updated_at
+);
+```
+
+**4. Ficha de Inscripción Modal**
+
+| Archivo | Descripción |
+|---------|-------------|
+| `lib/actions-clientes-ficha.ts` (NUEVO) | Server actions: `getClienteFichaByLocalId()`, `upsertClienteFicha()` |
+| `components/locales/FichaInscripcionModal.tsx` | Modal completo con formulario editable |
+| `components/locales/LocalesTable.tsx` | Botón "Iniciar ficha de inscripción" en locales NARANJA |
+
+**Características del modal:**
+- Pre-llena nombre y teléfono desde el lead
+- Secciones: Local, Titular (19 campos), Cónyuge (toggle + 11 campos), Marketing, Observaciones
+- Dropdowns: Tipo documento (DNI/CE/Pasaporte), Estado civil, UTM source
+- Guarda automáticamente via `upsertClienteFicha()` (insert o update)
+
+**5. Reorganización templates ficha inscripción**
+```
+templates/ficha-inscripcion/
+├── templates/
+│   └── template-estandar.html
+└── configs/
+    ├── proyecto-pruebas.json (con campo "template": "template-estandar")
+    └── preview-proyecto-pruebas.html
+```
+
+**6. Eliminación columna `lead_id` de `control_pagos`**
+- Columna nunca se usaba (siempre NULL)
+- Linking real es via `lead_nombre` y `lead_telefono` (snapshot)
+- Backup guardado en `consultas-leo/control_pagos_rows.sql`
+
+**Scripts de usuarios actualizados:**
+- `consultas-leo/manage-users/create-rosa-finanzas.js` (NUEVO - patrón sin vendedor)
+
+**Commits:**
+- `4457f49` - feat: Add clientes_ficha editable form to FichaInscripcionModal
+- `8f3ccb7` - feat: Restrict finanzas role to only /control-pagos access
+- `9ef44b4` - fix: Allow finanzas role to access /control-pagos page
+
+---
 
 ### **Sesión 63** (30 Nov) - 🛠️ ✅ **Múltiples mejoras UX + Fix timezone**
 **Tipo:** Mejoras de UX + Fixes
