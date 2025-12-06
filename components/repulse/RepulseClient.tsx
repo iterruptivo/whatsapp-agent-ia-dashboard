@@ -639,12 +639,9 @@ export default function RepulseClient({
                         </span>
                       </div>
 
-                      {/* Estados finales */}
+                      {/* Estado de exclusión */}
                       <div className="flex items-center gap-4 pt-2 border-t border-gray-200">
-                        <span className="text-sm text-gray-500">Estados finales:</span>
-                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                          <CheckCircle className="w-4 h-4" /> Respondió
-                        </span>
+                        <span className="text-sm text-gray-500">Exclusión manual:</span>
                         <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium bg-red-100 text-red-800">
                           <Ban className="w-4 h-4" /> Excluido
                         </span>
