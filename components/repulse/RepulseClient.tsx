@@ -22,6 +22,9 @@ import {
   Trash2,
   Edit,
   RefreshCw,
+  Info,
+  X,
+  ArrowRight,
 } from 'lucide-react';
 import {
   type RepulseLead,
@@ -78,6 +81,9 @@ export default function RepulseClient({
     type: null,
     targetId: null,
   });
+
+  // State para modal informativo
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   // Filtrar leads
   const filteredLeads = useMemo(() => {
@@ -198,6 +204,18 @@ export default function RepulseClient({
 
   return (
     <div className="space-y-6">
+      {/* Header con título e icono de info */}
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-bold text-gray-900">Sistema Repulse</h1>
+        <button
+          onClick={() => setShowInfoModal(true)}
+          className="p-1.5 text-gray-500 hover:text-primary hover:bg-gray-100 rounded-full transition-colors"
+          title="¿Cómo funciona Repulse?"
+        >
+          <Info className="w-5 h-5" />
+        </button>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
@@ -532,6 +550,170 @@ export default function RepulseClient({
         onConfirm={handleConfirmAction}
         onCancel={closeConfirmModal}
       />
+
+      {/* Modal informativo - ¿Cómo funciona Repulse? */}
+      {showInfoModal && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-50 transition-opacity"
+            onClick={() => setShowInfoModal(false)}
+          />
+
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+              {/* Header */}
+              <div className="bg-primary text-white px-6 py-4 rounded-t-lg flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Info className="w-6 h-6" />
+                  <h2 className="text-lg font-semibold">¿Cómo funciona Repulse?</h2>
+                </div>
+                <button
+                  onClick={() => setShowInfoModal(false)}
+                  className="text-white/80 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body - Scrollable */}
+              <div className="p-6 overflow-y-auto space-y-6">
+                {/* ¿Qué es Repulse? */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-primary" />
+                    ¿Qué es Repulse?
+                  </h3>
+                  <p className="text-gray-600">
+                    Repulse es un sistema de <strong>re-engagement</strong> para leads que no han
+                    realizado una compra. Permite enviar mensajes personalizados vía WhatsApp
+                    para reactivar su interés.
+                  </p>
+                </div>
+
+                {/* Criterios de detección */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <Search className="w-5 h-5 text-primary" />
+                    ¿Qué leads entran a Repulse?
+                  </h3>
+                  <ul className="text-gray-600 space-y-1 ml-4">
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-1">•</span>
+                      Leads con más de <strong>30 días</strong> en el sistema
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-1">•</span>
+                      Que <strong>no han comprado</strong> ningún local
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-1">•</span>
+                      Que <strong>no están excluidos</strong> manualmente
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Ciclo de vida */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5 text-primary" />
+                    Ciclo de vida de estados
+                  </h3>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex flex-col space-y-3">
+                      {/* Flujo principal */}
+                      <div className="flex items-center flex-wrap gap-2">
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                          <Clock className="w-4 h-4" /> Pendiente
+                        </span>
+                        <ArrowRight className="w-4 h-4 text-gray-400" />
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                          <Send className="w-4 h-4" /> Enviado
+                        </span>
+                        <ArrowRight className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-500 italic">(15 días después)</span>
+                        <ArrowRight className="w-4 h-4 text-gray-400" />
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                          <Clock className="w-4 h-4" /> Pendiente
+                        </span>
+                      </div>
+
+                      {/* Estados finales */}
+                      <div className="flex items-center gap-4 pt-2 border-t border-gray-200">
+                        <span className="text-sm text-gray-500">Estados finales:</span>
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                          <CheckCircle className="w-4 h-4" /> Respondió
+                        </span>
+                        <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                          <Ban className="w-4 h-4" /> Excluido
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detección automática vs manual */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-primary" />
+                    Detección automática
+                  </h3>
+                  <p className="text-gray-600 mb-2">
+                    Cada <strong>15 días</strong>, el sistema automáticamente:
+                  </p>
+                  <ul className="text-gray-600 space-y-1 ml-4">
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-1">1.</span>
+                      Detecta <strong>nuevos leads</strong> que cumplen los criterios
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary mt-1">2.</span>
+                      <strong>Reactiva</strong> leads en estado "Enviado" que tienen 15+ días desde el último envío
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Envío manual */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h3 className="text-md font-semibold text-blue-900 mb-2 flex items-center gap-2">
+                    <Send className="w-5 h-5" />
+                    Importante: El envío es siempre MANUAL
+                  </h3>
+                  <p className="text-blue-800 text-sm">
+                    El sistema solo detecta y reactiva leads automáticamente.
+                    El <strong>envío de mensajes WhatsApp</strong> siempre lo realiza un usuario
+                    manualmente seleccionando los leads y eligiendo un template o mensaje personalizado.
+                  </p>
+                </div>
+
+                {/* Exclusión */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                    <Ban className="w-5 h-5 text-red-500" />
+                    Exclusión permanente
+                  </h3>
+                  <p className="text-gray-600">
+                    Si un lead no debe recibir más mensajes de repulse (pidió no ser contactado,
+                    información incorrecta, etc.), puedes <strong>excluirlo permanentemente</strong>.
+                    El lead no volverá a aparecer en la lista de repulse.
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="bg-gray-50 px-6 py-4 rounded-b-lg flex justify-end">
+                <button
+                  onClick={() => setShowInfoModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors"
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
