@@ -627,12 +627,52 @@ await supabase
 
 ---
 
-### Próximos Pasos
+### Cron Job Configurado ✅
 
-1. ~~Integrar webhook n8n en RepulseEnvioModal~~ ✅
-2. ~~Testing completo del flujo end-to-end con mensajes reales~~ ✅
-3. Configurar cron job (cada 10 días) para `detectar_leads_repulse()`
-4. ~~Activar flujo n8n en producción~~ ✅
+**Fecha:** 6 Diciembre 2025
+
+Habilitado pg_cron en Supabase y configurado job para detección automática:
+
+```sql
+SELECT cron.schedule(
+  'detectar-leads-repulse',
+  '0 18 */10 * *',
+  $$
+  SELECT detectar_leads_repulse(id)
+  FROM proyectos
+  WHERE activo = true
+  $$
+);
+```
+
+| Campo | Valor |
+|-------|-------|
+| **Nombre** | detectar-leads-repulse |
+| **Schedule** | `0 18 */10 * *` (1:00 PM Perú, cada 10 días) |
+| **Estado** | ✅ active |
+
+**Comandos útiles:**
+```sql
+-- Verificar job
+SELECT * FROM cron.job;
+
+-- Eliminar job (si necesario)
+SELECT cron.unschedule('detectar-leads-repulse');
+
+-- Ver historial de ejecuciones
+SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
+```
+
+---
+
+### Sistema Repulse - COMPLETADO ✅
+
+| Tarea | Estado |
+|-------|--------|
+| Integración webhook n8n | ✅ |
+| Testing end-to-end | ✅ |
+| Flujo n8n en producción | ✅ |
+| Cron job pg_cron | ✅ |
 
 ---
 
