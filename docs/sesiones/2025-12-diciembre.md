@@ -4,6 +4,7 @@
 - [Sesión 64](#sesión-64---2-diciembre-2025) - Sistema Generación Documentos (Análisis + DB + UI)
 - [Sesión 64B](#sesión-64b---3-diciembre-2025) - Template HTML Ficha de Inscripción
 - [Sesión 65](#sesión-65---5-diciembre-2025) - Sistema Repulse: Integración /operativo + Exclusiones
+- [Sesión 65B](#sesión-65b---5-diciembre-2025-continuación) - Sistema Repulse: Webhook n8n + UI Improvements
 
 ---
 
@@ -481,11 +482,138 @@ Property 'error' does not exist on type
 
 ---
 
+## Sesión 65B - 5 Diciembre 2025 (Continuación)
+
+### 🔄 Sistema Repulse: Webhook n8n + UI Improvements
+
+**Tipo:** Feature - Integración n8n + UX
+**Estado:** ✅ COMPLETADO
+**Branch:** `feature/repulse`
+
+---
+
+### Objetivo
+
+1. Integrar envío de mensajes Repulse via webhook n8n
+2. Mejorar UX con modales elegantes
+3. Sincronizar estado entre `/operativo` y `/repulse`
+
+---
+
+### Trabajo Realizado
+
+#### FASE 1: Integración Webhook n8n ✅
+
+**Archivo:** `lib/actions-repulse.ts`
+
+Nueva función `enviarRepulseViaWebhook()`:
+- Envía cada lead individualmente al webhook (n8n Switch requiere un item por request)
+- Payload: `{ telefono, mensaje, nombre, proyectoId, lead_id, repulse_lead_id }`
+- Delay de 500ms entre envíos para evitar rate limits de WhatsApp
+- Retorna contadores de enviados/errores con detalles
+
+**Variable de entorno requerida:**
+```
+N8N_REPULSE_WEBHOOK_URL=https://iterruptivo.app.n8n.cloud/webhook/repulse-send
+```
+
+#### FASE 2: Modal de Envío con Resultados ✅
+
+**Archivo:** `components/repulse/RepulseEnvioModal.tsx`
+
+- Llama a `prepararEnvioRepulseBatch()` para registrar en historial
+- Luego llama a `enviarRepulseViaWebhook()` para enviar mensajes
+- Vista de resultado con:
+  - Icono verde/amarillo/rojo según éxito
+  - Contadores de enviados y fallidos
+  - Detalle de los primeros 5 envíos
+  - Mensaje de error si webhook no está configurado
+
+#### FASE 3: Emoji Picker ✅
+
+**Archivos:** `RepulseEnvioModal.tsx`, `RepulseTemplateModal.tsx`
+
+- Dynamic import de `emoji-picker-react` (evita SSR issues)
+- Botón de emoji en textarea de mensaje personalizado
+- Inserta emoji en posición del cursor
+- Popover con cierre al click fuera
+
+#### FASE 4: ConfirmModal en RepulseClient ✅
+
+**Archivo:** `components/repulse/RepulseClient.tsx`
+
+Reemplazados `confirm()` del navegador por `ConfirmModal`:
+- State para controlar modal: `{ isOpen, type, targetId }`
+- Funciones: `openRemoveConfirm`, `openExcluirConfirm`, `closeConfirmModal`, `handleConfirmAction`
+- Variante `warning` (amarillo) para eliminar
+- Variante `danger` (rojo) para excluir
+
+#### FASE 5: Fix Sincronización Reincluir ✅
+
+**Archivo:** `lib/actions-repulse.ts`
+
+Bug: Al reincluir desde `/operativo`, solo se actualizaba `leads.excluido_repulse = false`
+pero el registro en `repulse_leads` quedaba con `estado = 'excluido'`.
+
+**Solución:** `reincluirLeadEnRepulse()` ahora también actualiza:
+```typescript
+await supabase
+  .from('repulse_leads')
+  .update({ estado: 'pendiente' })
+  .eq('lead_id', leadId)
+  .eq('estado', 'excluido');
+```
+
+---
+
+### Commits de la Sesión
+
+| Hash | Mensaje |
+|------|---------|
+| `1c4c800` | feat: integrate n8n webhook for repulse message sending |
+| `07b704f` | fix: send proyecto_id to n8n webhook for routing |
+| `015b604` | feat: replace browser confirm() with ConfirmModal in RepulseClient |
+| `3a09381` | fix: sync repulse_leads status when re-including lead from /operativo |
+
+---
+
+### Archivos Modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `lib/actions-repulse.ts` | +100 líneas (webhook, fix reincluir) |
+| `components/repulse/RepulseEnvioModal.tsx` | +80 líneas (webhook call, result UI, emoji) |
+| `components/repulse/RepulseTemplateModal.tsx` | +50 líneas (emoji picker) |
+| `components/repulse/RepulseClient.tsx` | +60 líneas (ConfirmModal) |
+
+---
+
+### Flujo Completo de Envío Repulse
+
+```
+1. Usuario selecciona leads en /repulse
+2. Click "Enviar Repulse"
+3. Modal: Selecciona template o escribe mensaje personalizado
+4. Click "Enviar Repulse"
+5. prepararEnvioRepulseBatch():
+   - Registra en repulse_historial
+   - Actualiza estado a 'enviado'
+   - Incrementa conteo_repulses
+6. enviarRepulseViaWebhook():
+   - Envía cada lead al webhook n8n
+   - n8n Switch rutea por proyectoId
+   - WhatsApp Graph API envía mensaje
+7. Modal muestra resultados (enviados/fallidos)
+```
+
+---
+
 ### Próximos Pasos
 
-1. Configurar cron job (cada 10 días) para `detectar_leads_repulse()`
-2. Integrar webhook n8n en RepulseEnvioModal
-3. Testing completo del flujo end-to-end
+1. ~~Integrar webhook n8n en RepulseEnvioModal~~ ✅
+2. Configurar cron job (cada 10 días) para `detectar_leads_repulse()`
+3. Testing completo del flujo end-to-end con mensajes reales
+4. Activar flujo n8n en producción
 
 ---
 
