@@ -89,11 +89,22 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // jefe_ventas, coordinador y finanzas solo ven Finanzas (locales, comisiones, etc)
-    if (user?.rol === 'jefe_ventas' || user?.rol === 'coordinador' || user?.rol === 'finanzas') {
+    // jefe_ventas y coordinador ven Finanzas (locales, comisiones, etc)
+    if (user?.rol === 'jefe_ventas' || user?.rol === 'coordinador') {
       return {
         directItems: [],
         categories: [finanzasCategory],
+        bottomItems: [] as MenuItem[],
+      };
+    }
+
+    // finanzas solo ve Control de Pagos
+    if (user?.rol === 'finanzas') {
+      return {
+        directItems: [
+          { href: '/control-pagos', label: 'Control de Pagos', icon: FileText },
+        ],
+        categories: [],
         bottomItems: [] as MenuItem[],
       };
     }
