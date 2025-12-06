@@ -15,23 +15,26 @@
 
 ## 🔄 Estado Actual
 
-**EN DESARROLLO** - Branch: `feature/repulse`
-**Última actualización:** Sesión 65 (5 Dic 2025)
+**COMPLETADO** - Branch: `feature/repulse`
+**Última actualización:** Sesión 65B (6 Dic 2025)
 
 ### Funcionalidades Implementadas:
 - ✅ Tablas de base de datos (repulse_leads, repulse_templates, repulse_historial)
-- ✅ Stored Procedure `detectar_leads_repulse()` para detección automática
+- ✅ Stored Procedure `detectar_leads_repulse()` para detección + reactivación
 - ✅ Server Actions completas en `lib/actions-repulse.ts`
 - ✅ Página `/repulse` con lista de leads y gestión de templates
-- ✅ Modal de envío de repulse (`RepulseEnvioModal`)
+- ✅ Modal de envío de repulse (`RepulseEnvioModal`) con emoji picker
 - ✅ Integración en `/operativo` (selección múltiple + botón individual)
 - ✅ Sistema de exclusión de leads (`excluido_repulse`)
 - ✅ Campo `excluido_repulse` en interface Lead
+- ✅ Integración webhook n8n para envío de mensajes WhatsApp
+- ✅ ConfirmModal elegante (reemplaza `confirm()` del navegador)
+- ✅ Cron job pg_cron cada 15 días
+- ✅ Lógica de reactivación (leads enviados vuelven a pendiente tras 15 días)
 
 ### Pendientes:
-- ⏳ Integración con n8n (webhook para envío de mensajes)
-- ⏳ Cron job cada 10 días para ejecutar `detectar_leads_repulse()`
-- ⏳ Notificaciones de respuesta
+- ⏳ Notificaciones de respuesta (webhook de entrada)
+- ⏳ Dashboard de métricas de repulse
 
 ---
 
@@ -124,30 +127,52 @@ ALTER TABLE leads ADD COLUMN excluido_repulse BOOLEAN DEFAULT false;
 ```
 
 ### Stored Procedure: `detectar_leads_repulse()`
+
+La función realiza dos operaciones:
+1. **Detectar nuevos leads** (30+ días sin compra)
+2. **Reactivar leads enviados** (15+ días desde último envío)
+
 ```sql
 CREATE OR REPLACE FUNCTION detectar_leads_repulse(p_proyecto_id UUID)
 RETURNS INTEGER AS $$
 DECLARE
-  leads_agregados INTEGER := 0;
+  v_count_nuevos INTEGER := 0;
+  v_count_reactivados INTEGER := 0;
 BEGIN
-  INSERT INTO repulse_leads (lead_id, proyecto_id, origen)
-  SELECT l.id, l.proyecto_id, 'cron_automatico'
+  -- 1. Insertar leads nuevos (30+ días sin compra)
+  INSERT INTO repulse_leads (lead_id, proyecto_id, origen, estado)
+  SELECT l.id, l.proyecto_id, 'cron_automatico', 'pendiente'
   FROM leads l
   WHERE l.proyecto_id = p_proyecto_id
-    AND l.excluido_repulse = false
-    AND l.created_at < NOW() - INTERVAL '30 days'
-    AND NOT EXISTS (
-      SELECT 1 FROM locales_leads ll WHERE ll.lead_id = l.id
-    )
-    AND NOT EXISTS (
-      SELECT 1 FROM repulse_leads rl WHERE rl.lead_id = l.id
-    )
+    AND l.excluido_repulse = FALSE
+    AND l.created_at <= NOW() - INTERVAL '30 days'
+    AND NOT EXISTS (SELECT 1 FROM locales_leads ll WHERE ll.lead_id = l.id)
+    AND NOT EXISTS (SELECT 1 FROM repulse_leads rl WHERE rl.lead_id = l.id AND rl.proyecto_id = l.proyecto_id)
   ON CONFLICT (lead_id, proyecto_id) DO NOTHING;
+  GET DIAGNOSTICS v_count_nuevos = ROW_COUNT;
 
-  GET DIAGNOSTICS leads_agregados = ROW_COUNT;
-  RETURN leads_agregados;
+  -- 2. Reactivar leads con estado='enviado' y último envío > 15 días
+  UPDATE repulse_leads
+  SET estado = 'pendiente'
+  WHERE proyecto_id = p_proyecto_id
+    AND estado = 'enviado'
+    AND ultimo_repulse_at <= NOW() - INTERVAL '15 days';
+  GET DIAGNOSTICS v_count_reactivados = ROW_COUNT;
+
+  RETURN v_count_nuevos + v_count_reactivados;
 END;
 $$ LANGUAGE plpgsql;
+```
+
+**Ciclo de vida de un lead en Repulse:**
+```
+Lead nuevo (30+ días) ───► pendiente ───► enviado ─────┐
+                               ▲                        │
+                               │                        │
+                               └── (15 días) ───────────┘
+
+Lead responde ─────────────────────────────────► respondio
+Lead excluido ─────────────────────────────────► excluido
 ```
 
 ---
@@ -334,17 +359,29 @@ handleToggleExcludeRepulse(leadId, exclude) // Exclusión
 
 ## 📊 Flujo de Trabajo
 
-### 1. Detección Automática (Cron)
+### 1. Detección Automática (pg_cron)
 ```
-Cron (cada 10 días)
+pg_cron (cada 15 días, 1:00 PM Perú)
     ↓
-n8n llama endpoint
+detectar_leads_repulse() [SQL por cada proyecto activo]
     ↓
-ejecutarDeteccionRepulse(proyectoId)
+1. Nuevos leads agregados (30+ días sin compra)
+2. Leads 'enviado' reactivados a 'pendiente' (15+ días)
     ↓
-detectar_leads_repulse() [SQL]
-    ↓
-Leads agregados a repulse_leads
+Leads listos en /repulse para envío manual
+```
+
+**Configuración del cron job:**
+```sql
+SELECT cron.schedule(
+  'detectar-leads-repulse',
+  '0 18 */15 * *',  -- 18:00 UTC = 1:00 PM Perú
+  $$
+  SELECT detectar_leads_repulse(id)
+  FROM proyectos
+  WHERE activo = true
+  $$
+);
 ```
 
 ### 2. Agregado Manual desde /operativo
@@ -360,23 +397,44 @@ Validaciones (no compra, no excluido)
 Insert en repulse_leads
 ```
 
-### 3. Envío de Mensajes
+### 3. Envío de Mensajes (MANUAL)
 ```
 Usuario en /repulse selecciona leads
     ↓
-Abre RepulseEnvioModal
+Abre RepulseEnvioModal (emoji picker disponible)
     ↓
-Selecciona template o escribe mensaje
+Selecciona template o escribe mensaje personalizado
     ↓
 prepararEnvioRepulseBatch()
     ↓
-Registra en repulse_historial
+Registra en repulse_historial + actualiza estado='enviado'
     ↓
-Retorna datos para n8n
+enviarRepulseViaWebhook()
     ↓
-[PENDIENTE] Webhook a n8n
+Webhook POST a n8n (delay 500ms entre envíos)
     ↓
-n8n envía WhatsApp
+n8n Switch rutea por proyectoId
+    ↓
+WhatsApp Graph API envía mensaje
+    ↓
+Modal muestra resultados (enviados/fallidos)
+```
+
+**Variable de entorno requerida:**
+```
+N8N_REPULSE_WEBHOOK_URL=https://iterruptivo.app.n8n.cloud/webhook/repulse-send
+```
+
+**Payload enviado a n8n:**
+```json
+{
+  "telefono": "51999999999",
+  "mensaje": "Hola Juan, tenemos una oferta...",
+  "nombre": "Juan Pérez",
+  "proyectoId": "uuid-del-proyecto",
+  "lead_id": "uuid-del-lead",
+  "repulse_lead_id": "uuid-del-repulse-lead"
+}
 ```
 
 ### 4. Exclusión Manual
@@ -398,8 +456,8 @@ repulse_leads.estado = 'excluido' (si existe)
 
 | # | Tarea | Prioridad | Estado |
 |---|-------|-----------|--------|
-| 1 | Configurar cron job (cada 10 días) | Alta | ⏳ |
-| 2 | Integrar webhook n8n en RepulseEnvioModal | Alta | ⏳ |
+| 1 | ~~Configurar cron job (cada 15 días)~~ | Alta | ✅ |
+| 2 | ~~Integrar webhook n8n en RepulseEnvioModal~~ | Alta | ✅ |
 | 3 | Endpoint API para recibir respuestas de n8n | Media | ⏳ |
 | 4 | Dashboard de métricas de repulse | Baja | ⏳ |
 | 5 | Notificaciones push cuando lead responde | Baja | ⏳ |
@@ -416,6 +474,10 @@ repulse_leads.estado = 'excluido' (si existe)
 | `9702f8c` | style: add border and X icon to "Limpiar" button |
 | `a3d9a2f` | feat: add repulse exclusion toggle in LeadDetailPanel |
 | `a9fbb2f` | style: add red border to exclude repulse button |
+| `1c4c800` | feat: integrate n8n webhook for repulse message sending |
+| `07b704f` | fix: send proyecto_id to n8n webhook for routing |
+| `015b604` | feat: replace browser confirm() with ConfirmModal in RepulseClient |
+| `3a09381` | fix: sync repulse_leads status when re-including lead from /operativo |
 
 ---
 
@@ -450,8 +512,27 @@ const showRepulseButton = ['admin', 'jefe_ventas'].includes(role);
 ## 📚 Referencias
 
 - **Branch:** `feature/repulse`
-- **Sesión de desarrollo:** 65 (5 Dic 2025)
-- **Integración futura:** n8n + WhatsApp Business API
+- **Sesiones de desarrollo:** 65, 65B (5-6 Dic 2025)
+- **Integración:** n8n + WhatsApp Business API ✅ COMPLETADA
+- **Cron job:** pg_cron cada 15 días (18:00 UTC / 1:00 PM Perú)
+
+---
+
+## 🔧 Comandos Útiles
+
+```sql
+-- Verificar cron job
+SELECT * FROM cron.job;
+
+-- Ver historial de ejecuciones
+SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
+
+-- Ejecutar detección manualmente (para testing)
+SELECT detectar_leads_repulse('uuid-del-proyecto');
+
+-- Eliminar cron job (si necesario)
+SELECT cron.unschedule('detectar-leads-repulse');
+```
 
 ---
 

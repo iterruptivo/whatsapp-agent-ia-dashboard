@@ -631,12 +631,12 @@ await supabase
 
 **Fecha:** 6 Diciembre 2025
 
-Habilitado pg_cron en Supabase y configurado job para detección automática:
+Habilitado pg_cron en Supabase y configurado job para detección automática cada 15 días:
 
 ```sql
 SELECT cron.schedule(
   'detectar-leads-repulse',
-  '0 18 */10 * *',
+  '0 18 */15 * *',
   $$
   SELECT detectar_leads_repulse(id)
   FROM proyectos
@@ -648,7 +648,7 @@ SELECT cron.schedule(
 | Campo | Valor |
 |-------|-------|
 | **Nombre** | detectar-leads-repulse |
-| **Schedule** | `0 18 */10 * *` (1:00 PM Perú, cada 10 días) |
+| **Schedule** | `0 18 */15 * *` (1:00 PM Perú, cada 15 días) |
 | **Estado** | ✅ active |
 
 **Comandos útiles:**
@@ -662,6 +662,77 @@ SELECT cron.unschedule('detectar-leads-repulse');
 -- Ver historial de ejecuciones
 SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
 ```
+
+---
+
+### Función de Detección + Reactivación ✅
+
+**Fecha:** 6 Diciembre 2025
+
+La función `detectar_leads_repulse()` realiza dos operaciones:
+
+1. **Detectar nuevos leads** (30+ días sin compra)
+2. **Reactivar leads enviados** (15+ días desde último envío)
+
+```sql
+CREATE OR REPLACE FUNCTION detectar_leads_repulse(p_proyecto_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+  v_count_nuevos INTEGER := 0;
+  v_count_reactivados INTEGER := 0;
+BEGIN
+  -- 1. Insertar leads nuevos (30+ días sin compra)
+  INSERT INTO repulse_leads (lead_id, proyecto_id, origen, estado)
+  SELECT l.id, l.proyecto_id, 'cron_automatico', 'pendiente'
+  FROM leads l
+  WHERE l.proyecto_id = p_proyecto_id
+    AND l.excluido_repulse = FALSE
+    AND l.created_at <= NOW() - INTERVAL '30 days'
+    AND NOT EXISTS (SELECT 1 FROM locales_leads ll WHERE ll.lead_id = l.id)
+    AND NOT EXISTS (SELECT 1 FROM repulse_leads rl WHERE rl.lead_id = l.id AND rl.proyecto_id = l.proyecto_id)
+  ON CONFLICT (lead_id, proyecto_id) DO NOTHING;
+  GET DIAGNOSTICS v_count_nuevos = ROW_COUNT;
+
+  -- 2. Reactivar leads con estado='enviado' y último envío > 15 días
+  UPDATE repulse_leads
+  SET estado = 'pendiente'
+  WHERE proyecto_id = p_proyecto_id
+    AND estado = 'enviado'
+    AND ultimo_repulse_at <= NOW() - INTERVAL '15 days';
+  GET DIAGNOSTICS v_count_reactivados = ROW_COUNT;
+
+  RETURN v_count_nuevos + v_count_reactivados;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Ciclo de vida de un lead en Repulse:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  Lead nuevo (30+ días) ───► pendiente ───► enviado ─────┐      │
+│                                 ▲                        │      │
+│                                 │                        │      │
+│                                 └── (15 días) ───────────┘      │
+│                                                                 │
+│  Lead responde ─────────────────────────────────► respondio     │
+│  Lead excluido ─────────────────────────────────► excluido      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+| Estado | Descripción |
+|--------|-------------|
+| `pendiente` | Listo para enviar mensaje |
+| `enviado` | Mensaje enviado, esperando respuesta |
+| `respondio` | Lead respondió al mensaje |
+| `excluido` | Excluido permanentemente |
+
+**Importante:**
+- El envío de mensajes es siempre **MANUAL** (usuario selecciona y envía)
+- El cron solo cambia estados (detecta nuevos + reactiva enviados)
+- `conteo_repulses` se incrementa cada vez que se envía un mensaje
 
 ---
 
