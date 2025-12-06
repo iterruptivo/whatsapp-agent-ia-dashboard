@@ -608,12 +608,31 @@ await supabase
 
 ---
 
+### Testing End-to-End ✅
+
+**Fecha:** 6 Diciembre 2025
+**Estado:** ✅ EXITOSO
+
+**Problema encontrado durante testing:**
+- El Switch de n8n usaba `{{ $json.proyectoId }}` pero el webhook recibe el payload dentro de `body`
+- **Solución:** Cambiar a `{{ $json.body.proyectoId }}` en n8n
+
+**Resultado del test:**
+- Flujo n8n ejecuta correctamente (Succeeded in 911ms)
+- Mensaje de WhatsApp enviado y recibido ✅
+
+**Nota importante para testing:**
+> WhatsApp Business API no permite enviar mensajes al mismo número asociado a la cuenta de negocio (anti-spam).
+> Para probar, usar un lead con número diferente al del administrador/tester.
+
+---
+
 ### Próximos Pasos
 
 1. ~~Integrar webhook n8n en RepulseEnvioModal~~ ✅
-2. Configurar cron job (cada 10 días) para `detectar_leads_repulse()`
-3. Testing completo del flujo end-to-end con mensajes reales
-4. Activar flujo n8n en producción
+2. ~~Testing completo del flujo end-to-end con mensajes reales~~ ✅
+3. Configurar cron job (cada 10 días) para `detectar_leads_repulse()`
+4. ~~Activar flujo n8n en producción~~ ✅
 
 ---
 
