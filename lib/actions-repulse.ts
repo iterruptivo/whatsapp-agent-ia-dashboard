@@ -441,12 +441,14 @@ export async function excluirLeadDeRepulse(
 
 /**
  * Reincluir lead a repulse (quitar exclusión)
+ * También actualiza el estado en repulse_leads si existe un registro excluido
  */
 export async function reincluirLeadEnRepulse(
   leadId: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
 
+  // 1. Quitar exclusión en tabla leads
   const { error } = await supabase
     .from('leads')
     .update({ excluido_repulse: false })
@@ -455,6 +457,18 @@ export async function reincluirLeadEnRepulse(
   if (error) {
     console.error('Error re-including lead in repulse:', error);
     return { success: false, error: error.message };
+  }
+
+  // 2. Si existe un registro en repulse_leads con estado 'excluido', cambiarlo a 'pendiente'
+  const { error: errorRepulse } = await supabase
+    .from('repulse_leads')
+    .update({ estado: 'pendiente' })
+    .eq('lead_id', leadId)
+    .eq('estado', 'excluido');
+
+  if (errorRepulse) {
+    console.error('Error updating repulse_leads status:', errorRepulse);
+    // No retornamos error porque la exclusión principal ya se quitó
   }
 
   return { success: true };
