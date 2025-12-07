@@ -85,6 +85,7 @@ export default function PhoneInputCustom({
   const [selectedCountry, setSelectedCountry] = useState(initialParsed.countryCode);
   const [phoneNumber, setPhoneNumber] = useState(initialParsed.number);
   const [isOpen, setIsOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Actualizar cuando el value externo cambia
   useEffect(() => {
@@ -93,10 +94,20 @@ export default function PhoneInputCustom({
     setPhoneNumber(parsed.number);
   }, [value]);
 
+  // Filtrar países según búsqueda
+  const filteredCountries = searchQuery
+    ? sortedCountries.filter(country =>
+        country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        country.dial.includes(searchQuery) ||
+        country.code.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : sortedCountries;
+
   // Cuando cambia país o número, notificar al padre
   const handleCountryChange = (newCountryCode: string) => {
     setSelectedCountry(newCountryCode);
     setIsOpen(false);
+    setSearchQuery('');
     const country = sortedCountries.find(c => c.code === newCountryCode);
     if (country && phoneNumber) {
       onChange(`${country.dial}${phoneNumber}`);
@@ -142,24 +153,44 @@ export default function PhoneInputCustom({
             {/* Overlay para cerrar al hacer clic fuera */}
             <div
               className="fixed inset-0 z-10"
-              onClick={() => setIsOpen(false)}
+              onClick={() => { setIsOpen(false); setSearchQuery(''); }}
             />
             {/* Dropdown menu */}
-            <div className="absolute z-20 mt-1 w-64 max-h-60 overflow-auto bg-white border border-gray-300 rounded-lg shadow-lg">
-              {sortedCountries.map(country => (
-                <button
-                  key={country.code}
-                  type="button"
-                  onClick={() => handleCountryChange(country.code)}
-                  className={`flex items-center gap-3 w-full px-3 py-2 text-sm text-left hover:bg-gray-100 ${
-                    selectedCountry === country.code ? 'bg-gray-100' : ''
-                  }`}
-                >
-                  <FlagIcon country={country.code} />
-                  <span className="flex-1 truncate">{country.name}</span>
-                  <span className="text-gray-500">+{country.dial}</span>
-                </button>
-              ))}
+            <div className="absolute z-20 mt-1 w-64 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden">
+              {/* Search input sticky */}
+              <div className="sticky top-0 bg-white border-b border-gray-200 p-2">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar país..."
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+              {/* Countries list */}
+              <div className="max-h-52 overflow-auto">
+                {filteredCountries.length > 0 ? (
+                  filteredCountries.map(country => (
+                    <button
+                      key={country.code}
+                      type="button"
+                      onClick={() => handleCountryChange(country.code)}
+                      className={`flex items-center gap-3 w-full px-3 py-2 text-sm text-left hover:bg-gray-100 ${
+                        selectedCountry === country.code ? 'bg-gray-100' : ''
+                      }`}
+                    >
+                      <FlagIcon country={country.code} />
+                      <span className="flex-1 truncate">{country.name}</span>
+                      <span className="text-gray-500">+{country.dial}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-4 text-sm text-gray-500 text-center">
+                    No se encontraron países
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}
