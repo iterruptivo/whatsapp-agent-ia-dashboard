@@ -75,3 +75,13 @@ body {
 .phone-input-custom .PhoneInputCountryIcon--border {
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
+
+/* Ocultar el símbolo + en el código de país */
+.phone-input-custom .PhoneInputCountrySelectArrow {
+  margin-left: 0.25rem;
+}
+
+/* Estilo para que el + no se muestre tan prominente - lo movemos fuera de vista */
+.phone-input-custom .PhoneInputInput::placeholder {
+  color: #9ca3af;
+}

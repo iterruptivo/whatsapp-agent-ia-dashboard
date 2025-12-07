@@ -123,7 +123,19 @@ export default function FichaInscripcionModal({
       // Obtener ficha existente o crear nueva
       const existingFicha = await getClienteFichaByLocalId(local!.id);
 
+      // Helper local para agregar + al cargar teléfonos desde BD
+      const ensurePlus = (phone: string | null | undefined): string => {
+        if (!phone) return '';
+        return phone.startsWith('+') ? phone : `+${phone}`;
+      };
+
       if (existingFicha) {
+        // Preparar copropietarios con + en teléfonos para el componente
+        const copropietariosConPlus = (existingFicha.copropietarios || []).map(cop => ({
+          ...cop,
+          telefono: ensurePlus(cop.telefono),
+        }));
+
         setFormData({
           local_id: local!.id,
           lead_id: existingFicha.lead_id,
@@ -141,7 +153,7 @@ export default function FichaInscripcionModal({
           titular_provincia: existingFicha.titular_provincia || '',
           titular_departamento: existingFicha.titular_departamento || 'Lima',
           titular_referencia: existingFicha.titular_referencia || '',
-          titular_celular: existingFicha.titular_celular || '',
+          titular_celular: ensurePlus(existingFicha.titular_celular),
           titular_telefono_fijo: existingFicha.titular_telefono_fijo || '',
           titular_email: existingFicha.titular_email || '',
           titular_ocupacion: existingFicha.titular_ocupacion || '',
@@ -167,7 +179,7 @@ export default function FichaInscripcionModal({
           conyuge_lugar_nacimiento: existingFicha.conyuge_lugar_nacimiento || '',
           conyuge_nacionalidad: existingFicha.conyuge_nacionalidad || 'Peruana',
           conyuge_ocupacion: existingFicha.conyuge_ocupacion || '',
-          conyuge_celular: existingFicha.conyuge_celular || '',
+          conyuge_celular: ensurePlus(existingFicha.conyuge_celular),
           conyuge_email: existingFicha.conyuge_email || '',
           conyuge_genero: existingFicha.conyuge_genero || '',
           conyuge_direccion: existingFicha.conyuge_direccion || '',
@@ -175,7 +187,7 @@ export default function FichaInscripcionModal({
           conyuge_provincia: existingFicha.conyuge_provincia || '',
           conyuge_departamento: existingFicha.conyuge_departamento || 'Lima',
           conyuge_referencia: existingFicha.conyuge_referencia || '',
-          copropietarios: existingFicha.copropietarios || [],
+          copropietarios: copropietariosConPlus,
           utm_source: existingFicha.utm_source || '',
           utm_detalle: existingFicha.utm_detalle || '',
           observaciones: existingFicha.observaciones || '',
@@ -225,8 +237,26 @@ export default function FichaInscripcionModal({
     handleChange('copropietarios', updated);
   };
 
+  // Helper: Quitar + del teléfono para guardar sin el símbolo
+  const stripPlus = (phone: string | null | undefined): string | null => {
+    if (!phone) return null;
+    return phone.startsWith('+') ? phone.slice(1) : phone;
+  };
+
+  // Helper: Agregar + al teléfono para el componente PhoneInput
+  const addPlus = (phone: string | null | undefined): string => {
+    if (!phone) return '';
+    return phone.startsWith('+') ? phone : `+${phone}`;
+  };
+
   const handleSave = async () => {
     if (!local) return;
+
+    // Preparar copropietarios con teléfonos sin +
+    const copropietariosSinPlus = (formData.copropietarios || []).map(cop => ({
+      ...cop,
+      telefono: stripPlus(cop.telefono) || '',
+    }));
 
     setSaving(true);
     const result = await upsertClienteFicha({
@@ -234,6 +264,10 @@ export default function FichaInscripcionModal({
       local_id: local.id,
       lead_id: leadData.lead_id,
       vendedor_id: local.usuario_paso_naranja_id || formData.vendedor_id,
+      // Guardar teléfonos sin el símbolo +
+      titular_celular: stripPlus(formData.titular_celular),
+      conyuge_celular: stripPlus(formData.conyuge_celular),
+      copropietarios: copropietariosSinPlus,
     });
 
     setSaving(false);
