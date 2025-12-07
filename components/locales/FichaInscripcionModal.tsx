@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Save, Loader2, Plus, Trash2 } from 'lucide-react';
+import { X, Save, Loader2, Plus, Trash2, Eye } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario } from '@/lib/actions-clientes-ficha';
@@ -381,6 +381,443 @@ export default function FichaInscripcionModal({
       alert('Ficha guardada correctamente');
     } else {
       alert('Error: ' + result.message);
+    }
+  };
+
+  // Función para generar Vista Previa en nueva ventana
+  const handlePreview = () => {
+    if (!local) return;
+
+    // Calcular valores para mostrar
+    const pct = formData.porcentaje_inicial ?? porcentajeInicialDefault ?? 0;
+    const precio = local.monto_venta ?? 0;
+    const cuotaInicialCalc = (precio * pct) / 100;
+    const separacion = formData.monto_separacion_usd ?? 0;
+    const saldoFinanciar = precio - cuotaInicialCalc;
+    const numCuotas = formData.numero_cuotas ?? 0;
+
+    let cuotaMensualCalc = 0;
+    if (formData.modalidad_pago === 'financiado' && saldoFinanciar > 0 && numCuotas > 0) {
+      if (teaProyecto > 0) {
+        const teaDecimal = teaProyecto / 100;
+        const tem = Math.pow(1 + teaDecimal, 1/12) - 1;
+        cuotaMensualCalc = saldoFinanciar * (tem * Math.pow(1 + tem, numCuotas)) / (Math.pow(1 + tem, numCuotas) - 1);
+      } else {
+        cuotaMensualCalc = saldoFinanciar / numCuotas;
+      }
+    }
+
+    // Helpers para checkboxes
+    const getDocCheck = (tipo: string | null | undefined, expected: string) =>
+      tipo === expected ? 'checked' : '';
+    const getDocCheckSymbol = (tipo: string | null | undefined, expected: string) =>
+      tipo === expected ? '✓' : '';
+
+    const getECCheck = (estado: string | null | undefined, expected: string) => {
+      if (!estado) return '';
+      return estado.toLowerCase().includes(expected.toLowerCase()) ? 'checked' : '';
+    };
+    const getECCheckSymbol = (estado: string | null | undefined, expected: string) => {
+      if (!estado) return '';
+      return estado.toLowerCase().includes(expected.toLowerCase()) ? '✓' : '';
+    };
+
+    // Nombre completo del titular
+    const clienteNombreCompleto = [
+      formData.titular_nombres,
+      formData.titular_apellido_paterno,
+      formData.titular_apellido_materno
+    ].filter(Boolean).join(' ') || '-';
+
+    // Nombre completo del cónyuge
+    const conyugeNombreCompleto = [
+      formData.conyuge_nombres,
+      formData.conyuge_apellido_paterno,
+      formData.conyuge_apellido_materno
+    ].filter(Boolean).join(' ') || '-';
+
+    // Formatear fecha
+    const formatDate = (dateStr: string | null | undefined) => {
+      if (!dateStr) return '-';
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      } catch {
+        return dateStr;
+      }
+    };
+
+    // Formatear monto
+    const formatMonto = (monto: number | null | undefined) => {
+      if (monto === null || monto === undefined) return '-';
+      return monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    // Fecha de generación
+    const fechaGeneracion = new Date().toLocaleString('es-PE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    // UTM checkboxes
+    const utmSource = formData.utm_source || '';
+    const utmChecks: Record<string, { checked: string; symbol: string }> = {
+      facebook: { checked: utmSource.toLowerCase() === 'facebook' ? 'checked' : '', symbol: utmSource.toLowerCase() === 'facebook' ? '✓' : '' },
+      instagram: { checked: utmSource.toLowerCase() === 'instagram' ? 'checked' : '', symbol: utmSource.toLowerCase() === 'instagram' ? '✓' : '' },
+      google: { checked: utmSource.toLowerCase() === 'google' ? 'checked' : '', symbol: utmSource.toLowerCase() === 'google' ? '✓' : '' },
+      tiktok: { checked: utmSource.toLowerCase() === 'tiktok' ? 'checked' : '', symbol: utmSource.toLowerCase() === 'tiktok' ? '✓' : '' },
+      referido: { checked: utmSource.toLowerCase() === 'referido' ? 'checked' : '', symbol: utmSource.toLowerCase() === 'referido' ? '✓' : '' },
+      pasaba: { checked: utmSource.toLowerCase().includes('pasaba') ? 'checked' : '', symbol: utmSource.toLowerCase().includes('pasaba') ? '✓' : '' },
+      otro: { checked: !['facebook', 'instagram', 'google', 'tiktok', 'referido', 'caseta'].includes(utmSource.toLowerCase()) && utmSource !== '' ? 'checked' : '', symbol: !['facebook', 'instagram', 'google', 'tiktok', 'referido', 'caseta'].includes(utmSource.toLowerCase()) && utmSource !== '' ? '✓' : '' },
+    };
+
+    // Mapa de placeholders a valores
+    const placeholders: Record<string, string> = {
+      // Proyecto
+      'PROYECTO_NOMBRE': local.proyecto_nombre || '-',
+      'PROYECTO_EMPRESA': 'EcoPlaza Inmobiliaria S.A.C.',
+      'PROYECTO_DIRECCION': '-',
+      'CODIGO_LOCAL': local.codigo || '-',
+      'METRAJE': local.metraje?.toString() || '-',
+      'PRECIO_LISTA': formatMonto(local.precio_base),
+      'PRECIO_VENTA': formatMonto(local.monto_venta),
+
+      // Cliente titular
+      'CLIENTE_APELLIDO_PATERNO': formData.titular_apellido_paterno || '-',
+      'CLIENTE_APELLIDO_MATERNO': formData.titular_apellido_materno || '-',
+      'CLIENTE_NOMBRES': formData.titular_nombres || '-',
+      'CLIENTE_NOMBRE_COMPLETO': clienteNombreCompleto,
+      'CLIENTE_DOC_DNI': getDocCheck(formData.titular_tipo_documento, 'DNI'),
+      'CLIENTE_DOC_CE': getDocCheck(formData.titular_tipo_documento, 'CE'),
+      'CLIENTE_DOC_PASAPORTE': getDocCheck(formData.titular_tipo_documento, 'Pasaporte'),
+      'CHECK_DNI': getDocCheckSymbol(formData.titular_tipo_documento, 'DNI'),
+      'CHECK_CE': getDocCheckSymbol(formData.titular_tipo_documento, 'CE'),
+      'CHECK_PASAPORTE': getDocCheckSymbol(formData.titular_tipo_documento, 'Pasaporte'),
+      'CLIENTE_NUMERO_DOCUMENTO': formData.titular_numero_documento || '-',
+      'CLIENTE_FECHA_NACIMIENTO': formatDate(formData.titular_fecha_nacimiento),
+      'CLIENTE_LUGAR_NACIMIENTO': formData.titular_lugar_nacimiento || '-',
+      'CLIENTE_EC_SOLTERO': getECCheck(formData.titular_estado_civil, 'soltero'),
+      'CLIENTE_EC_CASADO': getECCheck(formData.titular_estado_civil, 'casado'),
+      'CLIENTE_EC_VIUDO': getECCheck(formData.titular_estado_civil, 'viudo'),
+      'CLIENTE_EC_DIVORCIADO': getECCheck(formData.titular_estado_civil, 'divorciado'),
+      'CHECK_SOLTERO': getECCheckSymbol(formData.titular_estado_civil, 'soltero'),
+      'CHECK_CASADO': getECCheckSymbol(formData.titular_estado_civil, 'casado'),
+      'CHECK_VIUDO': getECCheckSymbol(formData.titular_estado_civil, 'viudo'),
+      'CHECK_DIVORCIADO': getECCheckSymbol(formData.titular_estado_civil, 'divorciado'),
+      'CLIENTE_NACIONALIDAD': formData.titular_nacionalidad || '-',
+      'CLIENTE_DIRECCION': formData.titular_direccion || '-',
+      'CLIENTE_DISTRITO': formData.titular_distrito || '-',
+      'CLIENTE_PROVINCIA': formData.titular_provincia || '-',
+      'CLIENTE_DEPARTAMENTO': formData.titular_departamento || '-',
+      'CLIENTE_CELULAR': formData.titular_celular || '-',
+      'CLIENTE_TELEFONO_FIJO': formData.titular_telefono_fijo || '-',
+      'CLIENTE_EMAIL': formData.titular_email || '-',
+      'CLIENTE_OCUPACION': formData.titular_ocupacion || '-',
+      'CLIENTE_CENTRO_TRABAJO': formData.titular_centro_trabajo || '-',
+      'CLIENTE_RUC': formData.titular_ruc || '-',
+
+      // Cónyuge
+      'MOSTRAR_CONYUGE': formData.tiene_conyuge ? '' : 'display: none;',
+      'CONYUGE_APELLIDO_PATERNO': formData.conyuge_apellido_paterno || '-',
+      'CONYUGE_APELLIDO_MATERNO': formData.conyuge_apellido_materno || '-',
+      'CONYUGE_NOMBRES': formData.conyuge_nombres || '-',
+      'CONYUGE_NOMBRE_COMPLETO': conyugeNombreCompleto,
+      'CONYUGE_DOC_DNI': getDocCheck(formData.conyuge_tipo_documento, 'DNI'),
+      'CONYUGE_DOC_CE': getDocCheck(formData.conyuge_tipo_documento, 'CE'),
+      'CONYUGE_DOC_PASAPORTE': getDocCheck(formData.conyuge_tipo_documento, 'Pasaporte'),
+      'CHECK_CONYUGE_DNI': getDocCheckSymbol(formData.conyuge_tipo_documento, 'DNI'),
+      'CHECK_CONYUGE_CE': getDocCheckSymbol(formData.conyuge_tipo_documento, 'CE'),
+      'CHECK_CONYUGE_PASAPORTE': getDocCheckSymbol(formData.conyuge_tipo_documento, 'Pasaporte'),
+      'CONYUGE_NUMERO_DOCUMENTO': formData.conyuge_numero_documento || '-',
+      'CONYUGE_FECHA_NACIMIENTO': formatDate(formData.conyuge_fecha_nacimiento),
+      'CONYUGE_LUGAR_NACIMIENTO': formData.conyuge_lugar_nacimiento || '-',
+      'CONYUGE_NACIONALIDAD': formData.conyuge_nacionalidad || '-',
+      'CONYUGE_OCUPACION': formData.conyuge_ocupacion || '-',
+      'CONYUGE_CELULAR': formData.conyuge_celular || '-',
+      'CONYUGE_EMAIL': formData.conyuge_email || '-',
+      'MOSTRAR_FIRMA_CONYUGE': formData.tiene_conyuge ? '' : 'display: none;',
+
+      // Forma de pago
+      'PAGO_CONTADO': formData.modalidad_pago === 'contado' ? 'checked' : '',
+      'PAGO_FINANCIADO': formData.modalidad_pago === 'financiado' ? 'checked' : '',
+      'CHECK_CONTADO': formData.modalidad_pago === 'contado' ? '✓' : '',
+      'CHECK_FINANCIADO': formData.modalidad_pago === 'financiado' ? '✓' : '',
+      'MONTO_SEPARACION': formatMonto(formData.monto_separacion_usd),
+      'FECHA_SEPARACION': formatDate(formData.fecha_separacion),
+      'CUOTA_INICIAL': formatMonto(cuotaInicialCalc > 0 ? cuotaInicialCalc : null),
+      'PORCENTAJE_INICIAL': pct > 0 ? `${pct}%` : '-',
+      'SALDO_FINANCIAR': formatMonto(saldoFinanciar > 0 ? saldoFinanciar : null),
+      'NUMERO_CUOTAS': numCuotas > 0 ? numCuotas.toString() : '-',
+      'TEA': teaProyecto > 0 ? `${teaProyecto}%` : '0%',
+      'CUOTA_MENSUAL': formatMonto(cuotaMensualCalc > 0 ? cuotaMensualCalc : null),
+
+      // Marketing
+      'UTM_FACEBOOK': utmChecks.facebook.checked,
+      'UTM_INSTAGRAM': utmChecks.instagram.checked,
+      'UTM_GOOGLE': utmChecks.google.checked,
+      'UTM_TIKTOK': utmChecks.tiktok.checked,
+      'UTM_REFERIDO': utmChecks.referido.checked,
+      'UTM_PASABA': utmChecks.pasaba.checked,
+      'UTM_OTRO': utmChecks.otro.checked,
+      'CHECK_FACEBOOK': utmChecks.facebook.symbol,
+      'CHECK_INSTAGRAM': utmChecks.instagram.symbol,
+      'CHECK_GOOGLE': utmChecks.google.symbol,
+      'CHECK_TIKTOK': utmChecks.tiktok.symbol,
+      'CHECK_REFERIDO': utmChecks.referido.symbol,
+      'CHECK_PASABA': utmChecks.pasaba.symbol,
+      'CHECK_OTRO': utmChecks.otro.symbol,
+      'UTM_OTRO_DETALLE': utmChecks.otro.checked ? utmSource : '',
+
+      // Observaciones
+      'OBSERVACIONES': formData.observaciones || '-',
+
+      // Asesor
+      'ASESOR_NOMBRE': '-', // TODO: Obtener nombre del vendedor
+      'ASESOR_CODIGO': formData.vendedor_id || '-',
+      'FECHA_REGISTRO': formatDate(new Date().toISOString().split('T')[0]),
+      'FECHA_GENERACION': fechaGeneracion,
+    };
+
+    // Template HTML embebido
+    const templateHtml = `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ficha de Inscripción - {{PROYECTO_NOMBRE}}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #000; background: #f5f5f5; padding: 20px; }
+    .ficha-container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .ficha-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1b967a; padding-bottom: 15px; margin-bottom: 20px; }
+    .logo-container { width: 120px; }
+    .logo-placeholder { width: 120px; height: 60px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #666; border: 1px dashed #999; }
+    .ficha-title { text-align: center; flex: 1; }
+    .ficha-title h1 { font-size: 18px; font-weight: bold; color: #1b967a; text-transform: uppercase; }
+    .ficha-title h2 { font-size: 14px; font-weight: normal; color: #333; margin-top: 5px; }
+    .ficha-codigo { text-align: right; min-width: 120px; }
+    .ficha-codigo .codigo-label { font-size: 10px; color: #666; }
+    .ficha-codigo .codigo-value { font-size: 14px; font-weight: bold; color: #1b967a; border: 1px solid #1b967a; padding: 5px 10px; display: inline-block; margin-top: 5px; }
+    .section { margin-bottom: 20px; border: 1px solid #ddd; border-radius: 5px; overflow: hidden; }
+    .section-header { background: #1b967a; color: #fff; padding: 8px 15px; font-weight: bold; font-size: 13px; text-transform: uppercase; }
+    .section-header.secondary { background: #192c4d; }
+    .section-content { padding: 15px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .form-grid.three-cols { grid-template-columns: repeat(3, 1fr); }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group.full-width { grid-column: 1 / -1; }
+    .form-group.span-2 { grid-column: span 2; }
+    .form-label { font-size: 10px; font-weight: bold; color: #333; margin-bottom: 3px; text-transform: uppercase; }
+    .form-value { border-bottom: 1px solid #333; min-height: 22px; padding: 3px 5px; font-size: 12px; background: #fafafa; }
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+    .checkbox-item { display: flex; align-items: center; gap: 5px; }
+    .checkbox-box { width: 16px; height: 16px; border: 1px solid #333; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+    .checkbox-box.checked { background: #1b967a; color: #fff; border-color: #1b967a; }
+    .checkbox-label { font-size: 11px; }
+    .signature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 40px; margin-top: 30px; }
+    .signature-box { text-align: center; }
+    .signature-line { border-top: 1px solid #333; margin-top: 60px; padding-top: 10px; }
+    .signature-label { font-size: 11px; font-weight: bold; }
+    .signature-sublabel { font-size: 10px; color: #666; }
+    .ficha-footer { margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd; font-size: 10px; color: #666; text-align: center; }
+    .observaciones-box { min-height: 80px; border: 1px solid #ddd; padding: 10px; background: #fafafa; }
+    .print-toolbar { position: fixed; top: 0; left: 0; right: 0; background: #1b967a; padding: 10px 20px; display: flex; justify-content: center; gap: 15px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+    .print-toolbar button { padding: 10px 25px; font-size: 14px; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; transition: all 0.2s; }
+    .print-toolbar .btn-print { background: #fff; color: #1b967a; }
+    .print-toolbar .btn-print:hover { background: #e0f0ed; }
+    .print-toolbar .btn-close { background: transparent; color: #fff; border: 2px solid #fff; }
+    .print-toolbar .btn-close:hover { background: rgba(255,255,255,0.1); }
+    body { padding-top: 70px; }
+    @media print {
+      .print-toolbar { display: none; }
+      body { padding: 0; background: #fff; }
+      .ficha-container { box-shadow: none; max-width: 100%; }
+      .section { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="print-toolbar">
+    <button class="btn-print" onclick="window.print()">Imprimir Ficha PDF</button>
+    <button class="btn-close" onclick="window.close()">Cerrar Vista Previa</button>
+  </div>
+  <div class="ficha-container">
+    <header class="ficha-header">
+      <div class="logo-container"><div class="logo-placeholder">LOGO ECOPLAZA</div></div>
+      <div class="ficha-title"><h1>Ficha de Inscripción</h1><h2>{{PROYECTO_NOMBRE}}</h2></div>
+      <div class="ficha-codigo"><div class="codigo-label">N° de Ficha</div><div class="codigo-value">{{CODIGO_LOCAL}}</div></div>
+    </header>
+
+    <section class="section">
+      <div class="section-header">1. Datos del Proyecto</div>
+      <div class="section-content">
+        <div class="form-grid">
+          <div class="form-group span-2"><span class="form-label">Proyecto</span><span class="form-value">{{PROYECTO_NOMBRE}}</span></div>
+          <div class="form-group"><span class="form-label">Local / Lote</span><span class="form-value">{{CODIGO_LOCAL}}</span></div>
+          <div class="form-group"><span class="form-label">Área (m²)</span><span class="form-value">{{METRAJE}}</span></div>
+          <div class="form-group"><span class="form-label">Precio de Lista (USD)</span><span class="form-value">{{PRECIO_LISTA}}</span></div>
+          <div class="form-group"><span class="form-label">Precio de Venta (USD)</span><span class="form-value">{{PRECIO_VENTA}}</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">2. Datos del Cliente (Titular)</div>
+      <div class="section-content">
+        <div class="form-grid">
+          <div class="form-group"><span class="form-label">Apellido Paterno</span><span class="form-value">{{CLIENTE_APELLIDO_PATERNO}}</span></div>
+          <div class="form-group"><span class="form-label">Apellido Materno</span><span class="form-value">{{CLIENTE_APELLIDO_MATERNO}}</span></div>
+          <div class="form-group span-2"><span class="form-label">Nombres</span><span class="form-value">{{CLIENTE_NOMBRES}}</span></div>
+          <div class="form-group">
+            <span class="form-label">Tipo de Documento</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item"><span class="checkbox-box {{CLIENTE_DOC_DNI}}">{{CHECK_DNI}}</span><span class="checkbox-label">DNI</span></div>
+              <div class="checkbox-item"><span class="checkbox-box {{CLIENTE_DOC_CE}}">{{CHECK_CE}}</span><span class="checkbox-label">CE</span></div>
+              <div class="checkbox-item"><span class="checkbox-box {{CLIENTE_DOC_PASAPORTE}}">{{CHECK_PASAPORTE}}</span><span class="checkbox-label">Pasaporte</span></div>
+            </div>
+          </div>
+          <div class="form-group"><span class="form-label">Número de Documento</span><span class="form-value">{{CLIENTE_NUMERO_DOCUMENTO}}</span></div>
+          <div class="form-group"><span class="form-label">Fecha de Nacimiento</span><span class="form-value">{{CLIENTE_FECHA_NACIMIENTO}}</span></div>
+          <div class="form-group"><span class="form-label">Lugar de Nacimiento</span><span class="form-value">{{CLIENTE_LUGAR_NACIMIENTO}}</span></div>
+          <div class="form-group">
+            <span class="form-label">Estado Civil</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item"><span class="checkbox-box {{CLIENTE_EC_SOLTERO}}">{{CHECK_SOLTERO}}</span><span class="checkbox-label">Soltero(a)</span></div>
+              <div class="checkbox-item"><span class="checkbox-box {{CLIENTE_EC_CASADO}}">{{CHECK_CASADO}}</span><span class="checkbox-label">Casado(a)</span></div>
+              <div class="checkbox-item"><span class="checkbox-box {{CLIENTE_EC_VIUDO}}">{{CHECK_VIUDO}}</span><span class="checkbox-label">Viudo(a)</span></div>
+              <div class="checkbox-item"><span class="checkbox-box {{CLIENTE_EC_DIVORCIADO}}">{{CHECK_DIVORCIADO}}</span><span class="checkbox-label">Divorciado(a)</span></div>
+            </div>
+          </div>
+          <div class="form-group"><span class="form-label">Nacionalidad</span><span class="form-value">{{CLIENTE_NACIONALIDAD}}</span></div>
+          <div class="form-group full-width"><span class="form-label">Dirección Domiciliaria</span><span class="form-value">{{CLIENTE_DIRECCION}}</span></div>
+          <div class="form-group"><span class="form-label">Distrito</span><span class="form-value">{{CLIENTE_DISTRITO}}</span></div>
+          <div class="form-group"><span class="form-label">Provincia</span><span class="form-value">{{CLIENTE_PROVINCIA}}</span></div>
+          <div class="form-group span-2"><span class="form-label">Departamento</span><span class="form-value">{{CLIENTE_DEPARTAMENTO}}</span></div>
+          <div class="form-group"><span class="form-label">Teléfono Celular</span><span class="form-value">{{CLIENTE_CELULAR}}</span></div>
+          <div class="form-group"><span class="form-label">Teléfono Fijo</span><span class="form-value">{{CLIENTE_TELEFONO_FIJO}}</span></div>
+          <div class="form-group span-2"><span class="form-label">Correo Electrónico</span><span class="form-value">{{CLIENTE_EMAIL}}</span></div>
+          <div class="form-group"><span class="form-label">Ocupación / Profesión</span><span class="form-value">{{CLIENTE_OCUPACION}}</span></div>
+          <div class="form-group"><span class="form-label">Centro de Trabajo</span><span class="form-value">{{CLIENTE_CENTRO_TRABAJO}}</span></div>
+          <div class="form-group span-2"><span class="form-label">RUC (si aplica)</span><span class="form-value">{{CLIENTE_RUC}}</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" style="{{MOSTRAR_CONYUGE}}">
+      <div class="section-header secondary">3. Datos del Cónyuge (Si aplica)</div>
+      <div class="section-content">
+        <div class="form-grid">
+          <div class="form-group"><span class="form-label">Apellido Paterno</span><span class="form-value">{{CONYUGE_APELLIDO_PATERNO}}</span></div>
+          <div class="form-group"><span class="form-label">Apellido Materno</span><span class="form-value">{{CONYUGE_APELLIDO_MATERNO}}</span></div>
+          <div class="form-group span-2"><span class="form-label">Nombres</span><span class="form-value">{{CONYUGE_NOMBRES}}</span></div>
+          <div class="form-group">
+            <span class="form-label">Tipo de Documento</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item"><span class="checkbox-box {{CONYUGE_DOC_DNI}}">{{CHECK_CONYUGE_DNI}}</span><span class="checkbox-label">DNI</span></div>
+              <div class="checkbox-item"><span class="checkbox-box {{CONYUGE_DOC_CE}}">{{CHECK_CONYUGE_CE}}</span><span class="checkbox-label">CE</span></div>
+              <div class="checkbox-item"><span class="checkbox-box {{CONYUGE_DOC_PASAPORTE}}">{{CHECK_CONYUGE_PASAPORTE}}</span><span class="checkbox-label">Pasaporte</span></div>
+            </div>
+          </div>
+          <div class="form-group"><span class="form-label">Número de Documento</span><span class="form-value">{{CONYUGE_NUMERO_DOCUMENTO}}</span></div>
+          <div class="form-group"><span class="form-label">Fecha de Nacimiento</span><span class="form-value">{{CONYUGE_FECHA_NACIMIENTO}}</span></div>
+          <div class="form-group"><span class="form-label">Lugar de Nacimiento</span><span class="form-value">{{CONYUGE_LUGAR_NACIMIENTO}}</span></div>
+          <div class="form-group"><span class="form-label">Nacionalidad</span><span class="form-value">{{CONYUGE_NACIONALIDAD}}</span></div>
+          <div class="form-group"><span class="form-label">Ocupación / Profesión</span><span class="form-value">{{CONYUGE_OCUPACION}}</span></div>
+          <div class="form-group"><span class="form-label">Teléfono Celular</span><span class="form-value">{{CONYUGE_CELULAR}}</span></div>
+          <div class="form-group"><span class="form-label">Correo Electrónico</span><span class="form-value">{{CONYUGE_EMAIL}}</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">4. Forma de Pago</div>
+      <div class="section-content">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <span class="form-label">Modalidad de Pago</span>
+            <div class="checkbox-group">
+              <div class="checkbox-item"><span class="checkbox-box {{PAGO_CONTADO}}">{{CHECK_CONTADO}}</span><span class="checkbox-label">Contado</span></div>
+              <div class="checkbox-item"><span class="checkbox-box {{PAGO_FINANCIADO}}">{{CHECK_FINANCIADO}}</span><span class="checkbox-label">Financiado</span></div>
+            </div>
+          </div>
+          <div class="form-group"><span class="form-label">Monto de Separación (USD)</span><span class="form-value">{{MONTO_SEPARACION}}</span></div>
+          <div class="form-group"><span class="form-label">Fecha de Separación</span><span class="form-value">{{FECHA_SEPARACION}}</span></div>
+          <div class="form-group"><span class="form-label">Cuota Inicial (USD)</span><span class="form-value">{{CUOTA_INICIAL}}</span></div>
+          <div class="form-group"><span class="form-label">Porcentaje Inicial (%)</span><span class="form-value">{{PORCENTAJE_INICIAL}}</span></div>
+          <div class="form-group"><span class="form-label">Saldo a Financiar (USD)</span><span class="form-value">{{SALDO_FINANCIAR}}</span></div>
+          <div class="form-group"><span class="form-label">Número de Cuotas</span><span class="form-value">{{NUMERO_CUOTAS}}</span></div>
+          <div class="form-group"><span class="form-label">TEA (%)</span><span class="form-value">{{TEA}}</span></div>
+          <div class="form-group"><span class="form-label">Cuota Mensual (USD)</span><span class="form-value">{{CUOTA_MENSUAL}}</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header secondary">5. ¿Cómo se enteró del proyecto?</div>
+      <div class="section-content">
+        <div class="checkbox-group">
+          <div class="checkbox-item"><span class="checkbox-box {{UTM_FACEBOOK}}">{{CHECK_FACEBOOK}}</span><span class="checkbox-label">Facebook</span></div>
+          <div class="checkbox-item"><span class="checkbox-box {{UTM_INSTAGRAM}}">{{CHECK_INSTAGRAM}}</span><span class="checkbox-label">Instagram</span></div>
+          <div class="checkbox-item"><span class="checkbox-box {{UTM_GOOGLE}}">{{CHECK_GOOGLE}}</span><span class="checkbox-label">Google</span></div>
+          <div class="checkbox-item"><span class="checkbox-box {{UTM_TIKTOK}}">{{CHECK_TIKTOK}}</span><span class="checkbox-label">TikTok</span></div>
+          <div class="checkbox-item"><span class="checkbox-box {{UTM_REFERIDO}}">{{CHECK_REFERIDO}}</span><span class="checkbox-label">Referido</span></div>
+          <div class="checkbox-item"><span class="checkbox-box {{UTM_PASABA}}">{{CHECK_PASABA}}</span><span class="checkbox-label">Pasaba por el lugar</span></div>
+          <div class="checkbox-item"><span class="checkbox-box {{UTM_OTRO}}">{{CHECK_OTRO}}</span><span class="checkbox-label">Otro: {{UTM_OTRO_DETALLE}}</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">6. Observaciones</div>
+      <div class="section-content"><div class="observaciones-box">{{OBSERVACIONES}}</div></div>
+    </section>
+
+    <section class="section">
+      <div class="section-header secondary">7. Datos del Asesor de Ventas</div>
+      <div class="section-content">
+        <div class="form-grid three-cols">
+          <div class="form-group"><span class="form-label">Nombre del Asesor</span><span class="form-value">{{ASESOR_NOMBRE}}</span></div>
+          <div class="form-group"><span class="form-label">Código / ID</span><span class="form-value">{{ASESOR_CODIGO}}</span></div>
+          <div class="form-group"><span class="form-label">Fecha de Registro</span><span class="form-value">{{FECHA_REGISTRO}}</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">Firmas</div>
+      <div class="section-content">
+        <div class="signature-grid">
+          <div class="signature-box"><div class="signature-line"><div class="signature-label">{{CLIENTE_NOMBRE_COMPLETO}}</div><div class="signature-sublabel">Cliente / Titular</div><div class="signature-sublabel">DNI: {{CLIENTE_NUMERO_DOCUMENTO}}</div></div></div>
+          <div class="signature-box" style="{{MOSTRAR_FIRMA_CONYUGE}}"><div class="signature-line"><div class="signature-label">{{CONYUGE_NOMBRE_COMPLETO}}</div><div class="signature-sublabel">Cónyuge</div><div class="signature-sublabel">DNI: {{CONYUGE_NUMERO_DOCUMENTO}}</div></div></div>
+          <div class="signature-box"><div class="signature-line"><div class="signature-label">{{ASESOR_NOMBRE}}</div><div class="signature-sublabel">Asesor de Ventas</div></div></div>
+          <div class="signature-box"><div class="signature-line"><div class="signature-label">Jefe de Ventas</div><div class="signature-sublabel">V°B° Supervisión</div></div></div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="ficha-footer">
+      <p>{{PROYECTO_EMPRESA}} | {{PROYECTO_DIRECCION}}</p>
+      <p>Documento generado el {{FECHA_GENERACION}} | Sistema EcoPlaza Dashboard</p>
+    </footer>
+  </div>
+</body>
+</html>`;
+
+    // Reemplazar todos los placeholders
+    let finalHtml = templateHtml;
+    for (const [placeholder, value] of Object.entries(placeholders)) {
+      const regex = new RegExp(`\\{\\{${placeholder}\\}\\}`, 'g');
+      finalHtml = finalHtml.replace(regex, value);
+    }
+
+    // Abrir en nueva ventana
+    const previewWindow = window.open('', '_blank', 'width=900,height=800');
+    if (previewWindow) {
+      previewWindow.document.write(finalHtml);
+      previewWindow.document.close();
     }
   };
 
@@ -1041,21 +1478,32 @@ export default function FichaInscripcionModal({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-white border-t px-6 py-4 rounded-b-lg flex justify-end gap-3">
+        <div className="sticky bottom-0 bg-white border-t px-6 py-4 rounded-b-lg flex justify-between">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+            className="px-4 py-2 text-gray-500 hover:text-gray-700 transition-colors"
           >
-            Cerrar
+            <X className="w-4 h-4 inline mr-1" />
+            Cancelar
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || loading}
-            className="px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a64] transition-colors flex items-center gap-2 disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            {saving ? 'Guardando...' : 'Guardar'}
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={handlePreview}
+              disabled={loading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              <Eye className="w-4 h-4" />
+              Vista Previa
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || loading}
+              className="px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a64] transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {saving ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
