@@ -516,7 +516,7 @@ export default function FichaInscripcionModal({
                       </div>
                     </div>
 
-                    {/* Fila de cuotas y mensualidad */}
+                    {/* Fila de cuotas, TEA y mensualidad */}
                     <div className="grid grid-cols-4 gap-3 mb-3">
                       {/* Número de cuotas (editable) */}
                       <div>
@@ -531,6 +531,21 @@ export default function FichaInscripcionModal({
                           placeholder="24"
                         />
                       </div>
+                      {/* TEA editable */}
+                      <div>
+                        <label className={labelClass}>TEA (%)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          className={inputClass}
+                          value={teaProyecto}
+                          onChange={e => setTeaProyecto(e.target.value ? parseFloat(e.target.value) : 0)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          placeholder="0"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">0 = sin interés</p>
+                      </div>
                       {/* Cuota mensual USD (calculado) */}
                       <div>
                         <label className={labelClass}>Cuota mensual (USD)</label>
@@ -544,30 +559,21 @@ export default function FichaInscripcionModal({
 
                             if (saldoFinanciar <= 0 || numCuotas <= 0) return '-';
 
+                            let cuotaMensual: number;
                             if (teaProyecto > 0) {
                               // Sistema Francés: Cuota = P × [r(1+r)^n] / [(1+r)^n - 1]
                               const teaDecimal = teaProyecto / 100;
                               const tem = Math.pow(1 + teaDecimal, 1/12) - 1;
-                              const cuotaMensual = saldoFinanciar * (tem * Math.pow(1 + tem, numCuotas)) / (Math.pow(1 + tem, numCuotas) - 1);
-                              return `$ ${cuotaMensual.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+                              cuotaMensual = saldoFinanciar * (tem * Math.pow(1 + tem, numCuotas)) / (Math.pow(1 + tem, numCuotas) - 1);
                             } else {
                               // Sin interés: división simple
-                              const cuotaMensual = saldoFinanciar / numCuotas;
-                              return `$ ${cuotaMensual.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+                              cuotaMensual = saldoFinanciar / numCuotas;
                             }
+                            // Redondear a 2 decimales
+                            cuotaMensual = Math.round(cuotaMensual * 100) / 100;
+                            return `$ ${cuotaMensual.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                           })()}
                         </div>
-                      </div>
-                      {/* Entidad bancaria */}
-                      <div>
-                        <label className={labelClass}>Entidad Bancaria</label>
-                        <input
-                          type="text"
-                          className={inputClass}
-                          value={formData.entidad_bancaria || ''}
-                          onChange={e => handleChange('entidad_bancaria', e.target.value)}
-                          placeholder="BCP, Interbank..."
-                        />
                       </div>
                       {/* Fecha inicio pago */}
                       <div>
@@ -581,22 +587,16 @@ export default function FichaInscripcionModal({
                       </div>
                     </div>
 
-                    {/* TEA editable */}
-                    <div className="grid grid-cols-4 gap-3 mb-3">
-                      <div>
-                        <label className={labelClass}>TEA (%)</label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          className={inputClass}
-                          value={teaProyecto}
-                          onChange={e => setTeaProyecto(e.target.value ? parseFloat(e.target.value) : 0)}
-                          onWheel={(e) => e.currentTarget.blur()}
-                          placeholder="0"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">0 = sin interés (cuota simple)</p>
-                      </div>
+                    {/* Entidad bancaria - ancho completo */}
+                    <div className="mb-3">
+                      <label className={labelClass}>Entidad Bancaria</label>
+                      <input
+                        type="text"
+                        className={inputClass}
+                        value={formData.entidad_bancaria || ''}
+                        onChange={e => handleChange('entidad_bancaria', e.target.value)}
+                        placeholder="BCP, Interbank, BBVA, Scotiabank..."
+                      />
                     </div>
 
                     {/* Compromiso de pago */}
