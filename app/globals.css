@@ -32,3 +32,46 @@ body {
 .animate-fade-in {
   animation: fade-in 0.15s ease-out;
 }
+
+/* React Phone Number Input Styles */
+.phone-input-custom {
+  width: 100%;
+}
+
+.phone-input-custom .PhoneInputInput {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.phone-input-custom .PhoneInputInput:focus {
+  ring: 2px;
+  ring-color: #1b967a;
+  border-color: transparent;
+  box-shadow: 0 0 0 2px #1b967a;
+}
+
+.phone-input-custom .PhoneInputCountry {
+  margin-right: 0.5rem;
+}
+
+.phone-input-custom .PhoneInputCountrySelect {
+  padding: 0.25rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: white;
+  cursor: pointer;
+}
+
+.phone-input-custom .PhoneInputCountryIcon {
+  width: 1.5rem;
+  height: 1rem;
+}
+
+.phone-input-custom .PhoneInputCountryIcon--border {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+}

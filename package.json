@@ -18,6 +18,7 @@
     "papaparse": "^5.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "react-phone-number-input": "^3.4.14",
     "recharts": "^3.2.1",
     "xlsx": "^0.18.5"
   },

@@ -5,6 +5,8 @@ import { X, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario } from '@/lib/actions-clientes-ficha';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 interface FichaInscripcionModalProps {
   isOpen: boolean;
@@ -348,7 +350,13 @@ export default function FichaInscripcionModal({
                   </div>
                   <div>
                     <label className={labelClass}>Teléfono</label>
-                    <input type="text" className={inputClass} value={formData.titular_celular || ''} onChange={e => handleChange('titular_celular', e.target.value)} />
+                    <PhoneInput
+                      international
+                      defaultCountry="PE"
+                      value={formData.titular_celular || ''}
+                      onChange={(value) => handleChange('titular_celular', value || '')}
+                      className="phone-input-custom"
+                    />
                   </div>
                   <div>
                     <label className={labelClass}>Correo Electrónico</label>
@@ -477,7 +485,13 @@ export default function FichaInscripcionModal({
                     </div>
                     <div>
                       <label className={labelClass}>Teléfono</label>
-                      <input type="text" className={inputClass} value={formData.conyuge_celular || ''} onChange={e => handleChange('conyuge_celular', e.target.value)} />
+                      <PhoneInput
+                        international
+                        defaultCountry="PE"
+                        value={formData.conyuge_celular || ''}
+                        onChange={(value) => handleChange('conyuge_celular', value || '')}
+                        className="phone-input-custom"
+                      />
                     </div>
                     <div>
                       <label className={labelClass}>Correo Electrónico</label>
@@ -570,7 +584,13 @@ export default function FichaInscripcionModal({
                           </div>
                           <div>
                             <label className={labelClass}>Teléfono</label>
-                            <input type="text" className={inputClass} value={cop.telefono} onChange={e => updateCopropietario(index, 'telefono', e.target.value)} />
+                            <PhoneInput
+                              international
+                              defaultCountry="PE"
+                              value={cop.telefono || ''}
+                              onChange={(value) => updateCopropietario(index, 'telefono', value || '')}
+                              className="phone-input-custom"
+                            />
                           </div>
                           <div>
                             <label className={labelClass}>Correo Electrónico</label>
@@ -578,11 +598,30 @@ export default function FichaInscripcionModal({
                           </div>
                           <div>
                             <label className={labelClass}>Parentesco</label>
-                            <select className={inputClass} value={cop.parentesco} onChange={e => updateCopropietario(index, 'parentesco', e.target.value)}>
+                            <select className={inputClass} value={cop.parentesco.startsWith('Otro:') ? 'Otro' : cop.parentesco} onChange={e => {
+                              const val = e.target.value;
+                              if (val === 'Otro') {
+                                updateCopropietario(index, 'parentesco', 'Otro:');
+                              } else {
+                                updateCopropietario(index, 'parentesco', val);
+                              }
+                            }}>
                               <option value="">Seleccionar...</option>
                               {PARENTESCOS.map(p => <option key={p} value={p}>{p}</option>)}
                             </select>
                           </div>
+                          {(cop.parentesco === 'Otro' || cop.parentesco.startsWith('Otro:')) && (
+                            <div>
+                              <label className={labelClass}>Especificar parentesco</label>
+                              <input
+                                type="text"
+                                className={inputClass}
+                                value={cop.parentesco.startsWith('Otro:') ? cop.parentesco.slice(5) : ''}
+                                onChange={e => updateCopropietario(index, 'parentesco', `Otro:${e.target.value}`)}
+                                placeholder="Ej: Cuñado, Suegro..."
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
