@@ -16,7 +16,10 @@ interface FichaInscripcionModalProps {
 
 const TIPOS_DOCUMENTO = ['DNI', 'CE', 'Pasaporte'];
 const ESTADOS_CIVILES = ['Soltero(a)', 'Casado(a)', 'Viudo(a)', 'Divorciado(a)'];
-const UTM_OPTIONS = ['Facebook', 'Instagram', 'Google', 'TikTok', 'Referido', 'Pasaba por el lugar', 'Otro'];
+const UTM_OPTIONS = [
+  'Caseta', 'Facebook', 'Instagram', 'WhatsApp', 'Pag. Web', 'Volante', 'Panel Publicitario', 'Ferias',
+  'Evento Presencial', 'Publicidad en Buses', 'Panel de Ruta', 'TikTok', 'Referido', 'Programa TV', 'Radio', 'Revistas'
+];
 const GENEROS = ['Masculino', 'Femenino'];
 const NIVELES_ESTUDIO = ['Primaria', 'Secundaria', 'Técnico', 'Universitario', 'Postgrado'];
 const TIPOS_TRABAJADOR = ['Dependiente', 'Independiente'];
@@ -631,19 +634,31 @@ export default function FichaInscripcionModal({
 
               {/* Marketing */}
               <div className={sectionClass}>
-                <h3 className={sectionTitleClass}>¿Cómo nos conoció?</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className={labelClass}>Fuente</label>
-                    <select className={inputClass} value={formData.utm_source || ''} onChange={e => handleChange('utm_source', e.target.value)}>
-                      <option value="">Seleccionar...</option>
-                      {UTM_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelClass}>Detalle (si aplica)</label>
-                    <input type="text" className={inputClass} value={formData.utm_detalle || ''} onChange={e => handleChange('utm_detalle', e.target.value)} placeholder="Ej: Nombre del referido" />
-                  </div>
+                <h3 className={sectionTitleClass}>¿Cómo se enteró del proyecto?</h3>
+                <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
+                  {UTM_OPTIONS.map(option => {
+                    const selectedSources = (formData.utm_source || '').split(',').filter(Boolean);
+                    const isChecked = selectedSources.includes(option);
+                    return (
+                      <label key={option} className="flex flex-col items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            let newSources: string[];
+                            if (e.target.checked) {
+                              newSources = [...selectedSources, option];
+                            } else {
+                              newSources = selectedSources.filter(s => s !== option);
+                            }
+                            handleChange('utm_source', newSources.join(','));
+                          }}
+                          className="w-5 h-5 text-[#1b967a] rounded border-gray-300 focus:ring-[#1b967a]"
+                        />
+                        <span className="text-xs text-center text-gray-700 leading-tight">{option}</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
