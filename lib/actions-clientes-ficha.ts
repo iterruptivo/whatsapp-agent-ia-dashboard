@@ -86,6 +86,7 @@ export interface ClienteFicha {
   saldo_financiar_usd: number | null;
   numero_cuotas: number | null;
   cuota_mensual_usd: number | null;
+  tea: number | null;
   entidad_bancaria: string | null;
   fecha_inicio_pago: string | null;
   compromiso_pago: string | null;
@@ -166,6 +167,7 @@ export interface ClienteFichaInput {
   saldo_financiar_usd?: number | null;
   numero_cuotas?: number | null;
   cuota_mensual_usd?: number | null;
+  tea?: number | null;
   entidad_bancaria?: string | null;
   fecha_inicio_pago?: string | null;
   compromiso_pago?: string | null;

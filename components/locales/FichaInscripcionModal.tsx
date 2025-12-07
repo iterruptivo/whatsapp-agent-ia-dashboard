@@ -112,6 +112,7 @@ export default function FichaInscripcionModal({
     saldo_financiar_usd: null,
     numero_cuotas: null,
     cuota_mensual_usd: null,
+    tea: null,
     entidad_bancaria: '',
     fecha_inicio_pago: '',
     compromiso_pago: '',
@@ -206,6 +207,7 @@ export default function FichaInscripcionModal({
           saldo_financiar_usd: existingFicha.saldo_financiar_usd,
           numero_cuotas: existingFicha.numero_cuotas,
           cuota_mensual_usd: existingFicha.cuota_mensual_usd,
+          tea: existingFicha.tea,
           entidad_bancaria: existingFicha.entidad_bancaria || '',
           fecha_inicio_pago: existingFicha.fecha_inicio_pago || '',
           compromiso_pago: existingFicha.compromiso_pago || '',
@@ -215,6 +217,10 @@ export default function FichaInscripcionModal({
           observaciones: existingFicha.observaciones || '',
           vendedor_id: existingFicha.vendedor_id,
         });
+        // Si la ficha tiene TEA guardada, usarla en vez del default del proyecto
+        if (existingFicha.tea !== null && existingFicha.tea !== undefined) {
+          setTeaProyecto(existingFicha.tea);
+        }
       } else {
         // Pre-llenar con datos del lead
         const nombreParts = leadData.nombre.split(' ');
@@ -321,6 +327,8 @@ export default function FichaInscripcionModal({
       inicial_restante_usd: formData.modalidad_pago === 'financiado' && cuotaInicialCalc > 0 ? inicialRestante : null,
       saldo_financiar_usd: formData.modalidad_pago === 'financiado' && saldoFinanciar > 0 ? saldoFinanciar : null,
       cuota_mensual_usd: cuotaMensualCalc > 0 ? cuotaMensualCalc : null,
+      // Guardar TEA usada (para trazabilidad: 0 = división simple, >0 = sistema francés)
+      tea: formData.modalidad_pago === 'financiado' ? teaProyecto : null,
     });
 
     setSaving(false);
