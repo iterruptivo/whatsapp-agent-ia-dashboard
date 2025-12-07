@@ -346,7 +346,7 @@ export default function FichaInscripcionModal({
                       {TIPOS_TRABAJADOR.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
-                  <div>
+                  <div className="col-span-3">
                     <label className={labelClass}>Puesto de Trabajo</label>
                     <input type="text" className={inputClass} value={formData.titular_puesto_trabajo || ''} onChange={e => handleChange('titular_puesto_trabajo', e.target.value)} />
                   </div>
