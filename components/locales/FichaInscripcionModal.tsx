@@ -551,6 +551,17 @@ export default function FichaInscripcionModal({
       'CLIENTE_OCUPACION': formData.titular_ocupacion || '-',
       'CLIENTE_CENTRO_TRABAJO': formData.titular_centro_trabajo || '-',
       'CLIENTE_RUC': formData.titular_ruc || '-',
+      'CLIENTE_REFERENCIA': formData.titular_referencia || '-',
+      'CLIENTE_GENERO': formData.titular_genero || '-',
+      'CLIENTE_EDAD': formData.titular_edad || '-',
+      'CLIENTE_INGRESOS': formData.titular_ingresos_salariales || '-',
+      'CLIENTE_NIVEL_ESTUDIOS': formData.titular_nivel_estudios || '-',
+      'CLIENTE_TIPO_TRABAJADOR': formData.titular_tipo_trabajador || '-',
+      'CLIENTE_PUESTO_TRABAJO': formData.titular_puesto_trabajo || '-',
+      'CLIENTE_CANTIDAD_HIJOS': formData.titular_cantidad_hijos || '-',
+      'CLIENTE_PROPIEDADES': formData.titular_cuenta_propiedades || '-',
+      'CLIENTE_TARJETA_CREDITO': formData.titular_cuenta_tarjeta_credito || '-',
+      'CLIENTE_MOTIVO_COMPRA': formData.titular_motivo_compra || '-',
 
       // Cónyuge
       'MOSTRAR_CONYUGE': formData.tiene_conyuge ? '' : 'display: none;',
@@ -571,6 +582,12 @@ export default function FichaInscripcionModal({
       'CONYUGE_OCUPACION': formData.conyuge_ocupacion || '-',
       'CONYUGE_CELULAR': formData.conyuge_celular || '-',
       'CONYUGE_EMAIL': formData.conyuge_email || '-',
+      'CONYUGE_GENERO': formData.conyuge_genero || '-',
+      'CONYUGE_DIRECCION': formData.conyuge_direccion || '-',
+      'CONYUGE_DISTRITO': formData.conyuge_distrito || '-',
+      'CONYUGE_PROVINCIA': formData.conyuge_provincia || '-',
+      'CONYUGE_DEPARTAMENTO': formData.conyuge_departamento || '-',
+      'CONYUGE_REFERENCIA': formData.conyuge_referencia || '-',
       'MOSTRAR_FIRMA_CONYUGE': formData.tiene_conyuge ? '' : 'display: none;',
 
       // Forma de pago
@@ -586,6 +603,17 @@ export default function FichaInscripcionModal({
       'NUMERO_CUOTAS': numCuotas > 0 ? numCuotas.toString() : '-',
       'TEA': teaProyecto > 0 ? `${teaProyecto}%` : '0%',
       'CUOTA_MENSUAL': formatMonto(cuotaMensualCalc > 0 ? cuotaMensualCalc : null),
+      'TIPO_CAMBIO': formData.tipo_cambio ? formData.tipo_cambio.toString() : '-',
+      'SEPARACION_SOLES': formData.tipo_cambio && formData.monto_separacion_usd
+        ? formatMonto(formData.monto_separacion_usd * formData.tipo_cambio)
+        : '-',
+      'INICIAL_RESTANTE': formatMonto(formData.modalidad_pago === 'financiado' && cuotaInicialCalc > 0
+        ? (cuotaInicialCalc - (formData.monto_separacion_usd || 0))
+        : null),
+      'ENTIDAD_BANCARIA': formData.entidad_bancaria || '-',
+      'FECHA_INICIO_PAGO': formatDate(formData.fecha_inicio_pago),
+      'COMPROMISO_PAGO': formData.compromiso_pago || '-',
+      'RUBRO_NEGOCIO': formData.rubro || '-',
 
       // Marketing
       'UTM_FACEBOOK': utmChecks.facebook.checked,
@@ -606,6 +634,28 @@ export default function FichaInscripcionModal({
 
       // Observaciones
       'OBSERVACIONES': formData.observaciones || '-',
+
+      // Copropietarios - generar HTML dinámico
+      'COPROPIETARIOS_HTML': (() => {
+        const cops = formData.copropietarios || [];
+        if (cops.length === 0) return '';
+        return cops.map((cop, idx) => `
+          <div style="border: 1px solid #ddd; border-radius: 5px; padding: 10px; margin-bottom: 10px;">
+            <div style="font-weight: bold; margin-bottom: 8px; color: #1b967a;">Copropietario ${idx + 1}</div>
+            <div class="form-grid">
+              <div class="form-group"><span class="form-label">Nombres</span><span class="form-value">${cop.nombres || '-'}</span></div>
+              <div class="form-group"><span class="form-label">Apellido Paterno</span><span class="form-value">${cop.apellido_paterno || '-'}</span></div>
+              <div class="form-group"><span class="form-label">Apellido Materno</span><span class="form-value">${cop.apellido_materno || '-'}</span></div>
+              <div class="form-group"><span class="form-label">Tipo Documento</span><span class="form-value">${cop.tipo_documento || '-'}</span></div>
+              <div class="form-group"><span class="form-label">Nro. Documento</span><span class="form-value">${cop.numero_documento || '-'}</span></div>
+              <div class="form-group"><span class="form-label">Teléfono</span><span class="form-value">${cop.telefono || '-'}</span></div>
+              <div class="form-group"><span class="form-label">Email</span><span class="form-value">${cop.email || '-'}</span></div>
+              <div class="form-group"><span class="form-label">Parentesco</span><span class="form-value">${cop.parentesco || '-'}</span></div>
+            </div>
+          </div>
+        `).join('');
+      })(),
+      'MOSTRAR_COPROPIETARIOS': (formData.copropietarios || []).length > 0 ? '' : 'display: none;',
 
       // Asesor - datos del vendedor que confirmó NARANJA
       'ASESOR_NOMBRE': asesorData.nombre || '-',
@@ -736,11 +786,22 @@ export default function FichaInscripcionModal({
           <div class="form-group"><span class="form-label">Distrito</span><span class="form-value">{{CLIENTE_DISTRITO}}</span></div>
           <div class="form-group"><span class="form-label">Provincia</span><span class="form-value">{{CLIENTE_PROVINCIA}}</span></div>
           <div class="form-group span-2"><span class="form-label">Departamento</span><span class="form-value">{{CLIENTE_DEPARTAMENTO}}</span></div>
+          <div class="form-group full-width"><span class="form-label">Referencia</span><span class="form-value">{{CLIENTE_REFERENCIA}}</span></div>
           <div class="form-group"><span class="form-label">Teléfono Celular</span><span class="form-value">{{CLIENTE_CELULAR}}</span></div>
           <div class="form-group"><span class="form-label">Correo Electrónico</span><span class="form-value">{{CLIENTE_EMAIL}}</span></div>
           <div class="form-group"><span class="form-label">Ocupación / Profesión</span><span class="form-value">{{CLIENTE_OCUPACION}}</span></div>
           <div class="form-group"><span class="form-label">Centro de Trabajo</span><span class="form-value">{{CLIENTE_CENTRO_TRABAJO}}</span></div>
-          <div class="form-group span-2"><span class="form-label">RUC (si aplica)</span><span class="form-value">{{CLIENTE_RUC}}</span></div>
+          <div class="form-group"><span class="form-label">Género</span><span class="form-value">{{CLIENTE_GENERO}}</span></div>
+          <div class="form-group"><span class="form-label">Edad</span><span class="form-value">{{CLIENTE_EDAD}}</span></div>
+          <div class="form-group"><span class="form-label">Ingresos Salariales (S/)</span><span class="form-value">{{CLIENTE_INGRESOS}}</span></div>
+          <div class="form-group"><span class="form-label">Nivel de Estudios</span><span class="form-value">{{CLIENTE_NIVEL_ESTUDIOS}}</span></div>
+          <div class="form-group"><span class="form-label">Tipo de Trabajador</span><span class="form-value">{{CLIENTE_TIPO_TRABAJADOR}}</span></div>
+          <div class="form-group"><span class="form-label">Puesto de Trabajo</span><span class="form-value">{{CLIENTE_PUESTO_TRABAJO}}</span></div>
+          <div class="form-group"><span class="form-label">Cantidad de Hijos</span><span class="form-value">{{CLIENTE_CANTIDAD_HIJOS}}</span></div>
+          <div class="form-group"><span class="form-label">¿Cuenta con Propiedades?</span><span class="form-value">{{CLIENTE_PROPIEDADES}}</span></div>
+          <div class="form-group"><span class="form-label">¿Tarjeta de Crédito?</span><span class="form-value">{{CLIENTE_TARJETA_CREDITO}}</span></div>
+          <div class="form-group"><span class="form-label">RUC (si aplica)</span><span class="form-value">{{CLIENTE_RUC}}</span></div>
+          <div class="form-group full-width"><span class="form-label">Motivo de la Compra</span><span class="form-value">{{CLIENTE_MOTIVO_COMPRA}}</span></div>
         </div>
       </div>
     </section>
@@ -767,7 +828,20 @@ export default function FichaInscripcionModal({
           <div class="form-group"><span class="form-label">Ocupación / Profesión</span><span class="form-value">{{CONYUGE_OCUPACION}}</span></div>
           <div class="form-group"><span class="form-label">Teléfono Celular</span><span class="form-value">{{CONYUGE_CELULAR}}</span></div>
           <div class="form-group"><span class="form-label">Correo Electrónico</span><span class="form-value">{{CONYUGE_EMAIL}}</span></div>
+          <div class="form-group"><span class="form-label">Género</span><span class="form-value">{{CONYUGE_GENERO}}</span></div>
+          <div class="form-group full-width"><span class="form-label">Dirección</span><span class="form-value">{{CONYUGE_DIRECCION}}</span></div>
+          <div class="form-group"><span class="form-label">Distrito</span><span class="form-value">{{CONYUGE_DISTRITO}}</span></div>
+          <div class="form-group"><span class="form-label">Provincia</span><span class="form-value">{{CONYUGE_PROVINCIA}}</span></div>
+          <div class="form-group"><span class="form-label">Departamento</span><span class="form-value">{{CONYUGE_DEPARTAMENTO}}</span></div>
+          <div class="form-group full-width"><span class="form-label">Referencia</span><span class="form-value">{{CONYUGE_REFERENCIA}}</span></div>
         </div>
+      </div>
+    </section>
+
+    <section class="section" style="{{MOSTRAR_COPROPIETARIOS}}">
+      <div class="section-header secondary">3.1. Otros Copropietarios</div>
+      <div class="section-content">
+        {{COPROPIETARIOS_HTML}}
       </div>
     </section>
 
@@ -782,14 +856,21 @@ export default function FichaInscripcionModal({
               <div class="checkbox-item"><span class="checkbox-box {{PAGO_FINANCIADO}}">{{CHECK_FINANCIADO}}</span><span class="checkbox-label">Financiado</span></div>
             </div>
           </div>
+          <div class="form-group"><span class="form-label">Tipo de Cambio (S/)</span><span class="form-value">{{TIPO_CAMBIO}}</span></div>
           <div class="form-group"><span class="form-label">Monto de Separación (USD)</span><span class="form-value">{{MONTO_SEPARACION}}</span></div>
+          <div class="form-group"><span class="form-label">Separación (S/)</span><span class="form-value">{{SEPARACION_SOLES}}</span></div>
           <div class="form-group"><span class="form-label">Fecha de Separación</span><span class="form-value">{{FECHA_SEPARACION}}</span></div>
           <div class="form-group"><span class="form-label">Cuota Inicial (USD)</span><span class="form-value">{{CUOTA_INICIAL}}</span></div>
           <div class="form-group"><span class="form-label">Porcentaje Inicial (%)</span><span class="form-value">{{PORCENTAJE_INICIAL}}</span></div>
+          <div class="form-group"><span class="form-label">Inicial Restante (USD)</span><span class="form-value">{{INICIAL_RESTANTE}}</span></div>
           <div class="form-group"><span class="form-label">Saldo a Financiar (USD)</span><span class="form-value">{{SALDO_FINANCIAR}}</span></div>
           <div class="form-group"><span class="form-label">Número de Cuotas</span><span class="form-value">{{NUMERO_CUOTAS}}</span></div>
           <div class="form-group"><span class="form-label">TEA (%)</span><span class="form-value">{{TEA}}</span></div>
           <div class="form-group"><span class="form-label">Cuota Mensual (USD)</span><span class="form-value">{{CUOTA_MENSUAL}}</span></div>
+          <div class="form-group"><span class="form-label">Fecha Inicio de Pago</span><span class="form-value">{{FECHA_INICIO_PAGO}}</span></div>
+          <div class="form-group"><span class="form-label">Entidad Bancaria</span><span class="form-value">{{ENTIDAD_BANCARIA}}</span></div>
+          <div class="form-group"><span class="form-label">Rubro del Negocio</span><span class="form-value">{{RUBRO_NEGOCIO}}</span></div>
+          <div class="form-group full-width"><span class="form-label">Compromiso de Pago</span><span class="form-value">{{COMPROMISO_PAGO}}</span></div>
         </div>
       </div>
     </section>
