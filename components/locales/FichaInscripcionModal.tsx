@@ -278,15 +278,11 @@ export default function FichaInscripcionModal({
                     <input type="text" className={inputClass} value={formData.titular_referencia || ''} onChange={e => handleChange('titular_referencia', e.target.value)} placeholder="Ej: A una cuadra del parque, frente a la bodega..." />
                   </div>
                   <div>
-                    <label className={labelClass}>Celular</label>
+                    <label className={labelClass}>Teléfono</label>
                     <input type="text" className={inputClass} value={formData.titular_celular || ''} onChange={e => handleChange('titular_celular', e.target.value)} />
                   </div>
                   <div>
-                    <label className={labelClass}>Teléfono Fijo</label>
-                    <input type="text" className={inputClass} value={formData.titular_telefono_fijo || ''} onChange={e => handleChange('titular_telefono_fijo', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Email</label>
+                    <label className={labelClass}>Correo Electrónico</label>
                     <input type="email" className={inputClass} value={formData.titular_email || ''} onChange={e => handleChange('titular_email', e.target.value)} />
                   </div>
                   <div>
@@ -360,11 +356,11 @@ export default function FichaInscripcionModal({
                       <input type="text" className={inputClass} value={formData.conyuge_ocupacion || ''} onChange={e => handleChange('conyuge_ocupacion', e.target.value)} />
                     </div>
                     <div>
-                      <label className={labelClass}>Celular</label>
+                      <label className={labelClass}>Teléfono</label>
                       <input type="text" className={inputClass} value={formData.conyuge_celular || ''} onChange={e => handleChange('conyuge_celular', e.target.value)} />
                     </div>
                     <div>
-                      <label className={labelClass}>Email</label>
+                      <label className={labelClass}>Correo Electrónico</label>
                       <input type="email" className={inputClass} value={formData.conyuge_email || ''} onChange={e => handleChange('conyuge_email', e.target.value)} />
                     </div>
                   </div>
