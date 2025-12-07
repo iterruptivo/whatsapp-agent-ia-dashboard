@@ -62,6 +62,19 @@ export default function FichaInscripcionModal({
   const [teaProyecto, setTeaProyecto] = useState<number>(0);
   const [porcentajeInicialDefault, setPorcentajeInicialDefault] = useState<number>(30); // Default 30%
 
+  // Datos legales del proyecto (para header/footer)
+  const [proyectoLegalData, setProyectoLegalData] = useState<{
+    razon_social: string;
+    ruc: string;
+    domicilio_fiscal: string;
+    ubicacion_terreno: string;
+  }>({
+    razon_social: '',
+    ruc: '',
+    domicilio_fiscal: '',
+    ubicacion_terreno: '',
+  });
+
   const [formData, setFormData] = useState<ClienteFichaInput>({
     local_id: '',
     titular_nombres: '',
@@ -384,7 +397,7 @@ export default function FichaInscripcionModal({
     loadData();
   }, [isOpen, local]);
 
-  // Cargar configuración del proyecto (TEA, porcentaje inicial)
+  // Cargar configuración del proyecto (TEA, porcentaje inicial, datos legales)
   useEffect(() => {
     if (!isOpen || !local?.proyecto_id) return;
 
@@ -403,6 +416,14 @@ export default function FichaInscripcionModal({
               setFormData(prev => ({ ...prev, porcentaje_inicial: porcentajes[0].value }));
             }
           }
+
+          // Cargar datos legales del proyecto para header/footer
+          setProyectoLegalData({
+            razon_social: config.configuraciones_extra.razon_social || '',
+            ruc: config.configuraciones_extra.ruc || '',
+            domicilio_fiscal: config.configuraciones_extra.domicilio_fiscal || '',
+            ubicacion_terreno: config.configuraciones_extra.ubicacion_terreno || '',
+          });
         }
       }
     }
@@ -586,9 +607,13 @@ export default function FichaInscripcionModal({
     const placeholders: Record<string, string> = {
       // Proyecto
       'PROYECTO_NOMBRE': local.proyecto_nombre || '-',
-      'PROYECTO_EMPRESA': 'EcoPlaza Inmobiliaria S.A.C.',
-      'PROYECTO_DIRECCION': '-',
       'CODIGO_LOCAL': local.codigo || '-',
+
+      // Datos legales del proyecto (para header y footer)
+      'EMPRESA_RAZON_SOCIAL': proyectoLegalData.razon_social || 'EcoPlaza Inmobiliaria S.A.C.',
+      'EMPRESA_RUC': proyectoLegalData.ruc || '-',
+      'EMPRESA_DOMICILIO': proyectoLegalData.domicilio_fiscal || '-',
+      'EMPRESA_UBICACION': proyectoLegalData.ubicacion_terreno || '-',
       'METRAJE': local.metraje?.toString() || '-',
       'PRECIO_LISTA': formatMonto(local.precio_base),
       'PRECIO_VENTA': formatMonto(local.monto_venta),
@@ -812,7 +837,11 @@ export default function FichaInscripcionModal({
   <div class="ficha-container">
     <header class="ficha-header">
       <div class="logo-container"><div class="logo-placeholder">LOGO ECOPLAZA</div></div>
-      <div class="ficha-title"><h1>Ficha de Inscripción</h1><h2>{{PROYECTO_NOMBRE}}</h2></div>
+      <div class="ficha-title">
+        <div style="font-size: 14px; font-weight: 600; color: #333;">{{EMPRESA_RAZON_SOCIAL}}</div>
+        <div style="font-size: 11px; color: #666;">RUC: {{EMPRESA_RUC}}</div>
+        <h1 style="margin-top: 5px;">Ficha de Inscripción</h1>
+      </div>
       <div class="ficha-codigo"><div class="codigo-label">Cód. de Local</div><div class="codigo-value">{{CODIGO_LOCAL}}</div></div>
     </header>
 
@@ -1003,8 +1032,10 @@ export default function FichaInscripcionModal({
     </section>
 
     <footer class="ficha-footer">
-      <p>{{PROYECTO_EMPRESA}} | {{PROYECTO_DIRECCION}}</p>
-      <p>Documento generado el {{FECHA_GENERACION}} | Sistema EcoPlaza Dashboard</p>
+      <p><strong>{{EMPRESA_RAZON_SOCIAL}}</strong> | RUC: {{EMPRESA_RUC}}</p>
+      <p>Domicilio Fiscal: {{EMPRESA_DOMICILIO}}</p>
+      <p>Ubicación del Terreno: {{EMPRESA_UBICACION}}</p>
+      <p style="margin-top: 8px; border-top: 1px solid #ddd; padding-top: 8px;">Documento generado el {{FECHA_GENERACION}} | Sistema EcoPlaza Dashboard</p>
     </footer>
   </div>
 </body>
