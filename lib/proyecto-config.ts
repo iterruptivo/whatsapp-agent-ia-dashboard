@@ -90,3 +90,34 @@ export async function updateProyectoConfiguracion(
     return { success: false, error: 'Error inesperado al actualizar configuración' };
   }
 }
+
+// ============================================================================
+// Datos legales del proyecto (tabla proyectos)
+// ============================================================================
+
+export interface ProyectoLegalData {
+  razon_social: string | null;
+  ruc: string | null;
+  domicilio_fiscal: string | null;
+  ubicacion_terreno: string | null;
+}
+
+export async function getProyectoLegalData(proyectoId: string): Promise<ProyectoLegalData | null> {
+  try {
+    const { data, error } = await supabase
+      .from('proyectos')
+      .select('razon_social, ruc, domicilio_fiscal, ubicacion_terreno')
+      .eq('id', proyectoId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching proyecto legal data:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in getProyectoLegalData:', error);
+    return null;
+  }
+}

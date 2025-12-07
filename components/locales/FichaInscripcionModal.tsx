@@ -5,7 +5,7 @@ import { X, Save, Loader2, Plus, Trash2, Eye } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario, getUsuarioById } from '@/lib/actions-clientes-ficha';
-import { getProyectoConfiguracion } from '@/lib/proyecto-config';
+import { getProyectoConfiguracion, getProyectoLegalData } from '@/lib/proyecto-config';
 import PhoneInputCustom from '@/components/shared/PhoneInputCustom';
 import AlertModal from '@/components/shared/AlertModal';
 
@@ -397,7 +397,7 @@ export default function FichaInscripcionModal({
     loadData();
   }, [isOpen, local]);
 
-  // Cargar configuración del proyecto (TEA, porcentaje inicial, datos legales)
+  // Cargar configuración del proyecto (TEA, porcentaje inicial)
   useEffect(() => {
     if (!isOpen || !local?.proyecto_id) return;
 
@@ -416,15 +416,18 @@ export default function FichaInscripcionModal({
               setFormData(prev => ({ ...prev, porcentaje_inicial: porcentajes[0].value }));
             }
           }
-
-          // Cargar datos legales del proyecto para header/footer
-          setProyectoLegalData({
-            razon_social: config.configuraciones_extra.razon_social || '',
-            ruc: config.configuraciones_extra.ruc || '',
-            domicilio_fiscal: config.configuraciones_extra.domicilio_fiscal || '',
-            ubicacion_terreno: config.configuraciones_extra.ubicacion_terreno || '',
-          });
         }
+      }
+
+      // Cargar datos legales del proyecto para header/footer (desde tabla proyectos)
+      const legalData = await getProyectoLegalData(local!.proyecto_id);
+      if (legalData) {
+        setProyectoLegalData({
+          razon_social: legalData.razon_social || '',
+          ruc: legalData.ruc || '',
+          domicilio_fiscal: legalData.domicilio_fiscal || '',
+          ubicacion_terreno: legalData.ubicacion_terreno || '',
+        });
       }
     }
 
