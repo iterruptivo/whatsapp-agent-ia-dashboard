@@ -459,7 +459,7 @@ export default function FichaInscripcionModal({
                         <label className={labelClass}>% Inicial</label>
                         <input
                           type="number"
-                          step="1"
+                          step="0.1"
                           className={inputClass}
                           value={formData.porcentaje_inicial ?? porcentajeInicialDefault ?? ''}
                           onChange={e => handleChange('porcentaje_inicial', e.target.value ? parseFloat(e.target.value) : null)}
