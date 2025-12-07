@@ -131,12 +131,19 @@ export default function FichaInscripcionModal({
 
       // Obtener datos del lead vinculado
       const localLeads = await getLocalLeads(local!.id);
+      let leadNombre = '';
+      let leadTelefono = '';
+      let leadId: string | null = null;
+
       if (localLeads.length > 0) {
         const lead = localLeads[0];
+        leadNombre = lead.lead_nombre || '';
+        leadTelefono = lead.lead_telefono || '';
+        leadId = lead.lead_id;
         setLeadData({
-          nombre: lead.lead_nombre || '',
-          telefono: lead.lead_telefono || '',
-          lead_id: lead.lead_id,
+          nombre: leadNombre,
+          telefono: leadTelefono,
+          lead_id: leadId,
         });
       }
 
@@ -222,16 +229,40 @@ export default function FichaInscripcionModal({
           setTeaProyecto(existingFicha.tea);
         }
       } else {
-        // Pre-llenar con datos del lead
-        const nombreParts = leadData.nombre.split(' ');
+        // Pre-llenar con datos del lead vinculado
+        // Parsear nombre completo: "Juan Carlos Perez Lopez" -> nombres: "Juan Carlos", ap_pat: "Perez", ap_mat: "Lopez"
+        const nombreParts = leadNombre.trim().split(/\s+/);
+        let nombres = '';
+        let apellidoPaterno = '';
+        let apellidoMaterno = '';
+
+        if (nombreParts.length >= 4) {
+          // 4+ palabras: asumimos 2 nombres + 2 apellidos
+          nombres = nombreParts.slice(0, -2).join(' ');
+          apellidoPaterno = nombreParts[nombreParts.length - 2];
+          apellidoMaterno = nombreParts[nombreParts.length - 1];
+        } else if (nombreParts.length === 3) {
+          // 3 palabras: 1 nombre + 2 apellidos
+          nombres = nombreParts[0];
+          apellidoPaterno = nombreParts[1];
+          apellidoMaterno = nombreParts[2];
+        } else if (nombreParts.length === 2) {
+          // 2 palabras: 1 nombre + 1 apellido
+          nombres = nombreParts[0];
+          apellidoPaterno = nombreParts[1];
+        } else {
+          // 1 palabra o vacío: todo en nombres
+          nombres = leadNombre;
+        }
+
         setFormData(prev => ({
           ...prev,
           local_id: local!.id,
-          lead_id: leadData.lead_id,
-          titular_nombres: nombreParts.slice(0, -2).join(' ') || leadData.nombre,
-          titular_apellido_paterno: nombreParts[nombreParts.length - 2] || '',
-          titular_apellido_materno: nombreParts[nombreParts.length - 1] || '',
-          titular_celular: leadData.telefono,
+          lead_id: leadId,
+          titular_nombres: nombres,
+          titular_apellido_paterno: apellidoPaterno,
+          titular_apellido_materno: apellidoMaterno,
+          titular_celular: leadTelefono,
           vendedor_id: local!.usuario_paso_naranja_id || null,
         }));
       }
