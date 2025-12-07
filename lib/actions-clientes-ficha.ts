@@ -75,6 +75,21 @@ export interface ClienteFicha {
 
   copropietarios: Copropietario[] | null;
 
+  // UIN (Unidad de Inscripción)
+  modalidad_pago: string | null;
+  tipo_cambio: number | null;
+  monto_separacion_usd: number | null;
+  fecha_separacion: string | null;
+  porcentaje_inicial: number | null;
+  cuota_inicial_usd: number | null;
+  inicial_restante_usd: number | null;
+  saldo_financiar_usd: number | null;
+  numero_cuotas: number | null;
+  cuota_mensual_usd: number | null;
+  entidad_bancaria: string | null;
+  fecha_inicio_pago: string | null;
+  compromiso_pago: string | null;
+
   utm_source: string | null;
   utm_detalle: string | null;
   observaciones: string | null;
@@ -139,6 +154,21 @@ export interface ClienteFichaInput {
   conyuge_referencia?: string | null;
 
   copropietarios?: Copropietario[] | null;
+
+  // UIN (Unidad de Inscripción)
+  modalidad_pago?: string | null;
+  tipo_cambio?: number | null;
+  monto_separacion_usd?: number | null;
+  fecha_separacion?: string | null;
+  porcentaje_inicial?: number | null;
+  cuota_inicial_usd?: number | null;
+  inicial_restante_usd?: number | null;
+  saldo_financiar_usd?: number | null;
+  numero_cuotas?: number | null;
+  cuota_mensual_usd?: number | null;
+  entidad_bancaria?: string | null;
+  fecha_inicio_pago?: string | null;
+  compromiso_pago?: string | null;
 
   utm_source?: string | null;
   utm_detalle?: string | null;

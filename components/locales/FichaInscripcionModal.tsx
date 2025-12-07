@@ -5,6 +5,7 @@ import { X, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario } from '@/lib/actions-clientes-ficha';
+import { getProyectoConfiguracion } from '@/lib/proyecto-config';
 import PhoneInputCustom from '@/components/shared/PhoneInputCustom';
 
 interface FichaInscripcionModalProps {
@@ -44,6 +45,10 @@ export default function FichaInscripcionModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [leadData, setLeadData] = useState<{ nombre: string; telefono: string; lead_id: string | null }>({ nombre: '', telefono: '', lead_id: null });
+
+  // UIN States
+  const [teaProyecto, setTeaProyecto] = useState<number>(0);
+  const [porcentajeInicialDefault, setPorcentajeInicialDefault] = useState<number>(30); // Default 30%
 
   const [formData, setFormData] = useState<ClienteFichaInput>({
     local_id: '',
@@ -96,6 +101,21 @@ export default function FichaInscripcionModal({
     conyuge_departamento: 'Lima',
     conyuge_referencia: '',
     copropietarios: [],
+    // UIN fields
+    modalidad_pago: 'financiado',
+    tipo_cambio: null,
+    monto_separacion_usd: null,
+    fecha_separacion: '',
+    porcentaje_inicial: null,
+    cuota_inicial_usd: null,
+    inicial_restante_usd: null,
+    saldo_financiar_usd: null,
+    numero_cuotas: null,
+    cuota_mensual_usd: null,
+    entidad_bancaria: '',
+    fecha_inicio_pago: '',
+    compromiso_pago: '',
+    // Marketing
     utm_source: '',
     utm_detalle: '',
     observaciones: '',
@@ -175,6 +195,21 @@ export default function FichaInscripcionModal({
           conyuge_departamento: existingFicha.conyuge_departamento || 'Lima',
           conyuge_referencia: existingFicha.conyuge_referencia || '',
           copropietarios: existingFicha.copropietarios || [],
+          // UIN fields
+          modalidad_pago: existingFicha.modalidad_pago || 'financiado',
+          tipo_cambio: existingFicha.tipo_cambio,
+          monto_separacion_usd: existingFicha.monto_separacion_usd,
+          fecha_separacion: existingFicha.fecha_separacion || '',
+          porcentaje_inicial: existingFicha.porcentaje_inicial,
+          cuota_inicial_usd: existingFicha.cuota_inicial_usd,
+          inicial_restante_usd: existingFicha.inicial_restante_usd,
+          saldo_financiar_usd: existingFicha.saldo_financiar_usd,
+          numero_cuotas: existingFicha.numero_cuotas,
+          cuota_mensual_usd: existingFicha.cuota_mensual_usd,
+          entidad_bancaria: existingFicha.entidad_bancaria || '',
+          fecha_inicio_pago: existingFicha.fecha_inicio_pago || '',
+          compromiso_pago: existingFicha.compromiso_pago || '',
+          // Marketing
           utm_source: existingFicha.utm_source || '',
           utm_detalle: existingFicha.utm_detalle || '',
           observaciones: existingFicha.observaciones || '',
@@ -201,7 +236,33 @@ export default function FichaInscripcionModal({
     loadData();
   }, [isOpen, local]);
 
-  const handleChange = (field: keyof ClienteFichaInput, value: string | boolean | null | Copropietario[]) => {
+  // Cargar configuración del proyecto (TEA, porcentaje inicial)
+  useEffect(() => {
+    if (!isOpen || !local?.proyecto_id) return;
+
+    async function fetchProyectoConfig() {
+      const config = await getProyectoConfiguracion(local!.proyecto_id);
+      if (config) {
+        if (config.tea !== null && config.tea !== undefined) {
+          setTeaProyecto(config.tea);
+        }
+        if (config.configuraciones_extra) {
+          const porcentajes = config.configuraciones_extra.porcentajes_inicial || [];
+          if (porcentajes.length > 0) {
+            setPorcentajeInicialDefault(porcentajes[0].value);
+            // Inicializar porcentaje en formData si no tiene valor
+            if (!formData.porcentaje_inicial) {
+              setFormData(prev => ({ ...prev, porcentaje_inicial: porcentajes[0].value }));
+            }
+          }
+        }
+      }
+    }
+
+    fetchProyectoConfig();
+  }, [isOpen, local]);
+
+  const handleChange = (field: keyof ClienteFichaInput, value: string | boolean | null | Copropietario[] | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
@@ -228,11 +289,38 @@ export default function FichaInscripcionModal({
     if (!local) return;
 
     setSaving(true);
+
+    // Calcular valores para guardar
+    const pct = formData.porcentaje_inicial ?? porcentajeInicialDefault ?? 0;
+    const precio = local.monto_venta ?? 0;
+    const cuotaInicialCalc = (precio * pct) / 100;
+    const separacion = formData.monto_separacion_usd ?? 0;
+    const inicialRestante = cuotaInicialCalc - separacion;
+    const saldoFinanciar = precio - cuotaInicialCalc;
+    const numCuotas = formData.numero_cuotas ?? 0;
+
+    let cuotaMensualCalc = 0;
+    if (formData.modalidad_pago === 'financiado' && saldoFinanciar > 0 && numCuotas > 0) {
+      if (teaProyecto > 0) {
+        const teaDecimal = teaProyecto / 100;
+        const tem = Math.pow(1 + teaDecimal, 1/12) - 1;
+        cuotaMensualCalc = saldoFinanciar * (tem * Math.pow(1 + tem, numCuotas)) / (Math.pow(1 + tem, numCuotas) - 1);
+      } else {
+        cuotaMensualCalc = saldoFinanciar / numCuotas;
+      }
+    }
+
     const result = await upsertClienteFicha({
       ...formData,
       local_id: local.id,
       lead_id: leadData.lead_id,
       vendedor_id: local.usuario_paso_naranja_id || formData.vendedor_id,
+      // Guardar valores calculados
+      porcentaje_inicial: pct || null,
+      cuota_inicial_usd: cuotaInicialCalc > 0 ? cuotaInicialCalc : null,
+      inicial_restante_usd: formData.modalidad_pago === 'financiado' && cuotaInicialCalc > 0 ? inicialRestante : null,
+      saldo_financiar_usd: formData.modalidad_pago === 'financiado' && saldoFinanciar > 0 ? saldoFinanciar : null,
+      cuota_mensual_usd: cuotaMensualCalc > 0 ? cuotaMensualCalc : null,
     });
 
     setSaving(false);
@@ -273,17 +361,237 @@ export default function FichaInscripcionModal({
             </div>
           ) : (
             <>
-              {/* Info del Local */}
+              {/* UIN - Unidad de Inscripción */}
               <div className={sectionClass}>
-                <h3 className={sectionTitleClass}>Datos del Local</h3>
-                <div className="grid grid-cols-3 gap-4 text-sm">
+                <h3 className={sectionTitleClass}>UIN - Unidad de Inscripción</h3>
+
+                {/* Info básica del local (solo lectura) */}
+                <div className="grid grid-cols-4 gap-3 text-sm mb-4 pb-3 border-b border-gray-200">
                   <div><span className="text-gray-500">Código:</span> <strong>{local.codigo}</strong></div>
                   <div><span className="text-gray-500">Proyecto:</span> <strong>{local.proyecto_nombre}</strong></div>
                   <div><span className="text-gray-500">Metraje:</span> <strong>{local.metraje} m²</strong></div>
-                  <div><span className="text-gray-500">Precio Base:</span> <strong>${local.precio_base?.toLocaleString() || 'N/A'}</strong></div>
-                  <div><span className="text-gray-500">Monto Venta:</span> <strong>${local.monto_venta?.toLocaleString() || 'N/A'}</strong></div>
-                  <div><span className="text-gray-500">Separación:</span> <strong>${local.monto_separacion?.toLocaleString() || 'N/A'}</strong></div>
+                  <div><span className="text-gray-500">Precio local (USD):</span> <strong className="text-green-700">${local.monto_venta?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || 'N/A'}</strong></div>
                 </div>
+
+                {/* Modalidad de Pago */}
+                <div className="mb-4">
+                  <label className={labelClass}>Modalidad de Pago</label>
+                  <div className="flex gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="modalidad_pago"
+                        checked={formData.modalidad_pago === 'contado'}
+                        onChange={() => handleChange('modalidad_pago', 'contado')}
+                        className="w-4 h-4 text-[#1b967a] focus:ring-[#1b967a]"
+                      />
+                      <span className="text-sm">Al Contado</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="modalidad_pago"
+                        checked={formData.modalidad_pago === 'financiado'}
+                        onChange={() => handleChange('modalidad_pago', 'financiado')}
+                        className="w-4 h-4 text-[#1b967a] focus:ring-[#1b967a]"
+                      />
+                      <span className="text-sm">Financiado</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Campos editables comunes (contado y financiado) */}
+                <div className="grid grid-cols-4 gap-3 mb-3">
+                  {/* T. Cambio */}
+                  <div>
+                    <label className={labelClass}>T. Cambio (S/)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={inputClass}
+                      value={formData.tipo_cambio ?? ''}
+                      onChange={e => handleChange('tipo_cambio', e.target.value ? parseFloat(e.target.value) : null)}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      placeholder="3.75"
+                    />
+                  </div>
+                  {/* Monto separación (USD) */}
+                  <div>
+                    <label className={labelClass}>Monto separación (USD)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={inputClass}
+                      value={formData.monto_separacion_usd ?? ''}
+                      onChange={e => handleChange('monto_separacion_usd', e.target.value ? parseFloat(e.target.value) : null)}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      placeholder="500.00"
+                    />
+                  </div>
+                  {/* Monto separación en Soles (calculado) */}
+                  <div>
+                    <label className={labelClass}>Separación (S/)</label>
+                    <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-100 text-gray-700">
+                      {(formData.monto_separacion_usd && formData.tipo_cambio)
+                        ? `S/ ${(formData.monto_separacion_usd * formData.tipo_cambio).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+                        : '-'}
+                    </div>
+                  </div>
+                  {/* Fecha separación */}
+                  <div>
+                    <label className={labelClass}>Fecha separación</label>
+                    <input
+                      type="date"
+                      className={inputClass}
+                      value={formData.fecha_separacion || ''}
+                      onChange={e => handleChange('fecha_separacion', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Campos solo para Financiado */}
+                {formData.modalidad_pago === 'financiado' && (
+                  <>
+                    {/* Fila de inicial y calculados */}
+                    <div className="grid grid-cols-4 gap-3 mb-3">
+                      {/* Porcentaje inicial (editable) */}
+                      <div>
+                        <label className={labelClass}>% Inicial</label>
+                        <input
+                          type="number"
+                          step="1"
+                          className={inputClass}
+                          value={formData.porcentaje_inicial ?? porcentajeInicialDefault ?? ''}
+                          onChange={e => handleChange('porcentaje_inicial', e.target.value ? parseFloat(e.target.value) : null)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          placeholder="30"
+                        />
+                      </div>
+                      {/* Cuota inicial USD (calculado) */}
+                      <div>
+                        <label className={labelClass}>Cuota inicial (USD)</label>
+                        <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-blue-50 text-blue-800 font-medium">
+                          {(() => {
+                            const pct = formData.porcentaje_inicial ?? porcentajeInicialDefault ?? 0;
+                            const precio = local.monto_venta ?? 0;
+                            const cuotaInicialCalc = (precio * pct) / 100;
+                            return cuotaInicialCalc > 0 ? `$ ${cuotaInicialCalc.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '-';
+                          })()}
+                        </div>
+                      </div>
+                      {/* Inicial restante USD (calculado) */}
+                      <div>
+                        <label className={labelClass}>Inicial restante (USD)</label>
+                        <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-yellow-50 text-yellow-800 font-medium">
+                          {(() => {
+                            const pct = formData.porcentaje_inicial ?? porcentajeInicialDefault ?? 0;
+                            const precio = local.monto_venta ?? 0;
+                            const cuotaInicialCalc = (precio * pct) / 100;
+                            const separacion = formData.monto_separacion_usd ?? 0;
+                            const inicialRestante = cuotaInicialCalc - separacion;
+                            return cuotaInicialCalc > 0 ? `$ ${inicialRestante.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '-';
+                          })()}
+                        </div>
+                      </div>
+                      {/* Saldo a financiar USD (calculado) */}
+                      <div>
+                        <label className={labelClass}>Saldo a financiar (USD)</label>
+                        <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-green-50 text-green-800 font-medium">
+                          {(() => {
+                            const pct = formData.porcentaje_inicial ?? porcentajeInicialDefault ?? 0;
+                            const precio = local.monto_venta ?? 0;
+                            const cuotaInicialCalc = (precio * pct) / 100;
+                            const saldoFinanciar = precio - cuotaInicialCalc;
+                            return precio > 0 ? `$ ${saldoFinanciar.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '-';
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fila de cuotas y mensualidad */}
+                    <div className="grid grid-cols-4 gap-3 mb-3">
+                      {/* Número de cuotas (editable) */}
+                      <div>
+                        <label className={labelClass}>N° Cuotas</label>
+                        <input
+                          type="number"
+                          step="1"
+                          className={inputClass}
+                          value={formData.numero_cuotas ?? ''}
+                          onChange={e => handleChange('numero_cuotas', e.target.value ? parseInt(e.target.value) : null)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          placeholder="24"
+                        />
+                      </div>
+                      {/* Cuota mensual USD (calculado) */}
+                      <div>
+                        <label className={labelClass}>Cuota mensual (USD)</label>
+                        <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-purple-50 text-purple-800 font-medium">
+                          {(() => {
+                            const pct = formData.porcentaje_inicial ?? porcentajeInicialDefault ?? 0;
+                            const precio = local.monto_venta ?? 0;
+                            const cuotaInicialCalc = (precio * pct) / 100;
+                            const saldoFinanciar = precio - cuotaInicialCalc;
+                            const numCuotas = formData.numero_cuotas ?? 0;
+
+                            if (saldoFinanciar <= 0 || numCuotas <= 0) return '-';
+
+                            if (teaProyecto > 0) {
+                              // Sistema Francés: Cuota = P × [r(1+r)^n] / [(1+r)^n - 1]
+                              const teaDecimal = teaProyecto / 100;
+                              const tem = Math.pow(1 + teaDecimal, 1/12) - 1;
+                              const cuotaMensual = saldoFinanciar * (tem * Math.pow(1 + tem, numCuotas)) / (Math.pow(1 + tem, numCuotas) - 1);
+                              return `$ ${cuotaMensual.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+                            } else {
+                              // Sin interés: división simple
+                              const cuotaMensual = saldoFinanciar / numCuotas;
+                              return `$ ${cuotaMensual.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+                            }
+                          })()}
+                        </div>
+                      </div>
+                      {/* Entidad bancaria */}
+                      <div>
+                        <label className={labelClass}>Entidad Bancaria</label>
+                        <input
+                          type="text"
+                          className={inputClass}
+                          value={formData.entidad_bancaria || ''}
+                          onChange={e => handleChange('entidad_bancaria', e.target.value)}
+                          placeholder="BCP, Interbank..."
+                        />
+                      </div>
+                      {/* Fecha inicio pago */}
+                      <div>
+                        <label className={labelClass}>Fecha inicio pago</label>
+                        <input
+                          type="date"
+                          className={inputClass}
+                          value={formData.fecha_inicio_pago || ''}
+                          onChange={e => handleChange('fecha_inicio_pago', e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    {/* TEA info (solo lectura) */}
+                    {teaProyecto > 0 && (
+                      <div className="text-xs text-gray-500 mb-3">
+                        TEA del proyecto: <span className="font-medium">{teaProyecto}%</span>
+                      </div>
+                    )}
+
+                    {/* Compromiso de pago */}
+                    <div>
+                      <label className={labelClass}>Compromiso de Pago</label>
+                      <textarea
+                        className={`${inputClass} min-h-[60px]`}
+                        value={formData.compromiso_pago || ''}
+                        onChange={e => handleChange('compromiso_pago', e.target.value)}
+                        placeholder="Detalles del compromiso de pago del cliente..."
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               {/* Datos del Titular */}
