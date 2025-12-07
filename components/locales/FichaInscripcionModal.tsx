@@ -697,8 +697,7 @@ export default function FichaInscripcionModal({
           <div class="form-group"><span class="form-label">Provincia</span><span class="form-value">{{CLIENTE_PROVINCIA}}</span></div>
           <div class="form-group span-2"><span class="form-label">Departamento</span><span class="form-value">{{CLIENTE_DEPARTAMENTO}}</span></div>
           <div class="form-group"><span class="form-label">Teléfono Celular</span><span class="form-value">{{CLIENTE_CELULAR}}</span></div>
-          <div class="form-group"><span class="form-label">Teléfono Fijo</span><span class="form-value">{{CLIENTE_TELEFONO_FIJO}}</span></div>
-          <div class="form-group span-2"><span class="form-label">Correo Electrónico</span><span class="form-value">{{CLIENTE_EMAIL}}</span></div>
+          <div class="form-group"><span class="form-label">Correo Electrónico</span><span class="form-value">{{CLIENTE_EMAIL}}</span></div>
           <div class="form-group"><span class="form-label">Ocupación / Profesión</span><span class="form-value">{{CLIENTE_OCUPACION}}</span></div>
           <div class="form-group"><span class="form-label">Centro de Trabajo</span><span class="form-value">{{CLIENTE_CENTRO_TRABAJO}}</span></div>
           <div class="form-group span-2"><span class="form-label">RUC (si aplica)</span><span class="form-value">{{CLIENTE_RUC}}</span></div>
@@ -786,7 +785,8 @@ export default function FichaInscripcionModal({
       </div>
     </section>
 
-    <section class="section">
+    <!-- Sección de Firmas oculta temporalmente -->
+    <section class="section" style="display: none;">
       <div class="section-header">Firmas</div>
       <div class="section-content">
         <div class="signature-grid">
@@ -795,6 +795,14 @@ export default function FichaInscripcionModal({
           <div class="signature-box"><div class="signature-line"><div class="signature-label">{{ASESOR_NOMBRE}}</div><div class="signature-sublabel">Asesor de Ventas</div></div></div>
           <div class="signature-box"><div class="signature-line"><div class="signature-label">Jefe de Ventas</div><div class="signature-sublabel">V°B° Supervisión</div></div></div>
         </div>
+      </div>
+    </section>
+
+    <!-- NOTA Legal -->
+    <section class="section">
+      <div class="section-header" style="background: #333;">NOTA</div>
+      <div class="section-content" style="font-size: 11px; font-style: italic; text-align: justify; line-height: 1.5;">
+        Las separaciones tienen una vigencia según la fecha señalada en la presente constancia. Sobre las separaciones, si el cliente decide no continuar con la compra, se genera una retención del 100% por gastos administrativos sobre el monto aportado, esta penalidad aplica desde el momento en que el cliente realiza el aporte en cuenta, dando de esta manera su conformidad con el depósito realizado. Asimismo, la firma y legalización del contrato debe realizarse en una programación máxima de 30 días calendarios.
       </div>
     </section>
 
