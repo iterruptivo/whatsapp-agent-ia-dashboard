@@ -40,6 +40,7 @@ export default function FichaInscripcionModal({
     titular_distrito: '',
     titular_provincia: '',
     titular_departamento: 'Lima',
+    titular_referencia: '',
     titular_celular: '',
     titular_telefono_fijo: '',
     titular_email: '',
@@ -101,6 +102,7 @@ export default function FichaInscripcionModal({
           titular_distrito: existingFicha.titular_distrito || '',
           titular_provincia: existingFicha.titular_provincia || '',
           titular_departamento: existingFicha.titular_departamento || 'Lima',
+          titular_referencia: existingFicha.titular_referencia || '',
           titular_celular: existingFicha.titular_celular || '',
           titular_telefono_fijo: existingFicha.titular_telefono_fijo || '',
           titular_email: existingFicha.titular_email || '',
@@ -270,6 +272,10 @@ export default function FichaInscripcionModal({
                   <div>
                     <label className={labelClass}>Departamento</label>
                     <input type="text" className={inputClass} value={formData.titular_departamento || ''} onChange={e => handleChange('titular_departamento', e.target.value)} />
+                  </div>
+                  <div className="col-span-3">
+                    <label className={labelClass}>Referencia</label>
+                    <input type="text" className={inputClass} value={formData.titular_referencia || ''} onChange={e => handleChange('titular_referencia', e.target.value)} placeholder="Ej: A una cuadra del parque, frente a la bodega..." />
                   </div>
                   <div>
                     <label className={labelClass}>Celular</label>

@@ -25,6 +25,7 @@ export interface ClienteFicha {
   titular_distrito: string | null;
   titular_provincia: string | null;
   titular_departamento: string | null;
+  titular_referencia: string | null;
   titular_celular: string | null;
   titular_telefono_fijo: string | null;
   titular_email: string | null;
@@ -71,6 +72,7 @@ export interface ClienteFichaInput {
   titular_distrito?: string | null;
   titular_provincia?: string | null;
   titular_departamento?: string | null;
+  titular_referencia?: string | null;
   titular_celular?: string | null;
   titular_telefono_fijo?: string | null;
   titular_email?: string | null;
