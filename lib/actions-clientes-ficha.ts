@@ -76,6 +76,7 @@ export interface ClienteFicha {
   copropietarios: Copropietario[] | null;
 
   // UIN (Unidad de Inscripción)
+  rubro: string | null;
   modalidad_pago: string | null;
   tipo_cambio: number | null;
   monto_separacion_usd: number | null;
@@ -157,6 +158,7 @@ export interface ClienteFichaInput {
   copropietarios?: Copropietario[] | null;
 
   // UIN (Unidad de Inscripción)
+  rubro?: string | null;
   modalidad_pago?: string | null;
   tipo_cambio?: number | null;
   monto_separacion_usd?: number | null;

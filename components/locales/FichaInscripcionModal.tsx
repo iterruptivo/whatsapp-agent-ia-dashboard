@@ -102,6 +102,7 @@ export default function FichaInscripcionModal({
     conyuge_referencia: '',
     copropietarios: [],
     // UIN fields
+    rubro: '',
     modalidad_pago: 'financiado',
     tipo_cambio: null,
     monto_separacion_usd: null,
@@ -178,9 +179,9 @@ export default function FichaInscripcionModal({
           titular_referencia: existingFicha.titular_referencia || '',
           titular_celular: existingFicha.titular_celular || '',
           titular_telefono_fijo: existingFicha.titular_telefono_fijo || '',
-          // Si ficha tiene email/ocupación vacío, usar el del lead como fallback
+          // Si ficha tiene email vacío, usar el del lead como fallback
           titular_email: existingFicha.titular_email || leadEmail || '',
-          titular_ocupacion: existingFicha.titular_ocupacion || leadRubro || '',
+          titular_ocupacion: existingFicha.titular_ocupacion || '',
           titular_centro_trabajo: existingFicha.titular_centro_trabajo || '',
           titular_ruc: existingFicha.titular_ruc || '',
           titular_genero: existingFicha.titular_genero || '',
@@ -212,7 +213,8 @@ export default function FichaInscripcionModal({
           conyuge_departamento: existingFicha.conyuge_departamento || 'Lima',
           conyuge_referencia: existingFicha.conyuge_referencia || '',
           copropietarios: existingFicha.copropietarios || [],
-          // UIN fields
+          // UIN fields - rubro del lead como fallback si ficha no tiene
+          rubro: existingFicha.rubro || leadRubro || '',
           modalidad_pago: existingFicha.modalidad_pago || 'financiado',
           tipo_cambio: existingFicha.tipo_cambio,
           monto_separacion_usd: existingFicha.monto_separacion_usd,
@@ -273,7 +275,7 @@ export default function FichaInscripcionModal({
           titular_apellido_materno: apellidoMaterno,
           titular_celular: leadTelefono,
           titular_email: leadEmail,
-          titular_ocupacion: leadRubro, // Rubro del lead → Ocupación del titular
+          rubro: leadRubro, // Rubro del lead → campo Rubro en UIN
           vendedor_id: local!.usuario_paso_naranja_id || null,
         }));
       }
@@ -421,6 +423,18 @@ export default function FichaInscripcionModal({
                   <div><span className="text-gray-500">Proyecto:</span> <strong>{local.proyecto_nombre}</strong></div>
                   <div><span className="text-gray-500">Metraje:</span> <strong>{local.metraje} m²</strong></div>
                   <div><span className="text-gray-500">Precio local (USD):</span> <strong className="text-green-700">${local.monto_venta?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || 'N/A'}</strong></div>
+                </div>
+
+                {/* Rubro del negocio */}
+                <div className="mb-4">
+                  <label className={labelClass}>Rubro del Negocio</label>
+                  <input
+                    type="text"
+                    className={inputClass}
+                    value={formData.rubro || ''}
+                    onChange={e => handleChange('rubro', e.target.value)}
+                    placeholder="Ej: Retail, Restaurante, Servicios..."
+                  />
                 </div>
 
                 {/* Modalidad de Pago */}
