@@ -573,12 +573,23 @@ export default function FichaInscripcionModal({
                       </div>
                     </div>
 
-                    {/* TEA info (solo lectura) */}
-                    {teaProyecto > 0 && (
-                      <div className="text-xs text-gray-500 mb-3">
-                        TEA del proyecto: <span className="font-medium">{teaProyecto}%</span>
+                    {/* TEA editable */}
+                    <div className="grid grid-cols-4 gap-3 mb-3">
+                      <div>
+                        <label className={labelClass}>TEA (%)</label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          className={inputClass}
+                          value={teaProyecto}
+                          onChange={e => setTeaProyecto(e.target.value ? parseFloat(e.target.value) : 0)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          placeholder="0"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">0 = sin interés (cuota simple)</p>
                       </div>
-                    )}
+                    </div>
 
                     {/* Compromiso de pago */}
                     <div>
