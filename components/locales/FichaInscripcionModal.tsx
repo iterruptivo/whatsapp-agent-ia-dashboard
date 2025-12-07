@@ -1038,7 +1038,7 @@ export default function FichaInscripcionModal({
       <p><strong>{{EMPRESA_RAZON_SOCIAL}}</strong> | RUC: {{EMPRESA_RUC}}</p>
       <p>Domicilio Fiscal: {{EMPRESA_DOMICILIO}}</p>
       <p>Ubicación del Terreno: {{EMPRESA_UBICACION}}</p>
-      <p style="margin-top: 8px; border-top: 1px solid #ddd; padding-top: 8px;">Documento generado el {{FECHA_GENERACION}} | Sistema EcoPlaza Dashboard</p>
+      <p style="margin-top: 8px; border-top: 1px solid #ddd; padding-top: 8px;">Documento generado el {{FECHA_GENERACION}} | EcoPlaza Command Center</p>
     </footer>
   </div>
 </body>
