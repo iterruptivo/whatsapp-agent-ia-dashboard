@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Save, Loader2 } from 'lucide-react';
+import { X, Save, Loader2, Plus, Trash2 } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
-import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput } from '@/lib/actions-clientes-ficha';
+import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario } from '@/lib/actions-clientes-ficha';
 
 interface FichaInscripcionModalProps {
   isOpen: boolean;
@@ -19,6 +19,18 @@ const GENEROS = ['Masculino', 'Femenino'];
 const NIVELES_ESTUDIO = ['Primaria', 'Secundaria', 'Técnico', 'Universitario', 'Postgrado'];
 const TIPOS_TRABAJADOR = ['Dependiente', 'Independiente'];
 const SI_NO_OPTIONS = ['Sí', 'No'];
+const PARENTESCOS = ['Hijo(a)', 'Padre', 'Madre', 'Hermano(a)', 'Tío(a)', 'Sobrino(a)', 'Primo(a)', 'Abuelo(a)', 'Nieto(a)', 'Otro'];
+
+const EMPTY_COPROPIETARIO: Copropietario = {
+  nombres: '',
+  apellido_paterno: '',
+  apellido_materno: '',
+  tipo_documento: 'DNI',
+  numero_documento: '',
+  telefono: '',
+  email: '',
+  parentesco: '',
+};
 
 export default function FichaInscripcionModal({
   isOpen,
@@ -73,6 +85,13 @@ export default function FichaInscripcionModal({
     conyuge_ocupacion: '',
     conyuge_celular: '',
     conyuge_email: '',
+    conyuge_genero: '',
+    conyuge_direccion: '',
+    conyuge_distrito: '',
+    conyuge_provincia: '',
+    conyuge_departamento: 'Lima',
+    conyuge_referencia: '',
+    copropietarios: [],
     utm_source: '',
     utm_detalle: '',
     observaciones: '',
@@ -145,6 +164,13 @@ export default function FichaInscripcionModal({
           conyuge_ocupacion: existingFicha.conyuge_ocupacion || '',
           conyuge_celular: existingFicha.conyuge_celular || '',
           conyuge_email: existingFicha.conyuge_email || '',
+          conyuge_genero: existingFicha.conyuge_genero || '',
+          conyuge_direccion: existingFicha.conyuge_direccion || '',
+          conyuge_distrito: existingFicha.conyuge_distrito || '',
+          conyuge_provincia: existingFicha.conyuge_provincia || '',
+          conyuge_departamento: existingFicha.conyuge_departamento || 'Lima',
+          conyuge_referencia: existingFicha.conyuge_referencia || '',
+          copropietarios: existingFicha.copropietarios || [],
           utm_source: existingFicha.utm_source || '',
           utm_detalle: existingFicha.utm_detalle || '',
           observaciones: existingFicha.observaciones || '',
@@ -171,8 +197,27 @@ export default function FichaInscripcionModal({
     loadData();
   }, [isOpen, local]);
 
-  const handleChange = (field: keyof ClienteFichaInput, value: string | boolean | null) => {
+  const handleChange = (field: keyof ClienteFichaInput, value: string | boolean | null | Copropietario[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const addCopropietario = () => {
+    const currentCopropietarios = formData.copropietarios || [];
+    handleChange('copropietarios', [...currentCopropietarios, { ...EMPTY_COPROPIETARIO }]);
+  };
+
+  const removeCopropietario = (index: number) => {
+    const currentCopropietarios = formData.copropietarios || [];
+    const updated = currentCopropietarios.filter((_, i) => i !== index);
+    handleChange('copropietarios', updated);
+  };
+
+  const updateCopropietario = (index: number, field: keyof Copropietario, value: string) => {
+    const currentCopropietarios = formData.copropietarios || [];
+    const updated = currentCopropietarios.map((cop, i) =>
+      i === index ? { ...cop, [field]: value } : cop
+    );
+    handleChange('copropietarios', updated);
   };
 
   const handleSave = async () => {
@@ -438,6 +483,109 @@ export default function FichaInscripcionModal({
                       <label className={labelClass}>Correo Electrónico</label>
                       <input type="email" className={inputClass} value={formData.conyuge_email || ''} onChange={e => handleChange('conyuge_email', e.target.value)} />
                     </div>
+                    <div>
+                      <label className={labelClass}>Género</label>
+                      <select className={inputClass} value={formData.conyuge_genero || ''} onChange={e => handleChange('conyuge_genero', e.target.value)}>
+                        <option value="">Seleccionar...</option>
+                        {GENEROS.map(g => <option key={g} value={g}>{g}</option>)}
+                      </select>
+                    </div>
+                    <div className="col-span-3">
+                      <label className={labelClass}>Dirección</label>
+                      <input type="text" className={inputClass} value={formData.conyuge_direccion || ''} onChange={e => handleChange('conyuge_direccion', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Distrito</label>
+                      <input type="text" className={inputClass} value={formData.conyuge_distrito || ''} onChange={e => handleChange('conyuge_distrito', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Provincia</label>
+                      <input type="text" className={inputClass} value={formData.conyuge_provincia || ''} onChange={e => handleChange('conyuge_provincia', e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={labelClass}>Departamento</label>
+                      <input type="text" className={inputClass} value={formData.conyuge_departamento || ''} onChange={e => handleChange('conyuge_departamento', e.target.value)} />
+                    </div>
+                    <div className="col-span-3">
+                      <label className={labelClass}>Referencia</label>
+                      <input type="text" className={inputClass} value={formData.conyuge_referencia || ''} onChange={e => handleChange('conyuge_referencia', e.target.value)} placeholder="Ej: A una cuadra del parque, frente a la bodega..." />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Otros Copropietarios */}
+              <div className={sectionClass}>
+                <div className="flex items-center justify-between mb-3 border-b border-[#1b967a] pb-1">
+                  <h3 className="text-base font-semibold text-[#1b967a]">Otros Copropietarios</h3>
+                  <button
+                    type="button"
+                    onClick={addCopropietario}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a64] transition-colors text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Agregar
+                  </button>
+                </div>
+
+                {(!formData.copropietarios || formData.copropietarios.length === 0) ? (
+                  <p className="text-sm text-gray-500 italic">No hay copropietarios agregados. Usa el botón "Agregar" para incluir más personas.</p>
+                ) : (
+                  <div className="space-y-4">
+                    {formData.copropietarios.map((cop, index) => (
+                      <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 relative">
+                        <div className="absolute top-2 right-2">
+                          <button
+                            type="button"
+                            onClick={() => removeCopropietario(index)}
+                            className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar copropietario"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <p className="text-sm font-medium text-gray-600 mb-3">Copropietario {index + 1}</p>
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className={labelClass}>Nombres</label>
+                            <input type="text" className={inputClass} value={cop.nombres} onChange={e => updateCopropietario(index, 'nombres', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className={labelClass}>Apellido Paterno</label>
+                            <input type="text" className={inputClass} value={cop.apellido_paterno} onChange={e => updateCopropietario(index, 'apellido_paterno', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className={labelClass}>Apellido Materno</label>
+                            <input type="text" className={inputClass} value={cop.apellido_materno} onChange={e => updateCopropietario(index, 'apellido_materno', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className={labelClass}>Tipo Documento</label>
+                            <select className={inputClass} value={cop.tipo_documento} onChange={e => updateCopropietario(index, 'tipo_documento', e.target.value)}>
+                              {TIPOS_DOCUMENTO.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className={labelClass}>Número Documento</label>
+                            <input type="text" className={inputClass} value={cop.numero_documento} onChange={e => updateCopropietario(index, 'numero_documento', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className={labelClass}>Teléfono</label>
+                            <input type="text" className={inputClass} value={cop.telefono} onChange={e => updateCopropietario(index, 'telefono', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className={labelClass}>Correo Electrónico</label>
+                            <input type="email" className={inputClass} value={cop.email} onChange={e => updateCopropietario(index, 'email', e.target.value)} />
+                          </div>
+                          <div>
+                            <label className={labelClass}>Parentesco</label>
+                            <select className={inputClass} value={cop.parentesco} onChange={e => updateCopropietario(index, 'parentesco', e.target.value)}>
+                              <option value="">Seleccionar...</option>
+                              {PARENTESCOS.map(p => <option key={p} value={p}>{p}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

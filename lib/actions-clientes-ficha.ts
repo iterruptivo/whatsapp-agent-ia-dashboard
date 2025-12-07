@@ -7,6 +7,17 @@ import { cookies } from 'next/headers';
 // INTERFACES
 // ============================================================================
 
+export interface Copropietario {
+  nombres: string;
+  apellido_paterno: string;
+  apellido_materno: string;
+  tipo_documento: string;
+  numero_documento: string;
+  telefono: string;
+  email: string;
+  parentesco: string;
+}
+
 export interface ClienteFicha {
   id: string;
   local_id: string;
@@ -55,6 +66,14 @@ export interface ClienteFicha {
   conyuge_ocupacion: string | null;
   conyuge_celular: string | null;
   conyuge_email: string | null;
+  conyuge_genero: string | null;
+  conyuge_direccion: string | null;
+  conyuge_distrito: string | null;
+  conyuge_provincia: string | null;
+  conyuge_departamento: string | null;
+  conyuge_referencia: string | null;
+
+  copropietarios: Copropietario[] | null;
 
   utm_source: string | null;
   utm_detalle: string | null;
@@ -112,6 +131,14 @@ export interface ClienteFichaInput {
   conyuge_ocupacion?: string | null;
   conyuge_celular?: string | null;
   conyuge_email?: string | null;
+  conyuge_genero?: string | null;
+  conyuge_direccion?: string | null;
+  conyuge_distrito?: string | null;
+  conyuge_provincia?: string | null;
+  conyuge_departamento?: string | null;
+  conyuge_referencia?: string | null;
+
+  copropietarios?: Copropietario[] | null;
 
   utm_source?: string | null;
   utm_detalle?: string | null;
