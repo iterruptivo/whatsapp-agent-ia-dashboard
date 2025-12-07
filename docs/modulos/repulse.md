@@ -461,6 +461,225 @@ repulse_leads.estado = 'excluido' (si existe)
 | 3 | Endpoint API para recibir respuestas de n8n | Media | ⏳ |
 | 4 | Dashboard de métricas de repulse | Baja | ⏳ |
 | 5 | Notificaciones push cuando lead responde | Baja | ⏳ |
+| 6 | **Sistema de Quota WhatsApp + Envío Automático Nocturno** | Alta | ⏳ |
+
+---
+
+## 🚀 Mejora Planificada: Sistema de Quota y Envío Automático
+
+**Fecha de diseño:** 6 Diciembre 2025
+**Estado:** PENDIENTE IMPLEMENTACIÓN
+**Prioridad:** Alta
+
+### Contexto del Problema
+
+Meta WhatsApp Cloud API tiene un **límite de 250 mensajes business-initiated por día** para cuentas no verificadas. Actualmente, todos los flujos comparten este límite:
+
+- **Victoria (chatbot)**: Respuestas automáticas a campañas
+- **Repulse**: Mensajes de re-engagement
+- **Campañas**: Mensajes masivos de marketing
+
+**Riesgo:** Si se envían más de 250 mensajes en un día → **Penalización de Meta**
+
+### Solución Propuesta
+
+**Sistema de quota diaria + envío automático nocturno de Repulse**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    FLUJO DEL DÍA                            │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  6:00 AM ──────────────────────────────────────► 11:00 PM  │
+│     │                                                │      │
+│     ▼                                                ▼      │
+│  [Campañas + Victoria]                      [Cron Repulse]  │
+│     │                                                │      │
+│     ▼                                                ▼      │
+│  n8n incrementa contador ──────► Supabase ◄── Consulta quota│
+│  en cada envío                   (tabla)     250 - usados   │
+│                                                      │      │
+│                                                      ▼      │
+│                                              Envía Repulse  │
+│                                              (máx restante) │
+│                                                             │
+│  12:00 AM ──────────────────────────────────────────────── │
+│     │                                                       │
+│     ▼                                                       │
+│  [Reset automático] → contador = 0                          │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Implementación Técnica
+
+#### 1. Tabla de Quota en Supabase
+
+```sql
+CREATE TABLE whatsapp_quota_diaria (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+  mensajes_enviados INTEGER DEFAULT 0,
+  limite_diario INTEGER DEFAULT 250,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(fecha)
+);
+
+-- Función para incrementar contador (llamada desde n8n)
+CREATE OR REPLACE FUNCTION incrementar_quota_whatsapp()
+RETURNS INTEGER AS $$
+DECLARE
+  v_enviados INTEGER;
+BEGIN
+  INSERT INTO whatsapp_quota_diaria (fecha, mensajes_enviados)
+  VALUES (CURRENT_DATE, 1)
+  ON CONFLICT (fecha)
+  DO UPDATE SET
+    mensajes_enviados = whatsapp_quota_diaria.mensajes_enviados + 1,
+    updated_at = NOW();
+
+  SELECT mensajes_enviados INTO v_enviados
+  FROM whatsapp_quota_diaria
+  WHERE fecha = CURRENT_DATE;
+
+  RETURN v_enviados;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Función para obtener quota disponible
+CREATE OR REPLACE FUNCTION get_quota_disponible()
+RETURNS INTEGER AS $$
+DECLARE
+  v_enviados INTEGER;
+  v_limite INTEGER := 250;
+BEGIN
+  SELECT COALESCE(mensajes_enviados, 0) INTO v_enviados
+  FROM whatsapp_quota_diaria
+  WHERE fecha = CURRENT_DATE;
+
+  IF v_enviados IS NULL THEN
+    RETURN v_limite;
+  END IF;
+
+  RETURN GREATEST(0, v_limite - v_enviados);
+END;
+$$ LANGUAGE plpgsql;
+```
+
+#### 2. Modificación en n8n (todos los flujos de envío)
+
+Después de cada envío exitoso de WhatsApp, agregar nodo:
+
+```
+[Enviar WhatsApp] → [HTTP Request: POST Supabase RPC]
+                         │
+                         ▼
+                    incrementar_quota_whatsapp()
+```
+
+#### 3. Cron Job para Envío Automático Nocturno (11:00 PM)
+
+```sql
+SELECT cron.schedule(
+  'repulse-automatico-noche',
+  '0 4 * * *',  -- 04:00 UTC = 11:00 PM Perú
+  $$
+  SELECT net.http_post(
+    'https://iterruptivo.app.n8n.cloud/webhook/repulse-auto-noche',
+    '{}',
+    'application/json'
+  );
+  $$
+);
+```
+
+#### 4. Nuevo Flujo n8n: `repulse-auto-noche`
+
+```
+[Webhook Trigger: repulse-auto-noche]
+      │
+      ▼
+[Supabase RPC: get_quota_disponible()] → quota_restante
+      │
+      ▼
+[IF quota_restante > 0]
+      │
+      ▼
+[Supabase Query: SELECT * FROM repulse_leads
+                 WHERE estado = 'pendiente'
+                 ORDER BY fecha_agregado ASC
+                 LIMIT quota_restante]
+      │
+      ▼
+[Loop: Para cada lead]
+      │
+      ├── [Enviar WhatsApp con mensaje de Repulse]
+      ├── [incrementar_quota_whatsapp()]
+      └── [UPDATE repulse_leads SET estado = 'enviado']
+      │
+      ▼
+[Log resultados]
+```
+
+#### 5. Indicador en Dashboard (Opcional)
+
+En `/repulse`, mostrar widget con quota del día:
+
+```
+┌────────────────────────────┐
+│  📊 Quota WhatsApp Hoy     │
+│  ═══════════════════════   │
+│  Enviados: 45 / 250        │
+│  Disponibles: 205          │
+│  ████████░░░░░░░░░ 18%     │
+└────────────────────────────┘
+```
+
+### Flujo Diario Esperado
+
+| Hora | Acción |
+|------|--------|
+| 00:00 | Nuevo día, quota = 0/250 (reset automático por fecha) |
+| 06:00-22:00 | Campañas + Victoria consumen quota |
+| 23:00 | Cron `repulse-auto-noche` consulta: "¿Cuántos quedan?" |
+| 23:00-23:59 | Repulse envía automáticamente hasta agotar quota |
+| 23:59 | Quota del día maximizada (250/250) |
+
+### Beneficios
+
+- ✅ **Maximiza uso de los 250 mensajes diarios** (no se desperdician)
+- ✅ **Repulse no compite con campañas** durante el día
+- ✅ **Completamente automático** - Sin intervención manual
+- ✅ **Tracking en tiempo real** desde dashboard
+- ✅ **Previene penalizaciones de Meta** por exceder límite
+
+### Archivos a Crear/Modificar
+
+| Archivo | Acción |
+|---------|--------|
+| `supabase/migrations/YYYYMMDD_create_whatsapp_quota.sql` | Crear tabla + funciones |
+| `lib/actions-whatsapp-quota.ts` | Server actions para quota |
+| `components/repulse/WhatsAppQuotaWidget.tsx` | Widget indicador (opcional) |
+| n8n: Todos los flujos de envío | Agregar nodo incrementar_quota |
+| n8n: `repulse-auto-noche` | Nuevo flujo completo |
+
+### Estimación de Implementación
+
+| Fase | Descripción | Tiempo estimado |
+|------|-------------|-----------------|
+| 1 | Crear tabla y funciones SQL | 30 min |
+| 2 | Modificar flujos n8n existentes | 1 hora |
+| 3 | Crear flujo n8n repulse-auto-noche | 1 hora |
+| 4 | Widget indicador en dashboard | 30 min |
+| 5 | Testing end-to-end | 1 hora |
+| **Total** | | **~4 horas** |
+
+### Notas Adicionales
+
+- El límite de 250 se puede aumentar verificando la cuenta Meta Business (1K → 10K → 100K → ilimitado)
+- Si se verifica la cuenta, solo cambiar el valor en `limite_diario` de la tabla
+- Considerar agregar alertas cuando la quota está al 80% (200 mensajes)
 
 ---
 

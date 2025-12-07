@@ -747,4 +747,43 @@ $$ LANGUAGE plpgsql;
 
 ---
 
+### Mejora Diseñada: Sistema de Quota WhatsApp + Envío Automático Nocturno
+
+**Fecha:** 6 Diciembre 2025
+**Estado:** ⏳ PENDIENTE IMPLEMENTACIÓN
+**Documentación completa:** Ver [Módulo Repulse - Mejora Planificada](../modulos/repulse.md#-mejora-planificada-sistema-de-quota-y-envío-automático)
+
+#### Contexto
+
+Meta WhatsApp Cloud API tiene un **límite de 250 mensajes business-initiated por día** para cuentas no verificadas. Todos los flujos (Victoria, Repulse, Campañas) comparten este límite.
+
+#### Problema identificado
+
+Si en un día se envían:
+- Campañas: 200 mensajes
+- Repulse manual: 100 mensajes
+- **Total: 300 → PENALIZACIÓN de Meta**
+
+#### Solución diseñada
+
+1. **Tabla `whatsapp_quota_diaria`** en Supabase para trackear mensajes enviados por día
+2. **Función `incrementar_quota_whatsapp()`** llamada desde n8n en cada envío
+3. **Cron job nocturno (11:00 PM)** que:
+   - Consulta quota disponible (250 - usados del día)
+   - Envía automáticamente leads de Repulse pendientes con el restante
+4. **Widget indicador** (opcional) en `/repulse` mostrando quota del día
+
+#### Beneficios
+
+- ✅ Maximiza uso de los 250 mensajes diarios
+- ✅ Repulse no compite con campañas durante el día
+- ✅ Completamente automático
+- ✅ Previene penalizaciones de Meta
+
+#### Estimación
+
+~4 horas de implementación total.
+
+---
+
 **🤖 Generated with [Claude Code](https://claude.com/claude-code)**
