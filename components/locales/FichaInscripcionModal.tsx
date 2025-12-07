@@ -44,7 +44,7 @@ export default function FichaInscripcionModal({
 }: FichaInscripcionModalProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [leadData, setLeadData] = useState<{ nombre: string; telefono: string; lead_id: string | null }>({ nombre: '', telefono: '', lead_id: null });
+  const [leadData, setLeadData] = useState<{ nombre: string; telefono: string; lead_id: string | null; email: string; rubro: string }>({ nombre: '', telefono: '', lead_id: null, email: '', rubro: '' });
 
   // UIN States
   const [teaProyecto, setTeaProyecto] = useState<number>(0);
@@ -134,16 +134,24 @@ export default function FichaInscripcionModal({
       let leadNombre = '';
       let leadTelefono = '';
       let leadId: string | null = null;
+      let leadEmail = '';
+      let leadRubro = '';
 
       if (localLeads.length > 0) {
         const lead = localLeads[0];
+        console.log('[FichaModal] Lead vinculado raw:', lead);
         leadNombre = lead.lead_nombre || '';
         leadTelefono = lead.lead_telefono || '';
         leadId = lead.lead_id;
+        leadEmail = lead.lead_email || '';
+        leadRubro = lead.lead_rubro || '';
+        console.log('[FichaModal] Datos extraídos:', { leadNombre, leadTelefono, leadId, leadEmail, leadRubro });
         setLeadData({
           nombre: leadNombre,
           telefono: leadTelefono,
           lead_id: leadId,
+          email: leadEmail,
+          rubro: leadRubro,
         });
       }
 
@@ -170,8 +178,9 @@ export default function FichaInscripcionModal({
           titular_referencia: existingFicha.titular_referencia || '',
           titular_celular: existingFicha.titular_celular || '',
           titular_telefono_fijo: existingFicha.titular_telefono_fijo || '',
-          titular_email: existingFicha.titular_email || '',
-          titular_ocupacion: existingFicha.titular_ocupacion || '',
+          // Si ficha tiene email/ocupación vacío, usar el del lead como fallback
+          titular_email: existingFicha.titular_email || leadEmail || '',
+          titular_ocupacion: existingFicha.titular_ocupacion || leadRubro || '',
           titular_centro_trabajo: existingFicha.titular_centro_trabajo || '',
           titular_ruc: existingFicha.titular_ruc || '',
           titular_genero: existingFicha.titular_genero || '',
@@ -263,6 +272,8 @@ export default function FichaInscripcionModal({
           titular_apellido_paterno: apellidoPaterno,
           titular_apellido_materno: apellidoMaterno,
           titular_celular: leadTelefono,
+          titular_email: leadEmail,
+          titular_ocupacion: leadRubro, // Rubro del lead → Ocupación del titular
           vendedor_id: local!.usuario_paso_naranja_id || null,
         }));
       }
