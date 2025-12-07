@@ -1558,7 +1558,7 @@ export default function FichaInscripcionModal({
       {/* AlertModal para mostrar resultados de operaciones */}
       <AlertModal
         isOpen={alertModal.isOpen}
-        onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+        onOk={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
         title={alertModal.title}
         message={alertModal.message}
         variant={alertModal.variant}
