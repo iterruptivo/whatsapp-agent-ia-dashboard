@@ -100,13 +100,14 @@ export interface ProyectoLegalData {
   ruc: string | null;
   domicilio_fiscal: string | null;
   ubicacion_terreno: string | null;
+  logo_url: string | null;
 }
 
 export async function getProyectoLegalData(proyectoId: string): Promise<ProyectoLegalData | null> {
   try {
     const { data, error } = await supabase
       .from('proyectos')
-      .select('razon_social, ruc, domicilio_fiscal, ubicacion_terreno')
+      .select('razon_social, ruc, domicilio_fiscal, ubicacion_terreno, logo_url')
       .eq('id', proyectoId)
       .single();
 
@@ -119,5 +120,91 @@ export async function getProyectoLegalData(proyectoId: string): Promise<Proyecto
   } catch (error) {
     console.error('Error in getProyectoLegalData:', error);
     return null;
+  }
+}
+
+// ============================================================================
+// Upload/Delete logo del proyecto
+// ============================================================================
+
+export async function uploadProyectoLogo(
+  proyectoId: string,
+  logoBlob: Blob
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    const fileName = `${proyectoId}-${Date.now()}.png`;
+
+    // Upload to Supabase Storage
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('logos-proyectos')
+      .upload(fileName, logoBlob, {
+        contentType: 'image/png',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Error uploading logo:', uploadError);
+      return { success: false, error: uploadError.message };
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('logos-proyectos')
+      .getPublicUrl(fileName);
+
+    const publicUrl = urlData.publicUrl;
+
+    // Update proyecto with logo_url
+    const { error: updateError } = await supabase
+      .from('proyectos')
+      .update({ logo_url: publicUrl })
+      .eq('id', proyectoId);
+
+    if (updateError) {
+      console.error('Error updating proyecto logo_url:', updateError);
+      return { success: false, error: updateError.message };
+    }
+
+    return { success: true, url: publicUrl };
+  } catch (error) {
+    console.error('Error in uploadProyectoLogo:', error);
+    return { success: false, error: 'Error inesperado al subir logo' };
+  }
+}
+
+export async function deleteProyectoLogo(
+  proyectoId: string,
+  currentLogoUrl: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Extract file name from URL
+    const urlParts = currentLogoUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1];
+
+    // Delete from Storage
+    const { error: deleteError } = await supabase.storage
+      .from('logos-proyectos')
+      .remove([fileName]);
+
+    if (deleteError) {
+      console.error('Error deleting logo from storage:', deleteError);
+      // Continue anyway to clear the URL
+    }
+
+    // Clear logo_url in proyecto
+    const { error: updateError } = await supabase
+      .from('proyectos')
+      .update({ logo_url: null })
+      .eq('id', proyectoId);
+
+    if (updateError) {
+      console.error('Error clearing proyecto logo_url:', updateError);
+      return { success: false, error: updateError.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in deleteProyectoLogo:', error);
+    return { success: false, error: 'Error inesperado al eliminar logo' };
   }
 }

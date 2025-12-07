@@ -33,6 +33,8 @@ export interface Proyecto {
   penalidad_porcentaje?: number;
   representantes_legales?: RepresentanteLegal[];
   cuentas_bancarias?: CuentaBancaria[];
+  // Sesión 66: Logo del proyecto
+  logo_url?: string | null;
 }
 
 // Updated Lead interface matching Supabase schema

@@ -68,11 +68,13 @@ export default function FichaInscripcionModal({
     ruc: string;
     domicilio_fiscal: string;
     ubicacion_terreno: string;
+    logo_url: string;
   }>({
     razon_social: '',
     ruc: '',
     domicilio_fiscal: '',
     ubicacion_terreno: '',
+    logo_url: '',
   });
 
   const [formData, setFormData] = useState<ClienteFichaInput>({
@@ -427,6 +429,7 @@ export default function FichaInscripcionModal({
           ruc: legalData.ruc || '',
           domicilio_fiscal: legalData.domicilio_fiscal || '',
           ubicacion_terreno: legalData.ubicacion_terreno || '',
+          logo_url: legalData.logo_url || '',
         });
       }
     }
@@ -617,6 +620,9 @@ export default function FichaInscripcionModal({
       'EMPRESA_RUC': proyectoLegalData.ruc || '-',
       'EMPRESA_DOMICILIO': proyectoLegalData.domicilio_fiscal || '-',
       'EMPRESA_UBICACION': proyectoLegalData.ubicacion_terreno || '-',
+      'LOGO_URL': proyectoLegalData.logo_url || '',
+      'LOGO_DISPLAY': proyectoLegalData.logo_url ? 'block' : 'none',
+      'LOGO_PLACEHOLDER_DISPLAY': proyectoLegalData.logo_url ? 'none' : 'flex',
       'METRAJE': local.metraje?.toString() || '-',
       'PRECIO_LISTA': formatMonto(local.precio_base),
       'PRECIO_VENTA': formatMonto(local.monto_venta),
@@ -787,7 +793,8 @@ export default function FichaInscripcionModal({
     .ficha-container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
     .ficha-header { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1b967a; padding-bottom: 15px; margin-bottom: 20px; }
     .logo-container { width: 120px; }
-    .logo-placeholder { width: 120px; height: 60px; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #666; border: 1px dashed #999; }
+    .logo-img { max-width: 120px; max-height: 60px; object-fit: contain; }
+    .logo-placeholder { width: 120px; height: 60px; background: #e0e0e0; align-items: center; justify-content: center; font-size: 10px; color: #666; border: 1px dashed #999; }
     .ficha-title { text-align: center; flex: 1; }
     .ficha-title h1 { font-size: 18px; font-weight: bold; color: #1b967a; text-transform: uppercase; }
     .ficha-title h2 { font-size: 14px; font-weight: normal; color: #333; margin-top: 5px; }
@@ -839,7 +846,10 @@ export default function FichaInscripcionModal({
   </div>
   <div class="ficha-container">
     <header class="ficha-header">
-      <div class="logo-container"><div class="logo-placeholder">LOGO ECOPLAZA</div></div>
+      <div class="logo-container">
+        <img src="{{LOGO_URL}}" alt="Logo" class="logo-img" style="display: {{LOGO_DISPLAY}};" />
+        <div class="logo-placeholder" style="display: {{LOGO_PLACEHOLDER_DISPLAY}};">LOGO</div>
+      </div>
       <div class="ficha-title">
         <div style="font-size: 14px; font-weight: 600; color: #333;">{{EMPRESA_RAZON_SOCIAL}}</div>
         <div style="font-size: 11px; color: #666;">RUC: {{EMPRESA_RUC}}</div>
