@@ -1,30 +1,44 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getCountries, getCountryCallingCode, CountryCode } from 'react-phone-number-input';
+import en from 'react-phone-number-input/locale/en';
 
-// Lista de países con código y bandera (emoji)
-const COUNTRIES = [
-  { code: 'PE', name: 'Perú', dial: '51', flag: '🇵🇪' },
-  { code: 'AR', name: 'Argentina', dial: '54', flag: '🇦🇷' },
-  { code: 'BO', name: 'Bolivia', dial: '591', flag: '🇧🇴' },
-  { code: 'BR', name: 'Brasil', dial: '55', flag: '🇧🇷' },
-  { code: 'CL', name: 'Chile', dial: '56', flag: '🇨🇱' },
-  { code: 'CO', name: 'Colombia', dial: '57', flag: '🇨🇴' },
-  { code: 'CR', name: 'Costa Rica', dial: '506', flag: '🇨🇷' },
-  { code: 'CU', name: 'Cuba', dial: '53', flag: '🇨🇺' },
-  { code: 'EC', name: 'Ecuador', dial: '593', flag: '🇪🇨' },
-  { code: 'SV', name: 'El Salvador', dial: '503', flag: '🇸🇻' },
-  { code: 'ES', name: 'España', dial: '34', flag: '🇪🇸' },
-  { code: 'US', name: 'Estados Unidos', dial: '1', flag: '🇺🇸' },
-  { code: 'GT', name: 'Guatemala', dial: '502', flag: '🇬🇹' },
-  { code: 'HN', name: 'Honduras', dial: '504', flag: '🇭🇳' },
-  { code: 'MX', name: 'México', dial: '52', flag: '🇲🇽' },
-  { code: 'NI', name: 'Nicaragua', dial: '505', flag: '🇳🇮' },
-  { code: 'PA', name: 'Panamá', dial: '507', flag: '🇵🇦' },
-  { code: 'PY', name: 'Paraguay', dial: '595', flag: '🇵🇾' },
-  { code: 'DO', name: 'Rep. Dominicana', dial: '1', flag: '🇩🇴' },
-  { code: 'UY', name: 'Uruguay', dial: '598', flag: '🇺🇾' },
-  { code: 'VE', name: 'Venezuela', dial: '58', flag: '🇻🇪' },
+// Mapa de nombres de países en español
+const countryNamesES: Record<string, string> = {
+  PE: 'Perú', AR: 'Argentina', BO: 'Bolivia', BR: 'Brasil', CL: 'Chile',
+  CO: 'Colombia', CR: 'Costa Rica', CU: 'Cuba', EC: 'Ecuador', SV: 'El Salvador',
+  ES: 'España', US: 'Estados Unidos', GT: 'Guatemala', HN: 'Honduras', MX: 'México',
+  NI: 'Nicaragua', PA: 'Panamá', PY: 'Paraguay', DO: 'Rep. Dominicana', UY: 'Uruguay',
+  VE: 'Venezuela', CA: 'Canadá', FR: 'Francia', DE: 'Alemania', IT: 'Italia',
+  GB: 'Reino Unido', PT: 'Portugal', JP: 'Japón', CN: 'China', KR: 'Corea del Sur',
+  AU: 'Australia', NZ: 'Nueva Zelanda', IN: 'India', RU: 'Rusia', ZA: 'Sudáfrica',
+};
+
+// Función para obtener emoji de bandera desde código de país
+const getFlagEmoji = (countryCode: string): string => {
+  const codePoints = countryCode
+    .toUpperCase()
+    .split('')
+    .map(char => 127397 + char.charCodeAt(0));
+  return String.fromCodePoint(...codePoints);
+};
+
+// Obtener todos los países y ordenarlos (Perú primero, luego Latinoamérica, luego el resto)
+const latinCountries = ['PE', 'AR', 'BO', 'BR', 'CL', 'CO', 'CR', 'CU', 'DO', 'EC', 'SV', 'GT', 'HN', 'MX', 'NI', 'PA', 'PY', 'UY', 'VE'];
+
+const allCountries = getCountries().map(code => ({
+  code,
+  name: countryNamesES[code] || en[code] || code,
+  dial: getCountryCallingCode(code as CountryCode),
+  flag: getFlagEmoji(code),
+}));
+
+// Ordenar: Perú primero, luego Latinoamérica alfabéticamente, luego el resto alfabéticamente
+const sortedCountries = [
+  ...allCountries.filter(c => c.code === 'PE'),
+  ...allCountries.filter(c => latinCountries.includes(c.code) && c.code !== 'PE').sort((a, b) => a.name.localeCompare(b.name, 'es')),
+  ...allCountries.filter(c => !latinCountries.includes(c.code)).sort((a, b) => a.name.localeCompare(b.name, 'es')),
 ];
 
 interface PhoneInputCustomProps {
@@ -47,8 +61,10 @@ export default function PhoneInputCustom({
     // Quitar + si existe
     const cleanPhone = phone.startsWith('+') ? phone.slice(1) : phone;
 
-    // Buscar qué país coincide con el inicio del número
-    for (const country of COUNTRIES) {
+    // Buscar qué país coincide con el inicio del número (probar códigos más largos primero)
+    const sortedByDialLength = [...sortedCountries].sort((a, b) => b.dial.length - a.dial.length);
+
+    for (const country of sortedByDialLength) {
       if (cleanPhone.startsWith(country.dial)) {
         return {
           countryCode: country.code,
@@ -75,7 +91,7 @@ export default function PhoneInputCustom({
   // Cuando cambia país o número, notificar al padre
   const handleCountryChange = (newCountryCode: string) => {
     setSelectedCountry(newCountryCode);
-    const country = COUNTRIES.find(c => c.code === newCountryCode);
+    const country = sortedCountries.find(c => c.code === newCountryCode);
     if (country && phoneNumber) {
       onChange(`${country.dial}${phoneNumber}`);
     } else if (country && !phoneNumber) {
@@ -88,15 +104,13 @@ export default function PhoneInputCustom({
     const cleanNumber = newNumber.replace(/\D/g, '');
     setPhoneNumber(cleanNumber);
 
-    const country = COUNTRIES.find(c => c.code === selectedCountry);
+    const country = sortedCountries.find(c => c.code === selectedCountry);
     if (country && cleanNumber) {
       onChange(`${country.dial}${cleanNumber}`);
     } else {
       onChange('');
     }
   };
-
-  const selectedCountryData = COUNTRIES.find(c => c.code === selectedCountry) || COUNTRIES[0];
 
   const inputClass = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent";
 
@@ -106,12 +120,12 @@ export default function PhoneInputCustom({
       <select
         value={selectedCountry}
         onChange={(e) => handleCountryChange(e.target.value)}
-        className="w-24 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent bg-white cursor-pointer"
+        className="w-28 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent bg-white cursor-pointer"
         title="Seleccionar país"
       >
-        {COUNTRIES.map(country => (
+        {sortedCountries.map(country => (
           <option key={country.code} value={country.code}>
-            {country.flag} {country.dial}
+            {country.flag} +{country.dial}
           </option>
         ))}
       </select>
