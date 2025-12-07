@@ -32,6 +32,16 @@ export interface ClienteFicha {
   titular_ocupacion: string | null;
   titular_centro_trabajo: string | null;
   titular_ruc: string | null;
+  titular_genero: string | null;
+  titular_edad: string | null;
+  titular_ingresos_salariales: string | null;
+  titular_nivel_estudios: string | null;
+  titular_tipo_trabajador: string | null;
+  titular_puesto_trabajo: string | null;
+  titular_cantidad_hijos: string | null;
+  titular_cuenta_propiedades: string | null;
+  titular_cuenta_tarjeta_credito: string | null;
+  titular_motivo_compra: string | null;
 
   tiene_conyuge: boolean;
   conyuge_nombres: string | null;
@@ -79,6 +89,16 @@ export interface ClienteFichaInput {
   titular_ocupacion?: string | null;
   titular_centro_trabajo?: string | null;
   titular_ruc?: string | null;
+  titular_genero?: string | null;
+  titular_edad?: string | null;
+  titular_ingresos_salariales?: string | null;
+  titular_nivel_estudios?: string | null;
+  titular_tipo_trabajador?: string | null;
+  titular_puesto_trabajo?: string | null;
+  titular_cantidad_hijos?: string | null;
+  titular_cuenta_propiedades?: string | null;
+  titular_cuenta_tarjeta_credito?: string | null;
+  titular_motivo_compra?: string | null;
 
   tiene_conyuge?: boolean;
   conyuge_nombres?: string | null;

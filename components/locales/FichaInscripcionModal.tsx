@@ -15,6 +15,10 @@ interface FichaInscripcionModalProps {
 const TIPOS_DOCUMENTO = ['DNI', 'CE', 'Pasaporte'];
 const ESTADOS_CIVILES = ['Soltero(a)', 'Casado(a)', 'Viudo(a)', 'Divorciado(a)'];
 const UTM_OPTIONS = ['Facebook', 'Instagram', 'Google', 'TikTok', 'Referido', 'Pasaba por el lugar', 'Otro'];
+const GENEROS = ['Masculino', 'Femenino'];
+const NIVELES_ESTUDIO = ['Primaria', 'Secundaria', 'Técnico', 'Universitario', 'Postgrado'];
+const TIPOS_TRABAJADOR = ['Dependiente', 'Independiente'];
+const SI_NO_OPTIONS = ['Sí', 'No'];
 
 export default function FichaInscripcionModal({
   isOpen,
@@ -47,6 +51,16 @@ export default function FichaInscripcionModal({
     titular_ocupacion: '',
     titular_centro_trabajo: '',
     titular_ruc: '',
+    titular_genero: '',
+    titular_edad: '',
+    titular_ingresos_salariales: '',
+    titular_nivel_estudios: '',
+    titular_tipo_trabajador: '',
+    titular_puesto_trabajo: '',
+    titular_cantidad_hijos: '',
+    titular_cuenta_propiedades: '',
+    titular_cuenta_tarjeta_credito: '',
+    titular_motivo_compra: '',
     tiene_conyuge: false,
     conyuge_nombres: '',
     conyuge_apellido_paterno: '',
@@ -109,6 +123,16 @@ export default function FichaInscripcionModal({
           titular_ocupacion: existingFicha.titular_ocupacion || '',
           titular_centro_trabajo: existingFicha.titular_centro_trabajo || '',
           titular_ruc: existingFicha.titular_ruc || '',
+          titular_genero: existingFicha.titular_genero || '',
+          titular_edad: existingFicha.titular_edad || '',
+          titular_ingresos_salariales: existingFicha.titular_ingresos_salariales || '',
+          titular_nivel_estudios: existingFicha.titular_nivel_estudios || '',
+          titular_tipo_trabajador: existingFicha.titular_tipo_trabajador || '',
+          titular_puesto_trabajo: existingFicha.titular_puesto_trabajo || '',
+          titular_cantidad_hijos: existingFicha.titular_cantidad_hijos || '',
+          titular_cuenta_propiedades: existingFicha.titular_cuenta_propiedades || '',
+          titular_cuenta_tarjeta_credito: existingFicha.titular_cuenta_tarjeta_credito || '',
+          titular_motivo_compra: existingFicha.titular_motivo_compra || '',
           tiene_conyuge: existingFicha.tiene_conyuge || false,
           conyuge_nombres: existingFicha.conyuge_nombres || '',
           conyuge_apellido_paterno: existingFicha.conyuge_apellido_paterno || '',
@@ -292,6 +316,61 @@ export default function FichaInscripcionModal({
                   <div>
                     <label className={labelClass}>Centro de Trabajo</label>
                     <input type="text" className={inputClass} value={formData.titular_centro_trabajo || ''} onChange={e => handleChange('titular_centro_trabajo', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Género</label>
+                    <select className={inputClass} value={formData.titular_genero || ''} onChange={e => handleChange('titular_genero', e.target.value)}>
+                      <option value="">Seleccionar...</option>
+                      {GENEROS.map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Edad</label>
+                    <input type="number" className={inputClass} value={formData.titular_edad || ''} onChange={e => handleChange('titular_edad', e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Ingresos Salariales (S/)</label>
+                    <input type="number" className={inputClass} value={formData.titular_ingresos_salariales || ''} onChange={e => handleChange('titular_ingresos_salariales', e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Nivel de Estudios</label>
+                    <select className={inputClass} value={formData.titular_nivel_estudios || ''} onChange={e => handleChange('titular_nivel_estudios', e.target.value)}>
+                      <option value="">Seleccionar...</option>
+                      {NIVELES_ESTUDIO.map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Tipo de Trabajador</label>
+                    <select className={inputClass} value={formData.titular_tipo_trabajador || ''} onChange={e => handleChange('titular_tipo_trabajador', e.target.value)}>
+                      <option value="">Seleccionar...</option>
+                      {TIPOS_TRABAJADOR.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Puesto de Trabajo</label>
+                    <input type="text" className={inputClass} value={formData.titular_puesto_trabajo || ''} onChange={e => handleChange('titular_puesto_trabajo', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Cantidad de Hijos</label>
+                    <input type="number" className={inputClass} value={formData.titular_cantidad_hijos || ''} onChange={e => handleChange('titular_cantidad_hijos', e.target.value)} onWheel={(e) => e.currentTarget.blur()} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>¿Cuenta con Propiedades?</label>
+                    <select className={inputClass} value={formData.titular_cuenta_propiedades || ''} onChange={e => handleChange('titular_cuenta_propiedades', e.target.value)}>
+                      <option value="">Seleccionar...</option>
+                      {SI_NO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>¿Cuenta con Tarjeta de Crédito?</label>
+                    <select className={inputClass} value={formData.titular_cuenta_tarjeta_credito || ''} onChange={e => handleChange('titular_cuenta_tarjeta_credito', e.target.value)}>
+                      <option value="">Seleccionar...</option>
+                      {SI_NO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div className="col-span-3">
+                    <label className={labelClass}>Motivo de la Compra</label>
+                    <input type="text" className={inputClass} value={formData.titular_motivo_compra || ''} onChange={e => handleChange('titular_motivo_compra', e.target.value)} />
                   </div>
                 </div>
               </div>
