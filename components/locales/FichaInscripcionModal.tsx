@@ -293,10 +293,6 @@ export default function FichaInscripcionModal({
                     <label className={labelClass}>Centro de Trabajo</label>
                     <input type="text" className={inputClass} value={formData.titular_centro_trabajo || ''} onChange={e => handleChange('titular_centro_trabajo', e.target.value)} />
                   </div>
-                  <div>
-                    <label className={labelClass}>RUC</label>
-                    <input type="text" className={inputClass} value={formData.titular_ruc || ''} onChange={e => handleChange('titular_ruc', e.target.value)} />
-                  </div>
                 </div>
               </div>
 
