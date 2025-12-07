@@ -280,3 +280,46 @@ export async function upsertClienteFicha(input: ClienteFichaInput): Promise<{ su
     return { success: false, message: 'Error inesperado' };
   }
 }
+
+// ============================================================================
+// HELPER: Obtener datos del usuario (asesor) por ID
+// ============================================================================
+
+export interface UsuarioAsesor {
+  id: string;
+  nombre: string;
+  email: string;
+}
+
+export async function getUsuarioById(usuarioId: string): Promise<UsuarioAsesor | null> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+
+  try {
+    const { data, error } = await supabase
+      .from('usuarios')
+      .select('id, nombre, email')
+      .eq('id', usuarioId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('[CLIENTES_FICHA] Error obteniendo usuario:', error);
+      return null;
+    }
+
+    return data as UsuarioAsesor | null;
+  } catch (error) {
+    console.error('[CLIENTES_FICHA] Error in getUsuarioById:', error);
+    return null;
+  }
+}

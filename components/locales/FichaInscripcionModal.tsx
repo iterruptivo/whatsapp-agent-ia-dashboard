@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { X, Save, Loader2, Plus, Trash2, Eye } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
-import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario } from '@/lib/actions-clientes-ficha';
+import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario, getUsuarioById } from '@/lib/actions-clientes-ficha';
 import { getProyectoConfiguracion } from '@/lib/proyecto-config';
 import PhoneInputCustom from '@/components/shared/PhoneInputCustom';
+import AlertModal from '@/components/shared/AlertModal';
 
 interface FichaInscripcionModalProps {
   isOpen: boolean;
@@ -45,6 +46,17 @@ export default function FichaInscripcionModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [leadData, setLeadData] = useState<{ nombre: string; telefono: string; lead_id: string | null; email: string; rubro: string }>({ nombre: '', telefono: '', lead_id: null, email: '', rubro: '' });
+
+  // Datos del asesor (vendedor que confirmó NARANJA)
+  const [asesorData, setAsesorData] = useState<{ nombre: string; email: string }>({ nombre: '', email: '' });
+
+  // AlertModal state
+  const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; variant: 'success' | 'danger' | 'warning' | 'info' }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'info',
+  });
 
   // UIN States
   const [teaProyecto, setTeaProyecto] = useState<number>(0);
@@ -154,6 +166,17 @@ export default function FichaInscripcionModal({
           email: leadEmail,
           rubro: leadRubro,
         });
+      }
+
+      // Obtener datos del asesor (vendedor que confirmó NARANJA)
+      if (local!.usuario_paso_naranja_id) {
+        const asesor = await getUsuarioById(local!.usuario_paso_naranja_id);
+        if (asesor) {
+          setAsesorData({
+            nombre: asesor.nombre || '',
+            email: asesor.email || '',
+          });
+        }
       }
 
       // Obtener ficha existente o crear nueva
@@ -378,9 +401,19 @@ export default function FichaInscripcionModal({
     setSaving(false);
 
     if (result.success) {
-      alert('Ficha guardada correctamente');
+      setAlertModal({
+        isOpen: true,
+        title: 'Ficha guardada',
+        message: 'La ficha de inscripción se guardó correctamente.',
+        variant: 'success',
+      });
     } else {
-      alert('Error: ' + result.message);
+      setAlertModal({
+        isOpen: true,
+        title: 'Error al guardar',
+        message: result.message || 'Ocurrió un error al guardar la ficha.',
+        variant: 'danger',
+      });
     }
   };
 
@@ -574,10 +607,17 @@ export default function FichaInscripcionModal({
       // Observaciones
       'OBSERVACIONES': formData.observaciones || '-',
 
-      // Asesor
-      'ASESOR_NOMBRE': '-', // TODO: Obtener nombre del vendedor
-      'ASESOR_CODIGO': formData.vendedor_id || '-',
-      'FECHA_REGISTRO': formatDate(new Date().toISOString().split('T')[0]),
+      // Asesor - datos del vendedor que confirmó NARANJA
+      'ASESOR_NOMBRE': asesorData.nombre || '-',
+      'ASESOR_CODIGO': asesorData.email ? asesorData.email.split('@')[0] : '-',
+      // Fecha actual usando patrón de timezone local (igual que FinanciamientoModal)
+      'FECHA_REGISTRO': (() => {
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = now.getFullYear();
+        return `${day}/${month}/${year}`;
+      })(),
       'FECHA_GENERACION': fechaGeneracion,
     };
 
@@ -1514,6 +1554,15 @@ export default function FichaInscripcionModal({
           </div>
         </div>
       </div>
+
+      {/* AlertModal para mostrar resultados de operaciones */}
+      <AlertModal
+        isOpen={alertModal.isOpen}
+        onClose={() => setAlertModal(prev => ({ ...prev, isOpen: false }))}
+        title={alertModal.title}
+        message={alertModal.message}
+        variant={alertModal.variant}
+      />
     </div>
   );
 }
