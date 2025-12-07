@@ -648,7 +648,7 @@ export default function FichaInscripcionModal({
     <header class="ficha-header">
       <div class="logo-container"><div class="logo-placeholder">LOGO ECOPLAZA</div></div>
       <div class="ficha-title"><h1>Ficha de Inscripción</h1><h2>{{PROYECTO_NOMBRE}}</h2></div>
-      <div class="ficha-codigo"><div class="codigo-label">N° de Ficha</div><div class="codigo-value">{{CODIGO_LOCAL}}</div></div>
+      <div class="ficha-codigo"><div class="codigo-label">Cód. de Local</div><div class="codigo-value">{{CODIGO_LOCAL}}</div></div>
     </header>
 
     <section class="section">
