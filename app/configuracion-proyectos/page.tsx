@@ -17,7 +17,9 @@ import {
   RepresentanteLegal,
   CuentaBancaria
 } from '@/lib/actions-proyecto-config';
-import { Save, ChevronDown, ChevronUp, ChevronUp as ArrowUp, ChevronDown as ArrowDown, X, Plus, Users, Search, FileText, Building2, Banknote, UserCheck } from 'lucide-react';
+import { Save, ChevronDown, ChevronUp, ChevronUp as ArrowUp, ChevronDown as ArrowDown, X, Plus, Users, Search, FileText, Building2, Banknote, UserCheck, Image as ImageIcon } from 'lucide-react';
+import LogoUploader from '@/components/shared/LogoUploader';
+import { uploadProyectoLogo, deleteProyectoLogo } from '@/lib/proyecto-config';
 
 interface ProyectoFormData {
   tea: string;
@@ -53,6 +55,8 @@ interface ProyectoFormData {
   nuevaCuenta_numero: string;
   nuevaCuenta_tipo: 'Corriente' | 'Ahorros' | '';
   nuevaCuenta_moneda: 'USD' | 'PEN' | '';
+  // SESIÓN 66: Logo del proyecto
+  logo_url: string | null;
   saving: boolean;
   message: { type: 'success' | 'error'; text: string } | null;
 }
@@ -139,6 +143,8 @@ export default function ConfiguracionProyectos() {
           nuevaCuenta_numero: '',
           nuevaCuenta_tipo: '',
           nuevaCuenta_moneda: 'USD',
+          // SESIÓN 66: Logo del proyecto
+          logo_url: proyecto.logo_url || null,
           saving: false,
           message: null,
         };
@@ -1249,6 +1255,40 @@ export default function ConfiguracionProyectos() {
                         <p className="text-sm text-gray-500 mb-6">
                           Información legal de la empresa para generación automática de documentos (Acuerdo de Separación, contratos, etc.)
                         </p>
+
+                        {/* SESIÓN 66: Logo del proyecto */}
+                        <div className="mb-8">
+                          <div className="flex items-center gap-2 mb-4">
+                            <ImageIcon className="w-5 h-5 text-primary" />
+                            <h4 className="text-lg font-semibold text-gray-900">Logo Oficial del Proyecto</h4>
+                          </div>
+                          <p className="text-sm text-gray-500 mb-4">
+                            Este logo aparecerá en documentos oficiales como la Ficha de Inscripción
+                          </p>
+                          <div className="max-w-md">
+                            <LogoUploader
+                              currentLogoUrl={data.logo_url}
+                              onSave={async (croppedImageBlob) => {
+                                const result = await uploadProyectoLogo(proyecto.id, croppedImageBlob);
+                                if (result.success && result.url) {
+                                  updateFormData(proyecto.id, 'logo_url', result.url);
+                                } else {
+                                  throw new Error(result.error || 'Error al subir logo');
+                                }
+                              }}
+                              onDelete={data.logo_url ? async () => {
+                                const result = await deleteProyectoLogo(proyecto.id, data.logo_url!);
+                                if (result.success) {
+                                  updateFormData(proyecto.id, 'logo_url', null);
+                                } else {
+                                  throw new Error(result.error || 'Error al eliminar logo');
+                                }
+                              } : undefined}
+                              aspectRatio={1}
+                              disabled={data.saving}
+                            />
+                          </div>
+                        </div>
 
                         {/* Grid responsive: 3 columnas en desktop, 2 en tablet, 1 en mobile */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">

@@ -36,6 +36,8 @@ export interface Proyecto {
   penalidad_porcentaje?: number;
   representantes_legales?: RepresentanteLegal[];
   cuentas_bancarias?: CuentaBancaria[];
+  // Sesión 66: Logo del proyecto
+  logo_url?: string | null;
 }
 
 export interface PorcentajeInicial {
@@ -178,10 +180,10 @@ export async function getProyectosWithConfigurations(): Promise<{
       };
     }
 
-    // Fetch all proyectos (incluye campos legales - Sesión 64)
+    // Fetch all proyectos (incluye campos legales - Sesión 64, logo - Sesión 66)
     const { data: proyectos, error: proyectosError } = await supabaseAuth
       .from('proyectos')
-      .select('id, nombre, slug, color, activo, created_at, razon_social, ruc, domicilio_fiscal, ubicacion_terreno, partida_electronica, zona_registral, plazo_firma_dias, penalidad_porcentaje, representantes_legales, cuentas_bancarias')
+      .select('id, nombre, slug, color, activo, created_at, razon_social, ruc, domicilio_fiscal, ubicacion_terreno, partida_electronica, zona_registral, plazo_firma_dias, penalidad_porcentaje, representantes_legales, cuentas_bancarias, logo_url')
       .order('created_at', { ascending: true });
 
     if (proyectosError) {
