@@ -636,29 +636,18 @@ export default function FichaInscripcionModal({
               <div className={sectionClass}>
                 <h3 className={sectionTitleClass}>¿Cómo se enteró del proyecto?</h3>
                 <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
-                  {UTM_OPTIONS.map(option => {
-                    const selectedSources = (formData.utm_source || '').split(',').filter(Boolean);
-                    const isChecked = selectedSources.includes(option);
-                    return (
-                      <label key={option} className="flex flex-col items-center gap-1 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            let newSources: string[];
-                            if (e.target.checked) {
-                              newSources = [...selectedSources, option];
-                            } else {
-                              newSources = selectedSources.filter(s => s !== option);
-                            }
-                            handleChange('utm_source', newSources.join(','));
-                          }}
-                          className="w-5 h-5 text-[#1b967a] rounded border-gray-300 focus:ring-[#1b967a]"
-                        />
-                        <span className="text-xs text-center text-gray-700 leading-tight">{option}</span>
-                      </label>
-                    );
-                  })}
+                  {UTM_OPTIONS.map(option => (
+                    <label key={option} className="flex flex-col items-center gap-1 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="utm_source"
+                        checked={formData.utm_source === option}
+                        onChange={() => handleChange('utm_source', option)}
+                        className="w-5 h-5 text-[#1b967a] border-gray-300 focus:ring-[#1b967a]"
+                      />
+                      <span className="text-xs text-center text-gray-700 leading-tight">{option}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
 
