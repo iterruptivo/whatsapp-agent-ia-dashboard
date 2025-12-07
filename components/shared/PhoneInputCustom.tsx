@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getCountries, getCountryCallingCode, CountryCode } from 'react-phone-number-input';
+import { getCountries, getCountryCallingCode } from 'react-phone-number-input';
 import en from 'react-phone-number-input/locale/en';
 
 // Mapa de nombres de países en español
@@ -30,7 +30,7 @@ const latinCountries = ['PE', 'AR', 'BO', 'BR', 'CL', 'CO', 'CR', 'CU', 'DO', 'E
 const allCountries = getCountries().map(code => ({
   code,
   name: countryNamesES[code] || en[code] || code,
-  dial: getCountryCallingCode(code as CountryCode),
+  dial: getCountryCallingCode(code as Parameters<typeof getCountryCallingCode>[0]),
   flag: getFlagEmoji(code),
 }));
 
