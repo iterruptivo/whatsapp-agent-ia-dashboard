@@ -425,18 +425,6 @@ export default function FichaInscripcionModal({
                   <div><span className="text-gray-500">Precio local (USD):</span> <strong className="text-green-700">${local.monto_venta?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || 'N/A'}</strong></div>
                 </div>
 
-                {/* Rubro del negocio */}
-                <div className="mb-4">
-                  <label className={labelClass}>Rubro del Negocio</label>
-                  <input
-                    type="text"
-                    className={inputClass}
-                    value={formData.rubro || ''}
-                    onChange={e => handleChange('rubro', e.target.value)}
-                    placeholder="Ej: Retail, Restaurante, Servicios..."
-                  />
-                </div>
-
                 {/* Modalidad de Pago */}
                 <div className="mb-4">
                   <label className={labelClass}>Modalidad de Pago</label>
@@ -645,16 +633,28 @@ export default function FichaInscripcionModal({
                       </div>
                     </div>
 
-                    {/* Entidad bancaria - ancho completo */}
-                    <div className="mb-3">
-                      <label className={labelClass}>Entidad Bancaria</label>
-                      <input
-                        type="text"
-                        className={inputClass}
-                        value={formData.entidad_bancaria || ''}
-                        onChange={e => handleChange('entidad_bancaria', e.target.value)}
-                        placeholder="BCP, Interbank, BBVA, Scotiabank..."
-                      />
+                    {/* Entidad bancaria + Rubro */}
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      <div>
+                        <label className={labelClass}>Entidad Bancaria</label>
+                        <input
+                          type="text"
+                          className={inputClass}
+                          value={formData.entidad_bancaria || ''}
+                          onChange={e => handleChange('entidad_bancaria', e.target.value)}
+                          placeholder="BCP, Interbank, BBVA, Scotiabank..."
+                        />
+                      </div>
+                      <div>
+                        <label className={labelClass}>Rubro del Negocio</label>
+                        <input
+                          type="text"
+                          className={inputClass}
+                          value={formData.rubro || ''}
+                          onChange={e => handleChange('rubro', e.target.value)}
+                          placeholder="Ej: Retail, Restaurante, Servicios..."
+                        />
+                      </div>
                     </div>
 
                     {/* Compromiso de pago */}
