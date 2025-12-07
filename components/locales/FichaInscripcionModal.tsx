@@ -544,7 +544,9 @@ export default function FichaInscripcionModal({
                           onWheel={(e) => e.currentTarget.blur()}
                           placeholder="0"
                         />
-                        <p className="text-xs text-gray-400 mt-1">0 = sin interés</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {teaProyecto > 0 ? 'Sistema francés (con interés)' : '0 = cuota simple (sin interés)'}
+                        </p>
                       </div>
                       {/* Cuota mensual USD (calculado) */}
                       <div>
