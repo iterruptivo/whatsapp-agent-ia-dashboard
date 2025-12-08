@@ -513,56 +513,73 @@ Meta WhatsApp Cloud API tiene un **límite de 250 mensajes business-initiated po
 
 ### Implementación Técnica
 
-#### Decisión de Diseño: Usar `repulse_historial` (NO crear tabla nueva)
+#### Decisión de Diseño: Usar tabla `leads` (NO crear tabla nueva)
 
-> **Análisis:** La tabla `/operativo` (específicamente `repulse_historial`) ya tiene toda la información necesaria para calcular la quota diaria. Crear `whatsapp_quota_diaria` sería redundante y podría desincronizarse.
+> **Análisis:** La tabla `leads` ya tiene toda la información necesaria para calcular la quota diaria consumida. Cada lead que entra por campaña (estado != 'lead_manual') representa 1 mensaje de Victoria consumido.
 
-**Ventajas de usar `repulse_historial`:**
-| Aspecto | Tabla nueva (descartada) | `repulse_historial` (elegido) |
-|---------|--------------------------|-------------------------------|
+**Lógica de consumo de quota:**
+```
+Lead entra por campaña → Victoria responde automáticamente → 1 mensaje consumido de los 250
+Lead ingresado manualmente → NO consume quota (estado = 'lead_manual')
+```
+
+**Ventajas de usar `leads`:**
+| Aspecto | Tabla nueva (descartada) | `leads` (elegido) |
+|---------|--------------------------|-------------------|
 | Mantenimiento | Tabla adicional | Ya existe |
-| Historial | Solo contadores | Detalle de cada envío |
+| Historial | Solo contadores | Detalle completo del lead |
 | Single source of truth | Puede desincronizar | Es la fuente real |
-| Complejidad n8n | 2 calls por envío | Ya hace INSERT |
+| Complejidad n8n | Modificar flujos | Zero cambios |
 
-#### 1. Función para Obtener Quota (usando historial existente)
+#### 1. Función para Obtener Quota (usando tabla leads)
 
 ```sql
 -- Función para obtener quota disponible del día
--- Cuenta los mensajes ya enviados HOY en repulse_historial
+-- Cuenta los leads que entraron HOY por campaña (consumieron quota de Victoria)
 CREATE OR REPLACE FUNCTION get_quota_disponible_repulse(p_limite INTEGER DEFAULT 250)
 RETURNS INTEGER AS $$
 DECLARE
-  v_enviados INTEGER;
+  v_leads_campaña INTEGER;
 BEGIN
-  SELECT COUNT(*)::INTEGER INTO v_enviados
-  FROM repulse_historial
-  WHERE enviado_at >= CURRENT_DATE
-    AND enviado_at < CURRENT_DATE + INTERVAL '1 day';
+  -- Leads del día que NO son manuales = mensajes consumidos por Victoria
+  SELECT COUNT(*)::INTEGER INTO v_leads_campaña
+  FROM leads
+  WHERE created_at >= CURRENT_DATE
+    AND created_at < CURRENT_DATE + INTERVAL '1 day'
+    AND estado != 'lead_manual';
 
-  RETURN GREATEST(0, p_limite - COALESCE(v_enviados, 0));
+  RETURN GREATEST(0, p_limite - COALESCE(v_leads_campaña, 0));
 END;
 $$ LANGUAGE plpgsql STABLE;
 
--- Función para obtener conteo de mensajes del día (para widget)
-CREATE OR REPLACE FUNCTION get_mensajes_enviados_hoy()
+-- Función para obtener conteo de mensajes consumidos hoy (para widget)
+CREATE OR REPLACE FUNCTION get_mensajes_consumidos_hoy()
 RETURNS INTEGER AS $$
   SELECT COUNT(*)::INTEGER
-  FROM repulse_historial
-  WHERE enviado_at >= CURRENT_DATE
-    AND enviado_at < CURRENT_DATE + INTERVAL '1 day';
+  FROM leads
+  WHERE created_at >= CURRENT_DATE
+    AND created_at < CURRENT_DATE + INTERVAL '1 day'
+    AND estado != 'lead_manual';
 $$ LANGUAGE sql STABLE;
 ```
 
-#### 2. n8n NO necesita modificación adicional
+**Ejemplo de registro en `leads`:**
+```sql
+-- Lead ingresado manualmente (NO consume quota)
+estado = 'lead_manual'
 
-El flujo actual de Repulse **ya hace INSERT en `repulse_historial`** después de cada envío. Esto es suficiente para el tracking:
-
+-- Lead de campaña (SÍ consume quota - Victoria respondió)
+estado = 'nuevo', 'en_conversacion', 'interesado', etc.
 ```
-[Enviar WhatsApp] → [INSERT repulse_historial] ← Ya existe, no cambiar
-```
 
-**Beneficio:** No hay riesgo de desincronización porque `repulse_historial` ES la fuente de verdad.
+#### 2. n8n NO necesita modificación
+
+Los flujos existentes no requieren cambios porque:
+- Victoria ya responde automáticamente a leads de campaña
+- El INSERT en `leads` ya ocurre (es el flujo normal)
+- Solo consultamos datos existentes, no agregamos tracking adicional
+
+**Beneficio:** Zero cambios a flujos n8n existentes.
 
 #### 3. Cron Job para Envío Automático Nocturno (11:00 PM)
 
@@ -607,39 +624,46 @@ SELECT cron.schedule(
 [Log resultados]
 ```
 
-**Nota:** No se necesita llamar `incrementar_quota_whatsapp()` separadamente porque el INSERT en `repulse_historial` ya actúa como contador automático.
+**Lógica:** La función `get_quota_disponible_repulse()` consulta la tabla `leads` para ver cuántos leads de campaña entraron hoy, y calcula cuántos mensajes quedan disponibles.
 
 #### 5. Indicador en Dashboard (Opcional)
 
 En `/repulse`, mostrar widget con quota del día:
 
 ```
-┌────────────────────────────┐
-│  📊 Quota WhatsApp Hoy     │
-│  ═══════════════════════   │
-│  Enviados: 45 / 250        │
-│  Disponibles: 205          │
-│  ████████░░░░░░░░░ 18%     │
-└────────────────────────────┘
+┌─────────────────────────────────┐
+│  📊 Quota WhatsApp Hoy          │
+│  ═══════════════════════════    │
+│  Leads campaña hoy: 45          │
+│  Disponibles para Repulse: 205  │
+│  ████████░░░░░░░░░ 18% usado    │
+│  (límite: 250/día)              │
+└─────────────────────────────────┘
 ```
 
 ### Flujo Diario Esperado
 
-| Hora | Acción |
-|------|--------|
-| 00:00 | Nuevo día, quota = 0/250 (reset automático por fecha) |
-| 06:00-22:00 | Campañas + Victoria consumen quota |
-| 23:00 | Cron `repulse-auto-noche` consulta: "¿Cuántos quedan?" |
-| 23:00-23:59 | Repulse envía automáticamente hasta agotar quota |
-| 23:59 | Quota del día maximizada (250/250) |
+| Hora | Acción | Ejemplo |
+|------|--------|---------|
+| 00:00 | Nuevo día, quota = 0/250 | leads campaña hoy = 0 |
+| 06:00-22:00 | Campañas → Victoria responde | +45 leads = 45/250 usados |
+| 23:00 | Cron consulta: `get_quota_disponible_repulse()` | Retorna 205 |
+| 23:00-23:59 | Repulse envía automáticamente | Máx 205 mensajes |
+| 23:59 | Día termina | Se usaron los 250 |
+
+**Cálculo real:**
+```
+quota_disponible = 250 - COUNT(leads HOY donde estado != 'lead_manual')
+```
 
 ### Beneficios
 
 - ✅ **Maximiza uso de los 250 mensajes diarios** (no se desperdician)
 - ✅ **Repulse no compite con campañas** durante el día
 - ✅ **Completamente automático** - Sin intervención manual
-- ✅ **Tracking en tiempo real** desde dashboard
+- ✅ **Tracking en tiempo real** desde dashboard (consulta tabla `leads`)
 - ✅ **Previene penalizaciones de Meta** por exceder límite
+- ✅ **Zero cambios a n8n existente** - Solo consulta datos que ya existen
 
 ### Archivos a Crear/Modificar (SIMPLIFICADO)
 
@@ -650,7 +674,7 @@ En `/repulse`, mostrar widget con quota del día:
 | `components/repulse/WhatsAppQuotaWidget.tsx` | Widget indicador (opcional) |
 | n8n: `repulse-auto-noche` | Nuevo flujo completo |
 
-**¿Por qué NO se modifica n8n existente?** El flujo de Repulse ya hace INSERT en `repulse_historial`, que es exactamente lo que necesitamos para tracking. Zero cambios a flujos existentes.
+**¿Por qué NO se modifica n8n existente?** La quota se calcula desde `leads` (datos que ya existen). Zero cambios a flujos existentes.
 
 ### Estimación de Implementación (REDUCIDA)
 
