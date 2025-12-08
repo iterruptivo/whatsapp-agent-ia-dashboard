@@ -548,30 +548,32 @@ export default function FichaInscripcionModal({
     return fechaResultado;
   };
 
-  // Generar calendario de cuotas para control-pagos
-  const generarCalendarioCuotas = () => {
+  // ============================================================================
+  // AUTO-GENERAR CALENDARIO (mode='procesar')
+  // Se regenera automáticamente cuando cambian los datos relevantes
+  // ============================================================================
+  useEffect(() => {
+    // Solo ejecutar en mode='procesar' y cuando el modal está abierto
+    if (mode !== 'procesar' || !isOpen || loading) return;
+
     const fechaPago = formData.fecha_inicio_pago;
     const cuotaSeleccionada = formData.numero_cuotas;
     const montoRestante = formData.saldo_financiar_usd;
     const conFinanciamiento = formData.modalidad_pago === 'financiado';
 
-    if (!fechaPago || !cuotaSeleccionada || !montoRestante) {
-      setAlertModal({
-        isOpen: true,
-        title: 'Campos requeridos',
-        message: 'Debe ingresar fecha de primer pago, número de cuotas y saldo a financiar.',
-        variant: 'warning',
-      });
+    // Si faltan datos requeridos, limpiar calendario
+    if (!fechaPago || !cuotaSeleccionada || cuotaSeleccionada <= 0 || !montoRestante || montoRestante <= 0) {
+      if (calendarioCuotas.length > 0) {
+        setCalendarioCuotas([]);
+      }
       return;
     }
 
+    // Generar calendario automáticamente
     if (conFinanciamiento && teaProyecto > 0) {
-      // CON FINANCIAMIENTO: Sistema Francés con TEA
-      // Convertir TEA a TEM (Tasa Efectiva Mensual)
+      // Sistema Francés con TEA
       const teaDecimal = teaProyecto / 100;
       const tem = Math.pow(1 + teaDecimal, 1/12) - 1;
-
-      // Calcular cuota mensual usando fórmula francesa
       const P = montoRestante;
       const r = tem;
       const n = cuotaSeleccionada;
@@ -595,26 +597,32 @@ export default function FichaInscripcionModal({
           saldo: Math.max(0, saldoPendiente)
         });
       }
-
       setCalendarioCuotas(cuotas);
     } else {
-      // SIN FINANCIAMIENTO: Cuotas iguales sin interés
+      // Cuotas simples (sin interés o TEA = 0)
       const montoPorCuota = montoRestante / cuotaSeleccionada;
       const cuotas: CuotaCalendarioControlPagos[] = [];
 
       for (let i = 0; i < cuotaSeleccionada; i++) {
         const fecha = calcularFechaCuota(fechaPago, i);
-
         cuotas.push({
           numero: i + 1,
           fecha,
           monto: montoPorCuota
         });
       }
-
       setCalendarioCuotas(cuotas);
     }
-  };
+  }, [
+    mode,
+    isOpen,
+    loading,
+    formData.fecha_inicio_pago,
+    formData.numero_cuotas,
+    formData.saldo_financiar_usd,
+    formData.modalidad_pago,
+    teaProyecto
+  ]);
 
   // Fecha mínima (hoy) - usar métodos locales para evitar bug de timezone
   const hoy = new Date();
@@ -1902,21 +1910,7 @@ export default function FichaInscripcionModal({
                       />
                     </div>
 
-                    {/* Botón Generar Calendario - Solo visible en mode='procesar' */}
-                    {mode === 'procesar' && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <button
-                          type="button"
-                          onClick={generarCalendarioCuotas}
-                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#192c4d] text-white rounded-lg hover:bg-[#0f1d33] transition-colors font-medium"
-                        >
-                          <Calendar className="w-5 h-5" />
-                          Generar Calendario de Pagos
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Tabla de Calendario Generado - Solo visible si hay cuotas */}
+                    {/* Tabla de Calendario Generado - Solo visible si hay cuotas (se genera automáticamente) */}
                     {mode === 'procesar' && calendarioCuotas.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
