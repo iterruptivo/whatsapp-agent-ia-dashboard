@@ -2389,16 +2389,28 @@ export default function FichaInscripcionModal({
               Vista Previa
             </button>
 
-            {/* Botón condicional según mode */}
+            {/* Botones según mode */}
             {mode === 'procesar' ? (
-              <button
-                onClick={handleGuardarProcesar}
-                disabled={saving || loading || isProcessing || calendarioCuotas.length === 0}
-                className="px-4 py-2 bg-[#192c4d] text-white rounded-lg hover:bg-[#0f1d33] transition-colors flex items-center gap-2 disabled:opacity-50"
-              >
-                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {isProcessing ? 'Procesando...' : 'Guardar / Procesar'}
-              </button>
+              <>
+                {/* Botón GUARDAR - solo guarda datos sin procesar a control-pagos */}
+                <button
+                  onClick={handleSave}
+                  disabled={saving || loading || isProcessing}
+                  className="px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a64] transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </button>
+                {/* Botón PROCESAR - guarda + confirma + procesa a control-pagos */}
+                <button
+                  onClick={handleGuardarProcesar}
+                  disabled={saving || loading || isProcessing || calendarioCuotas.length === 0}
+                  className="px-4 py-2 bg-[#192c4d] text-white rounded-lg hover:bg-[#0f1d33] transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {isProcessing ? 'Procesando...' : 'Procesar'}
+                </button>
+              </>
             ) : (
               <button
                 onClick={handleSave}
