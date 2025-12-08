@@ -479,6 +479,84 @@ export async function reincluirLeadEnRepulse(
 // ============================================================================
 
 /**
+ * Inyectar mensaje de Repulse en el historial de conversación del lead
+ * Esta función actualiza los campos historial_reciente, historial_conversacion y ultimo_mensaje
+ * para que el mensaje de Repulse sea visible en el panel de detalle del lead
+ */
+async function inyectarMensajeEnHistorial(
+  leadId: string,
+  mensaje: string
+): Promise<void> {
+  const supabase = await createClient();
+
+  try {
+    // 1. Obtener el historial actual del lead
+    const { data: lead, error: errorFetch } = await supabase
+      .from('leads')
+      .select('historial_reciente, historial_conversacion')
+      .eq('id', leadId)
+      .single();
+
+    if (errorFetch || !lead) {
+      console.error('Error fetching lead for historial injection:', errorFetch);
+      return; // No bloqueamos el envío si falla la inyección
+    }
+
+    // 2. Crear el objeto mensaje con formato compatible con parseMessages()
+    const mensajeRepulse = {
+      sender: 'Repulse',
+      text: mensaje,
+      tipo: 'repulse',
+      timestamp: new Date().toISOString(),
+    };
+
+    // 3. Actualizar historial_reciente (array JSON)
+    let historialReciente: any[] = [];
+    if (lead.historial_reciente) {
+      try {
+        historialReciente = JSON.parse(lead.historial_reciente);
+        if (!Array.isArray(historialReciente)) {
+          historialReciente = [];
+        }
+      } catch {
+        historialReciente = [];
+      }
+    }
+    historialReciente.push(mensajeRepulse);
+
+    // 4. Actualizar historial_conversacion (array JSON)
+    let historialCompleto: any[] = [];
+    if (lead.historial_conversacion) {
+      try {
+        const parsed = JSON.parse(lead.historial_conversacion);
+        historialCompleto = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        historialCompleto = [];
+      }
+    }
+    historialCompleto.push(mensajeRepulse);
+
+    // 5. UPDATE en tabla leads
+    const { error: errorUpdate } = await supabase
+      .from('leads')
+      .update({
+        historial_reciente: JSON.stringify(historialReciente),
+        historial_conversacion: JSON.stringify(historialCompleto),
+        ultimo_mensaje: mensaje,
+      })
+      .eq('id', leadId);
+
+    if (errorUpdate) {
+      console.error('Error updating historial with repulse message:', errorUpdate);
+      // No retornamos error - la inyección es opcional
+    }
+  } catch (error) {
+    console.error('Error in inyectarMensajeEnHistorial:', error);
+    // No bloqueamos el envío si falla la inyección
+  }
+}
+
+/**
  * Registrar envío de repulse y actualizar estado
  */
 export async function registrarEnvioRepulse(
@@ -541,6 +619,9 @@ export async function registrarEnvioRepulse(
       })
       .eq('id', repulseLeadId);
   }
+
+  // 3. Inyectar mensaje en historial del lead (NO bloqueante)
+  await inyectarMensajeEnHistorial(leadId, mensaje);
 
   return { success: true };
 }

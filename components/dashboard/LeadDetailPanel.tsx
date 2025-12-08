@@ -18,6 +18,7 @@ interface LeadDetailPanelProps {
 interface ChatMessage {
   sender: 'user' | 'bot';
   text: string;
+  tipo?: 'repulse'; // Identificador especial para mensajes de Repulse
 }
 
 // Parse historial text into chat messages
@@ -31,6 +32,7 @@ function parseMessages(historial: string | null): ChatMessage[] {
       return parsed.map((msg: any): ChatMessage => ({
         sender: (msg.sender === 'user' || msg.role === 'user' ? 'user' : 'bot') as 'user' | 'bot',
         text: msg.text || msg.content || msg.message || '',
+        tipo: msg.tipo === 'repulse' ? 'repulse' : undefined, // Preservar tipo repulse
       })).filter(msg => msg.text.trim() !== '');
     }
   } catch {
@@ -431,11 +433,18 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
                             >
                               <div
                                 className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
-                                  message.sender === 'user'
+                                  message.tipo === 'repulse'
+                                    ? 'bg-purple-500 text-white'
+                                    : message.sender === 'user'
                                     ? 'bg-white text-gray-900'
                                     : 'bg-primary text-white'
                                 }`}
                               >
+                                {message.tipo === 'repulse' && (
+                                  <span className="inline-block bg-purple-700 text-white text-xs px-1.5 py-0.5 rounded mb-1">
+                                    Repulse
+                                  </span>
+                                )}
                                 <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
                               </div>
                             </div>
@@ -478,11 +487,18 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
                             >
                               <div
                                 className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
-                                  message.sender === 'user'
+                                  message.tipo === 'repulse'
+                                    ? 'bg-purple-500 text-white'
+                                    : message.sender === 'user'
                                     ? 'bg-white text-gray-900'
                                     : 'bg-primary text-white'
                                 }`}
                               >
+                                {message.tipo === 'repulse' && (
+                                  <span className="inline-block bg-purple-700 text-white text-xs px-1.5 py-0.5 rounded mb-1">
+                                    Repulse
+                                  </span>
+                                )}
                                 <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
                               </div>
                             </div>
