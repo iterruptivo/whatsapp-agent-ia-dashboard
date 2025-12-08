@@ -787,7 +787,7 @@ export default function FichaInscripcionModal({
         proyectoNombre: local.proyecto_nombre || '',
         metraje: local.metraje || 0,
         precioBase: local.precio_base,
-        leadId: leadData.lead_id || '',
+        // leadId eliminado - control_pagos usa snapshots (leadNombre, leadTelefono)
         leadNombre: leadData.nombre || '',
         leadTelefono: leadData.telefono || '',
         montoVenta,

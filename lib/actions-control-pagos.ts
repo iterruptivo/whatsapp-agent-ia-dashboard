@@ -24,8 +24,7 @@ export interface ProcesarVentaData {
   metraje: number;
   precioBase?: number | null; // SESIÓN 57: Precio base del local (opcional)
 
-  // Datos del cliente
-  leadId: string;
+  // Datos del cliente (snapshots, NO FK)
   leadNombre: string;
   leadTelefono: string;
 
@@ -59,7 +58,7 @@ export interface ControlPago {
   proyecto_nombre: string;
   metraje: number;
   precio_base: number | null; // SESIÓN 57: Precio base del local (puede ser null)
-  lead_id: string | null;
+  // lead_id fue eliminado de la tabla en Sesión 65 (snapshots en lugar de FK)
   lead_nombre: string;
   lead_telefono: string;
   monto_venta: number;
@@ -169,7 +168,7 @@ export async function procesarVentaLocal(data: ProcesarVentaData) {
         proyecto_nombre: data.proyectoNombre,
         metraje: data.metraje,
         precio_base: data.precioBase ?? null, // SESIÓN 57: Snapshot precio_base (puede ser null)
-        lead_id: data.leadId,
+        // lead_id eliminado en Sesión 65 - usamos snapshots (lead_nombre, lead_telefono)
         lead_nombre: data.leadNombre,
         lead_telefono: data.leadTelefono,
         monto_venta: data.montoVenta,
