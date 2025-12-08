@@ -1169,7 +1169,11 @@ export default function FichaInscripcionModal({
       previewWindow.document.write(finalHtml);
       previewWindow.document.close();
       // Establecer título del documento (nombre sugerido al imprimir/guardar PDF)
-      previewWindow.document.title = `Ficha_Inscripcion_${local.codigo}`;
+      // Formato: FICHA-INSCRIPCION-CODLOCAL-YYYYMMDD-HHMMSS
+      const now = new Date();
+      const fecha = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+      const hora = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+      previewWindow.document.title = `FICHA-INSCRIPCION-${local.codigo}-${fecha}-${hora}`;
     }
   };
 
