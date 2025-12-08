@@ -513,70 +513,56 @@ Meta WhatsApp Cloud API tiene un **límite de 250 mensajes business-initiated po
 
 ### Implementación Técnica
 
-#### 1. Tabla de Quota en Supabase
+#### Decisión de Diseño: Usar `repulse_historial` (NO crear tabla nueva)
+
+> **Análisis:** La tabla `/operativo` (específicamente `repulse_historial`) ya tiene toda la información necesaria para calcular la quota diaria. Crear `whatsapp_quota_diaria` sería redundante y podría desincronizarse.
+
+**Ventajas de usar `repulse_historial`:**
+| Aspecto | Tabla nueva (descartada) | `repulse_historial` (elegido) |
+|---------|--------------------------|-------------------------------|
+| Mantenimiento | Tabla adicional | Ya existe |
+| Historial | Solo contadores | Detalle de cada envío |
+| Single source of truth | Puede desincronizar | Es la fuente real |
+| Complejidad n8n | 2 calls por envío | Ya hace INSERT |
+
+#### 1. Función para Obtener Quota (usando historial existente)
 
 ```sql
-CREATE TABLE whatsapp_quota_diaria (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  fecha DATE NOT NULL DEFAULT CURRENT_DATE,
-  mensajes_enviados INTEGER DEFAULT 0,
-  limite_diario INTEGER DEFAULT 250,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(fecha)
-);
-
--- Función para incrementar contador (llamada desde n8n)
-CREATE OR REPLACE FUNCTION incrementar_quota_whatsapp()
+-- Función para obtener quota disponible del día
+-- Cuenta los mensajes ya enviados HOY en repulse_historial
+CREATE OR REPLACE FUNCTION get_quota_disponible_repulse(p_limite INTEGER DEFAULT 250)
 RETURNS INTEGER AS $$
 DECLARE
   v_enviados INTEGER;
 BEGIN
-  INSERT INTO whatsapp_quota_diaria (fecha, mensajes_enviados)
-  VALUES (CURRENT_DATE, 1)
-  ON CONFLICT (fecha)
-  DO UPDATE SET
-    mensajes_enviados = whatsapp_quota_diaria.mensajes_enviados + 1,
-    updated_at = NOW();
+  SELECT COUNT(*)::INTEGER INTO v_enviados
+  FROM repulse_historial
+  WHERE enviado_at >= CURRENT_DATE
+    AND enviado_at < CURRENT_DATE + INTERVAL '1 day';
 
-  SELECT mensajes_enviados INTO v_enviados
-  FROM whatsapp_quota_diaria
-  WHERE fecha = CURRENT_DATE;
-
-  RETURN v_enviados;
+  RETURN GREATEST(0, p_limite - COALESCE(v_enviados, 0));
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql STABLE;
 
--- Función para obtener quota disponible
-CREATE OR REPLACE FUNCTION get_quota_disponible()
+-- Función para obtener conteo de mensajes del día (para widget)
+CREATE OR REPLACE FUNCTION get_mensajes_enviados_hoy()
 RETURNS INTEGER AS $$
-DECLARE
-  v_enviados INTEGER;
-  v_limite INTEGER := 250;
-BEGIN
-  SELECT COALESCE(mensajes_enviados, 0) INTO v_enviados
-  FROM whatsapp_quota_diaria
-  WHERE fecha = CURRENT_DATE;
-
-  IF v_enviados IS NULL THEN
-    RETURN v_limite;
-  END IF;
-
-  RETURN GREATEST(0, v_limite - v_enviados);
-END;
-$$ LANGUAGE plpgsql;
+  SELECT COUNT(*)::INTEGER
+  FROM repulse_historial
+  WHERE enviado_at >= CURRENT_DATE
+    AND enviado_at < CURRENT_DATE + INTERVAL '1 day';
+$$ LANGUAGE sql STABLE;
 ```
 
-#### 2. Modificación en n8n (todos los flujos de envío)
+#### 2. n8n NO necesita modificación adicional
 
-Después de cada envío exitoso de WhatsApp, agregar nodo:
+El flujo actual de Repulse **ya hace INSERT en `repulse_historial`** después de cada envío. Esto es suficiente para el tracking:
 
 ```
-[Enviar WhatsApp] → [HTTP Request: POST Supabase RPC]
-                         │
-                         ▼
-                    incrementar_quota_whatsapp()
+[Enviar WhatsApp] → [INSERT repulse_historial] ← Ya existe, no cambiar
 ```
+
+**Beneficio:** No hay riesgo de desincronización porque `repulse_historial` ES la fuente de verdad.
 
 #### 3. Cron Job para Envío Automático Nocturno (11:00 PM)
 
@@ -600,7 +586,7 @@ SELECT cron.schedule(
 [Webhook Trigger: repulse-auto-noche]
       │
       ▼
-[Supabase RPC: get_quota_disponible()] → quota_restante
+[Supabase RPC: get_quota_disponible_repulse(250)] → quota_restante
       │
       ▼
 [IF quota_restante > 0]
@@ -615,12 +601,13 @@ SELECT cron.schedule(
 [Loop: Para cada lead]
       │
       ├── [Enviar WhatsApp con mensaje de Repulse]
-      ├── [incrementar_quota_whatsapp()]
-      └── [UPDATE repulse_leads SET estado = 'enviado']
+      └── [INSERT repulse_historial + UPDATE repulse_leads] ← Ya existe en flujo actual
       │
       ▼
 [Log resultados]
 ```
+
+**Nota:** No se necesita llamar `incrementar_quota_whatsapp()` separadamente porque el INSERT en `repulse_historial` ya actúa como contador automático.
 
 #### 5. Indicador en Dashboard (Opcional)
 
@@ -654,32 +641,34 @@ En `/repulse`, mostrar widget con quota del día:
 - ✅ **Tracking en tiempo real** desde dashboard
 - ✅ **Previene penalizaciones de Meta** por exceder límite
 
-### Archivos a Crear/Modificar
+### Archivos a Crear/Modificar (SIMPLIFICADO)
 
 | Archivo | Acción |
 |---------|--------|
-| `supabase/migrations/YYYYMMDD_create_whatsapp_quota.sql` | Crear tabla + funciones |
-| `lib/actions-whatsapp-quota.ts` | Server actions para quota |
+| `supabase/migrations/YYYYMMDD_quota_functions.sql` | Solo funciones (NO tabla nueva) |
+| `lib/actions-repulse.ts` | Agregar `getQuotaDisponible()` |
 | `components/repulse/WhatsAppQuotaWidget.tsx` | Widget indicador (opcional) |
-| n8n: Todos los flujos de envío | Agregar nodo incrementar_quota |
 | n8n: `repulse-auto-noche` | Nuevo flujo completo |
 
-### Estimación de Implementación
+**¿Por qué NO se modifica n8n existente?** El flujo de Repulse ya hace INSERT en `repulse_historial`, que es exactamente lo que necesitamos para tracking. Zero cambios a flujos existentes.
+
+### Estimación de Implementación (REDUCIDA)
 
 | Fase | Descripción | Tiempo estimado |
 |------|-------------|-----------------|
-| 1 | Crear tabla y funciones SQL | 30 min |
-| 2 | Modificar flujos n8n existentes | 1 hora |
+| 1 | Crear funciones SQL (sin tabla) | 15 min |
+| 2 | ~~Modificar flujos n8n existentes~~ | ~~1 hora~~ **0 min** |
 | 3 | Crear flujo n8n repulse-auto-noche | 1 hora |
 | 4 | Widget indicador en dashboard | 30 min |
-| 5 | Testing end-to-end | 1 hora |
-| **Total** | | **~4 horas** |
+| 5 | Testing end-to-end | 30 min |
+| **Total** | | **~2.5 horas** |
 
 ### Notas Adicionales
 
 - El límite de 250 se puede aumentar verificando la cuenta Meta Business (1K → 10K → 100K → ilimitado)
-- Si se verifica la cuenta, solo cambiar el valor en `limite_diario` de la tabla
+- Si se verifica la cuenta, solo cambiar el parámetro en `get_quota_disponible_repulse(nuevo_limite)`
 - Considerar agregar alertas cuando la quota está al 80% (200 mensajes)
+- **Historial completo:** `repulse_historial` guarda CADA envío con fecha, mensaje, lead, proyecto - perfecto para analytics
 
 ---
 
