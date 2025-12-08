@@ -1,19 +1,34 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Save, Loader2, Plus, Trash2, Eye } from 'lucide-react';
+import { X, Save, Loader2, Plus, Trash2, Eye, Calendar } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario, getUsuarioById } from '@/lib/actions-clientes-ficha';
 import { getProyectoConfiguracion, getProyectoLegalData } from '@/lib/proyecto-config';
+import { procesarVentaLocal } from '@/lib/actions-control-pagos';
+import { useAuth } from '@/lib/auth-context';
 import PhoneInputCustom from '@/components/shared/PhoneInputCustom';
 import AlertModal from '@/components/shared/AlertModal';
+import ConfirmModal from '@/components/shared/ConfirmModal';
 import DocumentUploader from '@/components/shared/DocumentUploader';
 
 interface FichaInscripcionModalProps {
   isOpen: boolean;
   onClose: () => void;
   local: Local | null;
+  mode?: 'ficha' | 'procesar'; // 'ficha' = solo guardar, 'procesar' = guardar + enviar a control-pagos
+}
+
+// Interface para calendario de cuotas (compatible con procesarVentaLocal)
+interface CuotaCalendarioControlPagos {
+  numero: number;
+  fecha: string; // YYYY-MM-DD
+  monto?: number; // Sin financiamiento
+  interes?: number; // Con financiamiento
+  amortizacion?: number; // Con financiamiento
+  cuota?: number; // Con financiamiento
+  saldo?: number; // Con financiamiento
 }
 
 const TIPOS_DOCUMENTO = ['DNI', 'CE', 'Pasaporte'];
@@ -43,9 +58,18 @@ export default function FichaInscripcionModal({
   isOpen,
   onClose,
   local,
+  mode = 'ficha', // Default: solo guardar ficha
 }: FichaInscripcionModalProps) {
+  // Auth hook para obtener usuario actual (procesadoPor en control-pagos)
+  const { user } = useAuth();
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // Estados para mode='procesar' (enviar a control-pagos)
+  const [calendarioCuotas, setCalendarioCuotas] = useState<CuotaCalendarioControlPagos[]>([]);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [leadData, setLeadData] = useState<{ nombre: string; telefono: string; lead_id: string | null; email: string; rubro: string }>({ nombre: '', telefono: '', lead_id: null, email: '', rubro: '' });
 
   // Datos del asesor (vendedor que confirmó NARANJA)
@@ -164,6 +188,7 @@ export default function FichaInscripcionModal({
       // RESET: Limpiar todos los estados antes de cargar datos del nuevo local
       setLeadData({ nombre: '', telefono: '', lead_id: null, email: '', rubro: '' });
       setAsesorData({ nombre: '', email: '' });
+      setCalendarioCuotas([]); // Reset calendario para mode='procesar'
       setFormData({
         local_id: '',
         titular_nombres: '',
@@ -495,6 +520,106 @@ export default function FichaInscripcionModal({
     return { isValid: true, message: '' };
   };
 
+  // ============================================================================
+  // FUNCIONES PARA CALENDARIO DE CUOTAS (mode='procesar')
+  // ============================================================================
+
+  // Calcular fecha de cada cuota (evitando problemas de timezone)
+  const calcularFechaCuota = (fechaPagoInicial: string, numeroCuota: number): string => {
+    // Parsear fecha manualmente para evitar problemas de timezone
+    const [año, mes, dia] = fechaPagoInicial.split('-').map(Number);
+    const diaOriginal = dia;
+
+    // Calcular año y mes destino (mes en JS es 0-indexed)
+    const mesInicial = mes - 1; // Convertir a 0-indexed
+    const mesDestino = mesInicial + numeroCuota;
+
+    const añoDestino = año + Math.floor(mesDestino / 12);
+    const mesDestinoFinal = mesDestino % 12;
+
+    // Obtener último día del mes destino
+    const ultimoDiaMes = new Date(añoDestino, mesDestinoFinal + 1, 0).getDate();
+
+    // Usar el menor entre el día original y el último día del mes
+    const diaFinal = Math.min(diaOriginal, ultimoDiaMes);
+
+    // Formatear fecha resultado
+    const fechaResultado = `${añoDestino}-${String(mesDestinoFinal + 1).padStart(2, '0')}-${String(diaFinal).padStart(2, '0')}`;
+    return fechaResultado;
+  };
+
+  // Generar calendario de cuotas para control-pagos
+  const generarCalendarioCuotas = () => {
+    const fechaPago = formData.fecha_inicio_pago;
+    const cuotaSeleccionada = formData.numero_cuotas;
+    const montoRestante = formData.saldo_financiar_usd;
+    const conFinanciamiento = formData.modalidad_pago === 'financiado';
+
+    if (!fechaPago || !cuotaSeleccionada || !montoRestante) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Campos requeridos',
+        message: 'Debe ingresar fecha de primer pago, número de cuotas y saldo a financiar.',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    if (conFinanciamiento && teaProyecto > 0) {
+      // CON FINANCIAMIENTO: Sistema Francés con TEA
+      // Convertir TEA a TEM (Tasa Efectiva Mensual)
+      const teaDecimal = teaProyecto / 100;
+      const tem = Math.pow(1 + teaDecimal, 1/12) - 1;
+
+      // Calcular cuota mensual usando fórmula francesa
+      const P = montoRestante;
+      const r = tem;
+      const n = cuotaSeleccionada;
+      const cuotaMensual = P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+
+      const cuotas: CuotaCalendarioControlPagos[] = [];
+      let saldoPendiente = montoRestante;
+
+      for (let i = 0; i < cuotaSeleccionada; i++) {
+        const interes = saldoPendiente * tem;
+        const amortizacion = cuotaMensual - interes;
+        saldoPendiente -= amortizacion;
+        const fecha = calcularFechaCuota(fechaPago, i);
+
+        cuotas.push({
+          numero: i + 1,
+          fecha,
+          interes,
+          amortizacion,
+          cuota: cuotaMensual,
+          saldo: Math.max(0, saldoPendiente)
+        });
+      }
+
+      setCalendarioCuotas(cuotas);
+    } else {
+      // SIN FINANCIAMIENTO: Cuotas iguales sin interés
+      const montoPorCuota = montoRestante / cuotaSeleccionada;
+      const cuotas: CuotaCalendarioControlPagos[] = [];
+
+      for (let i = 0; i < cuotaSeleccionada; i++) {
+        const fecha = calcularFechaCuota(fechaPago, i);
+
+        cuotas.push({
+          numero: i + 1,
+          fecha,
+          monto: montoPorCuota
+        });
+      }
+
+      setCalendarioCuotas(cuotas);
+    }
+  };
+
+  // Fecha mínima (hoy) - usar métodos locales para evitar bug de timezone
+  const hoy = new Date();
+  const fechaMinima = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+
   const handleSave = async () => {
     if (!local) return;
 
@@ -563,6 +688,152 @@ export default function FichaInscripcionModal({
         message: result.message || 'Ocurrió un error al guardar la ficha.',
         variant: 'danger',
       });
+    }
+  };
+
+  // ============================================================================
+  // FUNCIÓN: Guardar Ficha + Procesar a Control de Pagos (mode='procesar')
+  // ============================================================================
+  const handleGuardarProcesar = async () => {
+    if (!local || !user) return;
+
+    // Validación 1: Documentos requeridos
+    const docValidation = validateDocuments();
+    if (!docValidation.isValid) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Documentos requeridos',
+        message: docValidation.message,
+        variant: 'warning',
+      });
+      return;
+    }
+
+    // Validación 2: Calendario de cuotas debe estar generado
+    if (calendarioCuotas.length === 0) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Calendario requerido',
+        message: 'Debe generar el calendario de pagos antes de procesar la venta.',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    // Validación 3: Campos requeridos para control-pagos
+    if (!formData.monto_separacion_usd || !formData.porcentaje_inicial || !formData.numero_cuotas || !formData.fecha_inicio_pago) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Campos requeridos',
+        message: 'Debe completar: Monto Separación, Porcentaje Inicial, N° Cuotas y Fecha de Primer Pago.',
+        variant: 'warning',
+      });
+      return;
+    }
+
+    // Mostrar modal de confirmación
+    setShowConfirmModal(true);
+  };
+
+  // Función que ejecuta el procesamiento después de confirmar
+  const confirmarProcesamiento = async () => {
+    if (!local || !user) return;
+
+    setShowConfirmModal(false);
+    setIsProcessing(true);
+
+    try {
+      // PASO 1: Guardar la ficha en clientes_ficha
+      const result = await upsertClienteFicha({
+        ...formData,
+        local_id: local.id,
+        lead_id: leadData.lead_id,
+        vendedor_id: local.usuario_paso_naranja_id || null,
+      });
+
+      if (!result.success) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Error al guardar ficha',
+          message: result.message || 'No se pudo guardar la ficha de inscripción.',
+          variant: 'danger',
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // PASO 2: Calcular valores para procesar venta
+      const montoVenta = local.monto_venta ?? 0;
+      const montoSeparacion = formData.monto_separacion_usd ?? 0;
+      const porcentajeInicial = formData.porcentaje_inicial ?? 0;
+      const cuotaInicial = (montoVenta * porcentajeInicial) / 100;
+      const inicialRestante = cuotaInicial - montoSeparacion;
+      const saldoFinanciar = montoVenta - cuotaInicial;
+      const conFinanciamiento = formData.modalidad_pago === 'financiado';
+
+      // PASO 3: Preparar datos para procesarVentaLocal
+      const dataProcesar = {
+        localId: local.id,
+        codigoLocal: local.codigo,
+        proyectoId: local.proyecto_id,
+        proyectoNombre: local.proyecto_nombre || '',
+        metraje: local.metraje || 0,
+        precioBase: local.precio_base,
+        leadId: leadData.lead_id || '',
+        leadNombre: leadData.nombre || '',
+        leadTelefono: leadData.telefono || '',
+        montoVenta,
+        montoSeparacion,
+        montoInicial: cuotaInicial,
+        inicialRestante,
+        montoRestante: saldoFinanciar,
+        conFinanciamiento,
+        porcentajeInicial,
+        numeroCuotas: formData.numero_cuotas || 0,
+        tea: conFinanciamiento && teaProyecto > 0 ? teaProyecto : null,
+        fechaPrimerPago: formData.fecha_inicio_pago || '',
+        calendarioCuotas,
+        procesadoPor: user.id,
+        vendedorId: local.usuario_paso_naranja_id || undefined,
+      };
+
+      // PASO 4: Procesar venta
+      const procesarResult = await procesarVentaLocal(dataProcesar);
+
+      if (!procesarResult.success) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Error al procesar venta',
+          message: procesarResult.message || 'No se pudo procesar la venta.',
+          variant: 'danger',
+        });
+        setIsProcessing(false);
+        return;
+      }
+
+      // ÉXITO: Mostrar mensaje y cerrar modal
+      setAlertModal({
+        isOpen: true,
+        title: 'Venta procesada exitosamente',
+        message: 'La ficha ha sido guardada y el local ha sido enviado a Control de Pagos.',
+        variant: 'success',
+      });
+
+      // Recargar página para reflejar cambios
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+
+    } catch (error) {
+      console.error('[FichaModal] Error en confirmarProcesamiento:', error);
+      setAlertModal({
+        isOpen: true,
+        title: 'Error inesperado',
+        message: 'Ocurrió un error al procesar la venta. Intente nuevamente.',
+        variant: 'danger',
+      });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -1630,6 +1901,70 @@ export default function FichaInscripcionModal({
                         placeholder="Detalles del compromiso de pago del cliente..."
                       />
                     </div>
+
+                    {/* Botón Generar Calendario - Solo visible en mode='procesar' */}
+                    {mode === 'procesar' && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          type="button"
+                          onClick={generarCalendarioCuotas}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#192c4d] text-white rounded-lg hover:bg-[#0f1d33] transition-colors font-medium"
+                        >
+                          <Calendar className="w-5 h-5" />
+                          Generar Calendario de Pagos
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Tabla de Calendario Generado - Solo visible si hay cuotas */}
+                    {mode === 'procesar' && calendarioCuotas.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-[#1b967a]" />
+                          Calendario de Cuotas ({calendarioCuotas.length} cuotas)
+                        </h4>
+                        <div className="max-h-64 overflow-y-auto border rounded-lg">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-50 sticky top-0">
+                              <tr>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">N°</th>
+                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Fecha</th>
+                                {formData.modalidad_pago === 'financiado' && teaProyecto > 0 ? (
+                                  <>
+                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Interés</th>
+                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Amort.</th>
+                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Cuota</th>
+                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Saldo</th>
+                                  </>
+                                ) : (
+                                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Monto</th>
+                                )}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                              {calendarioCuotas.map((cuota) => (
+                                <tr key={cuota.numero} className="hover:bg-gray-50">
+                                  <td className="px-3 py-2 text-gray-700">{cuota.numero}</td>
+                                  <td className="px-3 py-2 text-gray-700">
+                                    {new Date(cuota.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                  </td>
+                                  {formData.modalidad_pago === 'financiado' && teaProyecto > 0 ? (
+                                    <>
+                                      <td className="px-3 py-2 text-right text-gray-600">${cuota.interes?.toFixed(2)}</td>
+                                      <td className="px-3 py-2 text-right text-gray-600">${cuota.amortizacion?.toFixed(2)}</td>
+                                      <td className="px-3 py-2 text-right font-medium text-gray-800">${cuota.cuota?.toFixed(2)}</td>
+                                      <td className="px-3 py-2 text-right text-gray-500">${cuota.saldo?.toFixed(2)}</td>
+                                    </>
+                                  ) : (
+                                    <td className="px-3 py-2 text-right font-medium text-gray-800">${cuota.monto?.toFixed(2)}</td>
+                                  )}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -2059,14 +2394,27 @@ export default function FichaInscripcionModal({
               <Eye className="w-4 h-4" />
               Vista Previa
             </button>
-            <button
-              onClick={handleSave}
-              disabled={saving || loading}
-              className="px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a64] transition-colors flex items-center gap-2 disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {saving ? 'Guardando...' : 'Guardar'}
-            </button>
+
+            {/* Botón condicional según mode */}
+            {mode === 'procesar' ? (
+              <button
+                onClick={handleGuardarProcesar}
+                disabled={saving || loading || isProcessing || calendarioCuotas.length === 0}
+                className="px-4 py-2 bg-[#192c4d] text-white rounded-lg hover:bg-[#0f1d33] transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {isProcessing ? 'Procesando...' : 'Guardar / Procesar'}
+              </button>
+            ) : (
+              <button
+                onClick={handleSave}
+                disabled={saving || loading}
+                className="px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a64] transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? 'Guardando...' : 'Guardar'}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -2084,6 +2432,18 @@ export default function FichaInscripcionModal({
         title={alertModal.title}
         message={alertModal.message}
         variant={alertModal.variant}
+      />
+
+      {/* ConfirmModal para confirmar procesamiento a control-pagos */}
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onConfirm={confirmarProcesamiento}
+        onCancel={() => setShowConfirmModal(false)}
+        title="Confirmar procesamiento"
+        message={`¿Está seguro de procesar la venta del local ${local?.codigo || ''}? Esto guardará la ficha de inscripción y enviará el local a Control de Pagos.`}
+        confirmText="Sí, procesar"
+        cancelText="Cancelar"
+        variant="warning"
       />
     </div>
   );

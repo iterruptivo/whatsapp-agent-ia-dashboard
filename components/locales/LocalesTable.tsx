@@ -121,12 +121,15 @@ export default function LocalesTable({
   });
 
   // SESIÓN 65: State para modal de ficha de inscripción
+  // SESIÓN 66: Agregado mode para soportar 'ficha' (solo guardar) y 'procesar' (guardar + control-pagos)
   const [fichaModal, setFichaModal] = useState<{
     isOpen: boolean;
     local: Local | null;
+    mode: 'ficha' | 'procesar';
   }>({
     isOpen: false,
     local: null,
+    mode: 'ficha',
   });
 
   // OPT: Timer ahora usa componente separado (TimerCountdown) que se re-renderiza solo
@@ -752,6 +755,7 @@ export default function LocalesTable({
   };
 
   // ====== SESIÓN 52C: HELPER - Render Link "Iniciar Registro de Venta" ======
+  // SESIÓN 66: Cambiado para abrir FichaInscripcionModal con mode='procesar'
   const handleIniciarRegistroVenta = (local: Local) => {
     // SESIÓN 52D: Verificar si faltan los datos necesarios
     // Si el vendedor pasó el local a NARANJA, estos 3 campos ya están completos
@@ -762,8 +766,9 @@ export default function LocalesTable({
       // Faltan datos → Abrir modal de captura de datos previos
       setDatosModal({ isOpen: true, local });
     } else {
-      // Datos completos → Abrir modal de financiamiento directamente
-      setFinanciamientoModal({ isOpen: true, local });
+      // SESIÓN 66: Datos completos → Abrir FichaInscripcionModal con mode='procesar'
+      // Esto permite llenar ficha de inscripción + procesar a control-pagos en un solo flujo
+      setFichaModal({ isOpen: true, local, mode: 'procesar' });
     }
   };
 
@@ -796,12 +801,13 @@ export default function LocalesTable({
   };
 
   // ====== SESIÓN 52C: HANDLER - Callback onSuccess de DatosModal ======
+  // SESIÓN 66: Cambiado para abrir FichaModal con mode='procesar' en vez de FinanciamientoModal
   const handleDatosSuccess = (updatedLocal: Local) => {
     // Cerrar modal de datos
     setDatosModal({ isOpen: false, local: null });
 
-    // Abrir modal de financiamiento con local actualizado
-    setFinanciamientoModal({ isOpen: true, local: updatedLocal });
+    // SESIÓN 66: Abrir FichaInscripcionModal con mode='procesar'
+    setFichaModal({ isOpen: true, local: updatedLocal, mode: 'procesar' });
 
     // TODO: Refresh de la tabla se hará con revalidatePath en server action
   };
@@ -1175,10 +1181,12 @@ export default function LocalesTable({
       />
 
       {/* SESIÓN 65: Modal Ficha de Inscripción */}
+      {/* SESIÓN 66: Agregado mode para soportar 'procesar' (guardar + control-pagos) */}
       <FichaInscripcionModal
         isOpen={fichaModal.isOpen}
         local={fichaModal.local}
-        onClose={() => setFichaModal({ isOpen: false, local: null })}
+        mode={fichaModal.mode}
+        onClose={() => setFichaModal({ isOpen: false, local: null, mode: 'ficha' })}
       />
 
       {/* SESIÓN 56: Modal Confirmación Precio Base */}
