@@ -502,47 +502,68 @@ async function inyectarMensajeEnHistorial(
       return; // No bloqueamos el envío si falla la inyección
     }
 
-    // 2. Crear el objeto mensaje con formato compatible con parseMessages()
-    const mensajeRepulse = {
-      sender: 'Repulse',
-      text: mensaje,
-      tipo: 'repulse',
-      timestamp: new Date().toISOString(),
-    };
+    // 2. Crear el mensaje en formato texto plano (compatible con parseMessages)
+    const timestamp = new Date().toLocaleString('es-PE', {
+      timeZone: 'America/Lima',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    const mensajeTextoRepulse = `\n[REPULSE ${timestamp}]: ${mensaje}`;
 
-    // 3. Actualizar historial_reciente (array JSON)
-    let historialReciente: any[] = [];
-    if (lead.historial_reciente) {
-      try {
-        historialReciente = JSON.parse(lead.historial_reciente);
-        if (!Array.isArray(historialReciente)) {
-          historialReciente = [];
-        }
-      } catch {
-        historialReciente = [];
-      }
-    }
-    historialReciente.push(mensajeRepulse);
+    // 3. APPEND al historial_reciente existente (preservando formato original)
+    // El historial puede ser JSON array o texto plano - simplemente agregamos al final
+    let nuevoHistorialReciente = lead.historial_reciente || '';
 
-    // 4. Actualizar historial_conversacion (array JSON)
-    let historialCompleto: any[] = [];
-    if (lead.historial_conversacion) {
-      try {
-        const parsed = JSON.parse(lead.historial_conversacion);
-        historialCompleto = Array.isArray(parsed) ? parsed : [];
-      } catch {
-        historialCompleto = [];
+    // Si es JSON array, intentamos agregar como objeto
+    try {
+      const parsed = JSON.parse(nuevoHistorialReciente);
+      if (Array.isArray(parsed)) {
+        parsed.push({
+          sender: 'Repulse',
+          text: mensaje,
+          tipo: 'repulse',
+          timestamp: new Date().toISOString(),
+        });
+        nuevoHistorialReciente = JSON.stringify(parsed);
+      } else {
+        // No es array, tratar como texto y agregar al final
+        nuevoHistorialReciente = nuevoHistorialReciente + mensajeTextoRepulse;
       }
+    } catch {
+      // No es JSON válido, es texto plano - agregar al final
+      nuevoHistorialReciente = nuevoHistorialReciente + mensajeTextoRepulse;
     }
-    historialCompleto.push(mensajeRepulse);
+
+    // 4. APPEND al historial_conversacion existente (preservando formato original)
+    let nuevoHistorialCompleto = lead.historial_conversacion || '';
+
+    try {
+      const parsed = JSON.parse(nuevoHistorialCompleto);
+      if (Array.isArray(parsed)) {
+        parsed.push({
+          sender: 'Repulse',
+          text: mensaje,
+          tipo: 'repulse',
+          timestamp: new Date().toISOString(),
+        });
+        nuevoHistorialCompleto = JSON.stringify(parsed);
+      } else {
+        nuevoHistorialCompleto = nuevoHistorialCompleto + mensajeTextoRepulse;
+      }
+    } catch {
+      nuevoHistorialCompleto = nuevoHistorialCompleto + mensajeTextoRepulse;
+    }
 
     // 5. UPDATE en tabla leads
     const { error: errorUpdate } = await supabase
       .from('leads')
       .update({
-        historial_reciente: JSON.stringify(historialReciente),
-        historial_conversacion: JSON.stringify(historialCompleto),
-        ultimo_mensaje: mensaje,
+        historial_reciente: nuevoHistorialReciente,
+        historial_conversacion: nuevoHistorialCompleto,
+        ultimo_mensaje: `[REPULSE]: ${mensaje}`,
       })
       .eq('id', leadId);
 

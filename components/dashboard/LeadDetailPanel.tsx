@@ -49,6 +49,14 @@ function parseMessages(historial: string | null): ChatMessage[] {
     const trimmedLine = line.trim();
     if (!trimmedLine) continue;
 
+    // Check for REPULSE messages first (formato: [REPULSE DD/MM/YYYY, HH:MM]: mensaje)
+    const repulseMatch = trimmedLine.match(/^\[REPULSE[^\]]*\]:\s*(.+)/i);
+    if (repulseMatch) {
+      if (currentMessage) messages.push(currentMessage);
+      currentMessage = { sender: 'bot', text: repulseMatch[1], tipo: 'repulse' };
+      continue;
+    }
+
     // Check for sender prefixes (case insensitive)
     const userMatch = trimmedLine.match(/^(Usuario|User|Cliente):\s*(.+)/i);
     const botMatch = trimmedLine.match(/^(Noa|Victoria|Bot|Asistente|Assistant|AgenteIA):\s*(.+)/i);
