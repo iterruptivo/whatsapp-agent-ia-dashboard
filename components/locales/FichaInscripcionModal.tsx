@@ -669,7 +669,16 @@ export default function FichaInscripcionModal({
     };
 
     // Mapa de placeholders a valores
+    // Generar nombre de archivo PDF con timestamp
+    const now = new Date();
+    const fecha = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const hora = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    const pdfFilename = `FICHA-INSCRIPCION-${local.codigo}-${fecha}-${hora}`;
+
     const placeholders: Record<string, string> = {
+      // PDF Filename
+      'PDF_FILENAME': pdfFilename,
+
       // Proyecto
       'PROYECTO_NOMBRE': local.proyecto_nombre || '-',
       'CODIGO_LOCAL': local.codigo || '-',
@@ -845,7 +854,8 @@ export default function FichaInscripcionModal({
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Ficha de Inscripción - {{PROYECTO_NOMBRE}}</title>
+  <title>{{PDF_FILENAME}}</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: Arial, sans-serif; font-size: 12px; line-height: 1.4; color: #000; background: #f5f5f5; padding: 20px; }
@@ -900,9 +910,30 @@ export default function FichaInscripcionModal({
 </head>
 <body>
   <div class="print-toolbar">
-    <button class="btn-print" onclick="window.print()">Imprimir Ficha PDF</button>
+    <button class="btn-print" id="btn-download">Descargar PDF</button>
+    <button class="btn-print" onclick="window.print()">Imprimir</button>
     <button class="btn-close" onclick="window.close()">Cerrar Vista Previa</button>
   </div>
+  <script>
+    document.getElementById('btn-download').addEventListener('click', function() {
+      const element = document.querySelector('.ficha-container');
+      const filename = '{{PDF_FILENAME}}.pdf';
+      const opt = {
+        margin: 10,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      };
+      this.textContent = 'Generando...';
+      this.disabled = true;
+      html2pdf().set(opt).from(element).save().then(() => {
+        this.textContent = 'Descargar PDF';
+        this.disabled = false;
+      });
+    });
+  </script>
   <div class="ficha-container">
     <header class="ficha-header">
       <div class="logo-container">
@@ -1168,12 +1199,6 @@ export default function FichaInscripcionModal({
     if (previewWindow) {
       previewWindow.document.write(finalHtml);
       previewWindow.document.close();
-      // Establecer título del documento (nombre sugerido al imprimir/guardar PDF)
-      // Formato: FICHA-INSCRIPCION-CODLOCAL-YYYYMMDD-HHMMSS
-      const now = new Date();
-      const fecha = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-      const hora = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
-      previewWindow.document.title = `FICHA-INSCRIPCION-${local.codigo}-${fecha}-${hora}`;
     }
   };
 
