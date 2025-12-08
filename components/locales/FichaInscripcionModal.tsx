@@ -495,26 +495,16 @@ export default function FichaInscripcionModal({
   };
 
   // Helper para validar documentos requeridos
+  // Nueva regla: al menos 1 documento adjunto en total (DNI o comprobante)
   const validateDocuments = (): { isValid: boolean; message: string } => {
     const dniFotos = formData.dni_fotos || [];
     const comprobanteFotos = formData.comprobante_deposito_fotos || [];
+    const totalDocumentos = dniFotos.length + comprobanteFotos.length;
 
-    if (dniFotos.length === 0 && comprobanteFotos.length === 0) {
+    if (totalDocumentos === 0) {
       return {
         isValid: false,
-        message: 'Debe subir al menos 1 foto del DNI y 1 comprobante de depósito.',
-      };
-    }
-    if (dniFotos.length === 0) {
-      return {
-        isValid: false,
-        message: 'Debe subir al menos 1 foto del DNI (anverso o reverso).',
-      };
-    }
-    if (comprobanteFotos.length === 0) {
-      return {
-        isValid: false,
-        message: 'Debe subir al menos 1 imagen del comprobante de depósito.',
+        message: 'Debe subir al menos 1 documento adjunto (foto de DNI o comprobante de depósito).',
       };
     }
     return { isValid: true, message: '' };
@@ -2308,7 +2298,7 @@ export default function FichaInscripcionModal({
                   DOCUMENTOS ADJUNTOS (REQUERIDOS)
                 </h3>
                 <p className="text-xs text-gray-500 mb-4">
-                  Suba las imágenes requeridas. Se requiere mínimo 1 imagen de cada tipo para poder guardar o ver la vista previa.
+                  Suba al menos 1 documento adjunto (foto de DNI o comprobante de depósito) para poder guardar o ver la vista previa.
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <DocumentUploader
@@ -2320,7 +2310,6 @@ export default function FichaInscripcionModal({
                     localId={local?.id || ''}
                     folder="dni"
                     disabled={loading}
-                    required={true}
                   />
                   <DocumentUploader
                     title="Comprobante de Depósito"
@@ -2331,7 +2320,6 @@ export default function FichaInscripcionModal({
                     localId={local?.id || ''}
                     folder="comprobante"
                     disabled={loading}
-                    required={true}
                   />
                 </div>
               </div>
