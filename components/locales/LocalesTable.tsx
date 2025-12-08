@@ -1086,9 +1086,10 @@ export default function LocalesTable({
                       {/* OPT: Componente separado para timer (solo se re-renderiza él, no toda la tabla) */}
                       {local.estado === 'naranja' && <TimerCountdown naranjaTimestamp={local.naranja_timestamp} />}
                       {/* SESIÓN 65: Enlace para iniciar ficha de inscripción (solo en NARANJA con timer activo) */}
+                      {/* SESIÓN 66: Agregado mode='ficha' para solo guardar (no procesar a control-pagos) */}
                       {local.estado === 'naranja' && local.naranja_timestamp && (
                         <button
-                          onClick={() => setFichaModal({ isOpen: true, local })}
+                          onClick={() => setFichaModal({ isOpen: true, local, mode: 'ficha' })}
                           className="mt-1 flex items-center gap-1 text-xs font-medium text-white bg-[#1b967a] rounded px-2 py-0.5 hover:bg-[#157a64] transition-colors"
                         >
                           <FileText className="w-3 h-3" />
