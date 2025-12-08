@@ -29,10 +29,12 @@ import {
 import {
   type RepulseLead,
   type RepulseTemplate,
+  type QuotaInfo,
   removeLeadFromRepulse,
   excluirLeadDeRepulse,
   prepararEnvioRepulseBatch,
 } from '@/lib/actions-repulse';
+import Tooltip from '@/components/shared/Tooltip';
 import RepulseTemplateModal from './RepulseTemplateModal';
 import RepulseEnvioModal from './RepulseEnvioModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
@@ -48,6 +50,7 @@ interface RepulseClientProps {
     sinRespuesta: number;
     excluidos: number;
   };
+  initialQuota: QuotaInfo;
   proyectoId: string;
   userId: string;
   onRefresh: () => void;
@@ -57,6 +60,7 @@ export default function RepulseClient({
   initialLeads,
   initialTemplates,
   initialStats,
+  initialQuota,
   proyectoId,
   userId,
   onRefresh,
@@ -64,6 +68,7 @@ export default function RepulseClient({
   const [leads, setLeads] = useState(initialLeads);
   const [templates, setTemplates] = useState(initialTemplates);
   const [stats, setStats] = useState(initialStats);
+  const [quota] = useState(initialQuota);
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFilter, setEstadoFilter] = useState<string>('todos');
@@ -322,14 +327,35 @@ export default function RepulseClient({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2">
-            <button
-              onClick={onRefresh}
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Actualizar
-            </button>
+          <div className="flex gap-2 items-end">
+            {/* Quota Badge + Actualizar */}
+            <div className="flex flex-col items-center gap-1">
+              {/* Quota Badge */}
+              <Tooltip
+                text={`Leads de campaña hoy: ${quota.leadsHoy} | Disponible para Repulse: ${quota.disponible} | Límite diario Meta: ${quota.limite}`}
+              >
+                <div
+                  className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium cursor-help ${
+                    quota.porcentajeUsado >= 80
+                      ? 'bg-red-100 text-red-700'
+                      : quota.porcentajeUsado >= 50
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-green-100 text-green-700'
+                  }`}
+                >
+                  <span>Quota: {quota.disponible}/{quota.limite}</span>
+                  <Info className="w-3 h-3" />
+                </div>
+              </Tooltip>
+              {/* Botón Actualizar */}
+              <button
+                onClick={onRefresh}
+                className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Actualizar
+              </button>
+            </div>
 
             <button
               onClick={() => setShowTemplateModal(true)}

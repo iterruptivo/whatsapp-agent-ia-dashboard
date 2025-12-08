@@ -915,3 +915,56 @@ export async function getLeadsCandidatosRepulse(
     (lead) => !leadIdsConCompra.has(lead.id) && !leadIdsEnRepulse.has(lead.id)
   );
 }
+
+// ============================================================================
+// QUOTA WHATSAPP
+// ============================================================================
+
+export interface QuotaInfo {
+  leadsHoy: number;
+  limite: number;
+  disponible: number;
+  porcentajeUsado: number;
+}
+
+/**
+ * Obtener información de quota de WhatsApp del día
+ * Cuenta leads de campaña (estado != 'lead_manual') creados hoy
+ * Estos son los que consumieron mensajes de Victoria
+ */
+export async function getQuotaWhatsApp(limite: number = 250): Promise<QuotaInfo> {
+  const supabase = await createClient();
+
+  // Obtener fecha de inicio del día en UTC
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayISO = today.toISOString();
+
+  // Contar leads de campaña creados hoy (NO manuales = consumieron quota)
+  const { count, error } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .gte('created_at', todayISO)
+    .neq('estado', 'lead_manual');
+
+  if (error) {
+    console.error('Error fetching quota info:', error);
+    return {
+      leadsHoy: 0,
+      limite,
+      disponible: limite,
+      porcentajeUsado: 0,
+    };
+  }
+
+  const leadsHoy = count || 0;
+  const disponible = Math.max(0, limite - leadsHoy);
+  const porcentajeUsado = Math.round((leadsHoy / limite) * 100);
+
+  return {
+    leadsHoy,
+    limite,
+    disponible,
+    porcentajeUsado,
+  };
+}

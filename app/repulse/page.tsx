@@ -17,8 +17,10 @@ import {
   getRepulseLeads,
   getRepulseTemplates,
   getRepulseStats,
+  getQuotaWhatsApp,
   type RepulseLead,
   type RepulseTemplate,
+  type QuotaInfo,
 } from '@/lib/actions-repulse';
 
 // Roles que tienen acceso a esta página
@@ -36,6 +38,12 @@ export default function RepulsePage() {
     respondieron: 0,
     sinRespuesta: 0,
     excluidos: 0,
+  });
+  const [quota, setQuota] = useState<QuotaInfo>({
+    leadsHoy: 0,
+    limite: 250,
+    disponible: 250,
+    porcentajeUsado: 0,
   });
   const [loadingData, setLoadingData] = useState(true);
 
@@ -66,15 +74,17 @@ export default function RepulsePage() {
 
     setLoadingData(true);
     try {
-      const [leadsData, templatesData, statsData] = await Promise.all([
+      const [leadsData, templatesData, statsData, quotaData] = await Promise.all([
         getRepulseLeads(selectedProyecto.id),
         getRepulseTemplates(selectedProyecto.id),
         getRepulseStats(selectedProyecto.id),
+        getQuotaWhatsApp(),
       ]);
 
       setRepulseLeads(leadsData);
       setTemplates(templatesData);
       setStats(statsData);
+      setQuota(quotaData);
     } catch (error) {
       console.error('Error fetching repulse data:', error);
     } finally {
@@ -114,6 +124,7 @@ export default function RepulsePage() {
             initialLeads={repulseLeads}
             initialTemplates={templates}
             initialStats={stats}
+            initialQuota={quota}
             proyectoId={selectedProyecto?.id || ''}
             userId={user.id}
             onRefresh={fetchData}
