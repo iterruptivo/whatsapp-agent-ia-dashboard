@@ -509,7 +509,7 @@ export default function FichaInscripcionModal({
     if (dniFotos.length === 0) {
       return {
         isValid: false,
-        message: 'Debe subir al menos 1 foto del DNI (anverso o reverso).',
+        message: 'Debe subir al menos 1 foto del DNI (anverso y reverso).',
       };
     }
     if (comprobanteFotos.length === 0) {
