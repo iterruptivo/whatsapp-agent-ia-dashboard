@@ -7,8 +7,8 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 5 Diciembre 2025
-**Sesión:** 65 - 🔄 **Sistema Repulse: Integración /operativo + Exclusiones**
+**Fecha:** 8 Diciembre 2025
+**Sesión:** 65C - 💬 **Sistema Repulse: Inyección de Mensajes en Historial**
 **Estado:** ✅ **COMPLETADO** (branch: `feature/repulse`)
 **Documentación:** Ver [Módulo Repulse](docs/modulos/repulse.md)
 
@@ -80,9 +80,9 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Tecnología: docx-templates para templates Word + HTML templates
 
 - **[Repulse](docs/modulos/repulse.md)** - Sistema de re-engagement de leads
-  - Última sesión: **65 (Integración /operativo + Exclusiones)**
+  - Última sesión: **65C (Inyección Mensajes en Historial)**
   - Estado: EN DESARROLLO (branch: `feature/repulse`)
-  - Features: detección automática (30+ días), envío batch, exclusión permanente
+  - Features: detección automática (30+ días), envío batch, exclusión permanente, historial visible
 
 ---
 
@@ -121,6 +121,7 @@ Documentación cronológica completa de todas las sesiones.
   - **📄 Sistema Generación Documentos (64)** ✅
   - **📄 Template HTML Ficha de Inscripción (64B)** ✅
   - **🔄 Sistema Repulse: Integración /operativo + Exclusiones (65)** ✅
+  - **💬 Sistema Repulse: Inyección Mensajes en Historial (65C)** ✅
 
 ---
 
@@ -168,6 +169,66 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 65C** (8 Dic) - 💬 ✅ **Sistema Repulse: Inyección de Mensajes en Historial**
+**Tipo:** Feature - Integración historial de conversación
+**Estado:** ✅ **COMPLETADO** (branch: `feature/repulse`)
+
+**Objetivo:**
+Hacer que los mensajes de Repulse enviados (individuales o masivos) queden registrados en el historial de conversación de cada lead, visibles en el panel de detalle `/operativo`.
+
+**Implementación en 2 FASES:**
+
+**FASE 1: Backend (lib/actions-repulse.ts)**
+- Nueva función auxiliar `inyectarMensajeEnHistorial()`:
+  - Recibe: `leadId`, `mensaje`
+  - Obtiene historial actual del lead (historial_reciente, historial_conversacion)
+  - Crea objeto mensaje: `{ sender: 'Repulse', text: mensaje, tipo: 'repulse', timestamp: ISO }`
+  - Agrega al array JSON existente (append)
+  - UPDATE en tabla `leads`: historial_reciente, historial_conversacion, ultimo_mensaje
+  - Error handling graceful (no bloquea envío si falla)
+- Modificar `registrarEnvioRepulse()`:
+  - Llamar `await inyectarMensajeEnHistorial(leadId, mensaje)` después de registrar en `repulse_historial`
+  - Inyección NO bloqueante (continúa aunque falle)
+
+**FASE 2: Frontend (components/dashboard/LeadDetailPanel.tsx)**
+- Modificar interface `ChatMessage`:
+  - Agregar campo opcional `tipo?: 'repulse'`
+- Modificar función `parseMessages()`:
+  - Preservar campo `tipo` cuando existe en JSON: `tipo: msg.tipo === 'repulse' ? 'repulse' : undefined`
+- Modificar renderizado de mensajes (ambos dropdowns):
+  - **Historial Reciente:**
+    - Conditional className: `message.tipo === 'repulse' ? 'bg-purple-500 text-white' : ...`
+    - Badge "Repulse" si `tipo === 'repulse'`: `<span className="bg-purple-700 text-white text-xs px-1.5 py-0.5 rounded">Repulse</span>`
+  - **Historial Completo:** Mismo tratamiento
+
+**Características visuales:**
+- Fondo púrpura (`bg-purple-500`) para mensajes de Repulse
+- Badge púrpura oscuro (`bg-purple-700`) con texto "Repulse"
+- Burbuja alineada a la derecha (como mensajes del bot)
+- Compatible con historiales existentes (JSON o text)
+
+**Flujo completo:**
+1. Usuario envía Repulse (individual o batch) desde `/operativo`
+2. `registrarEnvioRepulse()` registra en `repulse_historial`
+3. `inyectarMensajeEnHistorial()` agrega mensaje a historial del lead
+4. Usuario abre panel de detalle del lead
+5. Mensaje de Repulse aparece en "Historial Reciente" y "Historial Completo" con color púrpura
+
+**Archivos modificados:**
+- `lib/actions-repulse.ts` (+77 líneas) - Función auxiliar + llamada en registro
+- `components/dashboard/LeadDetailPanel.tsx` (+20 líneas) - Interface, parsing, renderizado
+
+**Commit:** `0513596`
+
+**Beneficios:**
+- ✅ Trazabilidad completa de mensajes de Repulse
+- ✅ Visualmente distintivo (púrpura vs verde bot)
+- ✅ No rompe historiales existentes
+- ✅ Funciona para envíos individuales y masivos
+- ✅ No bloquea envío si falla la inyección
+
+---
 
 ### **Sesión 63** (30 Nov) - 🛠️ ✅ **Múltiples mejoras UX + Fix timezone**
 **Tipo:** Mejoras de UX + Fixes
