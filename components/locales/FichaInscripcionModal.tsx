@@ -1168,6 +1168,8 @@ export default function FichaInscripcionModal({
     if (previewWindow) {
       previewWindow.document.write(finalHtml);
       previewWindow.document.close();
+      // Establecer título del documento (nombre sugerido al imprimir/guardar PDF)
+      previewWindow.document.title = `Ficha_Inscripcion_${local.codigo}`;
     }
   };
 
