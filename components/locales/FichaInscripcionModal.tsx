@@ -900,11 +900,13 @@ export default function FichaInscripcionModal({
     .print-toolbar .btn-close { background: transparent; color: #fff; border: 2px solid #fff; }
     .print-toolbar .btn-close:hover { background: rgba(255,255,255,0.1); }
     body { padding-top: 70px; }
+    .page-break-before { page-break-before: always; }
     @media print {
       .print-toolbar { display: none; }
       body { padding: 0; background: #fff; }
       .ficha-container { box-shadow: none; max-width: 100%; }
       .section { break-inside: avoid; }
+      .page-break-before { page-break-before: always; }
     }
   </style>
 </head>
@@ -916,15 +918,15 @@ export default function FichaInscripcionModal({
   </div>
   <script>
     document.getElementById('btn-download').addEventListener('click', function() {
-      const element = document.querySelector('.ficha-container');
+      const element = document.getElementById('pdf-content');
       const filename = '{{PDF_FILENAME}}.pdf';
       const opt = {
-        margin: 10,
+        margin: 5,
         filename: filename,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+        pagebreak: { mode: 'css', before: '.page-break-before' }
       };
       this.textContent = 'Generando...';
       this.disabled = true;
@@ -934,6 +936,7 @@ export default function FichaInscripcionModal({
       });
     });
   </script>
+  <div id="pdf-content">
   <div class="ficha-container">
     <header class="ficha-header">
       <div class="logo-container">
@@ -1141,6 +1144,8 @@ export default function FichaInscripcionModal({
       <p style="margin-top: 8px; border-top: 1px solid #ddd; padding-top: 8px;">Documento generado el {{FECHA_GENERACION}} | EcoPlaza Command Center</p>
     </footer>
   </div>
+  <!-- DOCUMENTOS_PLACEHOLDER -->
+  </div><!-- cierre pdf-content -->
 </body>
 </html>`;
 
@@ -1157,16 +1162,16 @@ export default function FichaInscripcionModal({
 
     let documentosHtml = '';
 
-    // Página separada para DNI
+    // Página separada para DNI (con clase para page-break en PDF)
     if (dniFotos.length > 0) {
       documentosHtml += `
-        <div style="page-break-before: always; padding: 40px; min-height: 100vh; display: flex; flex-direction: column;">
+        <div class="page-break-before" style="padding: 40px; min-height: 100vh; display: flex; flex-direction: column; background: #fff;">
           <h2 style="text-align: center; color: #1b967a; margin-bottom: 30px; font-size: 20px; border-bottom: 2px solid #1b967a; padding-bottom: 10px;">
             DOCUMENTO DE IDENTIDAD (DNI)
           </h2>
           <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 30px;">
             ${dniFotos.map((url) => `
-              <img src="${url}" alt="DNI" style="max-width: 90%; max-height: 45vh; border: 1px solid #ddd; border-radius: 8px; object-fit: contain;" />
+              <img src="${url}" alt="DNI" crossorigin="anonymous" style="max-width: 90%; max-height: 45vh; border: 1px solid #ddd; border-radius: 8px; object-fit: contain;" />
             `).join('')}
           </div>
         </div>
@@ -1176,23 +1181,21 @@ export default function FichaInscripcionModal({
     // Página separada para Comprobante de Depósito
     if (comprobanteFotos.length > 0) {
       documentosHtml += `
-        <div style="page-break-before: always; padding: 40px; min-height: 100vh; display: flex; flex-direction: column;">
+        <div class="page-break-before" style="padding: 40px; min-height: 100vh; display: flex; flex-direction: column; background: #fff;">
           <h2 style="text-align: center; color: #1b967a; margin-bottom: 30px; font-size: 20px; border-bottom: 2px solid #1b967a; padding-bottom: 10px;">
             COMPROBANTE DE DEPÓSITO
           </h2>
           <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 30px;">
             ${comprobanteFotos.map((url) => `
-              <img src="${url}" alt="Comprobante" style="max-width: 90%; max-height: 45vh; border: 1px solid #ddd; border-radius: 8px; object-fit: contain;" />
+              <img src="${url}" alt="Comprobante" crossorigin="anonymous" style="max-width: 90%; max-height: 45vh; border: 1px solid #ddd; border-radius: 8px; object-fit: contain;" />
             `).join('')}
           </div>
         </div>
       `;
     }
 
-    // Insertar documentos antes del cierre del body
-    if (documentosHtml) {
-      finalHtml = finalHtml.replace('</body>', `${documentosHtml}</body>`);
-    }
+    // Insertar documentos en el placeholder (dentro de #pdf-content)
+    finalHtml = finalHtml.replace('<!-- DOCUMENTOS_PLACEHOLDER -->', documentosHtml);
 
     // Abrir en nueva ventana
     const previewWindow = window.open('', '_blank', 'width=900,height=800');
