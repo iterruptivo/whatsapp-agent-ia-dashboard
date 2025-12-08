@@ -549,12 +549,12 @@ export default function FichaInscripcionModal({
   };
 
   // ============================================================================
-  // AUTO-GENERAR CALENDARIO (mode='procesar')
+  // AUTO-GENERAR CALENDARIO (ambos modos: 'ficha' y 'procesar')
   // Se regenera automáticamente cuando cambian los datos relevantes
   // ============================================================================
   useEffect(() => {
-    // Solo ejecutar en mode='procesar' y cuando el modal está abierto
-    if (mode !== 'procesar' || !isOpen || loading) return;
+    // Ejecutar cuando el modal está abierto y no está cargando
+    if (!isOpen || loading) return;
 
     const fechaPago = formData.fecha_inicio_pago;
     const cuotaSeleccionada = formData.numero_cuotas;
@@ -614,7 +614,6 @@ export default function FichaInscripcionModal({
       setCalendarioCuotas(cuotas);
     }
   }, [
-    mode,
     isOpen,
     loading,
     formData.fecha_inicio_pago,
@@ -1910,8 +1909,8 @@ export default function FichaInscripcionModal({
                       />
                     </div>
 
-                    {/* Tabla de Calendario Generado - Solo visible si hay cuotas (se genera automáticamente) */}
-                    {mode === 'procesar' && calendarioCuotas.length > 0 && (
+                    {/* Tabla de Calendario Generado - Visible en ambos modos si hay cuotas (se genera automáticamente) */}
+                    {calendarioCuotas.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-[#1b967a]" />
