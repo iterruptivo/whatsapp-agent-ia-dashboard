@@ -8,6 +8,7 @@ import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Coprop
 import { getProyectoConfiguracion, getProyectoLegalData } from '@/lib/proyecto-config';
 import PhoneInputCustom from '@/components/shared/PhoneInputCustom';
 import AlertModal from '@/components/shared/AlertModal';
+import DocumentUploader from '@/components/shared/DocumentUploader';
 
 interface FichaInscripcionModalProps {
   isOpen: boolean;
@@ -148,6 +149,9 @@ export default function FichaInscripcionModal({
     utm_source: '',
     utm_detalle: '',
     observaciones: '',
+    // Documentos adjuntos
+    dni_fotos: [],
+    comprobante_deposito_fotos: [],
     vendedor_id: null,
   });
 
@@ -229,6 +233,8 @@ export default function FichaInscripcionModal({
         utm_source: '',
         utm_detalle: '',
         observaciones: '',
+        dni_fotos: [],
+        comprobante_deposito_fotos: [],
         vendedor_id: null,
       });
 
@@ -346,6 +352,9 @@ export default function FichaInscripcionModal({
           utm_source: existingFicha.utm_source || '',
           utm_detalle: existingFicha.utm_detalle || '',
           observaciones: existingFicha.observaciones || '',
+          // Documentos adjuntos
+          dni_fotos: existingFicha.dni_fotos || [],
+          comprobante_deposito_fotos: existingFicha.comprobante_deposito_fotos || [],
           vendedor_id: existingFicha.vendedor_id,
         });
         // Si la ficha tiene TEA guardada, usarla en vez del default del proyecto
@@ -460,8 +469,46 @@ export default function FichaInscripcionModal({
     handleChange('copropietarios', updated);
   };
 
+  // Helper para validar documentos requeridos
+  const validateDocuments = (): { isValid: boolean; message: string } => {
+    const dniFotos = formData.dni_fotos || [];
+    const comprobanteFotos = formData.comprobante_deposito_fotos || [];
+
+    if (dniFotos.length === 0 && comprobanteFotos.length === 0) {
+      return {
+        isValid: false,
+        message: 'Debe subir al menos 1 foto del DNI y 1 comprobante de depósito.',
+      };
+    }
+    if (dniFotos.length === 0) {
+      return {
+        isValid: false,
+        message: 'Debe subir al menos 1 foto del DNI (anverso o reverso).',
+      };
+    }
+    if (comprobanteFotos.length === 0) {
+      return {
+        isValid: false,
+        message: 'Debe subir al menos 1 imagen del comprobante de depósito.',
+      };
+    }
+    return { isValid: true, message: '' };
+  };
+
   const handleSave = async () => {
     if (!local) return;
+
+    // Validar documentos requeridos
+    const docValidation = validateDocuments();
+    if (!docValidation.isValid) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Documentos requeridos',
+        message: docValidation.message,
+        variant: 'warning',
+      });
+      return;
+    }
 
     setSaving(true);
 
@@ -522,6 +569,18 @@ export default function FichaInscripcionModal({
   // Función para generar Vista Previa en nueva ventana
   const handlePreview = () => {
     if (!local) return;
+
+    // Validar documentos requeridos
+    const docValidation = validateDocuments();
+    if (!docValidation.isValid) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Documentos requeridos',
+        message: docValidation.message,
+        variant: 'warning',
+      });
+      return;
+    }
 
     // Calcular valores para mostrar
     const pct = formData.porcentaje_inicial ?? porcentajeInicialDefault ?? 0;
@@ -1059,6 +1118,52 @@ export default function FichaInscripcionModal({
     for (const [placeholder, value] of Object.entries(placeholders)) {
       const regex = new RegExp(`\\{\\{${placeholder}\\}\\}`, 'g');
       finalHtml = finalHtml.replace(regex, value);
+    }
+
+    // Generar HTML para las páginas de documentos adjuntos
+    const dniFotos = formData.dni_fotos || [];
+    const comprobanteFotos = formData.comprobante_deposito_fotos || [];
+
+    let documentosHtml = '';
+    if (dniFotos.length > 0 || comprobanteFotos.length > 0) {
+      documentosHtml = `
+        <div style="page-break-before: always; padding: 20px;">
+          <h2 style="text-align: center; color: #1b967a; margin-bottom: 20px; font-size: 18px; border-bottom: 2px solid #1b967a; padding-bottom: 10px;">
+            DOCUMENTOS ADJUNTOS
+          </h2>
+          ${dniFotos.length > 0 ? `
+            <div style="margin-bottom: 30px;">
+              <h3 style="color: #333; margin-bottom: 15px; font-size: 14px;">Documento de Identidad (DNI)</h3>
+              <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+                ${dniFotos.map((url, i) => `
+                  <div style="text-align: center;">
+                    <img src="${url}" alt="DNI ${i + 1}" style="max-width: 400px; max-height: 300px; border: 1px solid #ddd; border-radius: 8px;" />
+                    <p style="font-size: 12px; color: #666; margin-top: 5px;">${i === 0 ? 'Anverso' : 'Reverso'}</p>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+          ${comprobanteFotos.length > 0 ? `
+            <div style="margin-bottom: 30px;">
+              <h3 style="color: #333; margin-bottom: 15px; font-size: 14px;">Comprobante de Depósito</h3>
+              <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+                ${comprobanteFotos.map((url, i) => `
+                  <div style="text-align: center;">
+                    <img src="${url}" alt="Comprobante ${i + 1}" style="max-width: 400px; max-height: 400px; border: 1px solid #ddd; border-radius: 8px;" />
+                    <p style="font-size: 12px; color: #666; margin-top: 5px;">Comprobante ${i + 1}</p>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // Insertar documentos antes del cierre del body
+    if (documentosHtml) {
+      finalHtml = finalHtml.replace('</body>', `${documentosHtml}</body>`);
     }
 
     // Abrir en nueva ventana
@@ -1694,6 +1799,40 @@ export default function FichaInscripcionModal({
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* DOCUMENTOS ADJUNTOS (REQUERIDOS) */}
+              <div className={sectionClass}>
+                <h3 className={`${sectionTitleClass} text-red-600`}>
+                  DOCUMENTOS ADJUNTOS (REQUERIDOS)
+                </h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  Suba las imágenes requeridas. Se requiere mínimo 1 imagen de cada tipo para poder guardar o ver la vista previa.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <DocumentUploader
+                    title="Foto de DNI"
+                    description="Anverso y reverso (máx. 2 imágenes)"
+                    maxImages={2}
+                    images={formData.dni_fotos || []}
+                    onImagesChange={(imgs) => handleChange('dni_fotos', imgs)}
+                    localId={local?.id || ''}
+                    folder="dni"
+                    disabled={loading}
+                    required={true}
+                  />
+                  <DocumentUploader
+                    title="Comprobante de Depósito"
+                    description="Foto/imagen del voucher (máx. 2 imágenes)"
+                    maxImages={2}
+                    images={formData.comprobante_deposito_fotos || []}
+                    onImagesChange={(imgs) => handleChange('comprobante_deposito_fotos', imgs)}
+                    localId={local?.id || ''}
+                    folder="comprobante"
+                    disabled={loading}
+                    required={true}
+                  />
+                </div>
               </div>
 
               {/* Marketing */}

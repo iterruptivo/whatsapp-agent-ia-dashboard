@@ -96,6 +96,10 @@ export interface ClienteFicha {
   utm_detalle: string | null;
   observaciones: string | null;
 
+  // Documentos adjuntos
+  dni_fotos: string[] | null;
+  comprobante_deposito_fotos: string[] | null;
+
   vendedor_id: string | null;
   created_at: string;
   updated_at: string;
@@ -177,6 +181,10 @@ export interface ClienteFichaInput {
   utm_source?: string | null;
   utm_detalle?: string | null;
   observaciones?: string | null;
+
+  // Documentos adjuntos
+  dni_fotos?: string[] | null;
+  comprobante_deposito_fotos?: string[] | null;
 
   vendedor_id?: string | null;
 }
