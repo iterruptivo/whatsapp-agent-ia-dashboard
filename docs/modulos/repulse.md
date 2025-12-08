@@ -16,7 +16,7 @@
 ## 🔄 Estado Actual
 
 **COMPLETADO** - Branch: `feature/repulse`
-**Última actualización:** Sesión 65B (6 Dic 2025)
+**Última actualización:** Sesión 65C (7 Dic 2025)
 
 ### Funcionalidades Implementadas:
 - ✅ Tablas de base de datos (repulse_leads, repulse_templates, repulse_historial)
@@ -31,8 +31,10 @@
 - ✅ ConfirmModal elegante (reemplaza `confirm()` del navegador)
 - ✅ Cron job pg_cron cada 15 días
 - ✅ Lógica de reactivación (leads enviados vuelven a pendiente tras 15 días)
+- ✅ **Widget de Quota WhatsApp** (badge con indicador de consumo diario)
 
 ### Pendientes:
+- ⏳ Envío automático nocturno (cron job 11:00 PM)
 - ⏳ Notificaciones de respuesta (webhook de entrada)
 - ⏳ Dashboard de métricas de repulse
 
@@ -269,6 +271,7 @@ interface RepulseHistorial {
 | `getRepulseStats(proyectoId)` | Conteos por estado |
 | `ejecutarDeteccionRepulse(proyectoId)` | Ejecutar stored procedure |
 | `getLeadsCandidatosRepulse(proyectoId)` | Leads elegibles para agregar |
+| `getQuotaWhatsApp(limite?)` | Obtener quota disponible del día (default 250) |
 
 ---
 
@@ -458,18 +461,52 @@ repulse_leads.estado = 'excluido' (si existe)
 |---|-------|-----------|--------|
 | 1 | ~~Configurar cron job (cada 15 días)~~ | Alta | ✅ |
 | 2 | ~~Integrar webhook n8n en RepulseEnvioModal~~ | Alta | ✅ |
-| 3 | Endpoint API para recibir respuestas de n8n | Media | ⏳ |
-| 4 | Dashboard de métricas de repulse | Baja | ⏳ |
-| 5 | Notificaciones push cuando lead responde | Baja | ⏳ |
-| 6 | **Sistema de Quota WhatsApp + Envío Automático Nocturno** | Alta | ⏳ |
+| 3 | ~~**Widget de Quota WhatsApp**~~ | Alta | ✅ |
+| 4 | **Envío Automático Nocturno (cron 11:00 PM)** | Alta | ⏳ |
+| 5 | Endpoint API para recibir respuestas de n8n | Media | ⏳ |
+| 6 | Dashboard de métricas de repulse | Baja | ⏳ |
+| 7 | Notificaciones push cuando lead responde | Baja | ⏳ |
 
 ---
 
 ## 🚀 Mejora Planificada: Sistema de Quota y Envío Automático
 
 **Fecha de diseño:** 6 Diciembre 2025
-**Estado:** PENDIENTE IMPLEMENTACIÓN
+**Estado:** PARCIALMENTE IMPLEMENTADO (Widget ✅, Envío Nocturno ⏳)
 **Prioridad:** Alta
+
+### ✅ Widget de Quota Implementado (Sesión 65C - 7 Dic 2025)
+
+**Ubicación:** Página `/repulse`, a la izquierda del botón "Actualizar"
+
+**Características:**
+- Badge con indicador de quota disponible (ej: "Quota: 205/250")
+- Colores semánticos según consumo:
+  - 🟢 Verde: <50% usado
+  - 🟡 Amarillo: 50-80% usado
+  - 🔴 Rojo: >80% usado
+- Tooltip con información detallada al hover
+- Usa timezone Perú (UTC-5) para cálculo correcto del día
+
+**Función implementada:** `getQuotaWhatsApp()` en `lib/actions-repulse.ts`
+
+```typescript
+export interface QuotaInfo {
+  leadsHoy: number;      // Leads de campaña que entraron hoy
+  limite: number;        // Límite diario (default 250)
+  disponible: number;    // Mensajes disponibles para Repulse
+  porcentajeUsado: number;
+}
+```
+
+**Lógica de cálculo:**
+- Cuenta leads con `estado != 'lead_manual'` creados hoy (hora Perú)
+- Estos son leads de campaña que consumieron mensajes de Victoria
+- `disponible = limite - leadsHoy`
+
+---
+
+### ⏳ Pendiente: Envío Automático Nocturno
 
 ### Contexto del Problema
 
@@ -710,6 +747,7 @@ quota_disponible = 250 - COUNT(leads HOY donde estado != 'lead_manual')
 | `07b704f` | fix: send proyecto_id to n8n webhook for routing |
 | `015b604` | feat: replace browser confirm() with ConfirmModal in RepulseClient |
 | `3a09381` | fix: sync repulse_leads status when re-including lead from /operativo |
+| `b8a8fd4` | feat: improve quota badge UX - position, timezone, tooltip |
 
 ---
 
@@ -744,9 +782,10 @@ const showRepulseButton = ['admin', 'jefe_ventas'].includes(role);
 ## 📚 Referencias
 
 - **Branch:** `feature/repulse`
-- **Sesiones de desarrollo:** 65, 65B (5-6 Dic 2025)
+- **Sesiones de desarrollo:** 65, 65B, 65C (5-7 Dic 2025)
 - **Integración:** n8n + WhatsApp Business API ✅ COMPLETADA
 - **Cron job:** pg_cron cada 15 días (18:00 UTC / 1:00 PM Perú)
+- **Widget Quota:** Implementado con timezone Perú (UTC-5)
 
 ---
 

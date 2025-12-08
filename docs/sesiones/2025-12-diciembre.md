@@ -5,6 +5,7 @@
 - [Sesión 64B](#sesión-64b---3-diciembre-2025) - Template HTML Ficha de Inscripción
 - [Sesión 65](#sesión-65---5-diciembre-2025) - Sistema Repulse: Integración /operativo + Exclusiones
 - [Sesión 65B](#sesión-65b---5-diciembre-2025-continuación) - Sistema Repulse: Webhook n8n + UI Improvements
+- [Sesión 65C](#sesión-65c---7-diciembre-2025) - Widget Quota WhatsApp + Mejoras UX
 
 ---
 
@@ -783,6 +784,187 @@ Si en un día se envían:
 #### Estimación
 
 ~4 horas de implementación total.
+
+---
+
+## Sesión 65C - 7 Diciembre 2025
+
+### 📊 Widget Quota WhatsApp + Mejoras UX
+
+**Tipo:** Feature - Indicador de consumo + UX improvements
+**Estado:** ✅ COMPLETADO
+**Branch:** `feature/repulse`
+**Commit:** `b8a8fd4`
+
+---
+
+### Objetivo
+
+Implementar indicador visual de consumo de quota diaria de WhatsApp en la página `/repulse`, con mejoras de UX en tooltip y posicionamiento.
+
+---
+
+### Trabajo Realizado
+
+#### FASE 1: Función getQuotaWhatsApp() ✅
+
+**Archivo:** `lib/actions-repulse.ts`
+
+Nueva función que calcula la quota disponible del día:
+
+```typescript
+export interface QuotaInfo {
+  leadsHoy: number;      // Leads de campaña que entraron hoy
+  limite: number;        // Límite diario (default 250)
+  disponible: number;    // Mensajes disponibles para Repulse
+  porcentajeUsado: number;
+}
+
+export async function getQuotaWhatsApp(limite: number = 250): Promise<QuotaInfo>
+```
+
+**Lógica de cálculo:**
+- Cuenta leads con `estado != 'lead_manual'` creados hoy
+- Usa timezone Perú (UTC-5) para el cálculo del día
+- Estos leads representan mensajes de Victoria consumidos
+
+**Conversión de timezone:**
+```typescript
+// Obtener fecha de inicio del día en hora Perú (UTC-5)
+const nowPeru = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }));
+const startOfDayPeru = new Date(nowPeru.getFullYear(), nowPeru.getMonth(), nowPeru.getDate());
+
+// Convertir a UTC para la query (sumamos 5 horas porque Perú es UTC-5)
+const startOfDayUTC = new Date(startOfDayPeru.getTime() + (5 * 60 * 60 * 1000));
+```
+
+#### FASE 2: Integración en página /repulse ✅
+
+**Archivo:** `app/repulse/page.tsx`
+
+- Agregado state `quota` con tipo `QuotaInfo`
+- Fetch de quota en `fetchData()` junto con otros datos
+- Pasado como prop `initialQuota` a `RepulseClient`
+
+#### FASE 3: Badge de Quota en UI ✅
+
+**Archivo:** `components/repulse/RepulseClient.tsx`
+
+**Ubicación:** A la izquierda del botón "Actualizar" (en línea horizontal)
+
+**Características del badge:**
+- Texto: "Quota: {disponible}/{limite}" (ej: "Quota: 205/250")
+- Icono de información (Info) para indicar tooltip
+- Colores semánticos según porcentaje usado:
+  - 🟢 `<50%`: `bg-green-50 text-green-700 border-green-200`
+  - 🟡 `50-80%`: `bg-yellow-50 text-yellow-700 border-yellow-200`
+  - 🔴 `>80%`: `bg-red-50 text-red-700 border-red-200`
+- Borde sólido con color matching
+- Tamaño `text-sm font-semibold` (más grande que versión inicial)
+
+**Tooltip con información detallada:**
+- "Leads de campaña hoy: {leadsHoy}"
+- "Disponible para Repulse: {disponible}"
+- "Límite diario Meta: {limite}"
+
+#### FASE 4: Mejora componente Tooltip ✅
+
+**Archivo:** `components/shared/Tooltip.tsx`
+
+**Problema:** Tooltip se cortaba en los bordes de la pantalla
+
+**Solución:** Posicionamiento inteligente con auto-ajuste
+
+```typescript
+// Calcular posición ajustada para no salir de la pantalla
+useEffect(() => {
+  if (isVisible && tooltipRef.current) {
+    const tooltip = tooltipRef.current;
+    const rect = tooltip.getBoundingClientRect();
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+
+    let newX = position.x + 8;
+    let newY = position.y - rect.height - 10;
+
+    // Si se sale por la derecha, mover a la izquierda del cursor
+    if (newX + rect.width > windowWidth - 10) {
+      newX = position.x - rect.width - 8;
+    }
+
+    // Si se sale por la izquierda, forzar al borde izquierdo
+    if (newX < 10) {
+      newX = 10;
+    }
+
+    // Si se sale por arriba, mostrar debajo del cursor
+    if (newY < 10) {
+      newY = position.y + 20;
+    }
+
+    // Si se sale por abajo
+    if (newY + rect.height > windowHeight - 10) {
+      newY = windowHeight - rect.height - 10;
+    }
+
+    setAdjustedPosition({ x: newX, y: newY });
+  }
+}, [isVisible, position]);
+```
+
+**Mejoras adicionales:**
+- Removida flecha del tooltip (diseño más limpio)
+- `max-w-xs` para textos largos
+- Padding aumentado `px-3 py-2`
+
+---
+
+### Archivos Modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `lib/actions-repulse.ts` | +30 líneas (getQuotaWhatsApp con timezone Perú) |
+| `app/repulse/page.tsx` | +15 líneas (state quota, fetch, prop) |
+| `components/repulse/RepulseClient.tsx` | +25 líneas (badge reposicionado) |
+| `components/shared/Tooltip.tsx` | +35 líneas (posicionamiento inteligente) |
+
+**Total:** +105 líneas netas
+
+---
+
+### Decisiones Técnicas
+
+| Decisión | Opción Elegida | Razón |
+|----------|----------------|-------|
+| Timezone | Perú (UTC-5) | Usuarios están en Lima, el día debe ser en hora local |
+| Fuente de datos quota | Tabla `leads` | Ya existe, sin tabla adicional, single source of truth |
+| Posición badge | Izquierda del botón | Más visible, en línea con acciones |
+| Tooltip positioning | Auto-ajuste dinámico | Evita corte en bordes de pantalla |
+
+---
+
+### Testing Realizado
+
+- ✅ Badge muestra quota correctamente
+- ✅ Colores cambian según porcentaje usado
+- ✅ Tooltip no se corta en bordes
+- ✅ Timezone Perú aplicado (medianoche local)
+- ✅ Build sin errores de TypeScript
+
+---
+
+### Commit
+
+```
+b8a8fd4 feat: improve quota badge UX - position, timezone, tooltip
+
+Changes:
+- Move quota badge to LEFT of "Actualizar" button (more visible)
+- Make badge bigger with border and better styling
+- Fix timezone: use Peru time (UTC-5) for daily quota calculation
+- Fix tooltip cutoff: auto-adjust position to stay within viewport
+- Remove arrow from tooltip for cleaner look
+```
 
 ---
 
