@@ -601,6 +601,82 @@ export default function FichaInscripcionModal({
       }
     }
 
+    // ============================================================================
+    // SESIÓN 66: Generar calendario de cuotas para el PDF
+    // ============================================================================
+    interface CuotaCalendario {
+      numero: number;
+      fecha: string;
+      interes?: number;
+      amortizacion?: number;
+      cuota: number;
+      saldo: number;
+    }
+
+    const generarCalendarioCuotas = (): CuotaCalendario[] => {
+      if (formData.modalidad_pago !== 'financiado' || numCuotas <= 0 || saldoFinanciar <= 0) {
+        return [];
+      }
+
+      const calendario: CuotaCalendario[] = [];
+      const fechaInicio = formData.fecha_inicio_pago ? new Date(formData.fecha_inicio_pago) : new Date();
+
+      if (teaProyecto > 0) {
+        // Sistema Francés (con interés)
+        const teaDecimal = teaProyecto / 100;
+        const tem = Math.pow(1 + teaDecimal, 1/12) - 1;
+        const cuotaFija = saldoFinanciar * (tem * Math.pow(1 + tem, numCuotas)) / (Math.pow(1 + tem, numCuotas) - 1);
+        let saldoActual = saldoFinanciar;
+
+        for (let i = 1; i <= numCuotas; i++) {
+          const fechaCuota = new Date(fechaInicio);
+          fechaCuota.setMonth(fechaCuota.getMonth() + (i - 1));
+          // Ajuste para meses con menos días (ej: 31 → 28 feb)
+          if (fechaCuota.getDate() !== fechaInicio.getDate()) {
+            fechaCuota.setDate(0); // Último día del mes anterior
+          }
+
+          const interesMes = saldoActual * tem;
+          const amortizacionMes = cuotaFija - interesMes;
+          saldoActual = Math.max(0, saldoActual - amortizacionMes);
+
+          calendario.push({
+            numero: i,
+            fecha: fechaCuota.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }),
+            interes: interesMes,
+            amortizacion: amortizacionMes,
+            cuota: cuotaFija,
+            saldo: saldoActual,
+          });
+        }
+      } else {
+        // Sistema Simple (sin interés - división directa)
+        const cuotaSimple = saldoFinanciar / numCuotas;
+        let saldoActual = saldoFinanciar;
+
+        for (let i = 1; i <= numCuotas; i++) {
+          const fechaCuota = new Date(fechaInicio);
+          fechaCuota.setMonth(fechaCuota.getMonth() + (i - 1));
+          if (fechaCuota.getDate() !== fechaInicio.getDate()) {
+            fechaCuota.setDate(0);
+          }
+
+          saldoActual = Math.max(0, saldoActual - cuotaSimple);
+
+          calendario.push({
+            numero: i,
+            fecha: fechaCuota.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }),
+            cuota: cuotaSimple,
+            saldo: saldoActual,
+          });
+        }
+      }
+
+      return calendario;
+    };
+
+    const calendarioCuotas = generarCalendarioCuotas();
+
     // Helpers para checkboxes
     const getDocCheck = (tipo: string | null | undefined, expected: string) =>
       tipo === expected ? 'checked' : '';
@@ -846,6 +922,68 @@ export default function FichaInscripcionModal({
         return `${day}/${month}/${year}`;
       })(),
       'FECHA_GENERACION': fechaGeneracion,
+
+      // SESIÓN 66: Calendario de cuotas (tabla de amortización)
+      'CALENDARIO_CUOTAS_HTML': (() => {
+        if (calendarioCuotas.length === 0) return '';
+
+        const tipoSistema = teaProyecto > 0 ? 'Sistema Francés (con interés)' : 'Cuota Fija (sin interés)';
+        const esConInteres = teaProyecto > 0;
+
+        // Calcular totales
+        const totalInteres = esConInteres ? calendarioCuotas.reduce((sum, c) => sum + (c.interes || 0), 0) : 0;
+        const totalAmortizacion = esConInteres ? calendarioCuotas.reduce((sum, c) => sum + (c.amortizacion || 0), 0) : saldoFinanciar;
+        const totalCuotas = calendarioCuotas.reduce((sum, c) => sum + c.cuota, 0);
+
+        return `
+          <div style="margin-top: 15px;">
+            <div style="font-weight: bold; color: #1b967a; margin-bottom: 10px; font-size: 12px;">
+              📅 Cronograma de Pagos - ${tipoSistema}
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+              <thead>
+                <tr style="background: #1b967a; color: #fff;">
+                  <th style="padding: 6px; border: 1px solid #ddd; text-align: center; width: 40px;">#</th>
+                  <th style="padding: 6px; border: 1px solid #ddd; text-align: center;">Fecha</th>
+                  ${esConInteres ? '<th style="padding: 6px; border: 1px solid #ddd; text-align: right;">Interés (USD)</th>' : ''}
+                  ${esConInteres ? '<th style="padding: 6px; border: 1px solid #ddd; text-align: right;">Amortización (USD)</th>' : ''}
+                  <th style="padding: 6px; border: 1px solid #ddd; text-align: right;">Cuota (USD)</th>
+                  <th style="padding: 6px; border: 1px solid #ddd; text-align: right;">Saldo (USD)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${calendarioCuotas.map((c, idx) => `
+                  <tr style="background: ${idx % 2 === 0 ? '#fff' : '#f9f9f9'};">
+                    <td style="padding: 5px; border: 1px solid #ddd; text-align: center; font-weight: bold;">${c.numero}</td>
+                    <td style="padding: 5px; border: 1px solid #ddd; text-align: center;">${c.fecha}</td>
+                    ${esConInteres ? `<td style="padding: 5px; border: 1px solid #ddd; text-align: right; color: #c53030;">$ ${(c.interes || 0).toFixed(2)}</td>` : ''}
+                    ${esConInteres ? `<td style="padding: 5px; border: 1px solid #ddd; text-align: right; color: #2563eb;">$ ${(c.amortizacion || 0).toFixed(2)}</td>` : ''}
+                    <td style="padding: 5px; border: 1px solid #ddd; text-align: right; font-weight: bold; color: #1b967a;">$ ${c.cuota.toFixed(2)}</td>
+                    <td style="padding: 5px; border: 1px solid #ddd; text-align: right;">$ ${c.saldo.toFixed(2)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr style="background: #192c4d; color: #fff; font-weight: bold;">
+                  <td colspan="${esConInteres ? 2 : 2}" style="padding: 6px; border: 1px solid #ddd; text-align: right;">TOTALES:</td>
+                  ${esConInteres ? `<td style="padding: 6px; border: 1px solid #ddd; text-align: right; color: #fca5a5;">$ ${totalInteres.toFixed(2)}</td>` : ''}
+                  ${esConInteres ? `<td style="padding: 6px; border: 1px solid #ddd; text-align: right; color: #93c5fd;">$ ${totalAmortizacion.toFixed(2)}</td>` : ''}
+                  <td style="padding: 6px; border: 1px solid #ddd; text-align: right; color: #86efac;">$ ${totalCuotas.toFixed(2)}</td>
+                  <td style="padding: 6px; border: 1px solid #ddd; text-align: right;">-</td>
+                </tr>
+              </tfoot>
+            </table>
+            ${esConInteres ? `
+              <div style="margin-top: 8px; font-size: 9px; color: #666; display: flex; gap: 20px;">
+                <span>🔴 Interés Total: $ ${totalInteres.toFixed(2)}</span>
+                <span>🔵 Capital Amortizado: $ ${totalAmortizacion.toFixed(2)}</span>
+                <span>🟢 Total a Pagar: $ ${totalCuotas.toFixed(2)}</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      })(),
+      'MOSTRAR_CALENDARIO_CUOTAS': calendarioCuotas.length > 0 ? '' : 'display: none;',
     };
 
     // Template HTML embebido
@@ -1081,6 +1219,10 @@ export default function FichaInscripcionModal({
           <div class="form-group"><span class="form-label">Entidad Bancaria</span><span class="form-value">{{ENTIDAD_BANCARIA}}</span></div>
           <div class="form-group"><span class="form-label">Rubro del Negocio</span><span class="form-value">{{RUBRO_NEGOCIO}}</span></div>
           <div class="form-group full-width"><span class="form-label">Compromiso de Pago</span><span class="form-value">{{COMPROMISO_PAGO}}</span></div>
+        </div>
+        <!-- SESIÓN 66: Calendario de Cuotas (Tabla de Amortización) -->
+        <div style="{{MOSTRAR_CALENDARIO_CUOTAS}}">
+          {{CALENDARIO_CUOTAS_HTML}}
         </div>
       </div>
     </section>
