@@ -1490,9 +1490,13 @@ export default function FichaInscripcionModal({
                       {SI_NO_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
-                  <div className="col-span-3">
+                  <div className="col-span-2">
                     <label className={labelClass}>Motivo de la Compra</label>
                     <input type="text" className={inputClass} value={formData.titular_motivo_compra || ''} onChange={e => handleChange('titular_motivo_compra', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>RUC (si aplica)</label>
+                    <input type="text" className={inputClass} maxLength={11} value={formData.titular_ruc || ''} onChange={e => handleChange('titular_ruc', e.target.value)} placeholder="20XXXXXXXXX" />
                   </div>
                 </div>
               </div>
