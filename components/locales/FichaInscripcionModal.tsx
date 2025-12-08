@@ -1915,42 +1915,42 @@ export default function FichaInscripcionModal({
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-[#1b967a]" />
-                          Calendario de Cuotas ({calendarioCuotas.length} cuotas)
+                          Calendario de {formData.modalidad_pago === 'financiado' && teaProyecto > 0 ? 'Pagos (Sistema Francés)' : 'Pagos (Sin Intereses)'} - {calendarioCuotas.length} cuotas
                         </h4>
-                        <div className="max-h-64 overflow-y-auto border rounded-lg">
-                          <table className="w-full text-sm">
-                            <thead className="bg-gray-50 sticky top-0">
+                        <div className="max-h-80 overflow-y-auto border border-gray-200 rounded-lg">
+                          <table className="w-full text-xs">
+                            <thead className="sticky top-0 bg-[#192c4d] text-white">
                               <tr>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">N°</th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">Fecha</th>
+                                <th className="px-3 py-3 text-center font-semibold"># Cuota</th>
+                                <th className="px-3 py-3 text-center font-semibold">Fecha</th>
                                 {formData.modalidad_pago === 'financiado' && teaProyecto > 0 ? (
                                   <>
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Interés</th>
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Amort.</th>
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Cuota</th>
-                                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Saldo</th>
+                                    <th className="px-3 py-3 text-center font-semibold">Interés</th>
+                                    <th className="px-3 py-3 text-center font-semibold">Amortización</th>
+                                    <th className="px-3 py-3 text-center font-semibold">Cuota</th>
+                                    <th className="px-3 py-3 text-center font-semibold">Saldo</th>
                                   </>
                                 ) : (
-                                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">Monto</th>
+                                  <th className="px-3 py-3 text-center font-semibold">Monto</th>
                                 )}
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                              {calendarioCuotas.map((cuota) => (
-                                <tr key={cuota.numero} className="hover:bg-gray-50">
-                                  <td className="px-3 py-2 text-gray-700">{cuota.numero}</td>
-                                  <td className="px-3 py-2 text-gray-700">
-                                    {new Date(cuota.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                              {calendarioCuotas.map((cuota, index) => (
+                                <tr key={cuota.numero} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                  <td className="px-3 py-3 text-center font-medium text-gray-900">{cuota.numero}</td>
+                                  <td className="px-3 py-3 text-center text-gray-700">
+                                    {new Date(cuota.fecha + 'T00:00:00').toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
                                   </td>
                                   {formData.modalidad_pago === 'financiado' && teaProyecto > 0 ? (
                                     <>
-                                      <td className="px-3 py-2 text-right text-gray-600">${cuota.interes?.toFixed(2)}</td>
-                                      <td className="px-3 py-2 text-right text-gray-600">${cuota.amortizacion?.toFixed(2)}</td>
-                                      <td className="px-3 py-2 text-right font-medium text-gray-800">${cuota.cuota?.toFixed(2)}</td>
-                                      <td className="px-3 py-2 text-right text-gray-500">${cuota.saldo?.toFixed(2)}</td>
+                                      <td className="px-3 py-3 text-center text-red-600 font-semibold">${cuota.interes?.toFixed(2)}</td>
+                                      <td className="px-3 py-3 text-center text-blue-600 font-semibold">${cuota.amortizacion?.toFixed(2)}</td>
+                                      <td className="px-3 py-3 text-center text-[#1b967a] font-bold">${cuota.cuota?.toFixed(2)}</td>
+                                      <td className="px-3 py-3 text-center text-gray-700 font-medium">${cuota.saldo?.toFixed(2)}</td>
                                     </>
                                   ) : (
-                                    <td className="px-3 py-2 text-right font-medium text-gray-800">${cuota.monto?.toFixed(2)}</td>
+                                    <td className="px-3 py-3 text-center text-[#1b967a] font-bold">${cuota.monto?.toFixed(2)}</td>
                                   )}
                                 </tr>
                               ))}
