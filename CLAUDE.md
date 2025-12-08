@@ -7,8 +7,8 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 7 Diciembre 2025
-**Sesión:** 66 - 🖼️ **Logo Dinámico por Proyecto + Fix Datos Legales Template**
+**Fecha:** 8 Diciembre 2025
+**Sesión:** 66 - 🖼️📎 **Logo Dinámico + Documentos Adjuntos Requeridos + Descarga PDF**
 **Estado:** ✅ **DEPLOYED TO STAGING**
 **Documentación:** Ver detalles abajo
 
@@ -25,9 +25,9 @@
 | [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | **Sesión 65 (5 Dic)** | 23 usuarios |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
-| [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 66 (7 Dic)** | docx-templates + Logo dinámico |
+| [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 66 (8 Dic)** | Logo + Docs adjuntos + PDF download |
 
-### **Métricas Globales (Actualizado: 7 Dic 2025)**
+### **Métricas Globales (Actualizado: 8 Dic 2025)**
 ```
 Total Leads:        1,417
 Total Locales:      823
@@ -116,7 +116,7 @@ Documentación cronológica completa de todas las sesiones.
   - **📄 Sistema Generación Documentos (64)** ✅
   - **📄 Template HTML Ficha de Inscripción (64B)** ✅
   - **🔐 Rol Finanzas + Ficha Inscripción Modal (65)** ✅
-  - **🖼️ Logo Dinámico por Proyecto (66)** ✅
+  - **🖼️📎 Logo Dinámico + Documentos Adjuntos + Descarga PDF (66)** ✅
 
 ---
 
@@ -165,28 +165,21 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
 
-### **Sesión 66** (7 Dic) - 🖼️ ✅ **Logo Dinámico por Proyecto + Fix Datos Legales Template**
-**Tipo:** Feature + Fix
+### **Sesión 66** (7-8 Dic) - 🖼️📎 ✅ **Logo Dinámico + Documentos Adjuntos Requeridos + Descarga PDF**
+**Tipo:** Feature completo (Logo + Documentos + PDF)
 **Estado:** ✅ **DEPLOYED TO STAGING**
 
+**Features implementados:**
+
+---
+
+#### **PARTE 1: Logo Dinámico por Proyecto**
+
 **Problemas resueltos:**
-1. **Datos legales no aparecían en template Ficha de Inscripción** - El código buscaba datos en `configuraciones_extra` pero estaban en tabla `proyectos` directamente
-2. **Logo estático** - Necesidad de logo dinámico por proyecto que aparezca en documentos oficiales
+1. **Datos legales no aparecían en template** - Consultaba lugar incorrecto
+2. **Logo estático** - Necesidad de logo dinámico por proyecto
 
 **Cambios implementados:**
-
-**1. Fix: Datos legales en template**
-- **Root cause:** `getProyectoLegalData()` consultaba lugar incorrecto
-- **Fix:** Nueva función que consulta directamente tabla `proyectos`
-
-| Campo | Ubicación correcta |
-|-------|-------------------|
-| `razon_social` | `proyectos.razon_social` |
-| `ruc` | `proyectos.ruc` |
-| `domicilio_fiscal` | `proyectos.domicilio_fiscal` |
-| `ubicacion_terreno` | `proyectos.ubicacion_terreno` |
-
-**2. Sistema de Logo por Proyecto**
 
 | Componente | Descripción |
 |------------|-------------|
@@ -195,42 +188,123 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 | **LogoUploader.tsx** | Componente con crop/zoom/rotación usando `react-easy-crop` |
 | **proyecto-config.ts** | Funciones `uploadProyectoLogo()`, `deleteProyectoLogo()`, `getProyectoLegalData()` |
 
-**3. Integración en Configuración de Proyectos**
+**Integración:**
 - Nueva sección "Logo Oficial del Proyecto" en `/configuracion-proyectos`
-- Ubicación: Dentro de "Datos para Trámites Legales"
-- Features: Subir, crop/zoom, cambiar, eliminar logo
+- Template Ficha de Inscripción con placeholders `{{LOGO_URL}}`, `{{LOGO_DISPLAY}}`
 
-**4. Logo dinámico en Ficha de Inscripción**
-- Template HTML actualizado con placeholders:
-  - `{{LOGO_URL}}` - URL del logo
-  - `{{LOGO_DISPLAY}}` - `block` si hay logo, `none` si no
-  - `{{LOGO_PLACEHOLDER_DISPLAY}}` - `none` si hay logo, `block` si no
-- Si no hay logo configurado, muestra placeholder "LOGO"
+---
 
-**5. Cambio de texto en footer template**
-- Antes: "Sistema EcoPlaza Dashboard"
-- Después: "EcoPlaza Command Center"
+#### **PARTE 2: Documentos Adjuntos Requeridos**
+
+**Requerimiento:** Subir fotos de DNI y Comprobante de depósito en la Ficha de Inscripción.
+
+**Schema actualizado (tabla `clientes_ficha`):**
+```sql
+ALTER TABLE clientes_ficha
+ADD COLUMN IF NOT EXISTS dni_fotos TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS comprobante_deposito_fotos TEXT[] DEFAULT '{}';
+```
+
+**Supabase Storage:**
+- Bucket: `documentos-ficha` (público)
+- Naming convention: `{local_id}/{tipo}/{timestamp}_{index}.jpg`
+- Ejemplo: `abc123-uuid/dni/1733580000000_0.jpg`
+
+**Componente DocumentUploader.tsx (NUEVO):**
+| Feature | Detalle |
+|---------|---------|
+| Compresión | `browser-image-compression` - max 1MB, 1000px width |
+| Formato | Conversión automática a JPEG |
+| Máximo | 2 imágenes por tipo |
+| Validación | Requiere mínimo 1 imagen de cada tipo para guardar/preview |
+| Preview | Thumbnails con botón eliminar |
+| Estados | Loading, error, required warning |
+
+**Integración en FichaInscripcionModal:**
+- Sección "DOCUMENTOS ADJUNTOS (REQUERIDOS)" al final del formulario
+- Dos DocumentUploader: DNI (max 2) y Comprobante de Depósito (max 2)
+- Validación antes de guardar y antes de vista previa
+
+**Documentos en Vista Previa/PDF:**
+- DNI en página separada (page-break)
+- Comprobante en página separada (page-break)
+- Imágenes grandes para impresión
+
+---
+
+#### **PARTE 3: Descarga PDF con Nombre Único**
+
+**Problema:** `window.print()` con "Microsoft Print to PDF" no respetaba el `document.title`
+
+**Solución implementada:**
+- Librería `html2pdf.js` cargada via CDN en el preview
+- Botón "Descargar PDF" genera archivo con nombre correcto
+- Botón "Imprimir" mantiene opción tradicional
+
+**Nombre de archivo:**
+```
+FICHA-INSCRIPCION-{CODIGO_LOCAL}-{YYYYMMDD}-{HHMMSS}.pdf
+```
+Ejemplo: `FICHA-INSCRIPCION-PRUEBA-01-20251207-213500.pdf`
+
+**Estructura del preview:**
+```html
+<div id="pdf-content">
+  <div class="ficha-container">
+    <!-- Contenido de la ficha -->
+  </div>
+  <!-- Documentos adjuntos con page-break-before -->
+  <div class="page-break-before">DNI...</div>
+  <div class="page-break-before">Comprobante...</div>
+</div>
+```
+
+**Opciones configuradas en html2pdf:**
+```javascript
+{
+  margin: 5,
+  filename: 'FICHA-INSCRIPCION-{codigo}-{fecha}-{hora}.pdf',
+  image: { type: 'jpeg', quality: 0.98 },
+  html2canvas: { scale: 2, useCORS: true },
+  jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+  pagebreak: { mode: 'css', before: '.page-break-before' }
+}
+```
+
+---
 
 **Archivos nuevos:**
 - `components/shared/LogoUploader.tsx` (292 líneas)
+- `components/shared/DocumentUploader.tsx` (268 líneas)
 - `consultas-leo/SQL_ADD_LOGO_URL.sql`
+- `consultas-leo/SQL_ADD_DOCUMENTOS_FICHA.sql`
 
 **Archivos modificados:**
-- `lib/proyecto-config.ts` - Agregadas funciones logo + fix `getProyectoLegalData()`
+- `lib/proyecto-config.ts` - Funciones logo + `getProyectoLegalData()`
 - `lib/db.ts` - Campo `logo_url` en interface `Proyecto`
 - `lib/actions-proyecto-config.ts` - Campo `logo_url` en interface + query
+- `lib/actions-clientes-ficha.ts` - Campos `dni_fotos`, `comprobante_deposito_fotos`
 - `app/configuracion-proyectos/page.tsx` - UI LogoUploader integrado
-- `components/locales/FichaInscripcionModal.tsx` - Template con logo dinámico
-- `package.json` - Dependencia `react-easy-crop: ^5.1.0`
+- `components/locales/FichaInscripcionModal.tsx` - Logo, documentos, descarga PDF
+- `package.json` - Dependencias: `react-easy-crop`, `browser-image-compression`
 
-**SQL ejecutado:**
-```sql
-ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS logo_url TEXT;
+**Dependencias agregadas:**
+```json
+"browser-image-compression": "^2.0.2",
+"react-easy-crop": "^5.1.0"
 ```
 
 **Commits:**
 - `453549e` - feat: Add LogoUploader component and logo management functions
 - `3ecfcbd` - feat: Add LogoUploader to project configuration page
+- `cf22628` - feat: Add DOCUMENTOS ADJUNTOS section with DocumentUploader
+- `c906982` - fix: handleChange type for string[]
+- `bd9217f` - style: Remove labels below document images
+- `8a1768b` - feat: Separate pages for DNI and deposit proof
+- `6176004` - feat: Set document title for print filename
+- `4728bcb` - feat: Add timestamp to print filename for uniqueness
+- `08f4b91` - feat: Add direct PDF download with correct filename
+- `c235d1b` - fix: Include document images (DNI/Comprobante) in PDF download
 
 ---
 
