@@ -1125,36 +1125,35 @@ export default function FichaInscripcionModal({
     const comprobanteFotos = formData.comprobante_deposito_fotos || [];
 
     let documentosHtml = '';
-    if (dniFotos.length > 0 || comprobanteFotos.length > 0) {
-      documentosHtml = `
-        <div style="page-break-before: always; padding: 20px;">
-          <h2 style="text-align: center; color: #1b967a; margin-bottom: 20px; font-size: 18px; border-bottom: 2px solid #1b967a; padding-bottom: 10px;">
-            DOCUMENTOS ADJUNTOS
+
+    // Página separada para DNI
+    if (dniFotos.length > 0) {
+      documentosHtml += `
+        <div style="page-break-before: always; padding: 40px; min-height: 100vh; display: flex; flex-direction: column;">
+          <h2 style="text-align: center; color: #1b967a; margin-bottom: 30px; font-size: 20px; border-bottom: 2px solid #1b967a; padding-bottom: 10px;">
+            DOCUMENTO DE IDENTIDAD (DNI)
           </h2>
-          ${dniFotos.length > 0 ? `
-            <div style="margin-bottom: 30px;">
-              <h3 style="color: #333; margin-bottom: 15px; font-size: 14px;">Documento de Identidad (DNI)</h3>
-              <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
-                ${dniFotos.map((url, i) => `
-                  <div>
-                    <img src="${url}" alt="DNI ${i + 1}" style="max-width: 400px; max-height: 300px; border: 1px solid #ddd; border-radius: 8px;" />
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          ` : ''}
-          ${comprobanteFotos.length > 0 ? `
-            <div style="margin-bottom: 30px;">
-              <h3 style="color: #333; margin-bottom: 15px; font-size: 14px;">Comprobante de Depósito</h3>
-              <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
-                ${comprobanteFotos.map((url, i) => `
-                  <div>
-                    <img src="${url}" alt="Comprobante ${i + 1}" style="max-width: 400px; max-height: 400px; border: 1px solid #ddd; border-radius: 8px;" />
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          ` : ''}
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 30px;">
+            ${dniFotos.map((url) => `
+              <img src="${url}" alt="DNI" style="max-width: 90%; max-height: 45vh; border: 1px solid #ddd; border-radius: 8px; object-fit: contain;" />
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Página separada para Comprobante de Depósito
+    if (comprobanteFotos.length > 0) {
+      documentosHtml += `
+        <div style="page-break-before: always; padding: 40px; min-height: 100vh; display: flex; flex-direction: column;">
+          <h2 style="text-align: center; color: #1b967a; margin-bottom: 30px; font-size: 20px; border-bottom: 2px solid #1b967a; padding-bottom: 10px;">
+            COMPROBANTE DE DEPÓSITO
+          </h2>
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 30px;">
+            ${comprobanteFotos.map((url) => `
+              <img src="${url}" alt="Comprobante" style="max-width: 90%; max-height: 45vh; border: 1px solid #ddd; border-radius: 8px; object-fit: contain;" />
+            `).join('')}
+          </div>
         </div>
       `;
     }
