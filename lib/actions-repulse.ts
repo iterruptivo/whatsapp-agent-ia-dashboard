@@ -931,20 +931,26 @@ export interface QuotaInfo {
  * Obtener información de quota de WhatsApp del día
  * Cuenta leads de campaña (estado != 'lead_manual') creados hoy
  * Estos son los que consumieron mensajes de Victoria
+ *
+ * IMPORTANTE: Usa timezone Perú (UTC-5) para el cálculo del día
  */
 export async function getQuotaWhatsApp(limite: number = 250): Promise<QuotaInfo> {
   const supabase = await createClient();
 
-  // Obtener fecha de inicio del día en UTC
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayISO = today.toISOString();
+  // Obtener fecha de inicio del día en hora Perú (UTC-5)
+  // Creamos la fecha en timezone Perú
+  const nowPeru = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }));
+  const startOfDayPeru = new Date(nowPeru.getFullYear(), nowPeru.getMonth(), nowPeru.getDate());
 
-  // Contar leads de campaña creados hoy (NO manuales = consumieron quota)
+  // Convertir a UTC para la query (sumamos 5 horas porque Perú es UTC-5)
+  const startOfDayUTC = new Date(startOfDayPeru.getTime() + (5 * 60 * 60 * 1000));
+  const startOfDayISO = startOfDayUTC.toISOString();
+
+  // Contar leads de campaña creados hoy en hora Perú (NO manuales = consumieron quota)
   const { count, error } = await supabase
     .from('leads')
     .select('*', { count: 'exact', head: true })
-    .gte('created_at', todayISO)
+    .gte('created_at', startOfDayISO)
     .neq('estado', 'lead_manual');
 
   if (error) {

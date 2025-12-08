@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, ReactNode } from 'react';
+import { useState, useRef, useEffect, ReactNode } from 'react';
 
 interface TooltipProps {
   children: ReactNode;
@@ -11,7 +11,9 @@ interface TooltipProps {
 export default function Tooltip({ children, text, delay = 200 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [adjustedPosition, setAdjustedPosition] = useState({ x: 0, y: 0 });
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   const handleMouseEnter = () => {
     timeoutRef.current = setTimeout(() => {
@@ -30,6 +32,41 @@ export default function Tooltip({ children, text, delay = 200 }: TooltipProps) {
     setPosition({ x: e.clientX, y: e.clientY });
   };
 
+  // Calcular posición ajustada para no salir de la pantalla
+  useEffect(() => {
+    if (isVisible && tooltipRef.current) {
+      const tooltip = tooltipRef.current;
+      const rect = tooltip.getBoundingClientRect();
+      const windowWidth = window.innerWidth;
+      const windowHeight = window.innerHeight;
+
+      let newX = position.x + 8;
+      let newY = position.y - rect.height - 10;
+
+      // Si se sale por la derecha, mover a la izquierda del cursor
+      if (newX + rect.width > windowWidth - 10) {
+        newX = position.x - rect.width - 8;
+      }
+
+      // Si se sale por la izquierda, forzar al borde izquierdo
+      if (newX < 10) {
+        newX = 10;
+      }
+
+      // Si se sale por arriba, mostrar debajo del cursor
+      if (newY < 10) {
+        newY = position.y + 20;
+      }
+
+      // Si se sale por abajo
+      if (newY + rect.height > windowHeight - 10) {
+        newY = windowHeight - rect.height - 10;
+      }
+
+      setAdjustedPosition({ x: newX, y: newY });
+    }
+  }, [isVisible, position]);
+
   return (
     <div
       className="relative inline-block"
@@ -40,15 +77,16 @@ export default function Tooltip({ children, text, delay = 200 }: TooltipProps) {
       {children}
       {isVisible && (
         <div
+          ref={tooltipRef}
           className="fixed z-[9999] pointer-events-none"
           style={{
-            left: position.x + 8,
-            top: position.y - 40,
+            left: adjustedPosition.x,
+            top: adjustedPosition.y,
           }}
         >
           {/* Tooltip body */}
           <div
-            className="px-3 py-1.5 text-xs font-medium text-white bg-gray-800 rounded-md shadow-lg whitespace-nowrap transition-all duration-150 ease-out"
+            className="px-3 py-2 text-sm font-medium text-white bg-gray-800 rounded-lg shadow-lg max-w-xs transition-all duration-150 ease-out"
             style={{
               opacity: isVisible ? 1 : 0,
               transform: isVisible ? 'scale(1)' : 'scale(0.95)',
@@ -56,10 +94,6 @@ export default function Tooltip({ children, text, delay = 200 }: TooltipProps) {
           >
             {text}
           </div>
-          {/* Arrow */}
-          <div
-            className="w-0 h-0 ml-3 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-gray-800"
-          />
         </div>
       )}
     </div>

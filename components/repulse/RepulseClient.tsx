@@ -327,35 +327,33 @@ export default function RepulseClient({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 items-end">
-            {/* Quota Badge + Actualizar */}
-            <div className="flex flex-col items-center gap-1">
-              {/* Quota Badge */}
-              <Tooltip
-                text={`Leads de campaña hoy: ${quota.leadsHoy} | Disponible para Repulse: ${quota.disponible} | Límite diario Meta: ${quota.limite}`}
+          <div className="flex gap-3 items-center">
+            {/* Quota Badge - A la izquierda */}
+            <Tooltip
+              text={`Leads de campaña hoy: ${quota.leadsHoy} | Disponible para Repulse: ${quota.disponible} | Límite diario Meta: ${quota.limite}`}
+            >
+              <div
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold cursor-help border ${
+                  quota.porcentajeUsado >= 80
+                    ? 'bg-red-50 text-red-700 border-red-200'
+                    : quota.porcentajeUsado >= 50
+                    ? 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                    : 'bg-green-50 text-green-700 border-green-200'
+                }`}
               >
-                <div
-                  className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium cursor-help ${
-                    quota.porcentajeUsado >= 80
-                      ? 'bg-red-100 text-red-700'
-                      : quota.porcentajeUsado >= 50
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-green-100 text-green-700'
-                  }`}
-                >
-                  <span>Quota: {quota.disponible}/{quota.limite}</span>
-                  <Info className="w-3 h-3" />
-                </div>
-              </Tooltip>
-              {/* Botón Actualizar */}
-              <button
-                onClick={onRefresh}
-                className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Actualizar
-              </button>
-            </div>
+                <span>Quota: {quota.disponible}/{quota.limite}</span>
+                <Info className="w-4 h-4" />
+              </div>
+            </Tooltip>
+
+            {/* Botón Actualizar */}
+            <button
+              onClick={onRefresh}
+              className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Actualizar
+            </button>
 
             <button
               onClick={() => setShowTemplateModal(true)}
