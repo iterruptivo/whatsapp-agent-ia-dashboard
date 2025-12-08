@@ -1136,9 +1136,8 @@ export default function FichaInscripcionModal({
               <h3 style="color: #333; margin-bottom: 15px; font-size: 14px;">Documento de Identidad (DNI)</h3>
               <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
                 ${dniFotos.map((url, i) => `
-                  <div style="text-align: center;">
+                  <div>
                     <img src="${url}" alt="DNI ${i + 1}" style="max-width: 400px; max-height: 300px; border: 1px solid #ddd; border-radius: 8px;" />
-                    <p style="font-size: 12px; color: #666; margin-top: 5px;">${i === 0 ? 'Anverso' : 'Reverso'}</p>
                   </div>
                 `).join('')}
               </div>
@@ -1149,9 +1148,8 @@ export default function FichaInscripcionModal({
               <h3 style="color: #333; margin-bottom: 15px; font-size: 14px;">Comprobante de Depósito</h3>
               <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
                 ${comprobanteFotos.map((url, i) => `
-                  <div style="text-align: center;">
+                  <div>
                     <img src="${url}" alt="Comprobante ${i + 1}" style="max-width: 400px; max-height: 400px; border: 1px solid #ddd; border-radius: 8px;" />
-                    <p style="font-size: 12px; color: #666; margin-top: 5px;">Comprobante ${i + 1}</p>
                   </div>
                 `).join('')}
               </div>
