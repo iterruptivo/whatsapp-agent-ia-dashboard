@@ -446,7 +446,7 @@ export default function FichaInscripcionModal({
     fetchProyectoConfig();
   }, [isOpen, local]);
 
-  const handleChange = (field: keyof ClienteFichaInput, value: string | boolean | null | Copropietario[] | number) => {
+  const handleChange = (field: keyof ClienteFichaInput, value: string | boolean | null | Copropietario[] | number | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
