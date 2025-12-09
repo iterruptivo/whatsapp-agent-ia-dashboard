@@ -111,7 +111,8 @@ export interface UpdateUsuarioData {
 
 export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
-  const supabase = await createClient();
+  // Usamos cliente admin para bypasear RLS en queries de administración
+  const supabase = createAdminClient();
 
   // 1. Obtener todos los usuarios
   const { data: usuarios, error: errorUsuarios } = await supabase
@@ -127,21 +128,26 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
   if (!usuarios || usuarios.length === 0) return [];
 
   // 2. Obtener datos de vendedores (para roles vendedor/vendedor_caseta)
+  // Filtramos usuarios que tienen vendedor_id válido
   const vendedorIds = usuarios
-    .filter(u => u.vendedor_id)
-    .map(u => u.vendedor_id);
+    .filter(u => u.vendedor_id !== null && u.vendedor_id !== undefined)
+    .map(u => u.vendedor_id as string);
 
   let vendedoresMap: Record<string, { telefono: string; email?: string }> = {};
 
   if (vendedorIds.length > 0) {
-    const { data: vendedores } = await supabase
+    const { data: vendedores, error: errorVendedores } = await supabase
       .from('vendedores')
       .select('id, telefono, email')
       .in('id', vendedorIds);
 
+    if (errorVendedores) {
+      console.error('[getAllUsuarios] Error obteniendo vendedores:', errorVendedores);
+    }
+
     if (vendedores) {
       vendedoresMap = vendedores.reduce((acc, v) => {
-        acc[v.id] = { telefono: v.telefono, email: v.email };
+        acc[v.id] = { telefono: v.telefono || '', email: v.email };
         return acc;
       }, {} as Record<string, { telefono: string; email?: string }>);
     }
@@ -155,10 +161,14 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
   let noVendedoresMap: Record<string, { telefono: string | null; email_alternativo: string | null }> = {};
 
   if (noVendedorIds.length > 0) {
-    const { data: datosNoVendedores } = await supabase
+    const { data: datosNoVendedores, error: errorNoVendedores } = await supabase
       .from('usuarios_datos_no_vendedores')
       .select('usuario_id, telefono, email_alternativo')
       .in('usuario_id', noVendedorIds);
+
+    if (errorNoVendedores) {
+      console.error('[getAllUsuarios] Error obteniendo datos no vendedores:', errorNoVendedores);
+    }
 
     if (datosNoVendedores) {
       noVendedoresMap = datosNoVendedores.reduce((acc, d) => {
@@ -200,7 +210,8 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
 
 export async function getUsuarioById(id: string): Promise<UsuarioConDatos | null> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
-  const supabase = await createClient();
+  // Usamos cliente admin para bypasear RLS en queries de administración
+  const supabase = createAdminClient();
 
   const { data: usuario, error } = await supabase
     .from('usuarios')
@@ -816,7 +827,8 @@ export async function getUsuariosStats(): Promise<{
   porRol: Record<string, number>;
 }> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
-  const supabase = await createClient();
+  // Usamos cliente admin para bypasear RLS en queries de administración
+  const supabase = createAdminClient();
 
   const { data: usuarios } = await supabase
     .from('usuarios')
