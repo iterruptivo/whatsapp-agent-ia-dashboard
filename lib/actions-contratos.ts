@@ -263,18 +263,25 @@ export async function generateContrato(
       return { success: false, error: 'Ficha del cliente no encontrada. Complete la ficha de inscripción primero.' };
     }
 
-    // 4. Obtener template Word desde Supabase Storage
+    // 4. Obtener template Word desde Supabase Storage (bucket privado)
+    // contrato_template_url ahora contiene solo el nombre del archivo
     if (!proyecto.contrato_template_url) {
       return { success: false, error: 'No hay template de contrato configurado para este proyecto. Configure uno en Configuración de Proyectos.' };
     }
 
     let templateBuffer: Buffer;
     try {
-      const response = await fetch(proyecto.contrato_template_url);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      // Descargar archivo directamente desde Storage (bucket privado, usuario autenticado)
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('contratos-templates')
+        .download(proyecto.contrato_template_url);
+
+      if (downloadError || !fileData) {
+        console.error('Error downloading template:', downloadError);
+        throw new Error(downloadError?.message || 'Error al descargar template');
       }
-      const arrayBuffer = await response.arrayBuffer();
+
+      const arrayBuffer = await fileData.arrayBuffer();
       templateBuffer = Buffer.from(arrayBuffer);
     } catch (err) {
       console.error('Error fetching template:', err);

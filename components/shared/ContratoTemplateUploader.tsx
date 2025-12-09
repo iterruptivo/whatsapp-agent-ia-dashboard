@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Upload, FileText, Trash2, Download, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Upload, FileText, Trash2, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface ContratoTemplateUploaderProps {
   currentTemplateUrl: string | null;
@@ -86,9 +86,14 @@ export default function ContratoTemplateUploader({
     }
   };
 
-  const getFileName = (url: string) => {
-    const parts = url.split('/');
-    return parts[parts.length - 1];
+  // currentTemplateUrl ahora es solo el nombre del archivo (no URL completa)
+  const getFileName = (fileName: string) => {
+    // Si por alguna razón viene una URL, extraer el nombre
+    if (fileName.includes('/')) {
+      const parts = fileName.split('/');
+      return parts[parts.length - 1];
+    }
+    return fileName;
   };
 
   return (
@@ -107,30 +112,21 @@ export default function ContratoTemplateUploader({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <a
-              href={currentTemplateUrl}
-              download
-              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-              title="Descargar template"
+          {/* Botón eliminar (descarga no disponible en bucket privado) */}
+          {onDelete && (
+            <button
+              onClick={handleDelete}
+              disabled={disabled || isDeleting}
+              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
+              title="Eliminar template"
             >
-              <Download className="w-4 h-4" />
-            </a>
-            {onDelete && (
-              <button
-                onClick={handleDelete}
-                disabled={disabled || isDeleting}
-                className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
-                title="Eliminar template"
-              >
-                {isDeleting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )}
-              </button>
-            )}
-          </div>
+              {isDeleting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+            </button>
+          )}
         </div>
       ) : (
         <div className="p-4 bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg">

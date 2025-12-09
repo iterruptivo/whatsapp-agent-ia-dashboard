@@ -249,17 +249,13 @@ export async function uploadContratoTemplate(
       return { success: false, error: uploadError.message };
     }
 
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from('contratos-templates')
-      .getPublicUrl(fileName);
+    // Para bucket privado: guardar solo el nombre del archivo (no URL pública)
+    // El servidor generará signed URLs cuando necesite descargar el template
 
-    const publicUrl = urlData.publicUrl;
-
-    // Update proyecto with contrato_template_url
+    // Update proyecto with contrato_template_url (solo nombre de archivo)
     const { error: updateError } = await supabase
       .from('proyectos')
-      .update({ contrato_template_url: publicUrl })
+      .update({ contrato_template_url: fileName })
       .eq('id', proyectoId);
 
     if (updateError) {
@@ -267,7 +263,7 @@ export async function uploadContratoTemplate(
       return { success: false, error: updateError.message };
     }
 
-    return { success: true, url: publicUrl };
+    return { success: true, url: fileName };
   } catch (error) {
     console.error('Error in uploadContratoTemplate:', error);
     return { success: false, error: 'Error inesperado al subir template' };
@@ -276,17 +272,14 @@ export async function uploadContratoTemplate(
 
 export async function deleteContratoTemplate(
   proyectoId: string,
-  currentTemplateUrl: string
+  currentFileName: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Extract file name from URL
-    const urlParts = currentTemplateUrl.split('/');
-    const fileName = urlParts[urlParts.length - 1];
-
+    // currentFileName ya es el nombre del archivo (no URL)
     // Delete from Storage
     const { error: deleteError } = await supabase.storage
       .from('contratos-templates')
-      .remove([fileName]);
+      .remove([currentFileName]);
 
     if (deleteError) {
       console.error('Error deleting contrato template from storage:', deleteError);
