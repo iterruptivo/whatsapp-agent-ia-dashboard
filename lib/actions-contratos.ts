@@ -64,6 +64,7 @@ interface ContratoTemplateData {
   domicilio_fiscal: string;
   ubicacion_terreno: string;
   partida_electronica: string;
+  partida_electronica_predio: string;
   zona_registral: string;
 
   // Representante legal (primero del array)
@@ -256,7 +257,7 @@ export async function generateContrato(
       .select(`
         id, nombre, slug,
         razon_social, ruc, domicilio_fiscal, ubicacion_terreno, denominacion_proyecto,
-        partida_electronica, zona_registral,
+        partida_electronica, partida_electronica_predio, zona_registral,
         plazo_firma_dias, penalidad_porcentaje,
         representantes_legales, cuentas_bancarias,
         contrato_template_url
@@ -334,6 +335,7 @@ export async function generateContrato(
       domicilio_fiscal: proyecto.domicilio_fiscal || '',
       ubicacion_terreno: proyecto.ubicacion_terreno || '',
       partida_electronica: proyecto.partida_electronica || '',
+      partida_electronica_predio: proyecto.partida_electronica_predio || '',
       zona_registral: proyecto.zona_registral || '',
 
       // Representante principal

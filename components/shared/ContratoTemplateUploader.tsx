@@ -296,6 +296,7 @@ export default function ContratoTemplateUploader({
                   <div><code>{'{domicilio_fiscal}'}</code></div>
                   <div><code>{'{ubicacion_terreno}'}</code></div>
                   <div><code>{'{partida_electronica}'}</code></div>
+                  <div><code>{'{partida_electronica_predio}'}</code></div>
                   <div><code>{'{zona_registral}'}</code></div>
                 </div>
               </section>

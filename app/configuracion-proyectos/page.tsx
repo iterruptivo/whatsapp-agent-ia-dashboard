@@ -45,6 +45,7 @@ interface ProyectoFormData {
   ubicacion_terreno: string;
   denominacion_proyecto: string;
   partida_electronica: string;
+  partida_electronica_predio: string;
   zona_registral: string;
   plazo_firma_dias: string;
   penalidad_porcentaje: string;
@@ -136,6 +137,7 @@ export default function ConfiguracionProyectos() {
           ubicacion_terreno: proyecto.ubicacion_terreno || '',
           denominacion_proyecto: proyecto.denominacion_proyecto || '',
           partida_electronica: proyecto.partida_electronica || '',
+          partida_electronica_predio: proyecto.partida_electronica_predio || '',
           zona_registral: proyecto.zona_registral || '',
           plazo_firma_dias: proyecto.plazo_firma_dias?.toString() || '5',
           penalidad_porcentaje: proyecto.penalidad_porcentaje?.toString() || '100',
@@ -228,6 +230,7 @@ export default function ConfiguracionProyectos() {
       ubicacion_terreno: data.ubicacion_terreno || undefined,
       denominacion_proyecto: data.denominacion_proyecto || undefined,
       partida_electronica: data.partida_electronica || undefined,
+      partida_electronica_predio: data.partida_electronica_predio || undefined,
       zona_registral: data.zona_registral || undefined,
       plazo_firma_dias: data.plazo_firma_dias ? parseInt(data.plazo_firma_dias) : undefined,
       penalidad_porcentaje: data.penalidad_porcentaje ? parseInt(data.penalidad_porcentaje) : undefined,
@@ -1389,16 +1392,30 @@ export default function ConfiguracionProyectos() {
                             />
                           </div>
 
-                          {/* Partida Electrónica */}
+                          {/* Poder: Partida Electrónica (Registro Persona Jurídica) */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Partida Electrónica
+                              Poder: Partida Electrónica (Registro Persona Jurídica)
                             </label>
                             <input
                               type="text"
                               value={data.partida_electronica}
                               onChange={(e) => updateFormData(proyecto.id, 'partida_electronica', e.target.value)}
                               placeholder="Ej: P12345678"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors font-mono"
+                            />
+                          </div>
+
+                          {/* Número de Partida del Proyecto (Predios) */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Número de Partida del Proyecto (Predios)
+                            </label>
+                            <input
+                              type="text"
+                              value={data.partida_electronica_predio}
+                              onChange={(e) => updateFormData(proyecto.id, 'partida_electronica_predio', e.target.value)}
+                              placeholder="Ej: P87654321"
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors font-mono"
                             />
                           </div>
