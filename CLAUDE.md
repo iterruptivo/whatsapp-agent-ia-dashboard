@@ -7,8 +7,8 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 8 Diciembre 2025
-**Sesión:** 66 - 🖼️📎 **Logo Dinámico + Documentos Adjuntos Requeridos + Descarga PDF**
+**Fecha:** 9 Diciembre 2025
+**Sesión:** 66 - 🖼️📎📄 **Logo Dinámico + Documentos Adjuntos + PDF + Sistema Contratos Word**
 **Estado:** ✅ **DEPLOYED TO STAGING**
 **Documentación:** Ver detalles abajo
 
@@ -25,9 +25,9 @@
 | [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | **Sesión 65 (5 Dic)** | 23 usuarios |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
-| [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 66 (8 Dic)** | Logo + Docs adjuntos + PDF download |
+| [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 66 (9 Dic)** | Logo + Docs + PDF + Contratos Word |
 
-### **Métricas Globales (Actualizado: 8 Dic 2025)**
+### **Métricas Globales (Actualizado: 9 Dic 2025)**
 ```
 Total Leads:        1,417
 Total Locales:      823
@@ -75,9 +75,9 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: OPERATIVO (3 flujos activos)
 
 - **[Documentos](docs/modulos/documentos.md)** - Generación automática de documentos legales
-  - Última sesión: **64B (Template HTML Ficha de Inscripción)**
-  - Estado: EN DESARROLLO (5/8 fases completadas)
-  - Tecnología: docx-templates para templates Word + HTML templates
+  - Última sesión: **66 (Sistema Contratos Word con docx-templates)**
+  - Estado: EN DESARROLLO (6/8 fases completadas)
+  - Tecnología: docx-templates para templates Word + HTML templates + JSZip post-processing
 
 ---
 
@@ -116,7 +116,7 @@ Documentación cronológica completa de todas las sesiones.
   - **📄 Sistema Generación Documentos (64)** ✅
   - **📄 Template HTML Ficha de Inscripción (64B)** ✅
   - **🔐 Rol Finanzas + Ficha Inscripción Modal (65)** ✅
-  - **🖼️📎 Logo Dinámico + Documentos Adjuntos + Descarga PDF (66)** ✅
+  - **🖼️📎📄 Logo Dinámico + Docs Adjuntos + PDF + Contratos Word (66)** ✅
 
 ---
 
@@ -165,8 +165,8 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
 
-### **Sesión 66** (7-8 Dic) - 🖼️📎 ✅ **Logo Dinámico + Documentos Adjuntos Requeridos + Descarga PDF**
-**Tipo:** Feature completo (Logo + Documentos + PDF)
+### **Sesión 66** (7-9 Dic) - 🖼️📎📄 ✅ **Logo Dinámico + Docs Adjuntos + PDF + Contratos Word**
+**Tipo:** Feature completo (Logo + Documentos + PDF + Sistema de Contratos)
 **Estado:** ✅ **DEPLOYED TO STAGING**
 
 **Features implementados:**
@@ -305,6 +305,129 @@ Ejemplo: `FICHA-INSCRIPCION-PRUEBA-01-20251207-213500.pdf`
 - `4728bcb` - feat: Add timestamp to print filename for uniqueness
 - `08f4b91` - feat: Add direct PDF download with correct filename
 - `c235d1b` - fix: Include document images (DNI/Comprobante) in PDF download
+
+---
+
+#### **PARTE 4: Sistema de Generación de Contratos con docx-templates**
+
+**Requerimiento:** Generar contratos Word (.docx) a partir de templates con variables dinámicas.
+
+**Tecnología seleccionada:**
+- Librería: `docx-templates` (npm)
+- Almacenamiento: Supabase Storage bucket `contratos-templates`
+- Templates: Archivos .docx con placeholders `{variable}`, `{IF condicion}`, `{FOR item IN lista}`, etc.
+
+**Arquitectura del sistema:**
+
+| Componente | Descripción |
+|------------|-------------|
+| **Supabase Storage** | Bucket `contratos-templates` para almacenar templates Word |
+| **ContratoTemplateUploader.tsx** | Componente para subir templates con documentación de variables |
+| **actions-contratos.ts** | Server actions para generación de contratos |
+| **numero-a-letras.ts** | Utilidades para convertir números/fechas a texto en español |
+
+**Variables disponibles en templates:**
+
+```
+DATOS DEL PROYECTO:
+- {nombre_proyecto} - Nombre del proyecto
+- {datos_legales.razon_social} - Razón social de la empresa
+- {datos_legales.ruc} - RUC de la empresa
+- {datos_legales.direccion} - Dirección legal
+- {datos_legales.representante_legal} - Nombre del representante
+- {datos_legales.dni_representante} - DNI del representante
+- {datos_legales.cargo_representante} - Cargo del representante
+
+DATOS DEL LOCAL:
+- {local.codigo} - Código del local (ej: PRUEBA-01)
+- {local.area_m2} - Área en metros cuadrados
+
+DATOS DEL CLIENTE (TITULAR):
+- {cliente.nombres}, {cliente.apellido_paterno}, {cliente.apellido_materno}
+- {cliente.tipo_documento}, {cliente.numero_documento}
+- {cliente.estado_civil}, {cliente.direccion}, {cliente.ocupacion}
+
+DATOS DEL CÓNYUGE (condicional):
+- {tiene_conyuge} - Boolean para condicional {IF tiene_conyuge}
+- {conyuge.nombres}, {conyuge.apellido_paterno}, etc.
+
+COPROPIETARIOS (array para {FOR}):
+- {tiene_copropietarios} - Boolean
+- {copropietarios} - Array para {FOR cp IN copropietarios}
+- Cada cp tiene: cp.nombres, cp.tipo_documento, cp.numero_documento, etc.
+
+MONTOS Y FINANCIAMIENTO:
+- {precio_venta_usd}, {precio_venta_usd_texto}
+- {precio_venta_pen}, {precio_venta_pen_texto}
+- {monto_separacion_usd}, {monto_separacion_usd_texto}
+- {inicial_usd}, {inicial_usd_texto}, {inicial_pen}, {inicial_pen_texto}
+- {inicial_restante_usd}, {inicial_restante_pen}
+- {cuota_mensual_usd}, {cuota_mensual_pen}
+- {numero_cuotas}, {numero_cuotas_texto}
+- {tea_porcentaje}
+- {tipo_cambio}, {tipo_cambio_texto}
+
+FECHAS:
+- {fecha_contrato} - Formato DD/MM/YYYY
+- {fecha_contrato_texto} - "ocho de diciembre del dos mil veinticinco"
+- {fecha_primer_pago}, {fecha_ultimo_pago}
+- {dia_pago}, {dia_pago_texto} - Día del mes para cuotas
+```
+
+**Reglas críticas para templates Word:**
+
+> ⚠️ **IMPORTANTE**: Los comandos `{IF}`, `{END-IF}`, `{FOR}`, `{END-FOR}` DEBEN estar **solos en su propio párrafo** en Word.
+>
+> - Usar ENTER (no Shift+Enter) para crear nuevo párrafo
+> - NUNCA poner múltiples comandos en la misma línea
+> - Incorrecto: `{END-IF} {IF condicion}` ❌
+> - Correcto: Cada comando en línea separada ✅
+
+**Ejemplo de estructura en template:**
+
+```
+El señor {cliente.nombres} {cliente.apellido_paterno}...
+
+{IF tiene_conyuge}
+Conjuntamente con su cónyuge {conyuge.nombres}...
+{END-IF}
+
+{IF tiene_copropietarios}
+Como copropietarios:
+{FOR cp IN copropietarios}
+- {cp.nombres} {cp.apellido_paterno}, DNI {cp.numero_documento}
+{END-FOR}
+{END-IF}
+```
+
+**Post-procesamiento (removeEmptyParagraphs):**
+- Los templates generados pueden tener párrafos vacíos donde estaban los comandos
+- La función `removeEmptyParagraphs()` usa JSZip para limpiar el XML interno
+- Busca `<w:p>` vacíos (sin texto visible) y los elimina
+- Mejora la presentación final del documento
+
+**Funciones en numero-a-letras.ts:**
+
+| Función | Ejemplo |
+|---------|---------|
+| `numeroALetras(15000, 'USD')` | "QUINCE MIL Y 00/100 DÓLARES AMERICANOS" |
+| `numeroALetras(57600, 'PEN')` | "CINCUENTA Y SIETE MIL SEISCIENTOS Y 00/100 SOLES" |
+| `fechaALetras('2025-12-08')` | "ocho de diciembre del dos mil veinticinco" |
+| `numeroEnteroALetras(24)` | "VEINTICUATRO" |
+| `tipoCambioALetras(3.84)` | "Tres con 84/100 soles" |
+| `calcularFechaUltimaCuota(fecha, 24)` | Date de última cuota |
+
+**Error común y solución:**
+
+| Error | Causa | Solución |
+|-------|-------|----------|
+| "infinite loop or massive dataset detected" | Múltiples comandos `{IF}/{FOR}` en mismo párrafo Word | Separar cada comando en su propio párrafo usando ENTER |
+
+**Archivos del sistema:**
+- `lib/actions-contratos.ts` - Server actions + post-processing
+- `lib/utils/numero-a-letras.ts` - Utilidades de conversión
+- `components/shared/ContratoTemplateUploader.tsx` - UI de subida con docs
+- `modelos-contrato/` - Templates de ejemplo
 
 ---
 
@@ -1662,6 +1785,18 @@ INCORRECTO (intentado en 53):
   ```
 - **Tooltips personalizados**: Usar componente `@/components/shared/Tooltip` en vez del title nativo del navegador
 - **Fechas locales**: Usar `getFullYear()`, `getMonth()`, `getDate()` en vez de `toISOString()` para evitar problemas de timezone
+
+### **docx-templates (Generación de Contratos Word)**
+- **Comandos en párrafos separados (CRÍTICO)**: `{IF}`, `{END-IF}`, `{FOR}`, `{END-FOR}` DEBEN estar solos en su propio párrafo Word
+  - Usar ENTER (no Shift+Enter) para crear nuevo párrafo
+  - Múltiples comandos en misma línea causa error "infinite loop or massive dataset detected"
+  - Incorrecto: `{END-IF} {IF tiene_conyuge}` ❌
+  - Correcto: Cada comando en línea separada ✅
+- **Análisis de templates problemáticos**: Extraer `word/document.xml` del .docx (es un ZIP) para ver estructura XML real
+- **Post-procesamiento con JSZip**: Los comandos dejan párrafos vacíos que se deben eliminar con `removeEmptyParagraphs()`
+- **Regex ES5 compatibility**: Usar `[\s\S]` en lugar de `.` con flag `s` que no es soportado en ES5
+- **Variables anidadas**: Usar notación de punto (`{cliente.nombres}`) para objetos anidados
+- **Condicionales con arrays**: `{IF array.length}` funciona para verificar si array tiene elementos
 
 ---
 
