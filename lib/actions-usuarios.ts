@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase-server';
+import { supabase } from './supabase';
 import { revalidatePath } from 'next/cache';
 
 // ============================================================================
@@ -48,7 +48,6 @@ export interface UpdateUsuarioData {
 // ============================================================================
 
 async function verificarAdmin(): Promise<{ isAdmin: boolean; userId: string | null }> {
-  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return { isAdmin: false, userId: null };
@@ -75,8 +74,6 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
     console.error('getAllUsuarios: Usuario no es admin');
     return [];
   }
-
-  const supabase = await createClient();
 
   // 1. Obtener todos los usuarios
   const { data: usuarios, error: errorUsuarios } = await supabase
@@ -167,8 +164,6 @@ export async function getUsuarioById(id: string): Promise<UsuarioConDatos | null
   const { isAdmin } = await verificarAdmin();
   if (!isAdmin) return null;
 
-  const supabase = await createClient();
-
   const { data: usuario, error } = await supabase
     .from('usuarios')
     .select('*')
@@ -225,8 +220,6 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
   if (!isAdmin) {
     return { success: false, message: 'No tienes permisos para crear usuarios' };
   }
-
-  const supabase = await createClient();
 
   // 1. Validar email único
   const { data: existingEmail } = await supabase
@@ -363,8 +356,6 @@ export async function updateUsuario(data: UpdateUsuarioData): Promise<{
     return { success: false, message: 'No tienes permisos para editar usuarios' };
   }
 
-  const supabase = await createClient();
-
   // 1. Obtener usuario actual
   const { data: usuarioActual, error: fetchError } = await supabase
     .from('usuarios')
@@ -495,8 +486,6 @@ export async function toggleUsuarioActivo(id: string): Promise<{
     return { success: false, message: 'No puedes desactivar tu propia cuenta' };
   }
 
-  const supabase = await createClient();
-
   // Obtener estado actual
   const { data: usuario, error: fetchError } = await supabase
     .from('usuarios')
@@ -541,8 +530,6 @@ export async function resetUsuarioPassword(email: string): Promise<{
     return { success: false, message: 'No tienes permisos' };
   }
 
-  const supabase = await createClient();
-
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`
   });
@@ -575,8 +562,6 @@ export async function getUsuariosStats(): Promise<{
   if (!isAdmin) {
     return { total: 0, activos: 0, inactivos: 0, porRol: {} };
   }
-
-  const supabase = await createClient();
 
   const { data: usuarios } = await supabase
     .from('usuarios')
