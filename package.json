@@ -9,8 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.7.0",
-    "@supabase/supabase-js": "^2.75.0",
+    "@reduxjs/toolkit": "^2.11.1",
+    "@supabase/ssr": "^0.5.2",
+    "@supabase/supabase-js": "^2.47.12",
     "browser-image-compression": "^2.0.2",
     "docx-templates": "^4.15.0",
     "emoji-picker-react": "^4.16.1",

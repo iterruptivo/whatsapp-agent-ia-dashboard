@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -77,6 +77,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         categories: [finanzasCategory],
         bottomItems: [
           { href: '/repulse', label: 'Repulse', icon: Zap },
+          { href: '/admin/usuarios', label: 'Adm. de Usuarios', icon: UserCog },
           { href: '/configuracion-proyectos', label: 'Configurar Proyectos', icon: Settings },
         ],
       };
