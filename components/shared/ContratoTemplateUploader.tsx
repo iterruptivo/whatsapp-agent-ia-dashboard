@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Upload, FileText, Trash2, Loader2, AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { Upload, FileText, Trash2, Loader2, AlertCircle, CheckCircle2, Info, X, AlertTriangle } from 'lucide-react';
 
 interface ContratoTemplateUploaderProps {
   currentTemplateUrl: string | null;
@@ -28,6 +28,7 @@ export default function ContratoTemplateUploader({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showVariablesModal, setShowVariablesModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,13 +66,15 @@ export default function ContratoTemplateUploader({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDeleteClick = () => {
     if (!onDelete || !currentTemplateUrl) return;
+    setShowDeleteConfirm(true);
+  };
 
-    if (!confirm('¿Eliminar template de contrato? Los contratos generados no se verán afectados.')) {
-      return;
-    }
+  const handleDeleteConfirm = async () => {
+    if (!onDelete) return;
 
+    setShowDeleteConfirm(false);
     setError(null);
     setSuccess(null);
     setIsDeleting(true);
@@ -116,7 +119,7 @@ export default function ContratoTemplateUploader({
           {/* Botón eliminar (descarga no disponible en bucket privado) */}
           {onDelete && (
             <button
-              onClick={handleDelete}
+              onClick={handleDeleteClick}
               disabled={disabled || isDeleting}
               className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors disabled:opacity-50"
               title="Eliminar template"
@@ -195,6 +198,53 @@ export default function ContratoTemplateUploader({
         <Info className="w-4 h-4" />
         <span>Ver todas las variables disponibles para el template</span>
       </button>
+
+      {/* Modal de confirmación de eliminación */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b bg-orange-50 rounded-t-lg">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-orange-600" />
+                <h3 className="text-lg font-semibold text-orange-700">Confirmar eliminación</h3>
+              </div>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <p className="text-gray-700">
+                ¿Eliminar template de contrato?
+              </p>
+              <p className="text-sm text-gray-500 mt-2">
+                Los contratos generados previamente no se verán afectados.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end gap-3 p-4 border-t bg-gray-50 rounded-b-lg">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                className="px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de variables */}
       {showVariablesModal && (
