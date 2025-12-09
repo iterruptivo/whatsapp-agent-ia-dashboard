@@ -101,13 +101,14 @@ export interface ProyectoLegalData {
   domicilio_fiscal: string | null;
   ubicacion_terreno: string | null;
   logo_url: string | null;
+  contrato_template_url: string | null;
 }
 
 export async function getProyectoLegalData(proyectoId: string): Promise<ProyectoLegalData | null> {
   try {
     const { data, error } = await supabase
       .from('proyectos')
-      .select('razon_social, ruc, domicilio_fiscal, ubicacion_terreno, logo_url')
+      .select('razon_social, ruc, domicilio_fiscal, ubicacion_terreno, logo_url, contrato_template_url')
       .eq('id', proyectoId)
       .single();
 
@@ -206,5 +207,106 @@ export async function deleteProyectoLogo(
   } catch (error) {
     console.error('Error in deleteProyectoLogo:', error);
     return { success: false, error: 'Error inesperado al eliminar logo' };
+  }
+}
+
+// ============================================================================
+// Upload/Delete template de contrato Word
+// Sesión 66: Sistema de generación de contratos
+// ============================================================================
+
+export async function uploadContratoTemplate(
+  proyectoId: string,
+  file: File
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  try {
+    // Validar tipo de archivo
+    const validTypes = [
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword'
+    ];
+    if (!validTypes.includes(file.type) && !file.name.endsWith('.docx')) {
+      return { success: false, error: 'Solo se permiten archivos Word (.docx)' };
+    }
+
+    // Validar tamaño (máx 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      return { success: false, error: 'El archivo no debe superar 10MB' };
+    }
+
+    const fileName = `${proyectoId}-contrato-${Date.now()}.docx`;
+
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from('contratos-templates')
+      .upload(fileName, file, {
+        contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error('Error uploading contrato template:', uploadError);
+      return { success: false, error: uploadError.message };
+    }
+
+    // Get public URL
+    const { data: urlData } = supabase.storage
+      .from('contratos-templates')
+      .getPublicUrl(fileName);
+
+    const publicUrl = urlData.publicUrl;
+
+    // Update proyecto with contrato_template_url
+    const { error: updateError } = await supabase
+      .from('proyectos')
+      .update({ contrato_template_url: publicUrl })
+      .eq('id', proyectoId);
+
+    if (updateError) {
+      console.error('Error updating proyecto contrato_template_url:', updateError);
+      return { success: false, error: updateError.message };
+    }
+
+    return { success: true, url: publicUrl };
+  } catch (error) {
+    console.error('Error in uploadContratoTemplate:', error);
+    return { success: false, error: 'Error inesperado al subir template' };
+  }
+}
+
+export async function deleteContratoTemplate(
+  proyectoId: string,
+  currentTemplateUrl: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Extract file name from URL
+    const urlParts = currentTemplateUrl.split('/');
+    const fileName = urlParts[urlParts.length - 1];
+
+    // Delete from Storage
+    const { error: deleteError } = await supabase.storage
+      .from('contratos-templates')
+      .remove([fileName]);
+
+    if (deleteError) {
+      console.error('Error deleting contrato template from storage:', deleteError);
+      // Continue anyway to clear the URL
+    }
+
+    // Clear contrato_template_url in proyecto
+    const { error: updateError } = await supabase
+      .from('proyectos')
+      .update({ contrato_template_url: null })
+      .eq('id', proyectoId);
+
+    if (updateError) {
+      console.error('Error clearing proyecto contrato_template_url:', updateError);
+      return { success: false, error: updateError.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error in deleteContratoTemplate:', error);
+    return { success: false, error: 'Error inesperado al eliminar template' };
   }
 }

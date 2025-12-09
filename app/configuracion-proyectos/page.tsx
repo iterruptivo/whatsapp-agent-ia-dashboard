@@ -19,7 +19,8 @@ import {
 } from '@/lib/actions-proyecto-config';
 import { Save, ChevronDown, ChevronUp, ChevronUp as ArrowUp, ChevronDown as ArrowDown, X, Plus, Users, Search, FileText, Building2, Banknote, UserCheck, Image as ImageIcon } from 'lucide-react';
 import LogoUploader from '@/components/shared/LogoUploader';
-import { uploadProyectoLogo, deleteProyectoLogo } from '@/lib/proyecto-config';
+import ContratoTemplateUploader from '@/components/shared/ContratoTemplateUploader';
+import { uploadProyectoLogo, deleteProyectoLogo, uploadContratoTemplate, deleteContratoTemplate } from '@/lib/proyecto-config';
 
 interface ProyectoFormData {
   tea: string;
@@ -57,6 +58,8 @@ interface ProyectoFormData {
   nuevaCuenta_moneda: 'USD' | 'PEN' | '';
   // SESIÓN 66: Logo del proyecto
   logo_url: string | null;
+  // SESIÓN 66: Template de contrato Word
+  contrato_template_url: string | null;
   saving: boolean;
   message: { type: 'success' | 'error'; text: string } | null;
 }
@@ -145,6 +148,8 @@ export default function ConfiguracionProyectos() {
           nuevaCuenta_moneda: 'USD',
           // SESIÓN 66: Logo del proyecto
           logo_url: proyecto.logo_url || null,
+          // SESIÓN 66: Template de contrato Word
+          contrato_template_url: proyecto.contrato_template_url || null,
           saving: false,
           message: null,
         };
@@ -1285,6 +1290,39 @@ export default function ConfiguracionProyectos() {
                                 }
                               } : undefined}
                               aspectRatio={1}
+                              disabled={data.saving}
+                            />
+                          </div>
+                        </div>
+
+                        {/* SESIÓN 66: Template de Contrato Word */}
+                        <div className="mb-8">
+                          <div className="flex items-center gap-2 mb-4">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                            <h4 className="text-lg font-semibold text-gray-900">Template de Contrato</h4>
+                          </div>
+                          <p className="text-sm text-gray-500 mb-4">
+                            Sube un archivo Word (.docx) con las variables para generar contratos automáticamente
+                          </p>
+                          <div className="max-w-md">
+                            <ContratoTemplateUploader
+                              currentTemplateUrl={data.contrato_template_url}
+                              onUpload={async (file) => {
+                                const result = await uploadContratoTemplate(proyecto.id, file);
+                                if (result.success && result.url) {
+                                  updateFormData(proyecto.id, 'contrato_template_url', result.url);
+                                } else {
+                                  throw new Error(result.error || 'Error al subir template');
+                                }
+                              }}
+                              onDelete={data.contrato_template_url ? async () => {
+                                const result = await deleteContratoTemplate(proyecto.id, data.contrato_template_url!);
+                                if (result.success) {
+                                  updateFormData(proyecto.id, 'contrato_template_url', null);
+                                } else {
+                                  throw new Error(result.error || 'Error al eliminar template');
+                                }
+                              } : undefined}
                               disabled={data.saving}
                             />
                           </div>

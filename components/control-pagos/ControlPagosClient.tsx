@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import type { ControlPago } from '@/lib/actions-control-pagos';
-import { FileText, Calendar, Eye } from 'lucide-react';
+import { FileText, Calendar, Eye, Download, Loader2 } from 'lucide-react';
 import PagosPanel from './PagosPanel';
 import PrecioComparativoModal from './PrecioComparativoModal';
 import Tooltip from '@/components/shared/Tooltip';
@@ -35,6 +35,40 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
     isOpen: false,
     controlPago: null,
   });
+  const [generatingContrato, setGeneratingContrato] = useState<string | null>(null);
+
+  // Handler para generar contrato Word
+  const handleGenerarContrato = async (cp: ControlPago) => {
+    setGeneratingContrato(cp.id);
+    try {
+      const response = await fetch('/api/contratos/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ controlPagoId: cp.id, tipoCambio: 3.80 }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Error al generar contrato');
+      }
+
+      // Descargar el archivo
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `CONTRATO_${cp.codigo_local}_${new Date().toISOString().split('T')[0]}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error generando contrato:', error);
+      alert(error instanceof Error ? error.message : 'Error al generar contrato');
+    } finally {
+      setGeneratingContrato(null);
+    }
+  };
 
   // Helper para formatear montos
   const formatMonto = (monto: number): string => {
@@ -207,13 +241,29 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
 
                   {/* Acciones */}
                   <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => setPagosPanel({ isOpen: true, controlPago: cp })}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a63] transition-colors text-sm font-medium"
-                    >
-                      <Eye className="w-4 h-4" />
-                      Ver
-                    </button>
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => setPagosPanel({ isOpen: true, controlPago: cp })}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a63] transition-colors text-sm font-medium"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Ver
+                      </button>
+                      <Tooltip text="Generar Contrato Word">
+                        <button
+                          onClick={() => handleGenerarContrato(cp)}
+                          disabled={generatingContrato === cp.id}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {generatingContrato === cp.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Download className="w-4 h-4" />
+                          )}
+                          Contrato
+                        </button>
+                      </Tooltip>
+                    </div>
                   </td>
                 </tr>
               ))}
