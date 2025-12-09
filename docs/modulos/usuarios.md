@@ -44,7 +44,7 @@ Permite crear multiples usuarios desde un archivo Excel/CSV.
 |-------|------------|
 | nombre | Obligatorio |
 | email | Formato valido, unico en BD, unico en archivo |
-| rol | Debe ser: admin, jefe_ventas, vendedor, vendedor_caseta, finanzas |
+| rol | Debe ser: admin, jefe_ventas, vendedor, vendedor_caseta, coordinador, finanzas |
 | telefono | Minimo 10 digitos, sin simbolo +, unico en BD |
 | email_alternativo | Opcional, formato valido si se incluye |
 

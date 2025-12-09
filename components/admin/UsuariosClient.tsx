@@ -41,6 +41,7 @@ const ROL_LABELS: Record<string, string> = {
   jefe_ventas: 'Jefe de Ventas',
   vendedor: 'Vendedor',
   vendedor_caseta: 'Vendedor Caseta',
+  coordinador: 'Coordinador',
   finanzas: 'Finanzas',
 };
 
@@ -49,6 +50,7 @@ const ROL_COLORS: Record<string, string> = {
   jefe_ventas: 'bg-blue-100 text-blue-800',
   vendedor: 'bg-green-100 text-green-800',
   vendedor_caseta: 'bg-teal-100 text-teal-800',
+  coordinador: 'bg-indigo-100 text-indigo-800',
   finanzas: 'bg-orange-100 text-orange-800',
 };
 
@@ -261,6 +263,7 @@ export default function UsuariosClient({
                 <option value="jefe_ventas">Jefe de Ventas</option>
                 <option value="vendedor">Vendedor</option>
                 <option value="vendedor_caseta">Vendedor Caseta</option>
+                <option value="coordinador">Coordinador</option>
                 <option value="finanzas">Finanzas</option>
               </select>
             </div>

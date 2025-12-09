@@ -29,13 +29,14 @@ interface ParsedUsuario {
   errors: string[];
 }
 
-const VALID_ROLES = ['admin', 'jefe_ventas', 'vendedor', 'vendedor_caseta', 'finanzas'];
+const VALID_ROLES = ['admin', 'jefe_ventas', 'vendedor', 'vendedor_caseta', 'coordinador', 'finanzas'];
 
 const ROL_LABELS: Record<string, string> = {
   admin: 'Administrador',
   jefe_ventas: 'Jefe de Ventas',
   vendedor: 'Vendedor',
   vendedor_caseta: 'Vendedor Caseta',
+  coordinador: 'Coordinador',
   finanzas: 'Finanzas',
 };
 

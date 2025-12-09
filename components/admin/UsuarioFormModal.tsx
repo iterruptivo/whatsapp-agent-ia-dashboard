@@ -20,6 +20,7 @@ const ROLES = [
   { value: 'jefe_ventas', label: 'Jefe de Ventas' },
   { value: 'vendedor', label: 'Vendedor' },
   { value: 'vendedor_caseta', label: 'Vendedor Caseta' },
+  { value: 'coordinador', label: 'Coordinador' },
   { value: 'finanzas', label: 'Finanzas' },
 ];
 
