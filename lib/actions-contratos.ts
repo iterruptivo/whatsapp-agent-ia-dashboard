@@ -121,6 +121,7 @@ interface ContratoTemplateData {
   codigo_local: string;
   metraje: number;
   metraje_texto: string;
+  rubro: string;
 
   // Montos USD
   monto_venta: number;
@@ -404,6 +405,7 @@ export async function generateContrato(
       codigo_local: controlPago.codigo_local || '',
       metraje: controlPago.metraje || 0,
       metraje_texto: numeroEnteroALetras(Math.floor(controlPago.metraje || 0)),
+      rubro: clienteFicha.rubro || '',
 
       // Montos USD
       monto_venta: controlPago.monto_venta || 0,

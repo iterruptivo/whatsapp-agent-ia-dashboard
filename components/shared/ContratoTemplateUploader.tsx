@@ -409,6 +409,7 @@ export default function ContratoTemplateUploader({
                   <div><code>{'{codigo_local}'}</code></div>
                   <div><code>{'{metraje}'}</code> - Número</div>
                   <div><code>{'{metraje_texto}'}</code> - En letras</div>
+                  <div><code>{'{rubro}'}</code> - Giro del negocio</div>
                 </div>
               </section>
 
