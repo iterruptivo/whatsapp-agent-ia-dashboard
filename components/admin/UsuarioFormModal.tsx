@@ -162,7 +162,7 @@ export default function UsuarioFormModal({
           </div>
 
           {/* Body */}
-          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4" autoComplete="off">
             {/* Error message */}
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -184,6 +184,7 @@ export default function UsuarioFormModal({
                   placeholder="Ej: Juan Pérez"
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   disabled={isSubmitting}
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -202,6 +203,7 @@ export default function UsuarioFormModal({
                   placeholder="usuario@ecoplaza.pe"
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary disabled:bg-gray-100"
                   disabled={isSubmitting || isEditing}
+                  autoComplete="new-email"
                 />
               </div>
               {isEditing && (
@@ -226,6 +228,7 @@ export default function UsuarioFormModal({
                     placeholder="Mínimo 6 caracteres"
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     disabled={isSubmitting}
+                    autoComplete="new-password"
                   />
                 </div>
               </div>
@@ -283,6 +286,7 @@ export default function UsuarioFormModal({
                   placeholder="email.personal@gmail.com"
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                   disabled={isSubmitting}
+                  autoComplete="off"
                 />
               </div>
               <p className="text-xs text-gray-500 mt-1">
