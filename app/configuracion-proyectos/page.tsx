@@ -1261,16 +1261,17 @@ export default function ConfiguracionProyectos() {
                           Información legal de la empresa para generación automática de documentos (Acuerdo de Separación, contratos, etc.)
                         </p>
 
-                        {/* SESIÓN 66: Logo del proyecto */}
-                        <div className="mb-8">
-                          <div className="flex items-center gap-2 mb-4">
-                            <ImageIcon className="w-5 h-5 text-primary" />
-                            <h4 className="text-lg font-semibold text-gray-900">Logo Oficial del Proyecto</h4>
-                          </div>
-                          <p className="text-sm text-gray-500 mb-4">
-                            Este logo aparecerá en documentos oficiales como la Ficha de Inscripción
-                          </p>
-                          <div className="max-w-md">
+                        {/* SESIÓN 66: Logo del proyecto + Template de Contrato en 2 columnas */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                          {/* Logo del proyecto */}
+                          <div>
+                            <div className="flex items-center gap-2 mb-4">
+                              <ImageIcon className="w-5 h-5 text-primary" />
+                              <h4 className="text-lg font-semibold text-gray-900">Logo Oficial del Proyecto</h4>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-4">
+                              Este logo aparecerá en documentos oficiales como la Ficha de Inscripción
+                            </p>
                             <LogoUploader
                               currentLogoUrl={data.logo_url}
                               onSave={async (croppedImageBlob) => {
@@ -1293,18 +1294,16 @@ export default function ConfiguracionProyectos() {
                               disabled={data.saving}
                             />
                           </div>
-                        </div>
 
-                        {/* SESIÓN 66: Template de Contrato Word */}
-                        <div className="mb-8">
-                          <div className="flex items-center gap-2 mb-4">
-                            <FileText className="w-5 h-5 text-blue-600" />
-                            <h4 className="text-lg font-semibold text-gray-900">Template de Contrato</h4>
-                          </div>
-                          <p className="text-sm text-gray-500 mb-4">
-                            Sube un archivo Word (.docx) con las variables para generar contratos automáticamente
-                          </p>
-                          <div className="max-w-md">
+                          {/* Template de Contrato Word */}
+                          <div>
+                            <div className="flex items-center gap-2 mb-4">
+                              <FileText className="w-5 h-5 text-blue-600" />
+                              <h4 className="text-lg font-semibold text-gray-900">Template de Contrato</h4>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-4">
+                              Sube un archivo Word (.docx) con las variables para generar contratos automáticamente
+                            </p>
                             <ContratoTemplateUploader
                               currentTemplateUrl={data.contrato_template_url}
                               onUpload={async (file) => {
