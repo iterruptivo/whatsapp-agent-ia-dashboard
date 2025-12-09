@@ -264,12 +264,15 @@ export default function ContratoTemplateUploader({
             {/* Body - Scrollable */}
             <div className="p-4 overflow-y-auto flex-1 space-y-6 text-sm">
               {/* Instrucciones */}
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg space-y-2">
                 <p className="text-yellow-800">
-                  <strong>Sintaxis:</strong> Use <code className="bg-yellow-100 px-1 rounded">{'{variable}'}</code> para valores,
-                  <code className="bg-yellow-100 px-1 rounded ml-1">{'{#condicion}...{/condicion}'}</code> para condicionales, y
-                  <code className="bg-yellow-100 px-1 rounded ml-1">{'{#array}...{/array}'}</code> para listas/tablas.
+                  <strong>Sintaxis docx-templates:</strong>
                 </p>
+                <ul className="text-yellow-800 text-xs space-y-1 ml-4 list-disc">
+                  <li><code className="bg-yellow-100 px-1 rounded">{'{variable}'}</code> - Inserta un valor</li>
+                  <li><code className="bg-yellow-100 px-1 rounded">{'{IF condicion}...{END-IF}'}</code> - Condicionales</li>
+                  <li><code className="bg-yellow-100 px-1 rounded">{'{FOR item OF array}...{END-FOR item}'}</code> - Loops/tablas</li>
+                </ul>
               </div>
 
               {/* Fecha del Contrato */}
@@ -304,7 +307,7 @@ export default function ContratoTemplateUploader({
                   <div><code>{'{representante_cargo}'}</code></div>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  Para múltiples representantes use: <code className="bg-gray-100 px-1">{'{#representantes_legales}{nombre}, {dni}, {cargo}{/representantes_legales}'}</code>
+                  Para múltiples representantes use: <code className="bg-gray-100 px-1">{'{FOR r OF representantes_legales}{r.nombre}, {r.dni}{END-FOR r}'}</code>
                 </p>
               </section>
 
@@ -312,13 +315,13 @@ export default function ContratoTemplateUploader({
               <section>
                 <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">🏦 Cuentas Bancarias</h4>
                 <p className="text-xs text-gray-600 mb-2">
-                  Para listar cuentas use: <code className="bg-gray-100 px-1">{'{#cuentas_bancarias}{banco} - {tipo} {moneda}: {numero}{/cuentas_bancarias}'}</code>
+                  Para listar cuentas use: <code className="bg-gray-100 px-1">{'{FOR c OF cuentas_bancarias}{c.banco} - {c.tipo} {c.moneda}: {c.numero}{END-FOR c}'}</code>
                 </p>
                 <div className="grid grid-cols-2 gap-2 font-mono text-xs bg-gray-50 p-3 rounded">
-                  <div><code>{'{banco}'}</code> - Nombre del banco</div>
-                  <div><code>{'{numero}'}</code> - Número de cuenta</div>
-                  <div><code>{'{tipo}'}</code> - Corriente/Ahorros</div>
-                  <div><code>{'{moneda}'}</code> - USD/PEN</div>
+                  <div><code>{'{c.banco}'}</code> - Nombre del banco</div>
+                  <div><code>{'{c.numero}'}</code> - Número de cuenta</div>
+                  <div><code>{'{c.tipo}'}</code> - Corriente/Ahorros</div>
+                  <div><code>{'{c.moneda}'}</code> - USD/PEN</div>
                 </div>
               </section>
 
@@ -354,7 +357,7 @@ export default function ContratoTemplateUploader({
               <section>
                 <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">👫 Datos del Cónyuge (Condicional)</h4>
                 <p className="text-xs text-gray-600 mb-2">
-                  Use <code className="bg-gray-100 px-1">{'{#tiene_conyuge}...{/tiene_conyuge}'}</code> para mostrar solo si hay cónyuge
+                  Use <code className="bg-gray-100 px-1">{'{IF tiene_conyuge}...{END-IF}'}</code> para mostrar solo si hay cónyuge
                 </p>
                 <div className="grid grid-cols-2 gap-2 font-mono text-xs bg-gray-50 p-3 rounded">
                   <div><code>{'{tiene_conyuge}'}</code> - true/false</div>
@@ -469,15 +472,15 @@ export default function ContratoTemplateUploader({
                 <div className="space-y-3 text-xs">
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded">
                     <p className="font-semibold text-blue-800 mb-1">Sistema Francés (con interés):</p>
-                    <code className="text-blue-700">{'{#es_frances}'}</code>
+                    <code className="text-blue-700">{'{IF es_frances}'}</code>
                     <p className="text-blue-600 mt-1">...tabla con columnas interes, amortizacion, saldo...</p>
-                    <code className="text-blue-700">{'{/es_frances}'}</code>
+                    <code className="text-blue-700">{'{END-IF}'}</code>
                   </div>
                   <div className="p-3 bg-green-50 border border-green-200 rounded">
                     <p className="font-semibold text-green-800 mb-1">Sistema Simple (sin interés):</p>
-                    <code className="text-green-700">{'{#es_simple}'}</code>
+                    <code className="text-green-700">{'{IF es_simple}'}</code>
                     <p className="text-green-600 mt-1">...tabla simple solo con cuota y fecha...</p>
-                    <code className="text-green-700">{'{/es_simple}'}</code>
+                    <code className="text-green-700">{'{END-IF}'}</code>
                   </div>
                 </div>
               </section>
@@ -489,16 +492,16 @@ export default function ContratoTemplateUploader({
                   Para generar la tabla de cuotas use:
                 </p>
                 <div className="p-3 bg-purple-50 border border-purple-200 rounded font-mono text-xs">
-                  <code className="text-purple-700">{'{#calendario_cuotas}'}</code>
+                  <code className="text-purple-700">{'{FOR cuota OF calendario_cuotas}'}</code>
                   <div className="pl-4 text-purple-600 my-1">
-                    <div><code>{'{numero}'}</code> - Número de cuota (1, 2, 3...)</div>
-                    <div><code>{'{fecha}'}</code> - Fecha DD/MM/YYYY</div>
-                    <div><code>{'{cuota}'}</code> - Monto de la cuota</div>
-                    <div><code>{'{interes}'}</code> - Interés (sistema francés)</div>
-                    <div><code>{'{amortizacion}'}</code> - Amortización (sistema francés)</div>
-                    <div><code>{'{saldo}'}</code> - Saldo restante</div>
+                    <div><code>{'{cuota.numero}'}</code> - Número de cuota (1, 2, 3...)</div>
+                    <div><code>{'{cuota.fecha}'}</code> - Fecha DD/MM/YYYY</div>
+                    <div><code>{'{cuota.monto}'}</code> - Monto de la cuota</div>
+                    <div><code>{'{cuota.interes}'}</code> - Interés (sistema francés)</div>
+                    <div><code>{'{cuota.amortizacion}'}</code> - Amortización (sistema francés)</div>
+                    <div><code>{'{cuota.saldo}'}</code> - Saldo restante</div>
                   </div>
-                  <code className="text-purple-700">{'{/calendario_cuotas}'}</code>
+                  <code className="text-purple-700">{'{END-FOR cuota}'}</code>
                 </div>
               </section>
             </div>
