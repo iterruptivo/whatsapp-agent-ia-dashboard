@@ -6,6 +6,7 @@
 - [Sesión 65](#sesión-65---5-diciembre-2025) - Sistema Repulse: Integración /operativo + Exclusiones
 - [Sesión 65B](#sesión-65b---5-diciembre-2025-continuación) - Sistema Repulse: Webhook n8n + UI Improvements
 - [Sesión 65C](#sesión-65c---7-diciembre-2025) - Widget Quota WhatsApp + Mejoras UX
+- [Sesión 66](#sesión-66---8-diciembre-2025) - 👥 Sistema Administración de Usuarios
 - [Sesión 67](#sesión-67---9-diciembre-2025) - 🔐 Sistema Verificación por Finanzas + Liberación de Comisiones
 
 ---
@@ -966,6 +967,45 @@ Changes:
 - Fix tooltip cutoff: auto-adjust position to stay within viewport
 - Remove arrow from tooltip for cleaner look
 ```
+
+---
+
+## Sesión 66 - 8 Diciembre 2025
+
+### 👥 Sistema Administración de Usuarios
+
+**Tipo:** Feature - CRUD + Importación Masiva
+**Estado:** ✅ COMPLETADO
+**Branch:** `feature/admin-usuarios` → merged to `staging`
+**Documentación detallada:** [Módulo Usuarios](../modulos/usuarios.md)
+
+---
+
+### Resumen
+
+Sistema completo de administración de usuarios accesible desde `/admin/usuarios` (solo admin).
+
+### Funcionalidades
+
+| Feature | Descripción |
+|---------|-------------|
+| CRUD Usuarios | Crear, editar, activar/desactivar usuarios |
+| Reset Password | Enviar email de recuperación |
+| Importación Excel | Crear usuarios masivamente desde archivo |
+| Descarga Credenciales | Excel con contraseñas generadas automáticamente |
+
+### Archivos Principales
+
+- `app/admin/usuarios/page.tsx` - Página principal
+- `components/admin/UsuariosClient.tsx` - Cliente con tabla y acciones
+- `components/admin/UsuarioFormModal.tsx` - Modal crear/editar
+- `components/admin/UsuarioImportModal.tsx` - Modal importación Excel
+- `components/admin/ResetPasswordModal.tsx` - Modal reset password
+- `lib/actions-usuarios.ts` - Server actions (CRUD, import)
+
+### Roles Soportados
+
+`admin`, `jefe_ventas`, `vendedor`, `vendedor_caseta`, `coordinador`, `finanzas`
 
 ---
 
