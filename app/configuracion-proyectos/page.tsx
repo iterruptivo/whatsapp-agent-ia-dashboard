@@ -43,6 +43,7 @@ interface ProyectoFormData {
   ruc: string;
   domicilio_fiscal: string;
   ubicacion_terreno: string;
+  denominacion_proyecto: string;
   partida_electronica: string;
   zona_registral: string;
   plazo_firma_dias: string;
@@ -133,6 +134,7 @@ export default function ConfiguracionProyectos() {
           ruc: proyecto.ruc || '',
           domicilio_fiscal: proyecto.domicilio_fiscal || '',
           ubicacion_terreno: proyecto.ubicacion_terreno || '',
+          denominacion_proyecto: proyecto.denominacion_proyecto || '',
           partida_electronica: proyecto.partida_electronica || '',
           zona_registral: proyecto.zona_registral || '',
           plazo_firma_dias: proyecto.plazo_firma_dias?.toString() || '5',
@@ -224,6 +226,7 @@ export default function ConfiguracionProyectos() {
       ruc: data.ruc || undefined,
       domicilio_fiscal: data.domicilio_fiscal || undefined,
       ubicacion_terreno: data.ubicacion_terreno || undefined,
+      denominacion_proyecto: data.denominacion_proyecto || undefined,
       partida_electronica: data.partida_electronica || undefined,
       zona_registral: data.zona_registral || undefined,
       plazo_firma_dias: data.plazo_firma_dias ? parseInt(data.plazo_firma_dias) : undefined,
@@ -1400,8 +1403,8 @@ export default function ConfiguracionProyectos() {
                             />
                           </div>
 
-                          {/* Ubicación del Terreno - ocupa 3 columnas en desktop */}
-                          <div className="lg:col-span-3">
+                          {/* Ubicación del Terreno - ocupa 2 columnas */}
+                          <div className="lg:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Ubicación del Terreno (Proyecto)
                             </label>
@@ -1410,6 +1413,20 @@ export default function ConfiguracionProyectos() {
                               value={data.ubicacion_terreno}
                               onChange={(e) => updateFormData(proyecto.id, 'ubicacion_terreno', e.target.value)}
                               placeholder="Ej: Mz. A Lt. 1, Urbanización San Gabriel, Carabayllo, Lima"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                            />
+                          </div>
+
+                          {/* Denominación del Proyecto - ocupa 1 columna */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Denominación del Proyecto
+                            </label>
+                            <input
+                              type="text"
+                              value={data.denominacion_proyecto}
+                              onChange={(e) => updateFormData(proyecto.id, 'denominacion_proyecto', e.target.value)}
+                              placeholder="Ej: Centro Comercial Eco Plaza Callao"
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
                             />
                           </div>

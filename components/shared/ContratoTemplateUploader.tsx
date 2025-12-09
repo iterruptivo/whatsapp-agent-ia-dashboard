@@ -290,6 +290,7 @@ export default function ContratoTemplateUploader({
                 <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">🏢 Datos del Proyecto</h4>
                 <div className="grid grid-cols-2 gap-2 font-mono text-xs bg-gray-50 p-3 rounded">
                   <div><code>{'{proyecto_nombre}'}</code></div>
+                  <div><code>{'{denominacion_proyecto}'}</code></div>
                   <div><code>{'{razon_social}'}</code></div>
                   <div><code>{'{ruc}'}</code></div>
                   <div><code>{'{domicilio_fiscal}'}</code></div>

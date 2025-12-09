@@ -63,7 +63,8 @@
       "Bash(\"C:\\Users\\josel\\AppData\\Local\\Microsoft\\WindowsApps\\python.exe\" -c \"import pandas; print(''ok'')\")",
       "Bash(git merge:*)",
       "Bash(start chrome \"e:\\Iterruptivo\\Proyectos-Clientes\\EcoPlaza\\AgenteIA-Whatsapp\\dashboard\\templates\\ficha-inscripcion\\preview-proyecto-pruebas.html\")",
-      "Bash(start chrome:*)"
+      "Bash(start chrome:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

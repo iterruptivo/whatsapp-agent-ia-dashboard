@@ -58,6 +58,7 @@ interface ContratoTemplateData {
 
   // Proyecto - Datos legales
   proyecto_nombre: string;
+  denominacion_proyecto: string;
   razon_social: string;
   ruc: string;
   domicilio_fiscal: string;
@@ -254,7 +255,7 @@ export async function generateContrato(
       .from('proyectos')
       .select(`
         id, nombre, slug,
-        razon_social, ruc, domicilio_fiscal, ubicacion_terreno,
+        razon_social, ruc, domicilio_fiscal, ubicacion_terreno, denominacion_proyecto,
         partida_electronica, zona_registral,
         plazo_firma_dias, penalidad_porcentaje,
         representantes_legales, cuentas_bancarias,
@@ -327,6 +328,7 @@ export async function generateContrato(
 
       // Proyecto
       proyecto_nombre: proyecto.nombre || '',
+      denominacion_proyecto: proyecto.denominacion_proyecto || '',
       razon_social: proyecto.razon_social || '',
       ruc: proyecto.ruc || '',
       domicilio_fiscal: proyecto.domicilio_fiscal || '',
