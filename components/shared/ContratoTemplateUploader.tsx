@@ -271,7 +271,8 @@ export default function ContratoTemplateUploader({
                 <ul className="text-yellow-800 text-xs space-y-1 ml-4 list-disc">
                   <li><code className="bg-yellow-100 px-1 rounded">{'{variable}'}</code> - Inserta un valor</li>
                   <li><code className="bg-yellow-100 px-1 rounded">{'{IF condicion}...{END-IF}'}</code> - Condicionales</li>
-                  <li><code className="bg-yellow-100 px-1 rounded">{'{FOR item OF array}...{END-FOR item}'}</code> - Loops/tablas</li>
+                  <li><code className="bg-yellow-100 px-1 rounded">{'{FOR item IN array}...{END-FOR item}'}</code> - Loops/tablas (usar <strong>IN</strong>, no OF)</li>
+                  <li><code className="bg-yellow-100 px-1 rounded">{'{$item.propiedad}'}</code> - Variables dentro de loops llevan <strong>$</strong></li>
                 </ul>
               </div>
 
@@ -307,7 +308,7 @@ export default function ContratoTemplateUploader({
                   <div><code>{'{representante_cargo}'}</code></div>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  Para múltiples representantes use: <code className="bg-gray-100 px-1">{'{FOR r OF representantes_legales}{r.nombre}, {r.dni}{END-FOR r}'}</code>
+                  Para múltiples representantes use: <code className="bg-gray-100 px-1">{'{FOR r IN representantes_legales}{$r.nombre}, {$r.dni}{END-FOR r}'}</code>
                 </p>
               </section>
 
@@ -315,13 +316,13 @@ export default function ContratoTemplateUploader({
               <section>
                 <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">🏦 Cuentas Bancarias</h4>
                 <p className="text-xs text-gray-600 mb-2">
-                  Para listar cuentas use: <code className="bg-gray-100 px-1">{'{FOR c OF cuentas_bancarias}{c.banco} - {c.tipo} {c.moneda}: {c.numero}{END-FOR c}'}</code>
+                  Para listar cuentas use: <code className="bg-gray-100 px-1">{'{FOR c IN cuentas_bancarias}{$c.banco} - {$c.tipo} {$c.moneda}: {$c.numero}{END-FOR c}'}</code>
                 </p>
                 <div className="grid grid-cols-2 gap-2 font-mono text-xs bg-gray-50 p-3 rounded">
-                  <div><code>{'{c.banco}'}</code> - Nombre del banco</div>
-                  <div><code>{'{c.numero}'}</code> - Número de cuenta</div>
-                  <div><code>{'{c.tipo}'}</code> - Corriente/Ahorros</div>
-                  <div><code>{'{c.moneda}'}</code> - USD/PEN</div>
+                  <div><code>{'{$c.banco}'}</code> - Nombre del banco</div>
+                  <div><code>{'{$c.numero}'}</code> - Número de cuenta</div>
+                  <div><code>{'{$c.tipo}'}</code> - Corriente/Ahorros</div>
+                  <div><code>{'{$c.moneda}'}</code> - USD/PEN</div>
                 </div>
               </section>
 
@@ -380,19 +381,19 @@ export default function ContratoTemplateUploader({
               <section>
                 <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">👥 Copropietarios (Loop)</h4>
                 <p className="text-xs text-gray-600 mb-2">
-                  Para listar copropietarios use: <code className="bg-gray-100 px-1">{'{FOR cp OF copropietarios}...{END-FOR cp}'}</code>
+                  Para listar copropietarios use: <code className="bg-gray-100 px-1">{'{FOR cp IN copropietarios}...{END-FOR cp}'}</code>
                 </p>
                 <div className="p-3 bg-orange-50 border border-orange-200 rounded font-mono text-xs">
-                  <code className="text-orange-700">{'{FOR cp OF copropietarios}'}</code>
+                  <code className="text-orange-700">{'{FOR cp IN copropietarios}'}</code>
                   <div className="pl-4 text-orange-600 my-1">
-                    <div><code>{'{cp.nombres}'}</code> - Nombres</div>
-                    <div><code>{'{cp.apellido_paterno}'}</code> - Apellido paterno</div>
-                    <div><code>{'{cp.apellido_materno}'}</code> - Apellido materno</div>
-                    <div><code>{'{cp.tipo_documento}'}</code> - DNI/CE/Pasaporte</div>
-                    <div><code>{'{cp.numero_documento}'}</code> - Número de documento</div>
-                    <div><code>{'{cp.parentesco}'}</code> - Relación con titular</div>
-                    <div><code>{'{cp.telefono}'}</code> - Teléfono/Celular</div>
-                    <div><code>{'{cp.email}'}</code> - Correo electrónico</div>
+                    <div><code>{'{$cp.nombres}'}</code> - Nombres</div>
+                    <div><code>{'{$cp.apellido_paterno}'}</code> - Apellido paterno</div>
+                    <div><code>{'{$cp.apellido_materno}'}</code> - Apellido materno</div>
+                    <div><code>{'{$cp.tipo_documento}'}</code> - DNI/CE/Pasaporte</div>
+                    <div><code>{'{$cp.numero_documento}'}</code> - Número de documento</div>
+                    <div><code>{'{$cp.parentesco}'}</code> - Relación con titular</div>
+                    <div><code>{'{$cp.telefono}'}</code> - Teléfono/Celular</div>
+                    <div><code>{'{$cp.email}'}</code> - Correo electrónico</div>
                   </div>
                   <code className="text-orange-700">{'{END-FOR cp}'}</code>
                 </div>
@@ -517,14 +518,14 @@ export default function ContratoTemplateUploader({
                   Para generar la tabla de cuotas use:
                 </p>
                 <div className="p-3 bg-purple-50 border border-purple-200 rounded font-mono text-xs">
-                  <code className="text-purple-700">{'{FOR cuota OF calendario_cuotas}'}</code>
+                  <code className="text-purple-700">{'{FOR cuota IN calendario_cuotas}'}</code>
                   <div className="pl-4 text-purple-600 my-1">
-                    <div><code>{'{cuota.numero}'}</code> - Número de cuota (1, 2, 3...)</div>
-                    <div><code>{'{cuota.fecha}'}</code> - Fecha DD/MM/YYYY</div>
-                    <div><code>{'{cuota.monto}'}</code> - Monto de la cuota</div>
-                    <div><code>{'{cuota.interes}'}</code> - Interés (sistema francés)</div>
-                    <div><code>{'{cuota.amortizacion}'}</code> - Amortización (sistema francés)</div>
-                    <div><code>{'{cuota.saldo}'}</code> - Saldo restante</div>
+                    <div><code>{'{$cuota.numero}'}</code> - Número de cuota (1, 2, 3...)</div>
+                    <div><code>{'{$cuota.fecha}'}</code> - Fecha DD/MM/YYYY</div>
+                    <div><code>{'{$cuota.monto}'}</code> - Monto de la cuota</div>
+                    <div><code>{'{$cuota.interes}'}</code> - Interés (sistema francés)</div>
+                    <div><code>{'{$cuota.amortizacion}'}</code> - Amortización (sistema francés)</div>
+                    <div><code>{'{$cuota.saldo}'}</code> - Saldo restante</div>
                   </div>
                   <code className="text-purple-700">{'{END-FOR cuota}'}</code>
                 </div>
