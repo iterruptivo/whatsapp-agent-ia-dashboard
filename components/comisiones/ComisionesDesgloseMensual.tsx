@@ -524,7 +524,7 @@ export default function ComisionesDesgloseMensual({
                                   </span>
                                 )}
                                 {comision.estado === 'pendiente_inicial' && (
-                                  <span className="text-xs text-gray-400">-</span>
+                                  <span className="text-xs text-gray-400">Por verificar</span>
                                 )}
                               </td>
                             )}
