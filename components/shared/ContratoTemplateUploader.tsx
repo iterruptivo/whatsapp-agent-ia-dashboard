@@ -376,6 +376,31 @@ export default function ContratoTemplateUploader({
                 </div>
               </section>
 
+              {/* Copropietarios */}
+              <section>
+                <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">👥 Copropietarios (Loop)</h4>
+                <p className="text-xs text-gray-600 mb-2">
+                  Para listar copropietarios use: <code className="bg-gray-100 px-1">{'{FOR cp OF copropietarios}...{END-FOR cp}'}</code>
+                </p>
+                <div className="p-3 bg-orange-50 border border-orange-200 rounded font-mono text-xs">
+                  <code className="text-orange-700">{'{FOR cp OF copropietarios}'}</code>
+                  <div className="pl-4 text-orange-600 my-1">
+                    <div><code>{'{cp.nombres}'}</code> - Nombres</div>
+                    <div><code>{'{cp.apellido_paterno}'}</code> - Apellido paterno</div>
+                    <div><code>{'{cp.apellido_materno}'}</code> - Apellido materno</div>
+                    <div><code>{'{cp.tipo_documento}'}</code> - DNI/CE/Pasaporte</div>
+                    <div><code>{'{cp.numero_documento}'}</code> - Número de documento</div>
+                    <div><code>{'{cp.parentesco}'}</code> - Relación con titular</div>
+                    <div><code>{'{cp.telefono}'}</code> - Teléfono/Celular</div>
+                    <div><code>{'{cp.email}'}</code> - Correo electrónico</div>
+                  </div>
+                  <code className="text-orange-700">{'{END-FOR cp}'}</code>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  Use <code className="bg-gray-100 px-1">{'{IF copropietarios.length}...{END-IF}'}</code> para mostrar solo si hay copropietarios
+                </p>
+              </section>
+
               {/* Local */}
               <section>
                 <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">🏠 Datos del Local</h4>
