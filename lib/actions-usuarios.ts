@@ -133,13 +133,20 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
     .filter(u => u.vendedor_id !== null && u.vendedor_id !== undefined)
     .map(u => u.vendedor_id as string);
 
-  let vendedoresMap: Record<string, { telefono: string; email?: string }> = {};
+  console.log('[DEBUG getAllUsuarios] vendedorIds encontrados:', vendedorIds);
+
+  let vendedoresMap: Record<string, { telefono: string | null }> = {};
 
   if (vendedorIds.length > 0) {
+    // NOTA: La tabla vendedores solo tiene: id, nombre, telefono, activo, created_at
+    // NO tiene columna email
     const { data: vendedores, error: errorVendedores } = await supabase
       .from('vendedores')
-      .select('id, telefono, email')
+      .select('id, telefono')
       .in('id', vendedorIds);
+
+    console.log('[DEBUG getAllUsuarios] Query vendedores - error:', errorVendedores);
+    console.log('[DEBUG getAllUsuarios] Query vendedores - data:', vendedores);
 
     if (errorVendedores) {
       console.error('[getAllUsuarios] Error obteniendo vendedores:', errorVendedores);
@@ -147,9 +154,10 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
 
     if (vendedores) {
       vendedoresMap = vendedores.reduce((acc, v) => {
-        acc[v.id] = { telefono: v.telefono || '', email: v.email };
+        acc[v.id] = { telefono: v.telefono };
         return acc;
-      }, {} as Record<string, { telefono: string; email?: string }>);
+      }, {} as Record<string, { telefono: string | null }>);
+      console.log('[DEBUG getAllUsuarios] vendedoresMap construido:', vendedoresMap);
     }
   }
 
@@ -187,11 +195,15 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
     let email_alternativo: string | null = null;
 
     if (u.vendedor_id && vendedoresMap[u.vendedor_id]) {
-      telefono = vendedoresMap[u.vendedor_id].telefono || null;
-      email_alternativo = vendedoresMap[u.vendedor_id].email || null;
+      telefono = vendedoresMap[u.vendedor_id].telefono;
+      // Los vendedores no tienen email_alternativo en su tabla
+      console.log(`[DEBUG] Usuario ${u.nombre} (${u.id}): tiene vendedor_id=${u.vendedor_id}, telefono=${telefono}`);
     } else if (noVendedoresMap[u.id]) {
       telefono = noVendedoresMap[u.id].telefono;
       email_alternativo = noVendedoresMap[u.id].email_alternativo;
+      console.log(`[DEBUG] Usuario ${u.nombre} (${u.id}): es no-vendedor, telefono=${telefono}`);
+    } else {
+      console.log(`[DEBUG] Usuario ${u.nombre} (${u.id}): NO encontró datos. vendedor_id=${u.vendedor_id}, en vendedoresMap=${!!vendedoresMap[u.vendedor_id || '']}`);
     }
 
     return {
@@ -200,6 +212,8 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
       email_alternativo
     };
   });
+
+  console.log('[DEBUG getAllUsuarios] Resultado final - primeros 3 usuarios:', usuariosConDatos.slice(0, 3));
 
   return usuariosConDatos;
 }
@@ -226,15 +240,16 @@ export async function getUsuarioById(id: string): Promise<UsuarioConDatos | null
 
   // Obtener datos según rol
   if (usuario.vendedor_id) {
+    // NOTA: La tabla vendedores NO tiene columna email
     const { data: vendedor } = await supabase
       .from('vendedores')
-      .select('telefono, email')
+      .select('telefono')
       .eq('id', usuario.vendedor_id)
       .single();
 
     if (vendedor) {
       telefono = vendedor.telefono || null;
-      email_alternativo = vendedor.email || null;
+      // vendedores no tienen email_alternativo en su tabla
     }
   } else if (['admin', 'jefe_ventas', 'finanzas'].includes(usuario.rol)) {
     const { data: datos } = await supabase
