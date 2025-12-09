@@ -26,6 +26,7 @@
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
 | [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 66 (9 Dic)** | Logo + Docs + PDF + Contratos Word |
+| [Repulse](docs/modulos/repulse.md) | ⏳ **EN DESARROLLO** | **Sesión 65C (8 Dic)** | re-engagement leads |
 
 ### **Métricas Globales (Actualizado: 9 Dic 2025)**
 ```
@@ -79,6 +80,11 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: EN DESARROLLO (6/8 fases completadas)
   - Tecnología: docx-templates para templates Word + HTML templates + JSZip post-processing
 
+- **[Repulse](docs/modulos/repulse.md)** - Sistema de re-engagement de leads
+  - Última sesión: **65C (Inyección Mensajes en Historial + Quota Widget)**
+  - Estado: EN DESARROLLO (branch integrado a staging)
+  - Features: detección automática (30+ días), envío batch, exclusión permanente, historial visible, webhook n8n
+
 ---
 
 ### **📅 Sesiones de Desarrollo**
@@ -116,6 +122,8 @@ Documentación cronológica completa de todas las sesiones.
   - **📄 Sistema Generación Documentos (64)** ✅
   - **📄 Template HTML Ficha de Inscripción (64B)** ✅
   - **🔐 Rol Finanzas + Ficha Inscripción Modal (65)** ✅
+  - **🔄 Sistema Repulse: Integración /operativo + Exclusiones (65B)** ✅
+  - **💬 Sistema Repulse: Webhook n8n + Quota Widget (65C)** ✅
   - **🖼️📎📄 Logo Dinámico + Docs Adjuntos + PDF + Contratos Word (66)** ✅
 
 ---
