@@ -133,8 +133,6 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
     .filter(u => u.vendedor_id !== null && u.vendedor_id !== undefined)
     .map(u => u.vendedor_id as string);
 
-  console.log('[DEBUG getAllUsuarios] vendedorIds encontrados:', vendedorIds);
-
   let vendedoresMap: Record<string, { telefono: string | null }> = {};
 
   if (vendedorIds.length > 0) {
@@ -145,9 +143,6 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
       .select('id, telefono')
       .in('id', vendedorIds);
 
-    console.log('[DEBUG getAllUsuarios] Query vendedores - error:', errorVendedores);
-    console.log('[DEBUG getAllUsuarios] Query vendedores - data:', vendedores);
-
     if (errorVendedores) {
       console.error('[getAllUsuarios] Error obteniendo vendedores:', errorVendedores);
     }
@@ -157,7 +152,6 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
         acc[v.id] = { telefono: v.telefono };
         return acc;
       }, {} as Record<string, { telefono: string | null }>);
-      console.log('[DEBUG getAllUsuarios] vendedoresMap construido:', vendedoresMap);
     }
   }
 
@@ -197,13 +191,9 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
     if (u.vendedor_id && vendedoresMap[u.vendedor_id]) {
       telefono = vendedoresMap[u.vendedor_id].telefono;
       // Los vendedores no tienen email_alternativo en su tabla
-      console.log(`[DEBUG] Usuario ${u.nombre} (${u.id}): tiene vendedor_id=${u.vendedor_id}, telefono=${telefono}`);
     } else if (noVendedoresMap[u.id]) {
       telefono = noVendedoresMap[u.id].telefono;
       email_alternativo = noVendedoresMap[u.id].email_alternativo;
-      console.log(`[DEBUG] Usuario ${u.nombre} (${u.id}): es no-vendedor, telefono=${telefono}`);
-    } else {
-      console.log(`[DEBUG] Usuario ${u.nombre} (${u.id}): NO encontró datos. vendedor_id=${u.vendedor_id}, en vendedoresMap=${!!vendedoresMap[u.vendedor_id || '']}`);
     }
 
     return {
@@ -212,8 +202,6 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
       email_alternativo
     };
   });
-
-  console.log('[DEBUG getAllUsuarios] Resultado final - primeros 3 usuarios:', usuariosConDatos.slice(0, 3));
 
   return usuariosConDatos;
 }
