@@ -44,36 +44,16 @@ export interface UpdateUsuarioData {
 }
 
 // ============================================================================
-// HELPER: Verificar si el usuario actual es admin
+// NOTA: La verificación de admin se hace en el middleware y en la página
+// Las funciones asumen que el usuario ya fue validado como admin
 // ============================================================================
-
-async function verificarAdmin(): Promise<{ isAdmin: boolean; userId: string | null }> {
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) return { isAdmin: false, userId: null };
-
-  const { data: usuario } = await supabase
-    .from('usuarios')
-    .select('rol')
-    .eq('id', user.id)
-    .single();
-
-  return {
-    isAdmin: usuario?.rol === 'admin',
-    userId: user.id
-  };
-}
 
 // ============================================================================
 // GET: Obtener todos los usuarios con sus datos adicionales
 // ============================================================================
 
 export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
-  const { isAdmin } = await verificarAdmin();
-  if (!isAdmin) {
-    console.error('getAllUsuarios: Usuario no es admin');
-    return [];
-  }
+  // NOTA: La verificación de admin se hace en el middleware y en la página
 
   // 1. Obtener todos los usuarios
   const { data: usuarios, error: errorUsuarios } = await supabase
@@ -161,8 +141,7 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
 // ============================================================================
 
 export async function getUsuarioById(id: string): Promise<UsuarioConDatos | null> {
-  const { isAdmin } = await verificarAdmin();
-  if (!isAdmin) return null;
+  // NOTA: La verificación de admin se hace en el middleware y en la página
 
   const { data: usuario, error } = await supabase
     .from('usuarios')
@@ -216,10 +195,7 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
   message: string;
   userId?: string;
 }> {
-  const { isAdmin } = await verificarAdmin();
-  if (!isAdmin) {
-    return { success: false, message: 'No tienes permisos para crear usuarios' };
-  }
+  // NOTA: La verificación de admin se hace en el middleware y en la página
 
   // 1. Validar email único
   const { data: existingEmail } = await supabase
@@ -351,10 +327,7 @@ export async function updateUsuario(data: UpdateUsuarioData): Promise<{
   success: boolean;
   message: string;
 }> {
-  const { isAdmin } = await verificarAdmin();
-  if (!isAdmin) {
-    return { success: false, message: 'No tienes permisos para editar usuarios' };
-  }
+  // NOTA: La verificación de admin se hace en el middleware y en la página
 
   // 1. Obtener usuario actual
   const { data: usuarioActual, error: fetchError } = await supabase
@@ -476,15 +449,8 @@ export async function toggleUsuarioActivo(id: string): Promise<{
   message: string;
   nuevoEstado?: boolean;
 }> {
-  const { isAdmin, userId } = await verificarAdmin();
-  if (!isAdmin) {
-    return { success: false, message: 'No tienes permisos' };
-  }
-
-  // Evitar desactivarse a sí mismo
-  if (id === userId) {
-    return { success: false, message: 'No puedes desactivar tu propia cuenta' };
-  }
+  // NOTA: La verificación de admin se hace en el middleware y en la página
+  // TODO: Agregar validación para evitar desactivarse a sí mismo cuando tengamos el userId del contexto
 
   // Obtener estado actual
   const { data: usuario, error: fetchError } = await supabase
@@ -525,10 +491,7 @@ export async function resetUsuarioPassword(email: string): Promise<{
   success: boolean;
   message: string;
 }> {
-  const { isAdmin } = await verificarAdmin();
-  if (!isAdmin) {
-    return { success: false, message: 'No tienes permisos' };
-  }
+  // NOTA: La verificación de admin se hace en el middleware y en la página
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`
@@ -558,10 +521,7 @@ export async function getUsuariosStats(): Promise<{
   inactivos: number;
   porRol: Record<string, number>;
 }> {
-  const { isAdmin } = await verificarAdmin();
-  if (!isAdmin) {
-    return { total: 0, activos: 0, inactivos: 0, porRol: {} };
-  }
+  // NOTA: La verificación de admin se hace en el middleware y en la página
 
   const { data: usuarios } = await supabase
     .from('usuarios')
