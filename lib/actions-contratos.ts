@@ -40,6 +40,15 @@ interface CuentaBancaria {
   moneda: 'USD' | 'PEN';
 }
 
+interface Copropietario {
+  nombres: string;
+  apellido_paterno: string;
+  apellido_materno: string;
+  tipo_documento: string;
+  numero_documento: string;
+  parentesco: string;
+}
+
 interface ContratoTemplateData {
   // Fecha del contrato
   fecha_contrato: string;
@@ -102,6 +111,9 @@ interface ContratoTemplateData {
   conyuge_ocupacion: string;
   conyuge_celular: string;
   conyuge_email: string;
+
+  // Copropietarios (array para FOR loops - futuro: agregar a clientes_ficha)
+  copropietarios: Copropietario[];
 
   // Local
   codigo_local: string;
@@ -382,6 +394,10 @@ export async function generateContrato(
       conyuge_ocupacion: clienteFicha.conyuge_ocupacion || '',
       conyuge_celular: clienteFicha.conyuge_celular || '',
       conyuge_email: clienteFicha.conyuge_email || '',
+
+      // Copropietarios (array vacío por ahora - futuro: agregar a clientes_ficha)
+      // Cuando el array está vacío, {IF copropietarios} evaluará a false
+      copropietarios: [],
 
       // Local
       codigo_local: controlPago.codigo_local || '',
