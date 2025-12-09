@@ -3,6 +3,9 @@
 ## Índice
 - [Sesión 64](#sesión-64---2-diciembre-2025) - Sistema Generación Documentos (Análisis + DB + UI)
 - [Sesión 64B](#sesión-64b---3-diciembre-2025) - Template HTML Ficha de Inscripción
+- [Sesión 65](#sesión-65---5-diciembre-2025) - Sistema Repulse: Integración /operativo + Exclusiones
+- [Sesión 65B](#sesión-65b---5-diciembre-2025-continuación) - Sistema Repulse: Webhook n8n + UI Improvements
+- [Sesión 65C](#sesión-65c---7-diciembre-2025) - Widget Quota WhatsApp + Mejoras UX
 
 ---
 
@@ -349,7 +352,619 @@ templates/ficha-inscripcion/preview-proyecto-pruebas.html
 
 ---
 
-**Próxima sesión:** Integración con sistema de generación de documentos
+## Sesión 65 - 5 Diciembre 2025
+
+### 🔄 Sistema Repulse: Integración /operativo + Exclusiones
+
+**Tipo:** Feature - Integración UI
+**Estado:** ✅ COMPLETADO
+**Branch:** `feature/repulse`
+**Documentación completa:** [Módulo Repulse](../modulos/repulse.md)
+
+---
+
+### Objetivo
+
+Integrar el sistema Repulse en la página `/operativo` permitiendo:
+1. Agregar leads a repulse de forma individual y masiva
+2. Excluir leads permanentemente del sistema de repulse
+3. Visualizar estado de exclusión en panel de detalles
+
+---
+
+### Trabajo Realizado
+
+#### FASE 1: Selección Múltiple en LeadsTable ✅
+
+**Archivo:** `components/dashboard/LeadsTable.tsx`
+
+- Checkboxes en cada fila de la tabla
+- Checkbox "Select All" en header
+- Contador de leads seleccionados
+- Botón "Enviar a Repulse" (color amber/amarillo)
+- Botón "Limpiar" con icono X y borde
+
+**Nuevas props agregadas:**
+```typescript
+showRepulseSelection?: boolean;
+selectedLeadIds?: string[];
+onSelectionChange?: (ids: string[]) => void;
+onSendToRepulse?: () => void;
+isAddingToRepulse?: boolean;
+```
+
+#### FASE 2: Botón Individual en LeadDetailPanel ✅
+
+**Archivo:** `components/dashboard/LeadDetailPanel.tsx`
+
+- Sección "Repulse" al final del panel
+- Botón "Enviar a Repulse" (individual)
+- Botón "Excluir permanentemente de Repulse" con borde rojo
+- Badge rojo cuando lead está excluido
+- Link "Reincluir" para quitar exclusión
+
+**Nuevas props agregadas:**
+```typescript
+onSendToRepulse?: (leadId: string) => void;
+onToggleExcludeRepulse?: (leadId: string, exclude: boolean) => void;
+showRepulseButton?: boolean;
+```
+
+#### FASE 3: Campo excluido_repulse en Interface ✅
+
+**Archivo:** `lib/db.ts`
+
+```typescript
+export interface Lead {
+  // ... campos existentes ...
+  excluido_repulse: boolean;
+}
+```
+
+#### FASE 4: Handlers en OperativoClient ✅
+
+**Archivo:** `components/dashboard/OperativoClient.tsx`
+
+Handlers implementados:
+- `handleSendToRepulse(leadId)` - Agregar individual
+- `handleSendMultipleToRepulse()` - Agregar batch
+- `handleToggleExcludeRepulse(leadId, exclude)` - Toggle exclusión
+
+---
+
+### Decisiones Técnicas
+
+| Decisión | Opción Elegida | Razón |
+|----------|----------------|-------|
+| Ubicación botones selección | Junto a "Leads Recientes" | Mejor UX, visible sin scroll |
+| Color botón repulse | Amber/Amarillo | Diferencia de acciones principales |
+| Exclusión | Campo en tabla `leads` | Persiste aunque se elimine de `repulse_leads` |
+| Borde botón excluir | Rojo | Indicar acción destructiva |
+
+---
+
+### Archivos Modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `lib/db.ts` | +1 campo `excluido_repulse` en interface Lead |
+| `components/dashboard/LeadsTable.tsx` | +100 líneas (checkboxes, selección, botones) |
+| `components/dashboard/LeadDetailPanel.tsx` | +60 líneas (sección repulse) |
+| `components/dashboard/OperativoClient.tsx` | +80 líneas (handlers) |
+| `docs/modulos/repulse.md` | Nuevo - Documentación completa |
+
+---
+
+### Commits
+
+| Hash | Mensaje |
+|------|---------|
+| `4e210fc` | feat: add repulse integration in /operativo page |
+| `86c9ab2` | fix: correct property names for addMultipleLeadsToRepulse response |
+| `6d32171` | refactor: move repulse selection actions next to table title |
+| `9702f8c` | style: add border and X icon to "Limpiar" button |
+| `a3d9a2f` | feat: add repulse exclusion toggle in LeadDetailPanel |
+| `a9fbb2f` | style: add red border to exclude repulse button |
+
+---
+
+### Fixes Durante la Sesión
+
+**Error TypeScript en Vercel:**
+```
+Property 'error' does not exist on type
+'{ success: boolean; added: number; skipped: number; errors: string[]; }'
+```
+
+**Solución:** Actualizar acceso a propiedades del response:
+- `result.error` → `result.errors[0]`
+- `result.insertedCount` → `result.added`
+- `result.duplicateCount` → `result.skipped`
+
+---
+
+## Sesión 65B - 5 Diciembre 2025 (Continuación)
+
+### 🔄 Sistema Repulse: Webhook n8n + UI Improvements
+
+**Tipo:** Feature - Integración n8n + UX
+**Estado:** ✅ COMPLETADO
+**Branch:** `feature/repulse`
+
+---
+
+### Objetivo
+
+1. Integrar envío de mensajes Repulse via webhook n8n
+2. Mejorar UX con modales elegantes
+3. Sincronizar estado entre `/operativo` y `/repulse`
+
+---
+
+### Trabajo Realizado
+
+#### FASE 1: Integración Webhook n8n ✅
+
+**Archivo:** `lib/actions-repulse.ts`
+
+Nueva función `enviarRepulseViaWebhook()`:
+- Envía cada lead individualmente al webhook (n8n Switch requiere un item por request)
+- Payload: `{ telefono, mensaje, nombre, proyectoId, lead_id, repulse_lead_id }`
+- Delay de 500ms entre envíos para evitar rate limits de WhatsApp
+- Retorna contadores de enviados/errores con detalles
+
+**Variable de entorno requerida:**
+```
+N8N_REPULSE_WEBHOOK_URL=https://iterruptivo.app.n8n.cloud/webhook/repulse-send
+```
+
+#### FASE 2: Modal de Envío con Resultados ✅
+
+**Archivo:** `components/repulse/RepulseEnvioModal.tsx`
+
+- Llama a `prepararEnvioRepulseBatch()` para registrar en historial
+- Luego llama a `enviarRepulseViaWebhook()` para enviar mensajes
+- Vista de resultado con:
+  - Icono verde/amarillo/rojo según éxito
+  - Contadores de enviados y fallidos
+  - Detalle de los primeros 5 envíos
+  - Mensaje de error si webhook no está configurado
+
+#### FASE 3: Emoji Picker ✅
+
+**Archivos:** `RepulseEnvioModal.tsx`, `RepulseTemplateModal.tsx`
+
+- Dynamic import de `emoji-picker-react` (evita SSR issues)
+- Botón de emoji en textarea de mensaje personalizado
+- Inserta emoji en posición del cursor
+- Popover con cierre al click fuera
+
+#### FASE 4: ConfirmModal en RepulseClient ✅
+
+**Archivo:** `components/repulse/RepulseClient.tsx`
+
+Reemplazados `confirm()` del navegador por `ConfirmModal`:
+- State para controlar modal: `{ isOpen, type, targetId }`
+- Funciones: `openRemoveConfirm`, `openExcluirConfirm`, `closeConfirmModal`, `handleConfirmAction`
+- Variante `warning` (amarillo) para eliminar
+- Variante `danger` (rojo) para excluir
+
+#### FASE 5: Fix Sincronización Reincluir ✅
+
+**Archivo:** `lib/actions-repulse.ts`
+
+Bug: Al reincluir desde `/operativo`, solo se actualizaba `leads.excluido_repulse = false`
+pero el registro en `repulse_leads` quedaba con `estado = 'excluido'`.
+
+**Solución:** `reincluirLeadEnRepulse()` ahora también actualiza:
+```typescript
+await supabase
+  .from('repulse_leads')
+  .update({ estado: 'pendiente' })
+  .eq('lead_id', leadId)
+  .eq('estado', 'excluido');
+```
+
+---
+
+### Commits de la Sesión
+
+| Hash | Mensaje |
+|------|---------|
+| `1c4c800` | feat: integrate n8n webhook for repulse message sending |
+| `07b704f` | fix: send proyecto_id to n8n webhook for routing |
+| `015b604` | feat: replace browser confirm() with ConfirmModal in RepulseClient |
+| `3a09381` | fix: sync repulse_leads status when re-including lead from /operativo |
+
+---
+
+### Archivos Modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `lib/actions-repulse.ts` | +100 líneas (webhook, fix reincluir) |
+| `components/repulse/RepulseEnvioModal.tsx` | +80 líneas (webhook call, result UI, emoji) |
+| `components/repulse/RepulseTemplateModal.tsx` | +50 líneas (emoji picker) |
+| `components/repulse/RepulseClient.tsx` | +60 líneas (ConfirmModal) |
+
+---
+
+### Flujo Completo de Envío Repulse
+
+```
+1. Usuario selecciona leads en /repulse
+2. Click "Enviar Repulse"
+3. Modal: Selecciona template o escribe mensaje personalizado
+4. Click "Enviar Repulse"
+5. prepararEnvioRepulseBatch():
+   - Registra en repulse_historial
+   - Actualiza estado a 'enviado'
+   - Incrementa conteo_repulses
+6. enviarRepulseViaWebhook():
+   - Envía cada lead al webhook n8n
+   - n8n Switch rutea por proyectoId
+   - WhatsApp Graph API envía mensaje
+7. Modal muestra resultados (enviados/fallidos)
+```
+
+---
+
+### Testing End-to-End ✅
+
+**Fecha:** 6 Diciembre 2025
+**Estado:** ✅ EXITOSO
+
+**Problema encontrado durante testing:**
+- El Switch de n8n usaba `{{ $json.proyectoId }}` pero el webhook recibe el payload dentro de `body`
+- **Solución:** Cambiar a `{{ $json.body.proyectoId }}` en n8n
+
+**Resultado del test:**
+- Flujo n8n ejecuta correctamente (Succeeded in 911ms)
+- Mensaje de WhatsApp enviado y recibido ✅
+
+**Nota importante para testing:**
+> WhatsApp Business API no permite enviar mensajes al mismo número asociado a la cuenta de negocio (anti-spam).
+> Para probar, usar un lead con número diferente al del administrador/tester.
+
+---
+
+### Cron Job Configurado ✅
+
+**Fecha:** 6 Diciembre 2025
+
+Habilitado pg_cron en Supabase y configurado job para detección automática cada 15 días:
+
+```sql
+SELECT cron.schedule(
+  'detectar-leads-repulse',
+  '0 18 */15 * *',
+  $$
+  SELECT detectar_leads_repulse(id)
+  FROM proyectos
+  WHERE activo = true
+  $$
+);
+```
+
+| Campo | Valor |
+|-------|-------|
+| **Nombre** | detectar-leads-repulse |
+| **Schedule** | `0 18 */15 * *` (1:00 PM Perú, cada 15 días) |
+| **Estado** | ✅ active |
+
+**Comandos útiles:**
+```sql
+-- Verificar job
+SELECT * FROM cron.job;
+
+-- Eliminar job (si necesario)
+SELECT cron.unschedule('detectar-leads-repulse');
+
+-- Ver historial de ejecuciones
+SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
+```
+
+---
+
+### Función de Detección + Reactivación ✅
+
+**Fecha:** 6 Diciembre 2025
+
+La función `detectar_leads_repulse()` realiza dos operaciones:
+
+1. **Detectar nuevos leads** (30+ días sin compra)
+2. **Reactivar leads enviados** (15+ días desde último envío)
+
+```sql
+CREATE OR REPLACE FUNCTION detectar_leads_repulse(p_proyecto_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+  v_count_nuevos INTEGER := 0;
+  v_count_reactivados INTEGER := 0;
+BEGIN
+  -- 1. Insertar leads nuevos (30+ días sin compra)
+  INSERT INTO repulse_leads (lead_id, proyecto_id, origen, estado)
+  SELECT l.id, l.proyecto_id, 'cron_automatico', 'pendiente'
+  FROM leads l
+  WHERE l.proyecto_id = p_proyecto_id
+    AND l.excluido_repulse = FALSE
+    AND l.created_at <= NOW() - INTERVAL '30 days'
+    AND NOT EXISTS (SELECT 1 FROM locales_leads ll WHERE ll.lead_id = l.id)
+    AND NOT EXISTS (SELECT 1 FROM repulse_leads rl WHERE rl.lead_id = l.id AND rl.proyecto_id = l.proyecto_id)
+  ON CONFLICT (lead_id, proyecto_id) DO NOTHING;
+  GET DIAGNOSTICS v_count_nuevos = ROW_COUNT;
+
+  -- 2. Reactivar leads con estado='enviado' y último envío > 15 días
+  UPDATE repulse_leads
+  SET estado = 'pendiente'
+  WHERE proyecto_id = p_proyecto_id
+    AND estado = 'enviado'
+    AND ultimo_repulse_at <= NOW() - INTERVAL '15 days';
+  GET DIAGNOSTICS v_count_reactivados = ROW_COUNT;
+
+  RETURN v_count_nuevos + v_count_reactivados;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**Ciclo de vida de un lead en Repulse:**
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  Lead nuevo (30+ días) ───► pendiente ───► enviado ─────┐      │
+│                                 ▲                        │      │
+│                                 │                        │      │
+│                                 └── (15 días) ───────────┘      │
+│                                                                 │
+│  Lead responde ─────────────────────────────────► respondio     │
+│  Lead excluido ─────────────────────────────────► excluido      │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+| Estado | Descripción |
+|--------|-------------|
+| `pendiente` | Listo para enviar mensaje |
+| `enviado` | Mensaje enviado, esperando respuesta |
+| `respondio` | Lead respondió al mensaje |
+| `excluido` | Excluido permanentemente |
+
+**Importante:**
+- El envío de mensajes es siempre **MANUAL** (usuario selecciona y envía)
+- El cron solo cambia estados (detecta nuevos + reactiva enviados)
+- `conteo_repulses` se incrementa cada vez que se envía un mensaje
+
+---
+
+### Sistema Repulse - COMPLETADO ✅
+
+| Tarea | Estado |
+|-------|--------|
+| Integración webhook n8n | ✅ |
+| Testing end-to-end | ✅ |
+| Flujo n8n en producción | ✅ |
+| Cron job pg_cron | ✅ |
+
+---
+
+### Mejora Diseñada: Sistema de Quota WhatsApp + Envío Automático Nocturno
+
+**Fecha:** 6 Diciembre 2025
+**Estado:** ⏳ PENDIENTE IMPLEMENTACIÓN
+**Documentación completa:** Ver [Módulo Repulse - Mejora Planificada](../modulos/repulse.md#-mejora-planificada-sistema-de-quota-y-envío-automático)
+
+#### Contexto
+
+Meta WhatsApp Cloud API tiene un **límite de 250 mensajes business-initiated por día** para cuentas no verificadas. Todos los flujos (Victoria, Repulse, Campañas) comparten este límite.
+
+#### Problema identificado
+
+Si en un día se envían:
+- Campañas: 200 mensajes
+- Repulse manual: 100 mensajes
+- **Total: 300 → PENALIZACIÓN de Meta**
+
+#### Solución diseñada
+
+1. **Tabla `whatsapp_quota_diaria`** en Supabase para trackear mensajes enviados por día
+2. **Función `incrementar_quota_whatsapp()`** llamada desde n8n en cada envío
+3. **Cron job nocturno (11:00 PM)** que:
+   - Consulta quota disponible (250 - usados del día)
+   - Envía automáticamente leads de Repulse pendientes con el restante
+4. **Widget indicador** (opcional) en `/repulse` mostrando quota del día
+
+#### Beneficios
+
+- ✅ Maximiza uso de los 250 mensajes diarios
+- ✅ Repulse no compite con campañas durante el día
+- ✅ Completamente automático
+- ✅ Previene penalizaciones de Meta
+
+#### Estimación
+
+~4 horas de implementación total.
+
+---
+
+## Sesión 65C - 7 Diciembre 2025
+
+### 📊 Widget Quota WhatsApp + Mejoras UX
+
+**Tipo:** Feature - Indicador de consumo + UX improvements
+**Estado:** ✅ COMPLETADO
+**Branch:** `feature/repulse`
+**Commit:** `b8a8fd4`
+
+---
+
+### Objetivo
+
+Implementar indicador visual de consumo de quota diaria de WhatsApp en la página `/repulse`, con mejoras de UX en tooltip y posicionamiento.
+
+---
+
+### Trabajo Realizado
+
+#### FASE 1: Función getQuotaWhatsApp() ✅
+
+**Archivo:** `lib/actions-repulse.ts`
+
+Nueva función que calcula la quota disponible del día:
+
+```typescript
+export interface QuotaInfo {
+  leadsHoy: number;      // Leads de campaña que entraron hoy
+  limite: number;        // Límite diario (default 250)
+  disponible: number;    // Mensajes disponibles para Repulse
+  porcentajeUsado: number;
+}
+
+export async function getQuotaWhatsApp(limite: number = 250): Promise<QuotaInfo>
+```
+
+**Lógica de cálculo:**
+- Cuenta leads con `estado != 'lead_manual'` creados hoy
+- Usa timezone Perú (UTC-5) para el cálculo del día
+- Estos leads representan mensajes de Victoria consumidos
+
+**Conversión de timezone:**
+```typescript
+// Obtener fecha de inicio del día en hora Perú (UTC-5)
+const nowPeru = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }));
+const startOfDayPeru = new Date(nowPeru.getFullYear(), nowPeru.getMonth(), nowPeru.getDate());
+
+// Convertir a UTC para la query (sumamos 5 horas porque Perú es UTC-5)
+const startOfDayUTC = new Date(startOfDayPeru.getTime() + (5 * 60 * 60 * 1000));
+```
+
+#### FASE 2: Integración en página /repulse ✅
+
+**Archivo:** `app/repulse/page.tsx`
+
+- Agregado state `quota` con tipo `QuotaInfo`
+- Fetch de quota en `fetchData()` junto con otros datos
+- Pasado como prop `initialQuota` a `RepulseClient`
+
+#### FASE 3: Badge de Quota en UI ✅
+
+**Archivo:** `components/repulse/RepulseClient.tsx`
+
+**Ubicación:** A la izquierda del botón "Actualizar" (en línea horizontal)
+
+**Características del badge:**
+- Texto: "Quota: {disponible}/{limite}" (ej: "Quota: 205/250")
+- Icono de información (Info) para indicar tooltip
+- Colores semánticos según porcentaje usado:
+  - 🟢 `<50%`: `bg-green-50 text-green-700 border-green-200`
+  - 🟡 `50-80%`: `bg-yellow-50 text-yellow-700 border-yellow-200`
+  - 🔴 `>80%`: `bg-red-50 text-red-700 border-red-200`
+- Borde sólido con color matching
+- Tamaño `text-sm font-semibold` (más grande que versión inicial)
+
+**Tooltip con información detallada:**
+- "Leads de campaña hoy: {leadsHoy}"
+- "Disponible para Repulse: {disponible}"
+- "Límite diario Meta: {limite}"
+
+#### FASE 4: Mejora componente Tooltip ✅
+
+**Archivo:** `components/shared/Tooltip.tsx`
+
+**Problema:** Tooltip se cortaba en los bordes de la pantalla
+
+**Solución:** Posicionamiento inteligente con auto-ajuste
+
+```typescript
+// Calcular posición ajustada para no salir de la pantalla
+useEffect(() => {
+  if (isVisible && tooltipRef.current) {
+    const tooltip = tooltipRef.current;
+    const rect = tooltip.getBoundingClientRect();
+    const windowWidth = window.innerWidth;
+    const windowHeight = window.innerHeight;
+
+    let newX = position.x + 8;
+    let newY = position.y - rect.height - 10;
+
+    // Si se sale por la derecha, mover a la izquierda del cursor
+    if (newX + rect.width > windowWidth - 10) {
+      newX = position.x - rect.width - 8;
+    }
+
+    // Si se sale por la izquierda, forzar al borde izquierdo
+    if (newX < 10) {
+      newX = 10;
+    }
+
+    // Si se sale por arriba, mostrar debajo del cursor
+    if (newY < 10) {
+      newY = position.y + 20;
+    }
+
+    // Si se sale por abajo
+    if (newY + rect.height > windowHeight - 10) {
+      newY = windowHeight - rect.height - 10;
+    }
+
+    setAdjustedPosition({ x: newX, y: newY });
+  }
+}, [isVisible, position]);
+```
+
+**Mejoras adicionales:**
+- Removida flecha del tooltip (diseño más limpio)
+- `max-w-xs` para textos largos
+- Padding aumentado `px-3 py-2`
+
+---
+
+### Archivos Modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `lib/actions-repulse.ts` | +30 líneas (getQuotaWhatsApp con timezone Perú) |
+| `app/repulse/page.tsx` | +15 líneas (state quota, fetch, prop) |
+| `components/repulse/RepulseClient.tsx` | +25 líneas (badge reposicionado) |
+| `components/shared/Tooltip.tsx` | +35 líneas (posicionamiento inteligente) |
+
+**Total:** +105 líneas netas
+
+---
+
+### Decisiones Técnicas
+
+| Decisión | Opción Elegida | Razón |
+|----------|----------------|-------|
+| Timezone | Perú (UTC-5) | Usuarios están en Lima, el día debe ser en hora local |
+| Fuente de datos quota | Tabla `leads` | Ya existe, sin tabla adicional, single source of truth |
+| Posición badge | Izquierda del botón | Más visible, en línea con acciones |
+| Tooltip positioning | Auto-ajuste dinámico | Evita corte en bordes de pantalla |
+
+---
+
+### Testing Realizado
+
+- ✅ Badge muestra quota correctamente
+- ✅ Colores cambian según porcentaje usado
+- ✅ Tooltip no se corta en bordes
+- ✅ Timezone Perú aplicado (medianoche local)
+- ✅ Build sin errores de TypeScript
+
+---
+
+### Commit
+
+```
+b8a8fd4 feat: improve quota badge UX - position, timezone, tooltip
+
+Changes:
+- Move quota badge to LEFT of "Actualizar" button (more visible)
+- Make badge bigger with border and better styling
+- Fix timezone: use Peru time (UTC-5) for daily quota calculation
+- Fix tooltip cutoff: auto-adjust position to stay within viewport
+- Remove arrow from tooltip for cleaner look
+```
 
 ---
 

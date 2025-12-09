@@ -2,19 +2,23 @@
 
 import { Lead } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
-import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check } from 'lucide-react';
+import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check, Zap, Ban, CircleSlash } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface LeadDetailPanelProps {
   lead: Lead | null;
   isOpen: boolean;
   onClose: () => void;
+  onSendToRepulse?: (leadId: string) => void;
+  onToggleExcludeRepulse?: (leadId: string, exclude: boolean) => void;
+  showRepulseButton?: boolean;
 }
 
 // Message type for chat bubbles
 interface ChatMessage {
   sender: 'user' | 'bot';
   text: string;
+  tipo?: 'repulse'; // Identificador especial para mensajes de Repulse
 }
 
 // Parse historial text into chat messages
@@ -28,6 +32,7 @@ function parseMessages(historial: string | null): ChatMessage[] {
       return parsed.map((msg: any): ChatMessage => ({
         sender: (msg.sender === 'user' || msg.role === 'user' ? 'user' : 'bot') as 'user' | 'bot',
         text: msg.text || msg.content || msg.message || '',
+        tipo: msg.tipo === 'repulse' ? 'repulse' : undefined, // Preservar tipo repulse
       })).filter(msg => msg.text.trim() !== '');
     }
   } catch {
@@ -43,6 +48,14 @@ function parseMessages(historial: string | null): ChatMessage[] {
   for (const line of lines) {
     const trimmedLine = line.trim();
     if (!trimmedLine) continue;
+
+    // Check for REPULSE messages first (formato: [REPULSE DD/MM/YYYY, HH:MM]: mensaje)
+    const repulseMatch = trimmedLine.match(/^\[REPULSE[^\]]*\]:\s*(.+)/i);
+    if (repulseMatch) {
+      if (currentMessage) messages.push(currentMessage);
+      currentMessage = { sender: 'bot', text: repulseMatch[1], tipo: 'repulse' };
+      continue;
+    }
 
     // Check for sender prefixes (case insensitive)
     const userMatch = trimmedLine.match(/^(Usuario|User|Cliente):\s*(.+)/i);
@@ -78,7 +91,7 @@ function parseMessages(historial: string | null): ChatMessage[] {
   return messages;
 }
 
-export default function LeadDetailPanel({ lead, isOpen, onClose }: LeadDetailPanelProps) {
+export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse, onToggleExcludeRepulse, showRepulseButton = false }: LeadDetailPanelProps) {
   // State for dropdown toggles
   const [isHistorialRecienteOpen, setIsHistorialRecienteOpen] = useState(false);
   const [isHistorialCompletoOpen, setIsHistorialCompletoOpen] = useState(false);
@@ -327,6 +340,58 @@ export default function LeadDetailPanel({ lead, isOpen, onClose }: LeadDetailPan
                   Este lead no ha sido notificado a vendedores aún.
                 </p>
               )}
+
+              {/* Sección Repulse */}
+              {showRepulseButton && (
+                <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+                  {/* Estado de exclusión */}
+                  {lead.excluido_repulse ? (
+                    <div className="flex items-center justify-between p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Ban className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-red-700 font-medium">Excluido de Repulse</span>
+                      </div>
+                      {onToggleExcludeRepulse && (
+                        <button
+                          onClick={() => onToggleExcludeRepulse(lead.id, false)}
+                          className="text-xs text-red-600 hover:text-red-800 underline"
+                        >
+                          Reincluir
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      {/* Botón Enviar a Repulse */}
+                      {onSendToRepulse && (
+                        <div>
+                          <button
+                            onClick={() => onSendToRepulse(lead.id)}
+                            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors font-medium"
+                          >
+                            <Zap className="w-4 h-4" />
+                            Enviar a Repulse
+                          </button>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Agregar este lead al sistema de re-engagement para enviar mensaje de seguimiento.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Botón Excluir de Repulse */}
+                      {onToggleExcludeRepulse && (
+                        <button
+                          onClick={() => onToggleExcludeRepulse(lead.id, true)}
+                          className="flex items-center gap-2 text-sm text-red-600 border border-red-300 rounded-lg px-3 py-1.5 hover:bg-red-50 hover:border-red-400 transition-colors"
+                        >
+                          <Ban className="w-3.5 h-3.5" />
+                          Excluir permanentemente de Repulse
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </section>
 
@@ -376,11 +441,18 @@ export default function LeadDetailPanel({ lead, isOpen, onClose }: LeadDetailPan
                             >
                               <div
                                 className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
-                                  message.sender === 'user'
+                                  message.tipo === 'repulse'
+                                    ? 'bg-purple-500 text-white'
+                                    : message.sender === 'user'
                                     ? 'bg-white text-gray-900'
                                     : 'bg-primary text-white'
                                 }`}
                               >
+                                {message.tipo === 'repulse' && (
+                                  <span className="inline-block bg-purple-700 text-white text-xs px-1.5 py-0.5 rounded mb-1">
+                                    Repulse
+                                  </span>
+                                )}
                                 <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
                               </div>
                             </div>
@@ -423,11 +495,18 @@ export default function LeadDetailPanel({ lead, isOpen, onClose }: LeadDetailPan
                             >
                               <div
                                 className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
-                                  message.sender === 'user'
+                                  message.tipo === 'repulse'
+                                    ? 'bg-purple-500 text-white'
+                                    : message.sender === 'user'
                                     ? 'bg-white text-gray-900'
                                     : 'bg-primary text-white'
                                 }`}
                               >
+                                {message.tipo === 'repulse' && (
+                                  <span className="inline-block bg-purple-700 text-white text-xs px-1.5 py-0.5 rounded mb-1">
+                                    Repulse
+                                  </span>
+                                )}
                                 <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
                               </div>
                             </div>

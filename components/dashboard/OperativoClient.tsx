@@ -8,12 +8,13 @@ import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
 import { Lead, Vendedor, Usuario, getAllVendedores, getAllUsuarios } from '@/lib/db';
 import { assignLeadToVendedor } from '@/lib/actions';
 import { useAuth } from '@/lib/auth-context';
-import { Download, Upload, Plus, ChevronDown } from 'lucide-react';
+import { Download, Upload, Plus, ChevronDown, Zap } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { exportLeadsToExcel } from '@/lib/exportToExcel';
 import LeadImportModal from '@/components/leads/LeadImportModal';
 import ManualLeadPanel from '@/components/leads/ManualLeadPanel';
+import { addMultipleLeadsToRepulse, excluirLeadDeRepulse, reincluirLeadEnRepulse } from '@/lib/actions-repulse';
 
 interface OperativoClientProps {
   initialLeads: Lead[];
@@ -58,6 +59,10 @@ export default function OperativoClient({
 
   // Dropdown state for import options
   const [isImportDropdownOpen, setIsImportDropdownOpen] = useState(false);
+
+  // Repulse selection state
+  const [selectedLeadIdsForRepulse, setSelectedLeadIdsForRepulse] = useState<string[]>([]);
+  const [isAddingToRepulse, setIsAddingToRepulse] = useState(false);
 
   // Fetch vendedores on mount (only for assignment dropdown in table)
   useEffect(() => {
@@ -167,6 +172,138 @@ export default function OperativoClient({
       showDialog({
         title: 'Error inesperado',
         message: 'Ocurrió un error al asignar el lead. Por favor intenta nuevamente.',
+        type: 'error',
+        variant: 'danger',
+        confirmText: 'Aceptar',
+        showCancel: false,
+      });
+    }
+  };
+
+  // Handler: Send single lead to Repulse (from detail panel)
+  const handleSendToRepulse = async (leadId: string) => {
+    if (!user || !selectedProyecto) return;
+
+    setIsAddingToRepulse(true);
+    try {
+      const result = await addMultipleLeadsToRepulse([leadId], selectedProyecto.id, user.id);
+
+      if (result.success) {
+        handleClosePanel();
+        showDialog({
+          title: '¡Lead agregado a Repulse!',
+          message: `El lead ha sido agregado al sistema de re-engagement. Puedes gestionarlo desde la página de Repulse.`,
+          type: 'success',
+          variant: 'success',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        });
+      } else {
+        showDialog({
+          title: 'Error al agregar',
+          message: result.errors.length > 0 ? result.errors[0] : 'No se pudo agregar el lead a repulse',
+          type: 'error',
+          variant: 'danger',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error al enviar a repulse:', error);
+      showDialog({
+        title: 'Error inesperado',
+        message: 'Ocurrió un error al agregar el lead a repulse.',
+        type: 'error',
+        variant: 'danger',
+        confirmText: 'Aceptar',
+        showCancel: false,
+      });
+    } finally {
+      setIsAddingToRepulse(false);
+    }
+  };
+
+  // Handler: Send multiple leads to Repulse (from table selection)
+  const handleSendMultipleToRepulse = async () => {
+    if (!user || !selectedProyecto || selectedLeadIdsForRepulse.length === 0) return;
+
+    setIsAddingToRepulse(true);
+    try {
+      const result = await addMultipleLeadsToRepulse(selectedLeadIdsForRepulse, selectedProyecto.id, user.id);
+
+      if (result.success) {
+        setSelectedLeadIdsForRepulse([]);
+        showDialog({
+          title: '¡Leads agregados a Repulse!',
+          message: `Se han agregado ${result.added} leads al sistema de re-engagement.${result.skipped > 0 ? ` (${result.skipped} ya estaban en repulse)` : ''}`,
+          type: 'success',
+          variant: 'success',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        });
+      } else {
+        showDialog({
+          title: 'Error al agregar',
+          message: result.errors.length > 0 ? result.errors.join(', ') : 'No se pudieron agregar los leads a repulse',
+          type: 'error',
+          variant: 'danger',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error al enviar a repulse:', error);
+      showDialog({
+        title: 'Error inesperado',
+        message: 'Ocurrió un error al agregar los leads a repulse.',
+        type: 'error',
+        variant: 'danger',
+        confirmText: 'Aceptar',
+        showCancel: false,
+      });
+    } finally {
+      setIsAddingToRepulse(false);
+    }
+  };
+
+  // Handler: Toggle lead exclusion from Repulse
+  const handleToggleExcludeRepulse = async (leadId: string, exclude: boolean) => {
+    try {
+      const result = exclude
+        ? await excluirLeadDeRepulse(leadId)
+        : await reincluirLeadEnRepulse(leadId);
+
+      if (result.success) {
+        handleClosePanel();
+        showDialog({
+          title: exclude ? 'Lead excluido' : 'Lead reincluido',
+          message: exclude
+            ? 'El lead ha sido excluido permanentemente del sistema de Repulse.'
+            : 'El lead ahora puede ser agregado al sistema de Repulse.',
+          type: 'success',
+          variant: 'success',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        });
+        // Refresh leads to update excluido_repulse state
+        if (onRefresh) {
+          await onRefresh(dateFrom, dateTo);
+        }
+      } else {
+        showDialog({
+          title: 'Error',
+          message: result.error || 'No se pudo actualizar el estado del lead',
+          type: 'error',
+          variant: 'danger',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling repulse exclusion:', error);
+      showDialog({
+        title: 'Error inesperado',
+        message: 'Ocurrió un error al actualizar el estado del lead.',
         type: 'error',
         variant: 'danger',
         confirmText: 'Aceptar',
@@ -373,10 +510,23 @@ export default function OperativoClient({
         currentVendedorId={currentVendedorId}
         onAssignLead={handleAssignLead}
         userRole={user?.rol || null}
+        // Repulse multi-select (solo admin y jefe_ventas)
+        showRepulseSelection={user?.rol === 'admin' || user?.rol === 'jefe_ventas'}
+        selectedLeadIds={selectedLeadIdsForRepulse}
+        onSelectionChange={setSelectedLeadIdsForRepulse}
+        onSendToRepulse={handleSendMultipleToRepulse}
+        isAddingToRepulse={isAddingToRepulse}
       />
 
       {/* Lead Detail Panel */}
-      <LeadDetailPanel lead={selectedLead} isOpen={isPanelOpen} onClose={handleClosePanel} />
+      <LeadDetailPanel
+        lead={selectedLead}
+        isOpen={isPanelOpen}
+        onClose={handleClosePanel}
+        showRepulseButton={user?.rol === 'admin' || user?.rol === 'jefe_ventas'}
+        onSendToRepulse={handleSendToRepulse}
+        onToggleExcludeRepulse={handleToggleExcludeRepulse}
+      />
 
       {/* Manual Lead Panel (Admin + Vendedor + Vendedor Caseta) */}
       {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') && selectedProyecto && (
