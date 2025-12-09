@@ -213,6 +213,11 @@ function formatDireccionCompleta(
   return parts.join(', ') || '';
 }
 
+// Helper para redondear a 2 decimales
+function round2(num: number): number {
+  return Math.round(num * 100) / 100;
+}
+
 // ============================================================================
 // MAIN FUNCTION: Generate Contract
 // ============================================================================
@@ -311,9 +316,9 @@ export async function generateContrato(
     const cuentas = (proyecto.cuentas_bancarias || []) as CuentaBancaria[];
     const primerRepresentante = representantes[0] || { nombre: '', dni: '', cargo: '' };
 
-    // Calcular cuota mensual del calendario
+    // Calcular cuota mensual del calendario (redondeada a 2 decimales)
     const calendario = controlPago.calendario_cuotas || [];
-    const cuotaMensual = calendario.length > 0 ? calendario[0].cuota || 0 : 0;
+    const cuotaMensual = round2(calendario.length > 0 ? calendario[0].cuota || 0 : 0);
 
     // Calcular fecha última cuota
     const fechaInicioPago = new Date(controlPago.fecha_primer_pago);
@@ -421,15 +426,15 @@ export async function generateContrato(
       saldo_financiar: controlPago.monto_restante || 0,
       saldo_financiar_texto: numeroALetras(controlPago.monto_restante || 0, 'USD'),
 
-      // Montos PEN
-      monto_venta_pen: convertirUSDaPEN(controlPago.monto_venta || 0, tipoCambio),
-      monto_venta_pen_texto: numeroALetras(convertirUSDaPEN(controlPago.monto_venta || 0, tipoCambio), 'PEN'),
-      monto_separacion_pen: convertirUSDaPEN(controlPago.monto_separacion || 0, tipoCambio),
-      monto_separacion_pen_texto: numeroALetras(convertirUSDaPEN(controlPago.monto_separacion || 0, tipoCambio), 'PEN'),
-      cuota_inicial_pen: convertirUSDaPEN(controlPago.monto_inicial || 0, tipoCambio),
-      cuota_inicial_pen_texto: numeroALetras(convertirUSDaPEN(controlPago.monto_inicial || 0, tipoCambio), 'PEN'),
-      saldo_financiar_pen: convertirUSDaPEN(controlPago.monto_restante || 0, tipoCambio),
-      saldo_financiar_pen_texto: numeroALetras(convertirUSDaPEN(controlPago.monto_restante || 0, tipoCambio), 'PEN'),
+      // Montos PEN (redondeados a 2 decimales)
+      monto_venta_pen: round2(convertirUSDaPEN(controlPago.monto_venta || 0, tipoCambio)),
+      monto_venta_pen_texto: numeroALetras(round2(convertirUSDaPEN(controlPago.monto_venta || 0, tipoCambio)), 'PEN'),
+      monto_separacion_pen: round2(convertirUSDaPEN(controlPago.monto_separacion || 0, tipoCambio)),
+      monto_separacion_pen_texto: numeroALetras(round2(convertirUSDaPEN(controlPago.monto_separacion || 0, tipoCambio)), 'PEN'),
+      cuota_inicial_pen: round2(convertirUSDaPEN(controlPago.monto_inicial || 0, tipoCambio)),
+      cuota_inicial_pen_texto: numeroALetras(round2(convertirUSDaPEN(controlPago.monto_inicial || 0, tipoCambio)), 'PEN'),
+      saldo_financiar_pen: round2(convertirUSDaPEN(controlPago.monto_restante || 0, tipoCambio)),
+      saldo_financiar_pen_texto: numeroALetras(round2(convertirUSDaPEN(controlPago.monto_restante || 0, tipoCambio)), 'PEN'),
 
       // Tipo de cambio
       tipo_cambio: tipoCambio,
@@ -443,8 +448,8 @@ export async function generateContrato(
       numero_cuotas_texto: numeroEnteroALetras(controlPago.numero_cuotas || 0),
       cuota_mensual: cuotaMensual,
       cuota_mensual_texto: numeroALetras(cuotaMensual, 'USD'),
-      cuota_mensual_pen: convertirUSDaPEN(cuotaMensual, tipoCambio),
-      cuota_mensual_pen_texto: numeroALetras(convertirUSDaPEN(cuotaMensual, tipoCambio), 'PEN'),
+      cuota_mensual_pen: round2(convertirUSDaPEN(cuotaMensual, tipoCambio)),
+      cuota_mensual_pen_texto: numeroALetras(round2(convertirUSDaPEN(cuotaMensual, tipoCambio)), 'PEN'),
       tea: controlPago.tea || 0,
       dia_pago: extraerDia(fechaInicioPago),
       dia_pago_texto: numeroEnteroALetras(extraerDia(fechaInicioPago)),
@@ -459,14 +464,14 @@ export async function generateContrato(
       es_frances: esFrances,
       es_simple: !esFrances,
 
-      // Calendario de cuotas
+      // Calendario de cuotas (montos redondeados a 2 decimales)
       calendario_cuotas: calendario.map((cuota: any, index: number) => ({
         numero: index + 1,
         fecha: formatearFecha(cuota.fecha),
-        cuota: cuota.cuota || 0,
-        interes: cuota.interes || 0,
-        amortizacion: cuota.amortizacion || 0,
-        saldo: cuota.saldo || 0,
+        cuota: round2(cuota.cuota || 0),
+        interes: round2(cuota.interes || 0),
+        amortizacion: round2(cuota.amortizacion || 0),
+        saldo: round2(cuota.saldo || 0),
       })),
 
       // Penalidad y plazos
