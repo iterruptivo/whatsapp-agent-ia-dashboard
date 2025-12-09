@@ -10,7 +10,7 @@
 
 import { useState } from 'react';
 import type { ControlPago } from '@/lib/actions-control-pagos';
-import { FileText, Calendar, Eye, Download, Loader2 } from 'lucide-react';
+import { FileText, Calendar, Eye, Download, Loader2, AlertCircle, X } from 'lucide-react';
 import PagosPanel from './PagosPanel';
 import PrecioComparativoModal from './PrecioComparativoModal';
 import Tooltip from '@/components/shared/Tooltip';
@@ -36,6 +36,10 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
     controlPago: null,
   });
   const [generatingContrato, setGeneratingContrato] = useState<string | null>(null);
+  const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({
+    isOpen: false,
+    message: '',
+  });
 
   // Handler para generar contrato Word
   const handleGenerarContrato = async (cp: ControlPago) => {
@@ -64,7 +68,10 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
       document.body.removeChild(a);
     } catch (error) {
       console.error('Error generando contrato:', error);
-      alert(error instanceof Error ? error.message : 'Error al generar contrato');
+      setErrorModal({
+        isOpen: true,
+        message: error instanceof Error ? error.message : 'Error al generar contrato',
+      });
     } finally {
       setGeneratingContrato(null);
     }
@@ -288,6 +295,44 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
           precioBase={precioModal.controlPago.precio_base}
           montoVenta={precioModal.controlPago.monto_venta}
         />
+      )}
+
+      {/* Modal de Error */}
+      {errorModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-red-50 rounded-t-lg">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                <h3 className="text-lg font-semibold text-red-700">
+                  Error al generar contrato
+                </h3>
+              </div>
+              <button
+                onClick={() => setErrorModal({ isOpen: false, message: '' })}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              <p className="text-gray-700">{errorModal.message}</p>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end p-4 border-t border-gray-200">
+              <button
+                onClick={() => setErrorModal({ isOpen: false, message: '' })}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
