@@ -6,6 +6,7 @@
 - [Sesión 65](#sesión-65---5-diciembre-2025) - Sistema Repulse: Integración /operativo + Exclusiones
 - [Sesión 65B](#sesión-65b---5-diciembre-2025-continuación) - Sistema Repulse: Webhook n8n + UI Improvements
 - [Sesión 65C](#sesión-65c---7-diciembre-2025) - Widget Quota WhatsApp + Mejoras UX
+- [Sesión 67](#sesión-67---9-diciembre-2025) - 🔐 Sistema Verificación por Finanzas + Liberación de Comisiones
 
 ---
 
@@ -964,6 +965,267 @@ Changes:
 - Fix timezone: use Peru time (UTC-5) for daily quota calculation
 - Fix tooltip cutoff: auto-adjust position to stay within viewport
 - Remove arrow from tooltip for cleaner look
+```
+
+---
+
+## Sesión 67 - 9 Diciembre 2025
+
+### 🔐 Sistema Verificación por Finanzas + Liberación de Comisiones
+
+**Tipo:** Feature - Control de Pagos + Comisiones
+**Estado:** ✅ COMPLETADO Y PROBADO
+**Branch:** `staging`
+
+---
+
+### Objetivo
+
+Implementar sistema donde el rol `finanzas` verifica abonos de pagos (acción irreversible), y las comisiones pasan a estado "disponible" SOLO cuando tanto la separación como el inicial están verificados.
+
+---
+
+### Trabajo Realizado
+
+#### FASE 1: Columnas de Verificación en `abonos_pago` ✅
+
+**Migration:** `supabase/migrations/20251209_add_verificacion_finanzas_columns.sql`
+
+```sql
+ALTER TABLE abonos_pago
+ADD COLUMN IF NOT EXISTS verificado_finanzas BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS verificado_finanzas_por UUID REFERENCES usuarios(id),
+ADD COLUMN IF NOT EXISTS verificado_finanzas_at TIMESTAMPTZ,
+ADD COLUMN IF NOT EXISTS verificado_finanzas_nombre TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_abonos_pago_verificado_finanzas ON abonos_pago(verificado_finanzas);
+```
+
+#### FASE 2: Server Action `toggleVerificacionAbono()` ✅
+
+**Archivo:** `lib/actions-pagos.ts` (+80 líneas)
+
+Función que:
+- Valida que el usuario sea rol `finanzas`
+- Bloquea desverificación (acción irreversible)
+- Verifica que el abono no esté ya verificado
+- Marca como verificado con metadata (quién, cuándo, nombre snapshot)
+- Usa timezone Lima/Perú para fecha
+
+```typescript
+export async function toggleVerificacionAbono(data: {
+  abonoId: string;
+  verificado: boolean;
+  usuarioId: string;
+  usuarioNombre: string;
+}): Promise<{ success: boolean; message: string }>
+```
+
+#### FASE 3: UI de Verificación en PagosPanel ✅
+
+**Archivo:** `components/control-pagos/PagosPanel.tsx`
+
+Implementado en 3 ubicaciones (Separación, Inicial, Cuotas):
+
+1. **Checkbox "Verificar abono"** (solo si `isFinanzas && !verificado_finanzas`)
+2. **Badge verde "Verificado por X el DD/MM/YYYY"** (si ya verificado)
+3. **Texto gris "Pendiente de verificación por Finanzas"** (otros roles)
+
+**Modal de confirmación:**
+- Icono amarillo de advertencia
+- Texto "Esta acción es **irreversible**"
+- Muestra monto y fecha del abono
+- Botones "Cancelar" / "Sí, verificar"
+
+#### FASE 4: RLS Policy para UPDATE ✅
+
+**Problema encontrado:** El checkbox se chequeaba pero no se guardaba - faltaba policy UPDATE.
+
+**Solución aplicada en Supabase:**
+```sql
+CREATE POLICY "abonos_pago_update_authenticated" ON abonos_pago
+FOR UPDATE TO authenticated
+USING (true)
+WITH CHECK (true);
+```
+
+#### FASE 5: Trigger para Liberar Comisiones ✅
+
+**Migration:** `supabase/migrations/20251209_verificacion_finanzas_comisiones.sql`
+
+**Lógica de negocio crítica:**
+- Separación + Inicial Restante = Pago Inicial Total
+- AMBOS deben estar verificados para liberar comisiones
+- No basta con verificar solo el pago tipo "inicial"
+
+**Trigger actualizado:**
+```sql
+CREATE OR REPLACE FUNCTION actualizar_comisiones_inicial_verificado()
+RETURNS TRIGGER AS $$
+DECLARE
+  pago_record RECORD;
+  control_pago_id_var UUID;
+  pago_inicial RECORD;
+  todos_verificados BOOLEAN;
+BEGIN
+  -- 1. Obtener info del pago al que pertenece este abono
+  SELECT * INTO pago_record FROM pagos_local WHERE id = NEW.pago_id;
+
+  -- 2. Solo procesar si es separación o inicial
+  IF pago_record.tipo NOT IN ('separacion', 'inicial') THEN
+    RETURN NEW;
+  END IF;
+
+  control_pago_id_var := pago_record.control_pago_id;
+
+  -- 3. Verificar que el pago inicial esté completado
+  SELECT * INTO pago_inicial
+  FROM pagos_local
+  WHERE control_pago_id = control_pago_id_var AND tipo = 'inicial';
+
+  IF pago_inicial.estado != 'completado' THEN
+    RETURN NEW;
+  END IF;
+
+  -- 4. Verificar que TODOS los abonos de separación e inicial estén verificados
+  SELECT NOT EXISTS(
+    SELECT 1 FROM abonos_pago ap
+    INNER JOIN pagos_local pl ON ap.pago_id = pl.id
+    WHERE pl.control_pago_id = control_pago_id_var
+      AND pl.tipo IN ('separacion', 'inicial')
+      AND (ap.verificado_finanzas = false OR ap.verificado_finanzas IS NULL)
+  ) INTO todos_verificados;
+
+  -- 5. Si todos verificados, liberar comisiones
+  IF todos_verificados THEN
+    UPDATE comisiones
+    SET estado = 'disponible', fecha_disponible = NOW()
+    WHERE control_pago_id = control_pago_id_var
+      AND estado = 'pendiente_inicial';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger se dispara cuando verificado_finanzas cambia de false a true
+CREATE TRIGGER trigger_comisiones_inicial_verificado
+  AFTER UPDATE ON abonos_pago
+  FOR EACH ROW
+  WHEN (NEW.verificado_finanzas = true AND (OLD.verificado_finanzas IS NULL OR OLD.verificado_finanzas = false))
+  EXECUTE FUNCTION actualizar_comisiones_inicial_verificado();
+```
+
+#### FASE 6: Texto "Por verificar" en Comisiones ✅
+
+**Archivo:** `components/comisiones/ComisionesDesgloseMensual.tsx`
+
+Cambio en columna Acción para estado `pendiente_inicial`:
+- **Antes:** "-"
+- **Después:** "Por verificar" (texto gris)
+
+---
+
+### Acceso por Rol Actualizado
+
+| Rol | / | /operativo | /locales | /control-pagos | /comisiones |
+|-----|---|------------|----------|----------------|-------------|
+| admin | ✅ | ✅ | ✅ | ✅ | ✅ |
+| vendedor | ❌→/operativo | ✅ | ✅ | ❌ | ✅ |
+| jefe_ventas | ❌→/locales | ❌→/locales | ✅ | ✅ | ✅ |
+| vendedor_caseta | ❌→/locales | ✅ | ✅ | ❌ | ✅ |
+| coordinador | ❌→/locales | ❌→/locales | ✅ | ❌ | ✅ |
+| **finanzas** | ❌→/control-pagos | ❌→/control-pagos | ❌→/control-pagos | ✅ | ❌→/control-pagos |
+
+---
+
+### Flujo Completo de Verificación
+
+```
+1. Vendedor registra venta (local → ROJO)
+2. Admin/Jefe procesa venta → control_pagos creado
+3. Pagos se registran (separación + inicial)
+4. Comisiones creadas con estado 'pendiente_inicial'
+
+5. FINANZAS entra a /control-pagos
+6. Abre PagosPanel del local
+7. Verifica abono de separación → modal confirmación → ✅
+8. Verifica abono de inicial → modal confirmación → ✅
+
+   ↓ TRIGGER SE DISPARA ↓
+
+9. Comisiones pasan a 'disponible' automáticamente
+10. En /comisiones ahora aparecen como "Disponible"
+```
+
+---
+
+### Archivos Modificados/Creados
+
+| Archivo | Acción | Descripción |
+|---------|--------|-------------|
+| `lib/actions-pagos.ts` | Modificado | +80 líneas (toggleVerificacionAbono, interface AbonoPago) |
+| `components/control-pagos/PagosPanel.tsx` | Modificado | +150 líneas (UI verificación, modal confirmación) |
+| `components/comisiones/ComisionesDesgloseMensual.tsx` | Modificado | +5 líneas (texto "Por verificar") |
+| `middleware.ts` | Modificado | Acceso finanzas a /control-pagos |
+| `components/shared/Sidebar.tsx` | Modificado | Finanzas solo ve Control de Pagos |
+| `app/control-pagos/page.tsx` | Modificado | Acceso rol finanzas |
+| `supabase/migrations/20251209_add_verificacion_finanzas_columns.sql` | Nuevo | Columnas verificación |
+| `supabase/migrations/20251209_verificacion_finanzas_comisiones.sql` | Nuevo | Trigger comisiones |
+| `supabase/migrations/20251128_trigger_comisiones_disponible_BACKUP.sql` | Nuevo | Backup trigger anterior |
+
+**Total:** +350 líneas netas
+
+---
+
+### Bugs Encontrados y Solucionados
+
+#### Bug 1: Checkbox no se guardaba
+**Síntoma:** Modal de confirmación aparecía, mostraba success, pero checkbox quedaba sin marcar
+**Causa:** Faltaba RLS policy UPDATE en tabla `abonos_pago`
+**Solución:** Agregar policy `abonos_pago_update_authenticated`
+
+#### Bug 2: Comisiones no pasaban a "Disponible"
+**Síntoma:** Verificados ambos pagos (separación + inicial), pero comisiones seguían en "Pendiente"
+**Causa:** Trigger original solo verificaba pago tipo='inicial', pero la lógica de negocio requiere AMBOS
+**Solución:** Actualizar trigger para verificar que TODOS los abonos de separación e inicial estén verificados
+
+---
+
+### Lecciones Aprendidas
+
+1. **RLS policies por operación:** SELECT, INSERT, UPDATE, DELETE son policies separadas. Verificar que existan todas las necesarias.
+
+2. **Lógica de negocio antes de código:** Entender que "pago inicial" = separación + inicial restante fue clave para el trigger correcto.
+
+3. **Triggers en cascada:** Mejor integrar lógica en una sola función que depender de triggers encadenados (aprendizaje de Sesión 62).
+
+---
+
+### Testing Realizado
+
+- ✅ Usuario finanzas puede verificar abonos
+- ✅ Modal de confirmación funciona
+- ✅ Verificación es irreversible (no se puede desmarcar)
+- ✅ Badge verde aparece después de verificar
+- ✅ Trigger libera comisiones cuando AMBOS están verificados
+- ✅ Comisiones muestran "Disponible" en /comisiones
+- ✅ Otros roles ven "Pendiente de verificación por Finanzas"
+
+---
+
+### Rollback (si necesario)
+
+**Para revertir al sistema anterior (sin verificación):**
+
+```sql
+-- 1. Eliminar trigger nuevo
+DROP TRIGGER IF EXISTS trigger_comisiones_inicial_verificado ON abonos_pago;
+
+-- 2. Restaurar trigger anterior (desde backup)
+-- Ver: supabase/migrations/20251128_trigger_comisiones_disponible_BACKUP.sql
+
+-- 3. Las columnas de verificación pueden quedarse (no afectan funcionamiento)
 ```
 
 ---
