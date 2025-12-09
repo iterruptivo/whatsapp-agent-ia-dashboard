@@ -261,7 +261,8 @@ async function removeEmptyParagraphs(docxBuffer: Buffer): Promise<Buffer> {
 
     // Patrón 2: Párrafos con solo propiedades pero sin texto (<w:r> contiene el texto)
     // Busca <w:p> que no contienen <w:r> (que es donde va el texto real)
-    cleanedXml = cleanedXml.replace(/<w:p[^>]*>(?:(?!<w:r[ >]).)*?<\/w:p>/gs, (match) => {
+    // Nota: Usamos [\s\S] en lugar de . con flag 's' para compatibilidad ES5
+    cleanedXml = cleanedXml.replace(/<w:p[^>]*>(?:(?!<w:r[ >])[\s\S])*?<\/w:p>/g, (match) => {
       // Verificar si el párrafo tiene contenido de texto real
       // Si no tiene <w:r> o <w:t>, es un párrafo vacío
       if (!match.includes('<w:r') && !match.includes('<w:t')) {
@@ -272,7 +273,7 @@ async function removeEmptyParagraphs(docxBuffer: Buffer): Promise<Buffer> {
 
     // Patrón 3: Párrafos con runs vacíos (solo espacios o nada)
     // <w:p><w:r><w:t></w:t></w:r></w:p> o <w:p><w:r><w:t xml:space="preserve"> </w:t></w:r></w:p>
-    cleanedXml = cleanedXml.replace(/<w:p[^>]*>(?:\s*<w:pPr>.*?<\/w:pPr>)?\s*<w:r[^>]*>\s*<w:t[^>]*>\s*<\/w:t>\s*<\/w:r>\s*<\/w:p>/gs, '');
+    cleanedXml = cleanedXml.replace(/<w:p[^>]*>(?:\s*<w:pPr>[\s\S]*?<\/w:pPr>)?\s*<w:r[^>]*>\s*<w:t[^>]*>\s*<\/w:t>\s*<\/w:r>\s*<\/w:p>/g, '');
 
     // Actualizar el archivo en el zip
     zip.file('word/document.xml', cleanedXml);
