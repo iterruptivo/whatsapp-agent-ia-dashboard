@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, User, Mail, Lock, Shield, Loader2 } from 'lucide-react';
+import { X, User, Mail, Lock, Shield, Loader2, RefreshCw, Copy, Check } from 'lucide-react';
 import {
   type UsuarioConDatos,
   createUsuario,
@@ -43,6 +43,46 @@ export default function UsuarioFormModal({
   // UI state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // Generar contraseña segura compatible con Supabase
+  const generateSecurePassword = () => {
+    const length = 16;
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+    const allChars = uppercase + lowercase + numbers + special;
+
+    // Asegurar al menos uno de cada tipo
+    let password = '';
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += special[Math.floor(Math.random() * special.length)];
+
+    // Completar el resto
+    for (let i = password.length; i < length; i++) {
+      password += allChars[Math.floor(Math.random() * allChars.length)];
+    }
+
+    // Mezclar los caracteres
+    password = password.split('').sort(() => Math.random() - 0.5).join('');
+
+    setPassword(password);
+    setShowPassword(true); // Mostrar la contraseña generada
+    setCopied(false);
+  };
+
+  // Copiar contraseña al portapapeles
+  const copyToClipboard = async () => {
+    if (password) {
+      await navigator.clipboard.writeText(password);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -222,15 +262,47 @@ export default function UsuarioFormModal({
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Mínimo 6 caracteres"
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    className="w-full pl-10 pr-20 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     disabled={isSubmitting}
                     autoComplete="new-password"
                   />
+                  {/* Botones dentro del input */}
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {password && (
+                      <button
+                        type="button"
+                        onClick={copyToClipboard}
+                        className="p-1 text-gray-400 hover:text-primary transition-colors"
+                        title="Copiar contraseña"
+                      >
+                        {copied ? (
+                          <Check className="w-4 h-4 text-green-500" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
+                {/* Botón generar contraseña */}
+                <button
+                  type="button"
+                  onClick={generateSecurePassword}
+                  disabled={isSubmitting}
+                  className="mt-2 flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Generar contraseña segura
+                </button>
+                {password && showPassword && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Contraseña: <span className="font-mono bg-gray-100 px-1 rounded">{password}</span>
+                  </p>
+                )}
               </div>
             )}
 
