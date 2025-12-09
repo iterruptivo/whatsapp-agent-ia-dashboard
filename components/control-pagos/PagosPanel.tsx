@@ -265,7 +265,9 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                             <div className="font-semibold text-gray-900">{formatMonto(abono.monto)}</div>
                             <div className="text-gray-600">{formatFecha(abono.fecha_abono)}</div>
                           </div>
-                          <div className="text-gray-600">{abono.metodo_pago}</div>
+                          {/* TODO: Mostrar método de pago real cuando se implemente selector en checkbox separación */}
+                          {/* Por ahora oculto porque el checkbox hardcodea "Efectivo" */}
+                          <div className="hidden text-gray-600">{abono.metodo_pago}</div>
                           {abono.notas && <div className="text-gray-500 text-xs mt-1">{abono.notas}</div>}
 
                           {/* Verificación Finanzas */}
