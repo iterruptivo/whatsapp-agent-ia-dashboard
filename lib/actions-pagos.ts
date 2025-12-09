@@ -381,7 +381,7 @@ export async function toggleSeparacionPagada(data: {
   }
 }
 
-// Toggle verificación de abono por Finanzas
+// Verificación de abono por Finanzas (IRREVERSIBLE)
 export async function toggleVerificacionAbono(data: {
   abonoId: string;
   verificado: boolean;
@@ -418,46 +418,42 @@ export async function toggleVerificacionAbono(data: {
       return { success: false, message: 'Solo el rol Finanzas puede verificar abonos' };
     }
 
-    if (data.verificado) {
-      // Marcar como verificado - usar fecha Lima Perú
-      const fechaLima = new Date().toLocaleString('en-US', { timeZone: 'America/Lima' });
-      const fechaVerificacion = new Date(fechaLima).toISOString();
-
-      const { error } = await supabase
-        .from('abonos_pago')
-        .update({
-          verificado_finanzas: true,
-          verificado_finanzas_por: data.usuarioId,
-          verificado_finanzas_at: fechaVerificacion,
-          verificado_finanzas_nombre: data.usuarioNombre,
-        })
-        .eq('id', data.abonoId);
-
-      if (error) {
-        console.error('[PAGOS] Error verificando abono:', error);
-        return { success: false, message: 'Error al verificar abono' };
-      }
-
-      return { success: true, message: 'Abono verificado por Finanzas' };
-    } else {
-      // Desmarcar verificación
-      const { error } = await supabase
-        .from('abonos_pago')
-        .update({
-          verificado_finanzas: false,
-          verificado_finanzas_por: null,
-          verificado_finanzas_at: null,
-          verificado_finanzas_nombre: null,
-        })
-        .eq('id', data.abonoId);
-
-      if (error) {
-        console.error('[PAGOS] Error desmarcando verificación:', error);
-        return { success: false, message: 'Error al desmarcar verificación' };
-      }
-
-      return { success: true, message: 'Verificación removida' };
+    // BLOQUEAR desverificación (acción irreversible)
+    if (!data.verificado) {
+      return { success: false, message: 'La verificación es irreversible y no puede deshacerse' };
     }
+
+    // Verificar que el abono no esté ya verificado
+    const { data: abonoActual } = await supabase
+      .from('abonos_pago')
+      .select('verificado_finanzas')
+      .eq('id', data.abonoId)
+      .single();
+
+    if (abonoActual?.verificado_finanzas) {
+      return { success: false, message: 'Este abono ya fue verificado' };
+    }
+
+    // Marcar como verificado - usar fecha Lima Perú
+    const fechaLima = new Date().toLocaleString('en-US', { timeZone: 'America/Lima' });
+    const fechaVerificacion = new Date(fechaLima).toISOString();
+
+    const { error } = await supabase
+      .from('abonos_pago')
+      .update({
+        verificado_finanzas: true,
+        verificado_finanzas_por: data.usuarioId,
+        verificado_finanzas_at: fechaVerificacion,
+        verificado_finanzas_nombre: data.usuarioNombre,
+      })
+      .eq('id', data.abonoId);
+
+    if (error) {
+      console.error('[PAGOS] Error verificando abono:', error);
+      return { success: false, message: 'Error al verificar abono' };
+    }
+
+    return { success: true, message: 'Abono verificado por Finanzas' };
   } catch (error) {
     console.error('[PAGOS] Error en toggleVerificacionAbono:', error);
     return { success: false, message: 'Error inesperado' };
