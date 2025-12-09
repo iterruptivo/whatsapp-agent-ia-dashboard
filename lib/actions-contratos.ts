@@ -47,6 +47,8 @@ interface Copropietario {
   tipo_documento: string;
   numero_documento: string;
   parentesco: string;
+  telefono?: string;
+  email?: string;
 }
 
 interface ContratoTemplateData {
@@ -395,9 +397,8 @@ export async function generateContrato(
       conyuge_celular: clienteFicha.conyuge_celular || '',
       conyuge_email: clienteFicha.conyuge_email || '',
 
-      // Copropietarios (array vacío por ahora - futuro: agregar a clientes_ficha)
-      // Cuando el array está vacío, {IF copropietarios} evaluará a false
-      copropietarios: [],
+      // Copropietarios (desde clientes_ficha.copropietarios JSONB)
+      copropietarios: (clienteFicha.copropietarios || []) as Copropietario[],
 
       // Local
       codigo_local: controlPago.codigo_local || '',
