@@ -418,14 +418,21 @@ export default function ContratoTemplateUploader({
               {/* Montos USD */}
               <section>
                 <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">💵 Montos en USD</h4>
+                <p className="text-xs text-gray-600 mb-2">
+                  Variables <code className="bg-gray-100 px-1">_fmt</code> incluyen separador de miles: 3,095.65
+                </p>
                 <div className="grid grid-cols-2 gap-2 font-mono text-xs bg-gray-50 p-3 rounded">
                   <div><code>{'{monto_venta}'}</code> - Número</div>
+                  <div><code>{'{monto_venta_fmt}'}</code> - Con formato</div>
                   <div><code>{'{monto_venta_texto}'}</code> - En letras</div>
                   <div><code>{'{monto_separacion}'}</code></div>
+                  <div><code>{'{monto_separacion_fmt}'}</code></div>
                   <div><code>{'{monto_separacion_texto}'}</code></div>
                   <div><code>{'{cuota_inicial}'}</code></div>
+                  <div><code>{'{cuota_inicial_fmt}'}</code></div>
                   <div><code>{'{cuota_inicial_texto}'}</code></div>
                   <div><code>{'{saldo_financiar}'}</code></div>
+                  <div><code>{'{saldo_financiar_fmt}'}</code></div>
                   <div><code>{'{saldo_financiar_texto}'}</code></div>
                 </div>
               </section>
@@ -435,12 +442,16 @@ export default function ContratoTemplateUploader({
                 <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">💰 Montos en Soles (PEN)</h4>
                 <div className="grid grid-cols-2 gap-2 font-mono text-xs bg-gray-50 p-3 rounded">
                   <div><code>{'{monto_venta_pen}'}</code></div>
+                  <div><code>{'{monto_venta_pen_fmt}'}</code></div>
                   <div><code>{'{monto_venta_pen_texto}'}</code></div>
                   <div><code>{'{monto_separacion_pen}'}</code></div>
+                  <div><code>{'{monto_separacion_pen_fmt}'}</code></div>
                   <div><code>{'{monto_separacion_pen_texto}'}</code></div>
                   <div><code>{'{cuota_inicial_pen}'}</code></div>
+                  <div><code>{'{cuota_inicial_pen_fmt}'}</code></div>
                   <div><code>{'{cuota_inicial_pen_texto}'}</code></div>
                   <div><code>{'{saldo_financiar_pen}'}</code></div>
+                  <div><code>{'{saldo_financiar_pen_fmt}'}</code></div>
                   <div><code>{'{saldo_financiar_pen_texto}'}</code></div>
                 </div>
               </section>
@@ -464,8 +475,10 @@ export default function ContratoTemplateUploader({
                   <div><code>{'{numero_cuotas}'}</code></div>
                   <div><code>{'{numero_cuotas_texto}'}</code></div>
                   <div><code>{'{cuota_mensual}'}</code> - USD</div>
+                  <div><code>{'{cuota_mensual_fmt}'}</code> - USD con formato</div>
                   <div><code>{'{cuota_mensual_texto}'}</code></div>
                   <div><code>{'{cuota_mensual_pen}'}</code> - PEN</div>
+                  <div><code>{'{cuota_mensual_pen_fmt}'}</code> - PEN con formato</div>
                   <div><code>{'{cuota_mensual_pen_texto}'}</code></div>
                   <div><code>{'{tea}'}</code> - Tasa efectiva anual</div>
                   <div><code>{'{dia_pago}'}</code> - Día del mes</div>
@@ -518,17 +531,21 @@ export default function ContratoTemplateUploader({
               <section>
                 <h4 className="font-semibold text-gray-900 mb-2 border-b pb-1">📅 Calendario de Cuotas (Loop)</h4>
                 <p className="text-xs text-gray-600 mb-2">
-                  Para generar la tabla de cuotas use:
+                  Para generar la tabla de cuotas use. Variables <code className="bg-gray-100 px-1">_fmt</code> con separador de miles:
                 </p>
                 <div className="p-3 bg-purple-50 border border-purple-200 rounded font-mono text-xs">
                   <code className="text-purple-700">{'{FOR cuota IN calendario_cuotas}'}</code>
                   <div className="pl-4 text-purple-600 my-1">
                     <div><code>{'{$cuota.numero}'}</code> - Número de cuota (1, 2, 3...)</div>
                     <div><code>{'{$cuota.fecha}'}</code> - Fecha DD/MM/YYYY</div>
-                    <div><code>{'{$cuota.monto}'}</code> - Monto de la cuota</div>
+                    <div><code>{'{$cuota.cuota}'}</code> - Monto de la cuota (número)</div>
+                    <div><code>{'{$cuota.cuota_fmt}'}</code> - Monto con formato (3,095.65)</div>
                     <div><code>{'{$cuota.interes}'}</code> - Interés (sistema francés)</div>
+                    <div><code>{'{$cuota.interes_fmt}'}</code> - Interés con formato</div>
                     <div><code>{'{$cuota.amortizacion}'}</code> - Amortización (sistema francés)</div>
+                    <div><code>{'{$cuota.amortizacion_fmt}'}</code> - Amortización con formato</div>
                     <div><code>{'{$cuota.saldo}'}</code> - Saldo restante</div>
+                    <div><code>{'{$cuota.saldo_fmt}'}</code> - Saldo con formato</div>
                   </div>
                   <code className="text-purple-700">{'{END-FOR cuota}'}</code>
                 </div>

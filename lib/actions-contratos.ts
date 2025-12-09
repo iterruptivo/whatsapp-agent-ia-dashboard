@@ -127,22 +127,30 @@ interface ContratoTemplateData {
 
   // Montos USD
   monto_venta: number;
+  monto_venta_fmt: string; // Formato: 3,095.65
   monto_venta_texto: string;
   monto_separacion: number;
+  monto_separacion_fmt: string;
   monto_separacion_texto: string;
   cuota_inicial: number;
+  cuota_inicial_fmt: string;
   cuota_inicial_texto: string;
   saldo_financiar: number;
+  saldo_financiar_fmt: string;
   saldo_financiar_texto: string;
 
   // Montos PEN
   monto_venta_pen: number;
+  monto_venta_pen_fmt: string;
   monto_venta_pen_texto: string;
   monto_separacion_pen: number;
+  monto_separacion_pen_fmt: string;
   monto_separacion_pen_texto: string;
   cuota_inicial_pen: number;
+  cuota_inicial_pen_fmt: string;
   cuota_inicial_pen_texto: string;
   saldo_financiar_pen: number;
+  saldo_financiar_pen_fmt: string;
   saldo_financiar_pen_texto: string;
 
   // Tipo de cambio
@@ -156,8 +164,10 @@ interface ContratoTemplateData {
   numero_cuotas: number;
   numero_cuotas_texto: string;
   cuota_mensual: number;
+  cuota_mensual_fmt: string;
   cuota_mensual_texto: string;
   cuota_mensual_pen: number;
+  cuota_mensual_pen_fmt: string;
   cuota_mensual_pen_texto: string;
   tea: number;
   dia_pago: number;
@@ -178,9 +188,13 @@ interface ContratoTemplateData {
     numero: number;
     fecha: string;
     cuota: number;
+    cuota_fmt: string;
     interes?: number;
+    interes_fmt?: string;
     amortizacion?: number;
+    amortizacion_fmt?: string;
     saldo?: number;
+    saldo_fmt?: string;
   }>;
 
   // Penalidad y plazos
@@ -216,6 +230,14 @@ function formatDireccionCompleta(
 // Helper para redondear a 2 decimales
 function round2(num: number): number {
   return Math.round(num * 100) / 100;
+}
+
+// Helper para formatear montos con comas (ej: 3,095.65)
+function formatMonto(num: number): string {
+  return round2(num).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 // ============================================================================
@@ -418,22 +440,30 @@ export async function generateContrato(
 
       // Montos USD
       monto_venta: controlPago.monto_venta || 0,
+      monto_venta_fmt: formatMonto(controlPago.monto_venta || 0),
       monto_venta_texto: numeroALetras(controlPago.monto_venta || 0, 'USD'),
       monto_separacion: controlPago.monto_separacion || 0,
+      monto_separacion_fmt: formatMonto(controlPago.monto_separacion || 0),
       monto_separacion_texto: numeroALetras(controlPago.monto_separacion || 0, 'USD'),
       cuota_inicial: controlPago.monto_inicial || 0,
+      cuota_inicial_fmt: formatMonto(controlPago.monto_inicial || 0),
       cuota_inicial_texto: numeroALetras(controlPago.monto_inicial || 0, 'USD'),
       saldo_financiar: controlPago.monto_restante || 0,
+      saldo_financiar_fmt: formatMonto(controlPago.monto_restante || 0),
       saldo_financiar_texto: numeroALetras(controlPago.monto_restante || 0, 'USD'),
 
       // Montos PEN (redondeados a 2 decimales)
       monto_venta_pen: round2(convertirUSDaPEN(controlPago.monto_venta || 0, tipoCambio)),
+      monto_venta_pen_fmt: formatMonto(convertirUSDaPEN(controlPago.monto_venta || 0, tipoCambio)),
       monto_venta_pen_texto: numeroALetras(round2(convertirUSDaPEN(controlPago.monto_venta || 0, tipoCambio)), 'PEN'),
       monto_separacion_pen: round2(convertirUSDaPEN(controlPago.monto_separacion || 0, tipoCambio)),
+      monto_separacion_pen_fmt: formatMonto(convertirUSDaPEN(controlPago.monto_separacion || 0, tipoCambio)),
       monto_separacion_pen_texto: numeroALetras(round2(convertirUSDaPEN(controlPago.monto_separacion || 0, tipoCambio)), 'PEN'),
       cuota_inicial_pen: round2(convertirUSDaPEN(controlPago.monto_inicial || 0, tipoCambio)),
+      cuota_inicial_pen_fmt: formatMonto(convertirUSDaPEN(controlPago.monto_inicial || 0, tipoCambio)),
       cuota_inicial_pen_texto: numeroALetras(round2(convertirUSDaPEN(controlPago.monto_inicial || 0, tipoCambio)), 'PEN'),
       saldo_financiar_pen: round2(convertirUSDaPEN(controlPago.monto_restante || 0, tipoCambio)),
+      saldo_financiar_pen_fmt: formatMonto(convertirUSDaPEN(controlPago.monto_restante || 0, tipoCambio)),
       saldo_financiar_pen_texto: numeroALetras(round2(convertirUSDaPEN(controlPago.monto_restante || 0, tipoCambio)), 'PEN'),
 
       // Tipo de cambio
@@ -447,8 +477,10 @@ export async function generateContrato(
       numero_cuotas: controlPago.numero_cuotas || 0,
       numero_cuotas_texto: numeroEnteroALetras(controlPago.numero_cuotas || 0),
       cuota_mensual: cuotaMensual,
+      cuota_mensual_fmt: formatMonto(cuotaMensual),
       cuota_mensual_texto: numeroALetras(cuotaMensual, 'USD'),
       cuota_mensual_pen: round2(convertirUSDaPEN(cuotaMensual, tipoCambio)),
+      cuota_mensual_pen_fmt: formatMonto(convertirUSDaPEN(cuotaMensual, tipoCambio)),
       cuota_mensual_pen_texto: numeroALetras(round2(convertirUSDaPEN(cuotaMensual, tipoCambio)), 'PEN'),
       tea: controlPago.tea || 0,
       dia_pago: extraerDia(fechaInicioPago),
@@ -464,14 +496,18 @@ export async function generateContrato(
       es_frances: esFrances,
       es_simple: !esFrances,
 
-      // Calendario de cuotas (montos redondeados a 2 decimales)
+      // Calendario de cuotas (montos redondeados a 2 decimales + versiones formateadas)
       calendario_cuotas: calendario.map((cuota: any, index: number) => ({
         numero: index + 1,
         fecha: formatearFecha(cuota.fecha),
         cuota: round2(cuota.cuota || 0),
+        cuota_fmt: formatMonto(cuota.cuota || 0),
         interes: round2(cuota.interes || 0),
+        interes_fmt: formatMonto(cuota.interes || 0),
         amortizacion: round2(cuota.amortizacion || 0),
+        amortizacion_fmt: formatMonto(cuota.amortizacion || 0),
         saldo: round2(cuota.saldo || 0),
+        saldo_fmt: formatMonto(cuota.saldo || 0),
       })),
 
       // Penalidad y plazos
