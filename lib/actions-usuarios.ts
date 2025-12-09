@@ -1,16 +1,17 @@
 'use server';
 
 import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 
 // ============================================================================
 // MÓDULO: Administración de Usuarios
-// Versión: 1.0.2 - Fix: use createServerClient instead of browser client
+// Versión: 1.0.3 - Add service role client for admin operations
 // ============================================================================
 
 // ============================================================================
-// HELPER: Crear cliente Supabase para Server Actions
+// HELPER: Crear cliente Supabase para Server Actions (con auth del usuario)
 // ============================================================================
 
 async function createClient() {
@@ -36,6 +37,27 @@ async function createClient() {
       },
     }
   );
+}
+
+// ============================================================================
+// HELPER: Crear cliente Admin (service role) - BYPASA RLS
+// Usar SOLO para operaciones administrativas después de validar permisos
+// ============================================================================
+
+function createAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+  if (!serviceRoleKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY no está configurada');
+  }
+
+  return createSupabaseClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
 }
 
 // ============================================================================
@@ -233,10 +255,11 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
   userId?: string;
 }> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
-  const supabase = await createClient();
+  // Usamos cliente admin (service role) para bypasear RLS en operaciones de creación
+  const supabaseAdmin = createAdminClient();
 
   // 1. Validar email único
-  const { data: existingEmail } = await supabase
+  const { data: existingEmail } = await supabaseAdmin
     .from('usuarios')
     .select('id')
     .eq('email', data.email)
@@ -249,7 +272,7 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
   // 2. Validar teléfono único (si se proporciona)
   if (data.telefono) {
     // Buscar en vendedores
-    const { data: existingVendedor } = await supabase
+    const { data: existingVendedor } = await supabaseAdmin
       .from('vendedores')
       .select('id')
       .eq('telefono', data.telefono)
@@ -260,7 +283,7 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
     }
 
     // Buscar en usuarios_datos_no_vendedores
-    const { data: existingNoVendedor } = await supabase
+    const { data: existingNoVendedor } = await supabaseAdmin
       .from('usuarios_datos_no_vendedores')
       .select('id')
       .eq('telefono', data.telefono)
@@ -271,17 +294,14 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
     }
   }
 
-  // 3. Crear usuario en auth.users (Supabase Auth)
-  // NOTA: Esto requiere service_role key o Admin API
-  // Por ahora usamos signUp que crea el usuario pero requiere confirmación
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  // 3. Crear usuario en auth.users usando Admin API (no requiere confirmación email)
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email: data.email,
     password: data.password,
-    options: {
-      data: {
-        nombre: data.nombre,
-        rol: data.rol
-      }
+    email_confirm: true, // Usuario ya confirmado, puede hacer login inmediatamente
+    user_metadata: {
+      nombre: data.nombre,
+      rol: data.rol
     }
   });
 
@@ -300,7 +320,7 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
 
   // Si es vendedor, crear en tabla vendedores primero
   if (['vendedor', 'vendedor_caseta'].includes(data.rol)) {
-    const { data: nuevoVendedor, error: vendedorError } = await supabase
+    const { data: nuevoVendedor, error: vendedorError } = await supabaseAdmin
       .from('vendedores')
       .insert({
         nombre: data.nombre,
@@ -313,7 +333,7 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
     if (vendedorError) {
       console.error('Error creando vendedor:', vendedorError);
       // Intentar eliminar auth user creado
-      // await supabase.auth.admin.deleteUser(userId);
+      await supabaseAdmin.auth.admin.deleteUser(userId);
       return { success: false, message: 'Error al crear datos de vendedor' };
     }
 
@@ -321,7 +341,7 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
   }
 
   // Insertar en usuarios
-  const { error: usuarioError } = await supabase
+  const { error: usuarioError } = await supabaseAdmin
     .from('usuarios')
     .insert({
       id: userId,
@@ -334,12 +354,14 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
 
   if (usuarioError) {
     console.error('Error insertando usuario:', usuarioError);
+    // Rollback: eliminar auth user
+    await supabaseAdmin.auth.admin.deleteUser(userId);
     return { success: false, message: 'Error al crear registro de usuario' };
   }
 
   // 5. Si es NO vendedor, crear en usuarios_datos_no_vendedores
   if (['admin', 'jefe_ventas', 'finanzas'].includes(data.rol)) {
-    const { error: datosError } = await supabase
+    const { error: datosError } = await supabaseAdmin
       .from('usuarios_datos_no_vendedores')
       .insert({
         usuario_id: userId,
