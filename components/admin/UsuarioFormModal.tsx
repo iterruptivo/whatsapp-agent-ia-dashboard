@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, User, Mail, Phone, Lock, Shield, Loader2 } from 'lucide-react';
+import { X, User, Mail, Lock, Shield, Loader2 } from 'lucide-react';
 import {
   type UsuarioConDatos,
   createUsuario,
   updateUsuario,
 } from '@/lib/actions-usuarios';
+import PhoneInputCustom from '@/components/shared/PhoneInputCustom';
 
 interface UsuarioFormModalProps {
   usuario: UsuarioConDatos | null; // null = crear nuevo
@@ -43,11 +44,6 @@ export default function UsuarioFormModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Cleanup telefono (remove +, spaces, dashes)
-  const cleanTelefono = (value: string) => {
-    return value.replace(/[\s\-\+]/g, '');
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -73,14 +69,15 @@ export default function UsuarioFormModal({
       return;
     }
 
-    if (!telefono.trim()) {
+    if (!telefono) {
       setError('El teléfono es obligatorio');
       return;
     }
 
-    const telefonoLimpio = cleanTelefono(telefono);
-    if (telefonoLimpio.length < 9) {
-      setError('El teléfono debe tener al menos 9 dígitos');
+    // PhoneInputCustom ya retorna el número sin +, solo dígitos con código de país
+    // Ej: 51987654321 (código país + número)
+    if (telefono.length < 10) {
+      setError('El teléfono debe incluir código de país y número');
       return;
     }
 
@@ -93,7 +90,7 @@ export default function UsuarioFormModal({
           id: usuario.id,
           nombre: nombre.trim(),
           rol: rol as UsuarioConDatos['rol'],
-          telefono: telefonoLimpio,
+          telefono: telefono, // Ya viene limpio de PhoneInputCustom
           email_alternativo: emailAlternativo.trim() || undefined,
         });
 
@@ -108,7 +105,7 @@ export default function UsuarioFormModal({
           email: email.trim().toLowerCase(),
           password,
           rol: rol as UsuarioConDatos['rol'],
-          telefono: telefonoLimpio,
+          telefono: telefono, // Ya viene limpio de PhoneInputCustom
           email_alternativo: emailAlternativo.trim() || undefined,
         });
 
@@ -261,19 +258,13 @@ export default function UsuarioFormModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Teléfono *
               </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="tel"
-                  value={telefono}
-                  onChange={(e) => setTelefono(e.target.value)}
-                  placeholder="987654321"
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  disabled={isSubmitting}
-                />
-              </div>
+              <PhoneInputCustom
+                value={telefono}
+                onChange={setTelefono}
+                defaultCountry="PE"
+              />
               <p className="text-xs text-gray-500 mt-1">
-                Se limpiará automáticamente (+, espacios, guiones)
+                Se guarda con código de país (sin +)
               </p>
             </div>
 
