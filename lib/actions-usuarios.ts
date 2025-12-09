@@ -1,12 +1,42 @@
 'use server';
 
-import { supabase } from './supabase';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 
 // ============================================================================
 // MÓDULO: Administración de Usuarios
-// Versión: 1.0.1 - Fix verificarAdmin removed
+// Versión: 1.0.2 - Fix: use createServerClient instead of browser client
 // ============================================================================
+
+// ============================================================================
+// HELPER: Crear cliente Supabase para Server Actions
+// ============================================================================
+
+async function createClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Ignorar errores en Server Components
+          }
+        },
+      },
+    }
+  );
+}
 
 // ============================================================================
 // INTERFACES
@@ -59,6 +89,7 @@ export interface UpdateUsuarioData {
 
 export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
+  const supabase = await createClient();
 
   // 1. Obtener todos los usuarios
   const { data: usuarios, error: errorUsuarios } = await supabase
@@ -147,6 +178,7 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
 
 export async function getUsuarioById(id: string): Promise<UsuarioConDatos | null> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
+  const supabase = await createClient();
 
   const { data: usuario, error } = await supabase
     .from('usuarios')
@@ -201,6 +233,7 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
   userId?: string;
 }> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
+  const supabase = await createClient();
 
   // 1. Validar email único
   const { data: existingEmail } = await supabase
@@ -333,6 +366,7 @@ export async function updateUsuario(data: UpdateUsuarioData): Promise<{
   message: string;
 }> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
+  const supabase = await createClient();
 
   // 1. Obtener usuario actual
   const { data: usuarioActual, error: fetchError } = await supabase
@@ -456,6 +490,7 @@ export async function toggleUsuarioActivo(id: string): Promise<{
 }> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
   // TODO: Agregar validación para evitar desactivarse a sí mismo cuando tengamos el userId del contexto
+  const supabase = await createClient();
 
   // Obtener estado actual
   const { data: usuario, error: fetchError } = await supabase
@@ -497,6 +532,7 @@ export async function resetUsuarioPassword(email: string): Promise<{
   message: string;
 }> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
+  const supabase = await createClient();
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`
@@ -527,6 +563,7 @@ export async function getUsuariosStats(): Promise<{
   porRol: Record<string, number>;
 }> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
+  const supabase = await createClient();
 
   const { data: usuarios } = await supabase
     .from('usuarios')
