@@ -226,10 +226,31 @@ export function numeroEnteroALetras(numero: number): string {
 }
 
 // Calcula la fecha de última cuota dado fecha inicio y número de cuotas
+// Ajusta automáticamente el día para meses con menos días (ej: 30 en febrero → 28 o 29)
 export function calcularFechaUltimaCuota(fechaInicio: string | Date, numeroCuotas: number): Date {
-  const fecha = typeof fechaInicio === 'string' ? new Date(fechaInicio) : new Date(fechaInicio);
-  fecha.setMonth(fecha.getMonth() + numeroCuotas - 1);
-  return fecha;
+  const fechaBase = typeof fechaInicio === 'string' ? new Date(fechaInicio) : new Date(fechaInicio);
+
+  // Obtener día, mes y año originales
+  const diaOriginal = fechaBase.getDate();
+  const mesOriginal = fechaBase.getMonth();
+  const añoOriginal = fechaBase.getFullYear();
+
+  // Calcular mes destino (sumar cuotas - 1 porque la primera cuota es en el mes de inicio)
+  const mesesASumar = numeroCuotas - 1;
+  const mesDestino = mesOriginal + mesesASumar;
+
+  // Calcular año y mes finales
+  const añoDestino = añoOriginal + Math.floor(mesDestino / 12);
+  const mesDestinoFinal = mesDestino % 12;
+
+  // Obtener último día del mes destino (maneja febrero, años bisiestos, etc.)
+  const ultimoDiaMes = new Date(añoDestino, mesDestinoFinal + 1, 0).getDate();
+
+  // Usar el menor entre el día original y el último día del mes
+  const diaFinal = Math.min(diaOriginal, ultimoDiaMes);
+
+  // Crear fecha resultado
+  return new Date(añoDestino, mesDestinoFinal, diaFinal);
 }
 
 // Extrae el día de una fecha
