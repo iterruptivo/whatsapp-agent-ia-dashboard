@@ -27,6 +27,11 @@ export interface AbonoPago {
   notas: string | null;
   registrado_por: string;
   created_at: string;
+  // Campos de verificación por Finanzas
+  verificado_finanzas: boolean;
+  verificado_finanzas_por: string | null;
+  verificado_finanzas_at: string | null;
+  verificado_finanzas_nombre: string | null;
 }
 
 export interface PagoConAbonos extends PagoLocal {
@@ -372,6 +377,89 @@ export async function toggleSeparacionPagada(data: {
     }
   } catch (error) {
     console.error('[PAGOS] Error en toggleSeparacionPagada:', error);
+    return { success: false, message: 'Error inesperado' };
+  }
+}
+
+// Toggle verificación de abono por Finanzas
+export async function toggleVerificacionAbono(data: {
+  abonoId: string;
+  verificado: boolean;
+  usuarioId: string;
+  usuarioNombre: string;
+}) {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: 'No autenticado' };
+    }
+
+    // Verificar que el usuario sea rol finanzas
+    const { data: userData } = await supabase
+      .from('usuarios')
+      .select('rol')
+      .eq('id', data.usuarioId)
+      .single();
+
+    if (!userData || userData.rol !== 'finanzas') {
+      return { success: false, message: 'Solo el rol Finanzas puede verificar abonos' };
+    }
+
+    if (data.verificado) {
+      // Marcar como verificado - usar fecha Lima Perú
+      const fechaLima = new Date().toLocaleString('en-US', { timeZone: 'America/Lima' });
+      const fechaVerificacion = new Date(fechaLima).toISOString();
+
+      const { error } = await supabase
+        .from('abonos_pago')
+        .update({
+          verificado_finanzas: true,
+          verificado_finanzas_por: data.usuarioId,
+          verificado_finanzas_at: fechaVerificacion,
+          verificado_finanzas_nombre: data.usuarioNombre,
+        })
+        .eq('id', data.abonoId);
+
+      if (error) {
+        console.error('[PAGOS] Error verificando abono:', error);
+        return { success: false, message: 'Error al verificar abono' };
+      }
+
+      return { success: true, message: 'Abono verificado por Finanzas' };
+    } else {
+      // Desmarcar verificación
+      const { error } = await supabase
+        .from('abonos_pago')
+        .update({
+          verificado_finanzas: false,
+          verificado_finanzas_por: null,
+          verificado_finanzas_at: null,
+          verificado_finanzas_nombre: null,
+        })
+        .eq('id', data.abonoId);
+
+      if (error) {
+        console.error('[PAGOS] Error desmarcando verificación:', error);
+        return { success: false, message: 'Error al desmarcar verificación' };
+      }
+
+      return { success: true, message: 'Verificación removida' };
+    }
+  } catch (error) {
+    console.error('[PAGOS] Error en toggleVerificacionAbono:', error);
     return { success: false, message: 'Error inesperado' };
   }
 }
