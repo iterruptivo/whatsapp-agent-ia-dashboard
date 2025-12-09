@@ -575,6 +575,237 @@ export async function resetUsuarioPassword(email: string): Promise<{
 }
 
 // ============================================================================
+// BULK CREATE: Crear múltiples usuarios desde Excel
+// ============================================================================
+
+export interface BulkCreateResult {
+  success: boolean;
+  message: string;
+  created: Array<{
+    nombre: string;
+    email: string;
+    rol: string;
+    password: string;
+  }>;
+  duplicateEmails: Array<{ email: string; row: number }>;
+  duplicatePhones: Array<{ telefono: string; row: number }>;
+  errors: Array<{ email: string; row: number; reason: string }>;
+}
+
+interface BulkUsuarioData {
+  nombre: string;
+  email: string;
+  rol: 'admin' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta' | 'finanzas';
+  telefono: string;
+  email_alternativo?: string;
+}
+
+// Generar contraseña segura (misma lógica que frontend)
+function generateSecurePassword(): string {
+  const length = 16;
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  const allChars = uppercase + lowercase + numbers + special;
+
+  let password = '';
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += special[Math.floor(Math.random() * special.length)];
+
+  for (let i = password.length; i < length; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+
+  // Mezclar los caracteres
+  password = password.split('').sort(() => Math.random() - 0.5).join('');
+  return password;
+}
+
+export async function bulkCreateUsuarios(
+  usuarios: BulkUsuarioData[]
+): Promise<BulkCreateResult> {
+  const supabaseAdmin = createAdminClient();
+
+  const result: BulkCreateResult = {
+    success: true,
+    message: '',
+    created: [],
+    duplicateEmails: [],
+    duplicatePhones: [],
+    errors: [],
+  };
+
+  // 1. Pre-validar emails existentes en BD
+  const emails = usuarios.map(u => u.email);
+  const { data: existingEmails } = await supabaseAdmin
+    .from('usuarios')
+    .select('email')
+    .in('email', emails);
+
+  const existingEmailSet = new Set((existingEmails || []).map(e => e.email));
+
+  // 2. Pre-validar teléfonos existentes en BD (vendedores + usuarios_datos_no_vendedores)
+  const telefonos = usuarios.map(u => u.telefono).filter(Boolean);
+
+  const { data: existingVendedorPhones } = await supabaseAdmin
+    .from('vendedores')
+    .select('telefono')
+    .in('telefono', telefonos);
+
+  const { data: existingNoVendedorPhones } = await supabaseAdmin
+    .from('usuarios_datos_no_vendedores')
+    .select('telefono')
+    .in('telefono', telefonos);
+
+  const existingPhoneSet = new Set([
+    ...(existingVendedorPhones || []).map(v => v.telefono),
+    ...(existingNoVendedorPhones || []).map(v => v.telefono),
+  ].filter(Boolean));
+
+  // 3. Procesar cada usuario
+  for (let i = 0; i < usuarios.length; i++) {
+    const userData = usuarios[i];
+    const rowNumber = i + 2; // +2 porque fila 1 es header y array es 0-indexed
+
+    // Verificar email duplicado en BD
+    if (existingEmailSet.has(userData.email)) {
+      result.duplicateEmails.push({ email: userData.email, row: rowNumber });
+      continue;
+    }
+
+    // Verificar teléfono duplicado en BD
+    if (userData.telefono && existingPhoneSet.has(userData.telefono)) {
+      result.duplicatePhones.push({ telefono: userData.telefono, row: rowNumber });
+      continue;
+    }
+
+    // Generar contraseña
+    const password = generateSecurePassword();
+
+    // Intentar crear usuario
+    try {
+      // 3a. Crear en auth.users
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: userData.email,
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          nombre: userData.nombre,
+          rol: userData.rol
+        }
+      });
+
+      if (authError || !authData.user) {
+        result.errors.push({
+          email: userData.email,
+          row: rowNumber,
+          reason: authError?.message || 'Error al crear autenticación'
+        });
+        continue;
+      }
+
+      const userId = authData.user.id;
+      let vendedor_id: string | null = null;
+
+      // 3b. Si es vendedor, crear en tabla vendedores
+      if (['vendedor', 'vendedor_caseta'].includes(userData.rol)) {
+        const { data: nuevoVendedor, error: vendedorError } = await supabaseAdmin
+          .from('vendedores')
+          .insert({
+            nombre: userData.nombre,
+            telefono: userData.telefono || '',
+            email: userData.email_alternativo || userData.email
+          })
+          .select('id')
+          .single();
+
+        if (vendedorError) {
+          await supabaseAdmin.auth.admin.deleteUser(userId);
+          result.errors.push({
+            email: userData.email,
+            row: rowNumber,
+            reason: 'Error al crear datos de vendedor'
+          });
+          continue;
+        }
+
+        vendedor_id = nuevoVendedor.id;
+      }
+
+      // 3c. Insertar en usuarios
+      const { error: usuarioError } = await supabaseAdmin
+        .from('usuarios')
+        .insert({
+          id: userId,
+          nombre: userData.nombre,
+          email: userData.email,
+          rol: userData.rol,
+          activo: true,
+          vendedor_id
+        });
+
+      if (usuarioError) {
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+        result.errors.push({
+          email: userData.email,
+          row: rowNumber,
+          reason: 'Error al crear registro de usuario'
+        });
+        continue;
+      }
+
+      // 3d. Si es NO vendedor, crear en usuarios_datos_no_vendedores
+      if (['admin', 'jefe_ventas', 'finanzas'].includes(userData.rol)) {
+        await supabaseAdmin
+          .from('usuarios_datos_no_vendedores')
+          .insert({
+            usuario_id: userId,
+            telefono: userData.telefono || null,
+            email_alternativo: userData.email_alternativo || null
+          });
+      }
+
+      // Agregar a lista de éxitos (con contraseña para descarga)
+      result.created.push({
+        nombre: userData.nombre,
+        email: userData.email,
+        rol: userData.rol,
+        password: password
+      });
+
+      // Agregar email y teléfono a los sets para evitar duplicados dentro del mismo batch
+      existingEmailSet.add(userData.email);
+      if (userData.telefono) {
+        existingPhoneSet.add(userData.telefono);
+      }
+
+    } catch (error) {
+      result.errors.push({
+        email: userData.email,
+        row: rowNumber,
+        reason: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  }
+
+  // Determinar éxito general
+  if (result.created.length === 0) {
+    result.success = false;
+    result.message = 'No se pudo crear ningún usuario';
+  } else if (result.created.length < usuarios.length) {
+    result.message = `Se crearon ${result.created.length} de ${usuarios.length} usuarios`;
+  } else {
+    result.message = `Se crearon ${result.created.length} usuarios exitosamente`;
+  }
+
+  revalidatePath('/admin/usuarios');
+  return result;
+}
+
+// ============================================================================
 // STATS: Obtener estadísticas de usuarios
 // ============================================================================
 

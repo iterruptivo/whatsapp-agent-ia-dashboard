@@ -15,6 +15,7 @@ import {
   Mail,
   CheckCircle,
   XCircle,
+  Upload,
 } from 'lucide-react';
 import {
   type UsuarioConDatos,
@@ -22,6 +23,7 @@ import {
 } from '@/lib/actions-usuarios';
 import UsuarioFormModal from './UsuarioFormModal';
 import ResetPasswordModal from './ResetPasswordModal';
+import UsuarioImportModal from './UsuarioImportModal';
 
 interface UsuariosClientProps {
   initialUsuarios: UsuarioConDatos[];
@@ -65,6 +67,7 @@ export default function UsuariosClient({
   // Modals
   const [showFormModal, setShowFormModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [usuarioEditing, setUsuarioEditing] = useState<UsuarioConDatos | null>(null);
   const [usuarioReset, setUsuarioReset] = useState<UsuarioConDatos | null>(null);
 
@@ -211,6 +214,13 @@ export default function UsuariosClient({
               >
                 <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span className="hidden sm:inline">Actualizar</span>
+              </button>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="flex items-center gap-2 px-3 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">Importar</span>
               </button>
               <button
                 onClick={handleCreateClick}
@@ -492,6 +502,17 @@ export default function UsuariosClient({
           onClose={() => {
             setShowResetModal(false);
             setUsuarioReset(null);
+          }}
+        />
+      )}
+
+      {showImportModal && (
+        <UsuarioImportModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          onSuccess={async () => {
+            setShowImportModal(false);
+            await onRefresh();
           }}
         />
       )}
