@@ -11,6 +11,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { createReport } from 'docx-templates';
+import JSZip from 'jszip';
 import {
   numeroALetras,
   fechaALetras,
@@ -231,6 +232,58 @@ function formatDireccionCompleta(
 // Helper para redondear a 2 decimales
 function round2(num: number): number {
   return Math.round(num * 100) / 100;
+}
+
+// ============================================================================
+// POST-PROCESSING: Remove empty paragraphs from generated docx
+// ============================================================================
+// docx-templates preserva la estructura de párrafos incluso cuando {IF} es falso
+// Esta función elimina párrafos vacíos del documento generado
+// ============================================================================
+
+async function removeEmptyParagraphs(docxBuffer: Buffer): Promise<Buffer> {
+  try {
+    const zip = await JSZip.loadAsync(docxBuffer);
+
+    // El contenido principal del documento está en word/document.xml
+    const documentXml = await zip.file('word/document.xml')?.async('string');
+    if (!documentXml) {
+      return docxBuffer; // Si no se puede leer, devolver original
+    }
+
+    // Regex para encontrar párrafos vacíos en el XML de Word
+    // Un párrafo vacío tiene esta estructura: <w:p ...><w:pPr>...</w:pPr></w:p>
+    // O simplemente: <w:p></w:p> o <w:p/>
+    // También puede tener solo propiedades pero sin <w:r> (runs con texto)
+
+    // Patrón 1: Párrafos completamente vacíos
+    let cleanedXml = documentXml.replace(/<w:p[^>]*\/>/g, '');
+
+    // Patrón 2: Párrafos con solo propiedades pero sin texto (<w:r> contiene el texto)
+    // Busca <w:p> que no contienen <w:r> (que es donde va el texto real)
+    cleanedXml = cleanedXml.replace(/<w:p[^>]*>(?:(?!<w:r[ >]).)*?<\/w:p>/gs, (match) => {
+      // Verificar si el párrafo tiene contenido de texto real
+      // Si no tiene <w:r> o <w:t>, es un párrafo vacío
+      if (!match.includes('<w:r') && !match.includes('<w:t')) {
+        return ''; // Eliminar párrafo vacío
+      }
+      return match; // Mantener párrafo con contenido
+    });
+
+    // Patrón 3: Párrafos con runs vacíos (solo espacios o nada)
+    // <w:p><w:r><w:t></w:t></w:r></w:p> o <w:p><w:r><w:t xml:space="preserve"> </w:t></w:r></w:p>
+    cleanedXml = cleanedXml.replace(/<w:p[^>]*>(?:\s*<w:pPr>.*?<\/w:pPr>)?\s*<w:r[^>]*>\s*<w:t[^>]*>\s*<\/w:t>\s*<\/w:r>\s*<\/w:p>/gs, '');
+
+    // Actualizar el archivo en el zip
+    zip.file('word/document.xml', cleanedXml);
+
+    // Generar el nuevo buffer
+    const newBuffer = await zip.generateAsync({ type: 'nodebuffer' });
+    return newBuffer;
+  } catch (error) {
+    console.error('Error removing empty paragraphs:', error);
+    return docxBuffer; // En caso de error, devolver original
+  }
 }
 
 // Helper para formatear montos con comas (ej: 3,095.65)
@@ -526,12 +579,15 @@ export async function generateContrato(
       cmdDelimiter: ['{', '}'],
     });
 
-    // 7. Generar nombre de archivo
+    // 7. Post-procesar: eliminar párrafos vacíos generados por {IF} falsos
+    const cleanedReport = await removeEmptyParagraphs(Buffer.from(report));
+
+    // 8. Generar nombre de archivo
     const fileName = `CONTRATO_${controlPago.codigo_local}_${fechaHoy.toISOString().split('T')[0]}.docx`;
 
     return {
       success: true,
-      data: Buffer.from(report),
+      data: cleanedReport,
       fileName,
     };
   } catch (error) {
