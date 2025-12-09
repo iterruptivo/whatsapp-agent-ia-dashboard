@@ -3,7 +3,7 @@
 // ============================================================================
 // Ruta: /control-pagos
 // Descripción: Sistema de control y seguimiento de pagos de locales
-// Acceso: Solo admin y jefe_ventas
+// Acceso: admin, jefe_ventas y finanzas
 // Sesión: 54 - Implementación completa
 // ============================================================================
 
@@ -23,12 +23,12 @@ export default function ControlPagosPage() {
   const [controlPagos, setControlPagos] = useState<ControlPago[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(true);
 
-  // Redirect if not authenticated or not admin/jefe_ventas
+  // Redirect if not authenticated or not admin/jefe_ventas/finanzas
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push('/login');
-      } else if (user.rol !== 'admin' && user.rol !== 'jefe_ventas') {
+      } else if (user.rol !== 'admin' && user.rol !== 'jefe_ventas' && user.rol !== 'finanzas') {
         router.push('/');
       }
     }
@@ -36,7 +36,7 @@ export default function ControlPagosPage() {
 
   // Fetch control_pagos data filtrado por proyecto
   useEffect(() => {
-    if (user && (user.rol === 'admin' || user.rol === 'jefe_ventas') && selectedProyecto?.id) {
+    if (user && (user.rol === 'admin' || user.rol === 'jefe_ventas' || user.rol === 'finanzas') && selectedProyecto?.id) {
       const proyectoId = selectedProyecto.id;
       async function fetchData() {
         setLoadingData(true);

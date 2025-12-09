@@ -101,11 +101,22 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // coordinador y finanzas solo ven Finanzas (locales, comisiones, etc)
-    if (user?.rol === 'coordinador' || user?.rol === 'finanzas') {
+    // coordinador solo ve Finanzas (locales, comisiones, etc)
+    if (user?.rol === 'coordinador') {
       return {
         directItems: [],
         categories: [finanzasCategory],
+        bottomItems: [] as MenuItem[],
+      };
+    }
+
+    // finanzas SOLO ve Control de Pagos (sin categorías, item directo)
+    if (user?.rol === 'finanzas') {
+      return {
+        directItems: [
+          { href: '/control-pagos', label: 'Control de Pagos', icon: FileText },
+        ],
+        categories: [],
         bottomItems: [] as MenuItem[],
       };
     }
