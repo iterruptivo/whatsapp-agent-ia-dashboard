@@ -117,6 +117,7 @@ interface ContratoTemplateData {
   conyuge_email: string;
 
   // Copropietarios (array para FOR loops - futuro: agregar a clientes_ficha)
+  tiene_copropietarios: boolean;
   copropietarios: Copropietario[];
 
   // Local
@@ -430,6 +431,7 @@ export async function generateContrato(
       conyuge_email: clienteFicha.conyuge_email || '',
 
       // Copropietarios (desde clientes_ficha.copropietarios JSONB)
+      tiene_copropietarios: Array.isArray(clienteFicha.copropietarios) && clienteFicha.copropietarios.length > 0,
       copropietarios: (clienteFicha.copropietarios || []) as Copropietario[],
 
       // Local
