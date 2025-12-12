@@ -10,7 +10,7 @@
 
 'use client';
 
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, Cell, LabelList } from 'recharts';
 
 interface VendedorLeadsData {
   id: string;
@@ -148,28 +148,16 @@ export default function VendedoresLeadsChart({ data, title }: VendedoresLeadsCha
                 stackId="leads"
                 fill="#1b967a"
                 radius={[0, 4, 4, 0]}
-                label={(props: Record<string, unknown>) => {
-                  const x = Number(props.x) || 0;
-                  const y = Number(props.y) || 0;
-                  const width = Number(props.width) || 0;
-                  const height = Number(props.height) || 0;
-                  const index = Number(props.index) || 0;
-                  const total = sortedData[index]?.total;
-                  if (!total || total === 0) return null;
-                  return (
-                    <text
-                      x={x + width + 8}
-                      y={y + height / 2}
-                      fill="#6b7280"
-                      fontSize={11}
-                      fontWeight={600}
-                      dominantBaseline="middle"
-                    >
-                      {total}
-                    </text>
-                  );
-                }}
-              />
+              >
+                <LabelList
+                  dataKey="total"
+                  position="right"
+                  fill="#6b7280"
+                  fontSize={11}
+                  fontWeight={600}
+                  formatter={(value: number) => value > 0 ? value : ''}
+                />
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
