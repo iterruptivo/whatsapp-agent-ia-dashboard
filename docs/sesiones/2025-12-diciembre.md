@@ -1525,6 +1525,35 @@ El fallback "Cliente" es intencional para mensajes genéricos pero correctos.
 
 ---
 
+### FASE 6: Ocultar Estados No Implementados ✅
+
+**Problema:** Los estados "Respondieron" y "Sin respuesta" aparecen en UI pero NO están siendo trackeados.
+
+**Análisis realizado:**
+- El flujo **RePulse** solo envía mensajes (unidireccional)
+- El flujo **Victoria** recibe las respuestas de WhatsApp
+- Falta integración entre Victoria y el dashboard para marcar respuestas
+- Para implementar: modificar Victoria + crear endpoint `/api/repulse/response`
+
+**Decisión:** Ocultar del UI hasta implementar tracking via n8n (~2-3 hrs futuro)
+
+**Cambios:**
+
+| Elemento | Antes | Después |
+|----------|-------|---------|
+| Stats cards | 6 visibles | 4 visibles (2 comentados) |
+| Grid layout | `lg:grid-cols-6` | `md:grid-cols-4` |
+| Dropdown filtro | 6 opciones | 4 opciones |
+
+**TODOs en código:**
+```jsx
+{/* TODO: Habilitar cuando se implemente tracking de respuestas via n8n */}
+```
+
+**Commit:** `b503be3` - feat: Hide 'Respondieron' and 'Sin respuesta' from Repulse UI
+
+---
+
 ### Todos los Commits de Sesión 68
 
 | Hash | Mensaje |
@@ -1534,6 +1563,8 @@ El fallback "Cliente" es intencional para mensajes genéricos pero correctos.
 | `dc80c33` | feat: Add pagination to Repulse table (100 items per page) |
 | `29fc4a2` | feat: Add sort by Fecha Lead to Repulse table |
 | `427714f` | feat: Update Repulse pagination - 50 items per page + top pagination |
+| `8f12957` | docs: Update Session 68 with pagination, sort features |
+| `b503be3` | feat: Hide 'Respondieron' and 'Sin respuesta' from Repulse UI |
 
 ---
 

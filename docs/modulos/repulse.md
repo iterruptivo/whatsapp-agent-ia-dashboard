@@ -37,9 +37,15 @@
 - ✅ **Sort por Fecha Lead** (click header para asc/desc) - Sesión 68
 
 ### Pendientes:
+- ⏳ **Tracking de respuestas** (modificar flujo Victoria + endpoint `/api/repulse/response`)
 - ⏳ Envío automático nocturno (cron job 11:00 PM)
-- ⏳ Notificaciones de respuesta (webhook de entrada)
 - ⏳ Dashboard de métricas de repulse
+
+### Ocultos en UI (no implementados):
+- 🔒 Stats card "Respondieron" (comentado)
+- 🔒 Stats card "Sin respuesta" (comentado)
+- 🔒 Filtro por estado "respondio" (comentado)
+- 🔒 Filtro por estado "sin_respuesta" (comentado)
 
 ---
 
