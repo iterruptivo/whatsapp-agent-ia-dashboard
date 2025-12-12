@@ -91,10 +91,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // jefe_ventas tiene acceso a Repulse
+    // jefe_ventas tiene acceso a Operativo y Repulse
     if (user?.rol === 'jefe_ventas') {
       return {
-        directItems: [],
+        directItems: [{ href: '/operativo', label: 'Dashboard Operativo', icon: Users }],
         categories: [finanzasCategory],
         bottomItems: [
           { href: '/repulse', label: 'Repulse', icon: Zap },
