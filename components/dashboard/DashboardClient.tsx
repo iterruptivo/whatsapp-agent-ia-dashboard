@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import StatsCard from '@/components/dashboard/StatsCard';
 import PieChartComponent from '@/components/dashboard/PieChart';
 import HorizontalBarChart from '@/components/dashboard/HorizontalBarChart';
-import VendedoresLeadsChart from '@/components/dashboard/VendedoresLeadsChart';
+import VendedoresMiniTable from '@/components/dashboard/VendedoresMiniTable';
 import LeadsTable from '@/components/dashboard/LeadsTable';
 import DateRangeFilter from '@/components/dashboard/DateRangeFilter';
 import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
@@ -410,9 +410,9 @@ export default function DashboardClient({
         />
       </div>
 
-      {/* Chart: Leads por Vendedor - Full width */}
+      {/* Mini Table: Leads por Vendedor - Full width */}
       <div className="mb-8">
-        <VendedoresLeadsChart
+        <VendedoresMiniTable
           data={vendedoresLeadsData}
           title="Leads por Vendedor"
         />
