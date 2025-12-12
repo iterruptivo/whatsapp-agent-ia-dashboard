@@ -108,9 +108,9 @@ export async function middleware(req: NextRequest) {
 
       if (userData?.rol === 'admin') {
         return NextResponse.redirect(new URL('/', req.url));
-      } else if (userData?.rol === 'vendedor') {
+      } else if (userData?.rol === 'vendedor' || userData?.rol === 'jefe_ventas') {
         return NextResponse.redirect(new URL('/operativo', req.url));
-      } else if (userData?.rol === 'jefe_ventas' || userData?.rol === 'vendedor_caseta' || userData?.rol === 'coordinador') {
+      } else if (userData?.rol === 'vendedor_caseta' || userData?.rol === 'coordinador') {
         return NextResponse.redirect(new URL('/locales', req.url));
       } else if (userData?.rol === 'finanzas') {
         return NextResponse.redirect(new URL('/control-pagos', req.url));
