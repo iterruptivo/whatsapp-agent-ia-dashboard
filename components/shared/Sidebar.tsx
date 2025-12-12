@@ -122,6 +122,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
+    // marketing SOLO ve Insights y Operativo
+    if (user?.rol === 'marketing') {
+      return {
+        directItems: [
+          { href: '/', label: 'Insights', icon: LayoutDashboard },
+          { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+        ],
+        categories: [],
+        bottomItems: [] as MenuItem[],
+      };
+    }
+
     // Fallback (no debería llegar aquí si el rol está definido)
     return {
       directItems: [],
@@ -199,6 +211,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               ? 'Vendedor Caseta'
               : user?.rol === 'coordinador'
               ? 'Coordinador'
+              : user?.rol === 'marketing'
+              ? 'Marketing'
               : 'Finanzas'}
           </span>
         </div>

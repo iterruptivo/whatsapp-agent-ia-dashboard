@@ -14,7 +14,7 @@ interface Usuario {
   id: string;
   email: string;
   nombre: string;
-  rol: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas';
+  rol: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing';
   vendedor_id: string | null;
   activo: boolean;
 }
@@ -607,7 +607,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       document.cookie = `selected_proyecto_id=${proyectoId}; path=/; max-age=${60 * 60 * 24 * 30}`; // 30 días
 
       // Redirect based on role
-      if (userData.rol === 'admin') {
+      if (userData.rol === 'admin' || userData.rol === 'marketing') {
         router.push('/');
       } else if (userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta') {
         router.push('/operativo');
@@ -688,7 +688,7 @@ export function useRequireAuth() {
   return { user, loading };
 }
 
-export function useRequireRole(requiredRole: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas') {
+export function useRequireRole(requiredRole: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing') {
   const { user, loading } = useAuth();
   const router = useRouter();
 

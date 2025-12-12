@@ -85,6 +85,8 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
                         ? 'Vendedor Caseta'
                         : user.rol === 'coordinador'
                         ? 'Coordinador'
+                        : user.rol === 'marketing'
+                        ? 'Marketing'
                         : 'Finanzas'}
                     </p>
                   </div>
