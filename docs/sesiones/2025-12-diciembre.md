@@ -1554,6 +1554,43 @@ El fallback "Cliente" es intencional para mensajes genéricos pero correctos.
 
 ---
 
+#### FASE 7: Research Meta Lead Ads Integration 📋
+
+**Contexto:** El usuario solicitó investigar cómo automatizar la captura de leads desde campañas de Meta (Facebook/Instagram) del tipo "Generación de Leads".
+
+**Decisión:** Implementar con n8n (no ahora, documentado para futuro)
+
+**Documentación completa:** [Meta Lead Ads Integration](../integraciones/meta-lead-ads.md)
+
+**Resumen del análisis:**
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Tipo de campaña** | Meta Lead Generation (formularios nativos) |
+| **API requerida** | Meta Graph API / Leadgen Webhooks |
+| **Solución elegida** | n8n con Facebook Lead Ads Trigger |
+| **Tiempo estimado** | 2-3 horas de implementación |
+| **Bloqueante** | App Review de Meta (1-5 días) |
+
+**Opciones evaluadas:**
+
+| Característica | Webhook Propio | n8n ✅ |
+|----------------|----------------|--------|
+| Tiempo setup | 8-12 hrs | 2-3 hrs |
+| Complejidad | Alta | Baja |
+| Infraestructura | Servidor propio | Ya tenemos n8n |
+| Mantenimiento | Alto | Bajo |
+| Escalabilidad | Total | Suficiente |
+
+**Flujo propuesto:**
+```
+Meta Lead Ad → n8n Facebook Trigger → HTTP Request → /api/leads/meta → Nuevo Lead
+```
+
+**Estado:** 📋 DOCUMENTADO PARA IMPLEMENTACIÓN FUTURA
+
+---
+
 ### Todos los Commits de Sesión 68
 
 | Hash | Mensaje |
