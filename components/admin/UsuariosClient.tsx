@@ -43,6 +43,7 @@ const ROL_LABELS: Record<string, string> = {
   vendedor_caseta: 'Vendedor Caseta',
   coordinador: 'Coordinador',
   finanzas: 'Finanzas',
+  marketing: 'Marketing',
 };
 
 const ROL_COLORS: Record<string, string> = {
@@ -52,6 +53,7 @@ const ROL_COLORS: Record<string, string> = {
   vendedor_caseta: 'bg-teal-100 text-teal-800',
   coordinador: 'bg-indigo-100 text-indigo-800',
   finanzas: 'bg-orange-100 text-orange-800',
+  marketing: 'bg-pink-100 text-pink-800',
 };
 
 export default function UsuariosClient({

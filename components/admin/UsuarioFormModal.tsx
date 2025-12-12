@@ -22,6 +22,7 @@ const ROLES = [
   { value: 'vendedor_caseta', label: 'Vendedor Caseta' },
   { value: 'coordinador', label: 'Coordinador' },
   { value: 'finanzas', label: 'Finanzas' },
+  { value: 'marketing', label: 'Marketing' },
 ];
 
 export default function UsuarioFormModal({
