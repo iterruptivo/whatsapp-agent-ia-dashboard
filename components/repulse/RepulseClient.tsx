@@ -27,6 +27,9 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import {
   type RepulseLead,
@@ -82,6 +85,9 @@ export default function RepulseClient({
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 100;
 
+  // Sort state (asc = oldest first, desc = newest first)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
   // State para ConfirmModal
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -120,19 +126,28 @@ export default function RepulseClient({
     });
   }, [leads, estadoFilter, searchTerm]);
 
+  // Sorted leads by fecha lead (created_at)
+  const sortedLeads = useMemo(() => {
+    return [...filteredLeads].sort((a, b) => {
+      const dateA = new Date(a.lead?.created_at || 0).getTime();
+      const dateB = new Date(b.lead?.created_at || 0).getTime();
+      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    });
+  }, [filteredLeads, sortOrder]);
+
   // Paginated leads
   const paginatedLeads = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     const end = start + itemsPerPage;
-    return filteredLeads.slice(start, end);
-  }, [filteredLeads, currentPage, itemsPerPage]);
+    return sortedLeads.slice(start, end);
+  }, [sortedLeads, currentPage, itemsPerPage]);
 
-  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedLeads.length / itemsPerPage);
 
-  // Reset page when filters change
+  // Reset page when filters or sort change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, estadoFilter]);
+  }, [searchTerm, estadoFilter, sortOrder]);
 
   // Leads seleccionables (solo pendientes de la página actual)
   const selectableLeads = paginatedLeads.filter((l) => l.estado === 'pendiente');
@@ -446,8 +461,18 @@ export default function RepulseClient({
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Repulses
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Fecha Lead
+                <th
+                  className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none"
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                >
+                  <div className="flex items-center gap-1">
+                    Fecha Lead
+                    {sortOrder === 'asc' ? (
+                      <ArrowUp className="w-3 h-3 text-primary" />
+                    ) : (
+                      <ArrowDown className="w-3 h-3 text-primary" />
+                    )}
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Acciones
@@ -549,7 +574,7 @@ export default function RepulseClient({
         {totalPages > 1 && (
           <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredLeads.length)} de {filteredLeads.length} leads
+              Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, sortedLeads.length)} de {sortedLeads.length} leads
             </div>
             <div className="flex items-center gap-2">
               <button
