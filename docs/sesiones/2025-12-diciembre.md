@@ -1595,7 +1595,7 @@ Meta Lead Ad → n8n Facebook Trigger → HTTP Request → /api/leads/meta → N
 
 **Problema:** Los estados "Respondieron" y "Sin respuesta" existían en UI pero no se trackeaban.
 
-**Solución implementada:** Cron cada 6 horas que detecta respuestas automáticamente.
+**Solución implementada:** Cron cada 30 minutos que detecta respuestas automáticamente.
 
 **Lógica de detección:**
 
@@ -1618,7 +1618,7 @@ Meta Lead Ad → n8n Facebook Trigger → HTTP Request → /api/leads/meta → N
 | Cron | Schedule | Función |
 |------|----------|---------|
 | `detectar-leads-repulse` | 8:00 AM diario | Detecta leads inactivos 30+ días |
-| `detectar-respuestas-repulse` | Cada 6 horas | Detecta quién respondió |
+| `detectar-respuestas-repulse` | Cada 30 minutos | Detecta quién respondió |
 
 **Cambios en UI:**
 - Stats cards "Respondieron" y "Sin respuesta" restaurados

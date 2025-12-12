@@ -233,16 +233,16 @@ export async function middleware(req: NextRequest) {
 
   // OPERATIVO ROUTES (/operativo)
   if (isOperativoRoute) {
-    // Admin, vendedor and vendedor_caseta can access operativo
-    if (userData.rol === 'admin' || userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta') {
+    // Admin, jefe_ventas, vendedor and vendedor_caseta can access operativo
+    if (userData.rol === 'admin' || userData.rol === 'jefe_ventas' || userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta') {
       return res;
     }
     // Finanzas SOLO puede acceder a /control-pagos
     if (userData.rol === 'finanzas') {
       return NextResponse.redirect(new URL('/control-pagos', req.url));
     }
-    // Jefe/Coordinador trying to access operativo - redirect to locales
-    if (userData.rol === 'jefe_ventas' || userData.rol === 'coordinador') {
+    // Coordinador trying to access operativo - redirect to locales
+    if (userData.rol === 'coordinador') {
       return NextResponse.redirect(new URL('/locales', req.url));
     }
     return res;

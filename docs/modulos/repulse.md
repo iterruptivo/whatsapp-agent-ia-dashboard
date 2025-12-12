@@ -35,7 +35,7 @@
 - ✅ **Modal informativo actualizado** con horario de cron correcto
 - ✅ **Paginación tabla** (50 items/página, UI arriba y abajo) - Sesión 68
 - ✅ **Sort por Fecha Lead** (click header para asc/desc) - Sesión 68
-- ✅ **Sistema de detección de respuestas** - Cron cada 6 horas - Sesión 68
+- ✅ **Sistema de detección de respuestas** - Cron cada 30 minutos - Sesión 68
 - ✅ **Stats cards "Respondieron" y "Sin respuesta"** - Visibles y funcionales
 
 ### Pendientes:
@@ -235,7 +235,7 @@ $$ LANGUAGE plpgsql;
 | Cron | Schedule | Función | Descripción |
 |------|----------|---------|-------------|
 | `detectar-leads-repulse` | `0 8 * * *` (8 AM UTC) | `detectar_leads_repulse()` | Detecta leads inactivos 30+ días |
-| `detectar-respuestas-repulse` | `0 */6 * * *` (cada 6 hrs) | `detectar_respuestas_repulse()` | Detecta quién respondió |
+| `detectar-respuestas-repulse` | `*/30 * * * *` (cada 30 min) | `detectar_respuestas_repulse()` | Detecta quién respondió |
 
 **Ciclo de vida de un lead en Repulse:**
 ```
