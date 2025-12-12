@@ -148,7 +148,12 @@ export default function VendedoresLeadsChart({ data, title }: VendedoresLeadsCha
                 stackId="leads"
                 fill="#1b967a"
                 radius={[0, 4, 4, 0]}
-                label={({ x, y, width, height, value, index }: { x: number; y: number; width: number; height: number; value: number; index: number }) => {
+                label={(props: Record<string, unknown>) => {
+                  const x = Number(props.x) || 0;
+                  const y = Number(props.y) || 0;
+                  const width = Number(props.width) || 0;
+                  const height = Number(props.height) || 0;
+                  const index = Number(props.index) || 0;
                   const total = sortedData[index]?.total;
                   if (!total || total === 0) return null;
                   return (
