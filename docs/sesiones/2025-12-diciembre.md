@@ -1591,6 +1591,46 @@ Meta Lead Ad → n8n Facebook Trigger → HTTP Request → /api/leads/meta → N
 
 ---
 
+#### FASE 8: Sistema Detección de Respuestas Repulse ✅
+
+**Problema:** Los estados "Respondieron" y "Sin respuesta" existían en UI pero no se trackeaban.
+
+**Solución implementada:** Cron cada 6 horas que detecta respuestas automáticamente.
+
+**Lógica de detección:**
+
+```
+1. Enviamos repulse → ultimo_mensaje = '[REPULSE]: ...'
+2. Usuario responde → Victoria actualiza ultimo_mensaje = 'mensaje del usuario'
+3. Cron detecta: ultimo_mensaje NOT LIKE '[REPULSE]%' → RESPONDIÓ
+4. Si pasan 7 días sin cambio → SIN RESPUESTA
+```
+
+**Función SQL:** `detectar_respuestas_repulse()`
+
+| Acción | Condición |
+|--------|-----------|
+| Marcar "respondió" | `ultimo_mensaje NOT LIKE '[REPULSE]%'` (solo último envío) |
+| Marcar "sin_respuesta" | 7 días sin respuesta desde `ultimo_repulse_at` |
+
+**Crons configurados en Supabase:**
+
+| Cron | Schedule | Función |
+|------|----------|---------|
+| `detectar-leads-repulse` | 8:00 AM diario | Detecta leads inactivos 30+ días |
+| `detectar-respuestas-repulse` | Cada 6 horas | Detecta quién respondió |
+
+**Cambios en UI:**
+- Stats cards "Respondieron" y "Sin respuesta" restaurados
+- Filtros dropdown con todas las opciones habilitadas
+- Grid de 6 columnas para mostrar todos los estados
+
+**Archivo SQL:** `consultas-leo/SQL_CRON_DETECTAR_RESPUESTAS_REPULSE.sql`
+
+**Commit:** `ff6b463` - feat: Restore 'Respondieron' and 'Sin respuesta' stats cards and filters
+
+---
+
 ### Todos los Commits de Sesión 68
 
 | Hash | Mensaje |
@@ -1602,6 +1642,8 @@ Meta Lead Ad → n8n Facebook Trigger → HTTP Request → /api/leads/meta → N
 | `427714f` | feat: Update Repulse pagination - 50 items per page + top pagination |
 | `8f12957` | docs: Update Session 68 with pagination, sort features |
 | `b503be3` | feat: Hide 'Respondieron' and 'Sin respuesta' from Repulse UI |
+| `f19e907` | docs: Add Meta Lead Ads integration research |
+| `ff6b463` | feat: Restore 'Respondieron' and 'Sin respuesta' stats cards and filters |
 
 ---
 

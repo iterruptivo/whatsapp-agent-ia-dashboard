@@ -15,8 +15,8 @@
 
 ## 🔄 Estado Actual
 
-**COMPLETADO** - Branch: `feature/repulse` → merged to `staging`
-**Última actualización:** Sesión 68 (11 Dic 2025)
+**COMPLETADO** - Branch: `feature/repulse` → merged to `main`
+**Última actualización:** Sesión 68 (12 Dic 2025)
 
 ### Funcionalidades Implementadas:
 - ✅ Tablas de base de datos (repulse_leads, repulse_templates, repulse_historial)
@@ -29,23 +29,19 @@
 - ✅ Campo `excluido_repulse` en interface Lead
 - ✅ Integración webhook n8n para envío de mensajes WhatsApp
 - ✅ ConfirmModal elegante (reemplaza `confirm()` del navegador)
-- ✅ **Cron job pg_cron DIARIO (3:00 AM Perú)** - Actualizado Sesión 68
+- ✅ **Cron job pg_cron DIARIO (8:00 AM UTC)** - Detecta leads inactivos
 - ✅ Lógica de reactivación (leads enviados vuelven a pendiente tras 15 días)
 - ✅ **Widget de Quota WhatsApp** (badge con indicador de consumo diario)
 - ✅ **Modal informativo actualizado** con horario de cron correcto
 - ✅ **Paginación tabla** (50 items/página, UI arriba y abajo) - Sesión 68
 - ✅ **Sort por Fecha Lead** (click header para asc/desc) - Sesión 68
+- ✅ **Sistema de detección de respuestas** - Cron cada 6 horas - Sesión 68
+- ✅ **Stats cards "Respondieron" y "Sin respuesta"** - Visibles y funcionales
 
 ### Pendientes:
-- ⏳ **Tracking de respuestas** (modificar flujo Victoria + endpoint `/api/repulse/response`)
 - ⏳ Envío automático nocturno (cron job 11:00 PM)
 - ⏳ Dashboard de métricas de repulse
-
-### Ocultos en UI (no implementados):
-- 🔒 Stats card "Respondieron" (comentado)
-- 🔒 Stats card "Sin respuesta" (comentado)
-- 🔒 Filtro por estado "respondio" (comentado)
-- 🔒 Filtro por estado "sin_respuesta" (comentado)
+- ⏳ Badge/Modal historial de envíos por lead (ver cuántas veces se le envió)
 
 ---
 
@@ -175,14 +171,81 @@ END;
 $$ LANGUAGE plpgsql;
 ```
 
+### Stored Procedure: `detectar_respuestas_repulse()`
+
+Función que detecta automáticamente qué leads respondieron al mensaje de repulse.
+
+**Lógica:**
+1. Cuando enviamos repulse → `leads.ultimo_mensaje = '[REPULSE]: ...'`
+2. Cuando el usuario responde → Victoria actualiza `leads.ultimo_mensaje = 'mensaje del usuario'`
+3. Si `ultimo_mensaje NOT LIKE '[REPULSE]%'` → el usuario respondió
+4. Si pasan 7 días sin respuesta → marcamos como `sin_respuesta`
+
+```sql
+CREATE OR REPLACE FUNCTION detectar_respuestas_repulse()
+RETURNS TABLE(respondieron INT, sin_respuesta INT) AS $$
+DECLARE
+  v_respondieron INT := 0;
+  v_sin_respuesta INT := 0;
+BEGIN
+  -- 1. Detectar respuestas (solo último envío de cada lead)
+  UPDATE repulse_historial rh
+  SET respuesta_recibida = TRUE, respuesta_at = NOW()
+  FROM leads l
+  WHERE rh.lead_id = l.id
+    AND rh.respuesta_recibida = FALSE
+    AND l.ultimo_mensaje IS NOT NULL
+    AND l.ultimo_mensaje NOT LIKE '[REPULSE]%'
+    AND rh.enviado_at = (
+      SELECT MAX(rh2.enviado_at)
+      FROM repulse_historial rh2
+      WHERE rh2.lead_id = rh.lead_id
+    );
+  GET DIAGNOSTICS v_respondieron = ROW_COUNT;
+
+  -- 2. Actualizar estado en repulse_leads
+  UPDATE repulse_leads rl
+  SET estado = 'respondio', updated_at = NOW()
+  WHERE rl.estado = 'enviado'
+    AND EXISTS (
+      SELECT 1 FROM repulse_historial rh
+      WHERE rh.repulse_lead_id = rl.id
+        AND rh.respuesta_recibida = TRUE
+    );
+
+  -- 3. Marcar sin respuesta después de 7 días
+  UPDATE repulse_leads rl
+  SET estado = 'sin_respuesta', updated_at = NOW()
+  WHERE rl.estado = 'enviado'
+    AND rl.ultimo_repulse_at < NOW() - INTERVAL '7 days'
+    AND NOT EXISTS (
+      SELECT 1 FROM repulse_historial rh
+      WHERE rh.repulse_lead_id = rl.id
+        AND rh.respuesta_recibida = TRUE
+    );
+  GET DIAGNOSTICS v_sin_respuesta = ROW_COUNT;
+
+  RETURN QUERY SELECT v_respondieron, v_sin_respuesta;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+### Cron Jobs Configurados
+
+| Cron | Schedule | Función | Descripción |
+|------|----------|---------|-------------|
+| `detectar-leads-repulse` | `0 8 * * *` (8 AM UTC) | `detectar_leads_repulse()` | Detecta leads inactivos 30+ días |
+| `detectar-respuestas-repulse` | `0 */6 * * *` (cada 6 hrs) | `detectar_respuestas_repulse()` | Detecta quién respondió |
+
 **Ciclo de vida de un lead en Repulse:**
 ```
-Lead nuevo (30+ días) ───► pendiente ───► enviado ─────┐
+Lead nuevo (30+ días) ───► pendiente ───► enviado ─────┬───► respondio
                                ▲                        │
                                │                        │
-                               └── (15 días) ───────────┘
+                               └── (15 días) ───────────┤
+                                                        │
+                                                        └───► sin_respuesta (7 días)
 
-Lead responde ─────────────────────────────────► respondio
 Lead excluido ─────────────────────────────────► excluido
 ```
 
