@@ -71,7 +71,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (user?.rol === 'admin') {
       return {
         directItems: [
-          { href: '/', label: 'Dashboard Gerencial', icon: LayoutDashboard },
+          { href: '/', label: 'Insights', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
         ],
         categories: [finanzasCategory],
