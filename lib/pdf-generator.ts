@@ -271,9 +271,11 @@ export function generarPDFFinanciamiento(data: PDFData): void {
   // ========================================
   // FOOTER: Fecha de generación
   // ========================================
-  const pageCount = doc.getNumberOfPages();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pageCount = (doc as any).getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (doc as any).setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(128, 128, 128);
     doc.text(

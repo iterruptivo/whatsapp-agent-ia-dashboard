@@ -903,6 +903,7 @@ export interface LocalLead {
   created_at: string;
   lead_nombre?: string | null;
   lead_email?: string | null;
+  lead_rubro?: string | null;
   lead_asistio?: boolean | null;
   vendedor_nombre?: string | null;
   usuario_nombre?: string | null;
@@ -917,6 +918,7 @@ export async function getLocalLeads(localId: string): Promise<LocalLead[]> {
         leads:lead_id (
           nombre,
           email,
+          rubro,
           asistio
         ),
         vendedores:vendedor_id (
@@ -946,6 +948,7 @@ export async function getLocalLeads(localId: string): Promise<LocalLead[]> {
       created_at: row.created_at,
       lead_nombre: row.leads?.nombre || null,
       lead_email: row.leads?.email || null,
+      lead_rubro: row.leads?.rubro || null,
       lead_asistio: row.leads?.asistio || null,
       vendedor_nombre: row.vendedores?.nombre || null,
       usuario_nombre: row.usuarios?.nombre || null,

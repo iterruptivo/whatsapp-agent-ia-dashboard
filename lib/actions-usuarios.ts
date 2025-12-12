@@ -1,0 +1,855 @@
+'use server';
+
+import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
+import { revalidatePath } from 'next/cache';
+
+// ============================================================================
+// MÓDULO: Administración de Usuarios
+// Versión: 1.0.3 - Add service role client for admin operations
+// ============================================================================
+
+// ============================================================================
+// HELPER: Crear cliente Supabase para Server Actions (con auth del usuario)
+// ============================================================================
+
+async function createClient() {
+  const cookieStore = await cookies();
+
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll();
+        },
+        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Ignorar errores en Server Components
+          }
+        },
+      },
+    }
+  );
+}
+
+// ============================================================================
+// HELPER: Crear cliente Admin (service role) - BYPASA RLS
+// Usar SOLO para operaciones administrativas después de validar permisos
+// ============================================================================
+
+function createAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+  if (!serviceRoleKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY no está configurada');
+  }
+
+  return createSupabaseClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+}
+
+// ============================================================================
+// INTERFACES
+// ============================================================================
+
+export interface Usuario {
+  id: string;
+  nombre: string;
+  email: string;
+  rol: 'admin' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta' | 'finanzas';
+  activo: boolean;
+  vendedor_id: string | null;
+  created_at: string;
+  // Datos adicionales según rol
+  telefono?: string | null;
+  email_alternativo?: string | null;
+}
+
+export interface UsuarioConDatos extends Usuario {
+  telefono: string | null;
+  email_alternativo: string | null;
+}
+
+export interface CreateUsuarioData {
+  nombre: string;
+  email: string;
+  password: string;
+  rol: Usuario['rol'];
+  telefono?: string;
+  email_alternativo?: string;
+}
+
+export interface UpdateUsuarioData {
+  id: string;
+  nombre?: string;
+  rol?: Usuario['rol'];
+  activo?: boolean;
+  telefono?: string;
+  email_alternativo?: string;
+}
+
+// ============================================================================
+// NOTA: La verificación de admin se hace en el middleware y en la página
+// Las funciones asumen que el usuario ya fue validado como admin
+// ============================================================================
+
+// ============================================================================
+// GET: Obtener todos los usuarios con sus datos adicionales
+// ============================================================================
+
+export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
+  // NOTA: La verificación de admin se hace en el middleware y en la página
+  // Usamos cliente admin para bypasear RLS en queries de administración
+  const supabase = createAdminClient();
+
+  // 1. Obtener todos los usuarios
+  const { data: usuarios, error: errorUsuarios } = await supabase
+    .from('usuarios')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (errorUsuarios) {
+    console.error('Error obteniendo usuarios:', errorUsuarios);
+    return [];
+  }
+
+  if (!usuarios || usuarios.length === 0) return [];
+
+  // 2. Obtener datos de vendedores (para roles vendedor/vendedor_caseta)
+  // Filtramos usuarios que tienen vendedor_id válido
+  const vendedorIds = usuarios
+    .filter(u => u.vendedor_id !== null && u.vendedor_id !== undefined)
+    .map(u => u.vendedor_id as string);
+
+  let vendedoresMap: Record<string, { telefono: string | null }> = {};
+
+  if (vendedorIds.length > 0) {
+    // NOTA: La tabla vendedores solo tiene: id, nombre, telefono, activo, created_at
+    // NO tiene columna email
+    const { data: vendedores, error: errorVendedores } = await supabase
+      .from('vendedores')
+      .select('id, telefono')
+      .in('id', vendedorIds);
+
+    if (errorVendedores) {
+      console.error('[getAllUsuarios] Error obteniendo vendedores:', errorVendedores);
+    }
+
+    if (vendedores) {
+      vendedoresMap = vendedores.reduce((acc, v) => {
+        acc[v.id] = { telefono: v.telefono };
+        return acc;
+      }, {} as Record<string, { telefono: string | null }>);
+    }
+  }
+
+  // 3. Obtener datos de no-vendedores
+  const noVendedorIds = usuarios
+    .filter(u => !u.vendedor_id && ['admin', 'jefe_ventas', 'finanzas'].includes(u.rol))
+    .map(u => u.id);
+
+  let noVendedoresMap: Record<string, { telefono: string | null; email_alternativo: string | null }> = {};
+
+  if (noVendedorIds.length > 0) {
+    const { data: datosNoVendedores, error: errorNoVendedores } = await supabase
+      .from('usuarios_datos_no_vendedores')
+      .select('usuario_id, telefono, email_alternativo')
+      .in('usuario_id', noVendedorIds);
+
+    if (errorNoVendedores) {
+      console.error('[getAllUsuarios] Error obteniendo datos no vendedores:', errorNoVendedores);
+    }
+
+    if (datosNoVendedores) {
+      noVendedoresMap = datosNoVendedores.reduce((acc, d) => {
+        acc[d.usuario_id] = {
+          telefono: d.telefono,
+          email_alternativo: d.email_alternativo
+        };
+        return acc;
+      }, {} as Record<string, { telefono: string | null; email_alternativo: string | null }>);
+    }
+  }
+
+  // 4. Combinar datos
+  const usuariosConDatos: UsuarioConDatos[] = usuarios.map(u => {
+    let telefono: string | null = null;
+    let email_alternativo: string | null = null;
+
+    if (u.vendedor_id && vendedoresMap[u.vendedor_id]) {
+      telefono = vendedoresMap[u.vendedor_id].telefono;
+      // Los vendedores no tienen email_alternativo en su tabla
+    } else if (noVendedoresMap[u.id]) {
+      telefono = noVendedoresMap[u.id].telefono;
+      email_alternativo = noVendedoresMap[u.id].email_alternativo;
+    }
+
+    return {
+      ...u,
+      telefono,
+      email_alternativo
+    };
+  });
+
+  return usuariosConDatos;
+}
+
+// ============================================================================
+// GET: Obtener un usuario por ID
+// ============================================================================
+
+export async function getUsuarioById(id: string): Promise<UsuarioConDatos | null> {
+  // NOTA: La verificación de admin se hace en el middleware y en la página
+  // Usamos cliente admin para bypasear RLS en queries de administración
+  const supabase = createAdminClient();
+
+  const { data: usuario, error } = await supabase
+    .from('usuarios')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !usuario) return null;
+
+  let telefono: string | null = null;
+  let email_alternativo: string | null = null;
+
+  // Obtener datos según rol
+  if (usuario.vendedor_id) {
+    // NOTA: La tabla vendedores NO tiene columna email
+    const { data: vendedor } = await supabase
+      .from('vendedores')
+      .select('telefono')
+      .eq('id', usuario.vendedor_id)
+      .single();
+
+    if (vendedor) {
+      telefono = vendedor.telefono || null;
+      // vendedores no tienen email_alternativo en su tabla
+    }
+  } else if (['admin', 'jefe_ventas', 'finanzas'].includes(usuario.rol)) {
+    const { data: datos } = await supabase
+      .from('usuarios_datos_no_vendedores')
+      .select('telefono, email_alternativo')
+      .eq('usuario_id', id)
+      .single();
+
+    if (datos) {
+      telefono = datos.telefono;
+      email_alternativo = datos.email_alternativo;
+    }
+  }
+
+  return {
+    ...usuario,
+    telefono,
+    email_alternativo
+  };
+}
+
+// ============================================================================
+// CREATE: Crear nuevo usuario
+// ============================================================================
+
+export async function createUsuario(data: CreateUsuarioData): Promise<{
+  success: boolean;
+  message: string;
+  userId?: string;
+}> {
+  // NOTA: La verificación de admin se hace en el middleware y en la página
+  // Usamos cliente admin (service role) para bypasear RLS en operaciones de creación
+  const supabaseAdmin = createAdminClient();
+
+  // 1. Validar email único
+  const { data: existingEmail } = await supabaseAdmin
+    .from('usuarios')
+    .select('id')
+    .eq('email', data.email)
+    .single();
+
+  if (existingEmail) {
+    return { success: false, message: 'Ya existe un usuario con ese email' };
+  }
+
+  // 2. Validar teléfono único (si se proporciona)
+  if (data.telefono) {
+    // Buscar en vendedores
+    const { data: existingVendedor } = await supabaseAdmin
+      .from('vendedores')
+      .select('id')
+      .eq('telefono', data.telefono)
+      .single();
+
+    if (existingVendedor) {
+      return { success: false, message: 'Ya existe un usuario con ese teléfono' };
+    }
+
+    // Buscar en usuarios_datos_no_vendedores
+    const { data: existingNoVendedor } = await supabaseAdmin
+      .from('usuarios_datos_no_vendedores')
+      .select('id')
+      .eq('telefono', data.telefono)
+      .single();
+
+    if (existingNoVendedor) {
+      return { success: false, message: 'Ya existe un usuario con ese teléfono' };
+    }
+  }
+
+  // 3. Crear usuario en auth.users usando Admin API (no requiere confirmación email)
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    email: data.email,
+    password: data.password,
+    email_confirm: true, // Usuario ya confirmado, puede hacer login inmediatamente
+    user_metadata: {
+      nombre: data.nombre,
+      rol: data.rol
+    }
+  });
+
+  if (authError || !authData.user) {
+    console.error('Error creando auth user:', authError);
+    return {
+      success: false,
+      message: authError?.message || 'Error al crear usuario en autenticación'
+    };
+  }
+
+  const userId = authData.user.id;
+
+  // 4. Crear registro en tabla usuarios
+  let vendedor_id: string | null = null;
+
+  // Si es vendedor, crear en tabla vendedores primero
+  if (['vendedor', 'vendedor_caseta'].includes(data.rol)) {
+    const { data: nuevoVendedor, error: vendedorError } = await supabaseAdmin
+      .from('vendedores')
+      .insert({
+        nombre: data.nombre,
+        telefono: data.telefono || '',
+        email: data.email_alternativo || data.email
+      })
+      .select('id')
+      .single();
+
+    if (vendedorError) {
+      console.error('Error creando vendedor:', vendedorError);
+      // Intentar eliminar auth user creado
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      return { success: false, message: 'Error al crear datos de vendedor' };
+    }
+
+    vendedor_id = nuevoVendedor.id;
+  }
+
+  // Insertar en usuarios
+  const { error: usuarioError } = await supabaseAdmin
+    .from('usuarios')
+    .insert({
+      id: userId,
+      nombre: data.nombre,
+      email: data.email,
+      rol: data.rol,
+      activo: true,
+      vendedor_id
+    });
+
+  if (usuarioError) {
+    console.error('Error insertando usuario:', usuarioError);
+    // Rollback: eliminar auth user
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    return { success: false, message: 'Error al crear registro de usuario' };
+  }
+
+  // 5. Si es NO vendedor, crear en usuarios_datos_no_vendedores
+  if (['admin', 'jefe_ventas', 'finanzas'].includes(data.rol)) {
+    const { error: datosError } = await supabaseAdmin
+      .from('usuarios_datos_no_vendedores')
+      .insert({
+        usuario_id: userId,
+        telefono: data.telefono || null,
+        email_alternativo: data.email_alternativo || null
+      });
+
+    if (datosError) {
+      console.error('Error insertando datos no vendedor:', datosError);
+      // No es crítico, el usuario ya está creado
+    }
+  }
+
+  revalidatePath('/admin/usuarios');
+  return { success: true, message: 'Usuario creado correctamente', userId };
+}
+
+// ============================================================================
+// UPDATE: Actualizar usuario
+// ============================================================================
+
+export async function updateUsuario(data: UpdateUsuarioData): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  // NOTA: La verificación de admin se hace en el middleware y en la página
+  const supabase = await createClient();
+
+  // 1. Obtener usuario actual
+  const { data: usuarioActual, error: fetchError } = await supabase
+    .from('usuarios')
+    .select('*')
+    .eq('id', data.id)
+    .single();
+
+  if (fetchError || !usuarioActual) {
+    return { success: false, message: 'Usuario no encontrado' };
+  }
+
+  // 2. Validar teléfono único si cambió
+  if (data.telefono) {
+    // Buscar en vendedores (excluyendo el actual si tiene vendedor_id)
+    const vendedorQuery = supabase
+      .from('vendedores')
+      .select('id')
+      .eq('telefono', data.telefono);
+
+    if (usuarioActual.vendedor_id) {
+      vendedorQuery.neq('id', usuarioActual.vendedor_id);
+    }
+
+    const { data: existingVendedor } = await vendedorQuery.single();
+    if (existingVendedor) {
+      return { success: false, message: 'Ya existe otro usuario con ese teléfono' };
+    }
+
+    // Buscar en usuarios_datos_no_vendedores (excluyendo el actual)
+    const { data: existingNoVendedor } = await supabase
+      .from('usuarios_datos_no_vendedores')
+      .select('id')
+      .eq('telefono', data.telefono)
+      .neq('usuario_id', data.id)
+      .single();
+
+    if (existingNoVendedor) {
+      return { success: false, message: 'Ya existe otro usuario con ese teléfono' };
+    }
+  }
+
+  // 3. Actualizar tabla usuarios
+  const updateUsuarioData: Record<string, unknown> = {};
+  if (data.nombre !== undefined) updateUsuarioData.nombre = data.nombre;
+  if (data.rol !== undefined) updateUsuarioData.rol = data.rol;
+  if (data.activo !== undefined) updateUsuarioData.activo = data.activo;
+
+  if (Object.keys(updateUsuarioData).length > 0) {
+    const { error: updateError } = await supabase
+      .from('usuarios')
+      .update(updateUsuarioData)
+      .eq('id', data.id);
+
+    if (updateError) {
+      console.error('Error actualizando usuario:', updateError);
+      return { success: false, message: 'Error al actualizar usuario' };
+    }
+  }
+
+  // 4. Actualizar datos según rol
+  const rolActual = data.rol || usuarioActual.rol;
+
+  if (['vendedor', 'vendedor_caseta'].includes(rolActual) && usuarioActual.vendedor_id) {
+    // Actualizar vendedores
+    const updateVendedorData: Record<string, unknown> = {};
+    if (data.nombre !== undefined) updateVendedorData.nombre = data.nombre;
+    if (data.telefono !== undefined) updateVendedorData.telefono = data.telefono;
+    if (data.email_alternativo !== undefined) updateVendedorData.email = data.email_alternativo;
+
+    if (Object.keys(updateVendedorData).length > 0) {
+      await supabase
+        .from('vendedores')
+        .update(updateVendedorData)
+        .eq('id', usuarioActual.vendedor_id);
+    }
+  } else if (['admin', 'jefe_ventas', 'finanzas'].includes(rolActual)) {
+    // Actualizar o insertar en usuarios_datos_no_vendedores
+    const { data: existingDatos } = await supabase
+      .from('usuarios_datos_no_vendedores')
+      .select('id')
+      .eq('usuario_id', data.id)
+      .single();
+
+    if (existingDatos) {
+      // Update
+      const updateDatosData: Record<string, unknown> = {};
+      if (data.telefono !== undefined) updateDatosData.telefono = data.telefono;
+      if (data.email_alternativo !== undefined) updateDatosData.email_alternativo = data.email_alternativo;
+
+      if (Object.keys(updateDatosData).length > 0) {
+        await supabase
+          .from('usuarios_datos_no_vendedores')
+          .update(updateDatosData)
+          .eq('usuario_id', data.id);
+      }
+    } else {
+      // Insert (primer vez que se agregan datos)
+      await supabase
+        .from('usuarios_datos_no_vendedores')
+        .insert({
+          usuario_id: data.id,
+          telefono: data.telefono || null,
+          email_alternativo: data.email_alternativo || null
+        });
+    }
+  }
+
+  revalidatePath('/admin/usuarios');
+  return { success: true, message: 'Usuario actualizado correctamente' };
+}
+
+// ============================================================================
+// TOGGLE: Activar/Desactivar usuario
+// ============================================================================
+
+export async function toggleUsuarioActivo(id: string): Promise<{
+  success: boolean;
+  message: string;
+  nuevoEstado?: boolean;
+}> {
+  // NOTA: La verificación de admin se hace en el middleware y en la página
+  // TODO: Agregar validación para evitar desactivarse a sí mismo cuando tengamos el userId del contexto
+  const supabase = await createClient();
+
+  // Obtener estado actual
+  const { data: usuario, error: fetchError } = await supabase
+    .from('usuarios')
+    .select('activo')
+    .eq('id', id)
+    .single();
+
+  if (fetchError || !usuario) {
+    return { success: false, message: 'Usuario no encontrado' };
+  }
+
+  const nuevoEstado = !usuario.activo;
+
+  // Actualizar
+  const { error: updateError } = await supabase
+    .from('usuarios')
+    .update({ activo: nuevoEstado })
+    .eq('id', id);
+
+  if (updateError) {
+    return { success: false, message: 'Error al cambiar estado del usuario' };
+  }
+
+  revalidatePath('/admin/usuarios');
+  return {
+    success: true,
+    message: nuevoEstado ? 'Usuario activado' : 'Usuario desactivado',
+    nuevoEstado
+  };
+}
+
+// ============================================================================
+// RESET PASSWORD: Enviar email para restablecer contraseña
+// ============================================================================
+
+export async function resetUsuarioPassword(email: string): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  // NOTA: La verificación de admin se hace en el middleware y en la página
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`
+  });
+
+  if (error) {
+    console.error('Error enviando reset password:', error);
+    return {
+      success: false,
+      message: error.message || 'Error al enviar email de restablecimiento'
+    };
+  }
+
+  return {
+    success: true,
+    message: 'Se ha enviado un email para restablecer la contraseña'
+  };
+}
+
+// ============================================================================
+// BULK CREATE: Crear múltiples usuarios desde Excel
+// ============================================================================
+
+export interface BulkCreateResult {
+  success: boolean;
+  message: string;
+  created: Array<{
+    nombre: string;
+    email: string;
+    rol: string;
+    password: string;
+  }>;
+  duplicateEmails: Array<{ email: string; row: number }>;
+  duplicatePhones: Array<{ telefono: string; row: number }>;
+  errors: Array<{ email: string; row: number; reason: string }>;
+}
+
+interface BulkUsuarioData {
+  nombre: string;
+  email: string;
+  rol: 'admin' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta' | 'finanzas';
+  telefono: string;
+  email_alternativo?: string;
+}
+
+// Generar contraseña segura (misma lógica que frontend)
+function generateSecurePassword(): string {
+  const length = 16;
+  const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+  const numbers = '0123456789';
+  const special = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+  const allChars = uppercase + lowercase + numbers + special;
+
+  let password = '';
+  password += uppercase[Math.floor(Math.random() * uppercase.length)];
+  password += lowercase[Math.floor(Math.random() * lowercase.length)];
+  password += numbers[Math.floor(Math.random() * numbers.length)];
+  password += special[Math.floor(Math.random() * special.length)];
+
+  for (let i = password.length; i < length; i++) {
+    password += allChars[Math.floor(Math.random() * allChars.length)];
+  }
+
+  // Mezclar los caracteres
+  password = password.split('').sort(() => Math.random() - 0.5).join('');
+  return password;
+}
+
+export async function bulkCreateUsuarios(
+  usuarios: BulkUsuarioData[]
+): Promise<BulkCreateResult> {
+  const supabaseAdmin = createAdminClient();
+
+  const result: BulkCreateResult = {
+    success: true,
+    message: '',
+    created: [],
+    duplicateEmails: [],
+    duplicatePhones: [],
+    errors: [],
+  };
+
+  // 1. Pre-validar emails existentes en BD
+  const emails = usuarios.map(u => u.email);
+  const { data: existingEmails } = await supabaseAdmin
+    .from('usuarios')
+    .select('email')
+    .in('email', emails);
+
+  const existingEmailSet = new Set((existingEmails || []).map(e => e.email));
+
+  // 2. Pre-validar teléfonos existentes en BD (vendedores + usuarios_datos_no_vendedores)
+  const telefonos = usuarios.map(u => u.telefono).filter(Boolean);
+
+  const { data: existingVendedorPhones } = await supabaseAdmin
+    .from('vendedores')
+    .select('telefono')
+    .in('telefono', telefonos);
+
+  const { data: existingNoVendedorPhones } = await supabaseAdmin
+    .from('usuarios_datos_no_vendedores')
+    .select('telefono')
+    .in('telefono', telefonos);
+
+  const existingPhoneSet = new Set([
+    ...(existingVendedorPhones || []).map(v => v.telefono),
+    ...(existingNoVendedorPhones || []).map(v => v.telefono),
+  ].filter(Boolean));
+
+  // 3. Procesar cada usuario
+  for (let i = 0; i < usuarios.length; i++) {
+    const userData = usuarios[i];
+    const rowNumber = i + 2; // +2 porque fila 1 es header y array es 0-indexed
+
+    // Verificar email duplicado en BD
+    if (existingEmailSet.has(userData.email)) {
+      result.duplicateEmails.push({ email: userData.email, row: rowNumber });
+      continue;
+    }
+
+    // Verificar teléfono duplicado en BD
+    if (userData.telefono && existingPhoneSet.has(userData.telefono)) {
+      result.duplicatePhones.push({ telefono: userData.telefono, row: rowNumber });
+      continue;
+    }
+
+    // Generar contraseña
+    const password = generateSecurePassword();
+
+    // Intentar crear usuario
+    try {
+      // 3a. Crear en auth.users
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email: userData.email,
+        password: password,
+        email_confirm: true,
+        user_metadata: {
+          nombre: userData.nombre,
+          rol: userData.rol
+        }
+      });
+
+      if (authError || !authData.user) {
+        result.errors.push({
+          email: userData.email,
+          row: rowNumber,
+          reason: authError?.message || 'Error al crear autenticación'
+        });
+        continue;
+      }
+
+      const userId = authData.user.id;
+      let vendedor_id: string | null = null;
+
+      // 3b. Si es vendedor, crear en tabla vendedores
+      if (['vendedor', 'vendedor_caseta'].includes(userData.rol)) {
+        const { data: nuevoVendedor, error: vendedorError } = await supabaseAdmin
+          .from('vendedores')
+          .insert({
+            nombre: userData.nombre,
+            telefono: userData.telefono || '',
+            email: userData.email_alternativo || userData.email
+          })
+          .select('id')
+          .single();
+
+        if (vendedorError) {
+          await supabaseAdmin.auth.admin.deleteUser(userId);
+          result.errors.push({
+            email: userData.email,
+            row: rowNumber,
+            reason: 'Error al crear datos de vendedor'
+          });
+          continue;
+        }
+
+        vendedor_id = nuevoVendedor.id;
+      }
+
+      // 3c. Insertar en usuarios
+      const { error: usuarioError } = await supabaseAdmin
+        .from('usuarios')
+        .insert({
+          id: userId,
+          nombre: userData.nombre,
+          email: userData.email,
+          rol: userData.rol,
+          activo: true,
+          vendedor_id
+        });
+
+      if (usuarioError) {
+        await supabaseAdmin.auth.admin.deleteUser(userId);
+        result.errors.push({
+          email: userData.email,
+          row: rowNumber,
+          reason: 'Error al crear registro de usuario'
+        });
+        continue;
+      }
+
+      // 3d. Si es NO vendedor, crear en usuarios_datos_no_vendedores
+      if (['admin', 'jefe_ventas', 'finanzas'].includes(userData.rol)) {
+        await supabaseAdmin
+          .from('usuarios_datos_no_vendedores')
+          .insert({
+            usuario_id: userId,
+            telefono: userData.telefono || null,
+            email_alternativo: userData.email_alternativo || null
+          });
+      }
+
+      // Agregar a lista de éxitos (con contraseña para descarga)
+      result.created.push({
+        nombre: userData.nombre,
+        email: userData.email,
+        rol: userData.rol,
+        password: password
+      });
+
+      // Agregar email y teléfono a los sets para evitar duplicados dentro del mismo batch
+      existingEmailSet.add(userData.email);
+      if (userData.telefono) {
+        existingPhoneSet.add(userData.telefono);
+      }
+
+    } catch (error) {
+      result.errors.push({
+        email: userData.email,
+        row: rowNumber,
+        reason: error instanceof Error ? error.message : 'Error desconocido'
+      });
+    }
+  }
+
+  // Determinar éxito general
+  if (result.created.length === 0) {
+    result.success = false;
+    result.message = 'No se pudo crear ningún usuario';
+  } else if (result.created.length < usuarios.length) {
+    result.message = `Se crearon ${result.created.length} de ${usuarios.length} usuarios`;
+  } else {
+    result.message = `Se crearon ${result.created.length} usuarios exitosamente`;
+  }
+
+  revalidatePath('/admin/usuarios');
+  return result;
+}
+
+// ============================================================================
+// STATS: Obtener estadísticas de usuarios
+// ============================================================================
+
+export async function getUsuariosStats(): Promise<{
+  total: number;
+  activos: number;
+  inactivos: number;
+  porRol: Record<string, number>;
+}> {
+  // NOTA: La verificación de admin se hace en el middleware y en la página
+  // Usamos cliente admin para bypasear RLS en queries de administración
+  const supabase = createAdminClient();
+
+  const { data: usuarios } = await supabase
+    .from('usuarios')
+    .select('rol, activo');
+
+  if (!usuarios) {
+    return { total: 0, activos: 0, inactivos: 0, porRol: {} };
+  }
+
+  const stats = {
+    total: usuarios.length,
+    activos: usuarios.filter(u => u.activo).length,
+    inactivos: usuarios.filter(u => !u.activo).length,
+    porRol: usuarios.reduce((acc, u) => {
+      acc[u.rol] = (acc[u.rol] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  };
+
+  return stats;
+}

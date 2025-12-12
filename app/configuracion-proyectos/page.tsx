@@ -17,7 +17,10 @@ import {
   RepresentanteLegal,
   CuentaBancaria
 } from '@/lib/actions-proyecto-config';
-import { Save, ChevronDown, ChevronUp, ChevronUp as ArrowUp, ChevronDown as ArrowDown, X, Plus, Users, Search, FileText, Building2, Banknote, UserCheck } from 'lucide-react';
+import { Save, ChevronDown, ChevronUp, ChevronUp as ArrowUp, ChevronDown as ArrowDown, X, Plus, Users, Search, FileText, Building2, Banknote, UserCheck, Image as ImageIcon } from 'lucide-react';
+import LogoUploader from '@/components/shared/LogoUploader';
+import ContratoTemplateUploader from '@/components/shared/ContratoTemplateUploader';
+import { uploadProyectoLogo, deleteProyectoLogo, uploadContratoTemplate, deleteContratoTemplate } from '@/lib/proyecto-config';
 
 interface ProyectoFormData {
   tea: string;
@@ -40,7 +43,9 @@ interface ProyectoFormData {
   ruc: string;
   domicilio_fiscal: string;
   ubicacion_terreno: string;
+  denominacion_proyecto: string;
   partida_electronica: string;
+  partida_electronica_predio: string;
   zona_registral: string;
   plazo_firma_dias: string;
   penalidad_porcentaje: string;
@@ -53,6 +58,10 @@ interface ProyectoFormData {
   nuevaCuenta_numero: string;
   nuevaCuenta_tipo: 'Corriente' | 'Ahorros' | '';
   nuevaCuenta_moneda: 'USD' | 'PEN' | '';
+  // SESIÓN 66: Logo del proyecto
+  logo_url: string | null;
+  // SESIÓN 66: Template de contrato Word
+  contrato_template_url: string | null;
   saving: boolean;
   message: { type: 'success' | 'error'; text: string } | null;
 }
@@ -126,7 +135,9 @@ export default function ConfiguracionProyectos() {
           ruc: proyecto.ruc || '',
           domicilio_fiscal: proyecto.domicilio_fiscal || '',
           ubicacion_terreno: proyecto.ubicacion_terreno || '',
+          denominacion_proyecto: proyecto.denominacion_proyecto || '',
           partida_electronica: proyecto.partida_electronica || '',
+          partida_electronica_predio: proyecto.partida_electronica_predio || '',
           zona_registral: proyecto.zona_registral || '',
           plazo_firma_dias: proyecto.plazo_firma_dias?.toString() || '5',
           penalidad_porcentaje: proyecto.penalidad_porcentaje?.toString() || '100',
@@ -139,6 +150,10 @@ export default function ConfiguracionProyectos() {
           nuevaCuenta_numero: '',
           nuevaCuenta_tipo: '',
           nuevaCuenta_moneda: 'USD',
+          // SESIÓN 66: Logo del proyecto
+          logo_url: proyecto.logo_url || null,
+          // SESIÓN 66: Template de contrato Word
+          contrato_template_url: proyecto.contrato_template_url || null,
           saving: false,
           message: null,
         };
@@ -213,7 +228,9 @@ export default function ConfiguracionProyectos() {
       ruc: data.ruc || undefined,
       domicilio_fiscal: data.domicilio_fiscal || undefined,
       ubicacion_terreno: data.ubicacion_terreno || undefined,
+      denominacion_proyecto: data.denominacion_proyecto || undefined,
       partida_electronica: data.partida_electronica || undefined,
+      partida_electronica_predio: data.partida_electronica_predio || undefined,
       zona_registral: data.zona_registral || undefined,
       plazo_firma_dias: data.plazo_firma_dias ? parseInt(data.plazo_firma_dias) : undefined,
       penalidad_porcentaje: data.penalidad_porcentaje ? parseInt(data.penalidad_porcentaje) : undefined,
@@ -1250,6 +1267,72 @@ export default function ConfiguracionProyectos() {
                           Información legal de la empresa para generación automática de documentos (Acuerdo de Separación, contratos, etc.)
                         </p>
 
+                        {/* SESIÓN 66: Logo del proyecto + Template de Contrato en 2 columnas */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                          {/* Logo del proyecto */}
+                          <div>
+                            <div className="flex items-center gap-2 mb-4">
+                              <ImageIcon className="w-5 h-5 text-primary" />
+                              <h4 className="text-lg font-semibold text-gray-900">Logo Oficial del Proyecto</h4>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-4">
+                              Este logo aparecerá en documentos oficiales como la Ficha de Inscripción
+                            </p>
+                            <LogoUploader
+                              currentLogoUrl={data.logo_url}
+                              onSave={async (croppedImageBlob) => {
+                                const result = await uploadProyectoLogo(proyecto.id, croppedImageBlob);
+                                if (result.success && result.url) {
+                                  updateFormData(proyecto.id, 'logo_url', result.url);
+                                } else {
+                                  throw new Error(result.error || 'Error al subir logo');
+                                }
+                              }}
+                              onDelete={data.logo_url ? async () => {
+                                const result = await deleteProyectoLogo(proyecto.id, data.logo_url!);
+                                if (result.success) {
+                                  updateFormData(proyecto.id, 'logo_url', null);
+                                } else {
+                                  throw new Error(result.error || 'Error al eliminar logo');
+                                }
+                              } : undefined}
+                              aspectRatio={1}
+                              disabled={data.saving}
+                            />
+                          </div>
+
+                          {/* Template de Contrato Word */}
+                          <div>
+                            <div className="flex items-center gap-2 mb-4">
+                              <FileText className="w-5 h-5 text-blue-600" />
+                              <h4 className="text-lg font-semibold text-gray-900">Template de Contrato</h4>
+                            </div>
+                            <p className="text-sm text-gray-500 mb-4">
+                              Sube un archivo Word (.docx) con las variables para generar contratos automáticamente
+                            </p>
+                            <ContratoTemplateUploader
+                              currentTemplateUrl={data.contrato_template_url}
+                              onUpload={async (file) => {
+                                const result = await uploadContratoTemplate(proyecto.id, file);
+                                if (result.success && result.url) {
+                                  updateFormData(proyecto.id, 'contrato_template_url', result.url);
+                                } else {
+                                  throw new Error(result.error || 'Error al subir template');
+                                }
+                              }}
+                              onDelete={data.contrato_template_url ? async () => {
+                                const result = await deleteContratoTemplate(proyecto.id, data.contrato_template_url!);
+                                if (result.success) {
+                                  updateFormData(proyecto.id, 'contrato_template_url', null);
+                                } else {
+                                  throw new Error(result.error || 'Error al eliminar template');
+                                }
+                              } : undefined}
+                              disabled={data.saving}
+                            />
+                          </div>
+                        </div>
+
                         {/* Grid responsive: 3 columnas en desktop, 2 en tablet, 1 en mobile */}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
                           {/* Razón Social */}
@@ -1309,10 +1392,10 @@ export default function ConfiguracionProyectos() {
                             />
                           </div>
 
-                          {/* Partida Electrónica */}
+                          {/* Poder: Partida Electrónica (Registro Persona Jurídica) */}
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Partida Electrónica
+                              Poder: Partida Electrónica (Registro Persona Jurídica)
                             </label>
                             <input
                               type="text"
@@ -1323,8 +1406,22 @@ export default function ConfiguracionProyectos() {
                             />
                           </div>
 
-                          {/* Ubicación del Terreno - ocupa 3 columnas en desktop */}
-                          <div className="lg:col-span-3">
+                          {/* Número de Partida del Proyecto (Predios) */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Número de Partida del Proyecto (Predios)
+                            </label>
+                            <input
+                              type="text"
+                              value={data.partida_electronica_predio}
+                              onChange={(e) => updateFormData(proyecto.id, 'partida_electronica_predio', e.target.value)}
+                              placeholder="Ej: P87654321"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors font-mono"
+                            />
+                          </div>
+
+                          {/* Ubicación del Terreno - ocupa 2 columnas */}
+                          <div className="lg:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Ubicación del Terreno (Proyecto)
                             </label>
@@ -1333,6 +1430,20 @@ export default function ConfiguracionProyectos() {
                               value={data.ubicacion_terreno}
                               onChange={(e) => updateFormData(proyecto.id, 'ubicacion_terreno', e.target.value)}
                               placeholder="Ej: Mz. A Lt. 1, Urbanización San Gabriel, Carabayllo, Lima"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                            />
+                          </div>
+
+                          {/* Denominación del Proyecto - ocupa 1 columna */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Denominación del Proyecto
+                            </label>
+                            <input
+                              type="text"
+                              value={data.denominacion_proyecto}
+                              onChange={(e) => updateFormData(proyecto.id, 'denominacion_proyecto', e.target.value)}
+                              placeholder="Ej: Centro Comercial Eco Plaza Callao"
                               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
                             />
                           </div>

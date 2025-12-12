@@ -30,12 +30,18 @@ export interface Proyecto {
   ruc?: string | null;
   domicilio_fiscal?: string | null;
   ubicacion_terreno?: string | null;
+  denominacion_proyecto?: string | null;
   partida_electronica?: string | null;
+  partida_electronica_predio?: string | null;
   zona_registral?: string | null;
   plazo_firma_dias?: number;
   penalidad_porcentaje?: number;
   representantes_legales?: RepresentanteLegal[];
   cuentas_bancarias?: CuentaBancaria[];
+  // Sesión 66: Logo del proyecto
+  logo_url?: string | null;
+  // Sesión 66: Template de contrato Word
+  contrato_template_url?: string | null;
 }
 
 export interface PorcentajeInicial {
@@ -178,10 +184,10 @@ export async function getProyectosWithConfigurations(): Promise<{
       };
     }
 
-    // Fetch all proyectos (incluye campos legales - Sesión 64)
+    // Fetch all proyectos (incluye campos legales - Sesión 64, logo y contrato_template_url - Sesión 66)
     const { data: proyectos, error: proyectosError } = await supabaseAuth
       .from('proyectos')
-      .select('id, nombre, slug, color, activo, created_at, razon_social, ruc, domicilio_fiscal, ubicacion_terreno, partida_electronica, zona_registral, plazo_firma_dias, penalidad_porcentaje, representantes_legales, cuentas_bancarias')
+      .select('id, nombre, slug, color, activo, created_at, razon_social, ruc, domicilio_fiscal, ubicacion_terreno, denominacion_proyecto, partida_electronica, partida_electronica_predio, zona_registral, plazo_firma_dias, penalidad_porcentaje, representantes_legales, cuentas_bancarias, logo_url, contrato_template_url')
       .order('created_at', { ascending: true });
 
     if (proyectosError) {
@@ -239,7 +245,9 @@ export async function saveProyectoConfiguracion(
     ruc?: string;
     domicilio_fiscal?: string;
     ubicacion_terreno?: string;
+    denominacion_proyecto?: string;
     partida_electronica?: string;
+    partida_electronica_predio?: string;
     zona_registral?: string;
     plazo_firma_dias?: number;
     penalidad_porcentaje?: number;
@@ -408,7 +416,9 @@ export async function saveProyectoConfiguracion(
         ruc: data.ruc || null,
         domicilio_fiscal: data.domicilio_fiscal || null,
         ubicacion_terreno: data.ubicacion_terreno || null,
+        denominacion_proyecto: data.denominacion_proyecto || null,
         partida_electronica: data.partida_electronica || null,
+        partida_electronica_predio: data.partida_electronica_predio || null,
         zona_registral: data.zona_registral || null,
         plazo_firma_dias: data.plazo_firma_dias || 5,
         penalidad_porcentaje: data.penalidad_porcentaje || 100,

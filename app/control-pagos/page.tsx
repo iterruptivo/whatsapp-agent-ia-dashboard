@@ -23,7 +23,7 @@ export default function ControlPagosPage() {
   const [controlPagos, setControlPagos] = useState<ControlPago[]>([]);
   const [loadingData, setLoadingData] = useState<boolean>(true);
 
-  // Redirect if not authenticated or not admin/jefe_ventas
+  // Redirect if not authenticated or not admin/jefe_ventas/finanzas
   useEffect(() => {
     if (!loading) {
       if (!user) {

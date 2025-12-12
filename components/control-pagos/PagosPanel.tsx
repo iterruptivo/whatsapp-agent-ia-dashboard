@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, DollarSign, Calendar, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import type { ControlPago } from '@/lib/actions-control-pagos';
-import { getPagosLocal, getPagoStats, toggleSeparacionPagada, type PagoConAbonos, type PagoStats } from '@/lib/actions-pagos';
+import { getPagosLocal, getPagoStats, toggleSeparacionPagada, toggleVerificacionAbono, type PagoConAbonos, type PagoStats, type AbonoPago } from '@/lib/actions-pagos';
 import RegistrarAbonoModal from './RegistrarAbonoModal';
 import AlertModal from '@/components/shared/AlertModal';
 import { useAuth } from '@/lib/auth-context';
@@ -33,6 +33,13 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
     title: '',
     message: '',
     variant: 'info',
+  });
+  const [confirmVerificacion, setConfirmVerificacion] = useState<{
+    isOpen: boolean;
+    abono: AbonoPago | null;
+  }>({
+    isOpen: false,
+    abono: null,
   });
   const { user } = useAuth();
 
@@ -75,6 +82,44 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
       variant: result.success ? 'success' : 'danger',
     });
   };
+
+  const handleConfirmVerificacion = (abono: AbonoPago) => {
+    setConfirmVerificacion({ isOpen: true, abono });
+  };
+
+  const handleExecuteVerificacion = async () => {
+    const abono = confirmVerificacion.abono;
+    if (!user || !abono) return;
+
+    setConfirmVerificacion({ isOpen: false, abono: null });
+
+    const result = await toggleVerificacionAbono({
+      abonoId: abono.id,
+      verificado: true,
+      usuarioId: user.id,
+      usuarioNombre: user.nombre || user.email || 'Usuario',
+    });
+
+    setAlertModal({
+      isOpen: true,
+      title: result.success ? 'Verificación completada' : 'Error',
+      message: result.message || (result.success ? 'Abono verificado exitosamente' : 'No se pudo verificar'),
+      variant: result.success ? 'success' : 'danger',
+    });
+  };
+
+  const formatFechaVerificacion = (fecha: string) => {
+    const date = new Date(fecha);
+    return date.toLocaleDateString('es-PE', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const isFinanzas = user?.rol === 'finanzas';
 
   const formatMonto = (monto: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -224,24 +269,47 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                   </button>
                 )}
 
-                {pagoSeparacion.fue_desmarcado && (
+                {pagoSeparacion.abonos.length > 0 && (
                   <div className="mt-3">
                     <div className="text-sm font-semibold text-gray-700 mb-2">Historial de abonos de Separación</div>
-                    {pagoSeparacion.abonos.length > 0 ? (
-                      <div className="space-y-2">
-                        {pagoSeparacion.abonos.map((abono) => (
-                          <div key={abono.id} className="bg-gray-50 border rounded-lg p-3 text-sm">
-                            <div className="flex items-center justify-between mb-1">
-                              <div className="font-semibold text-gray-900">{formatMonto(abono.monto)}</div>
-                              <div className="text-gray-600">{formatFecha(abono.fecha_abono)}</div>
-                            </div>
-                            <div className="text-gray-600">{abono.metodo_pago}</div>
-                            {abono.notas && <div className="text-gray-500 text-xs mt-1">{abono.notas}</div>}
+                    <div className="space-y-2">
+                      {pagoSeparacion.abonos.map((abono) => (
+                        <div key={abono.id} className="bg-gray-50 border rounded-lg p-3 text-sm">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="font-semibold text-gray-900">{formatMonto(abono.monto)}</div>
+                            <div className="text-gray-600">{formatFecha(abono.fecha_abono)}</div>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                          {/* TODO: Mostrar método de pago real cuando se implemente selector en checkbox separación */}
+                          {/* Por ahora oculto porque el checkbox hardcodea "Efectivo" */}
+                          <div className="hidden text-gray-600">{abono.metodo_pago}</div>
+                          {abono.notas && <div className="text-gray-500 text-xs mt-1">{abono.notas}</div>}
+
+                          {/* Verificación Finanzas */}
+                          <div className="mt-2 pt-2 border-t border-gray-200">
+                            {isFinanzas && !abono.verificado_finanzas ? (
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={false}
+                                  onChange={() => handleConfirmVerificacion(abono)}
+                                  className="w-4 h-4 text-[#1b967a] border-gray-300 rounded focus:ring-[#1b967a]"
+                                />
+                                <span className="text-xs font-medium text-gray-700">Verificar abono</span>
+                              </label>
+                            ) : abono.verificado_finanzas ? (
+                              <div className="text-xs text-green-700 flex items-center gap-1">
+                                <CheckCircle className="w-3 h-3" />
+                                Verificado por {abono.verificado_finanzas_nombre} el {formatFechaVerificacion(abono.verificado_finanzas_at!)}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-gray-400">Pendiente de verificación por Finanzas</div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {pagoSeparacion.fue_desmarcado && (
+                      <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                         <p className="text-sm text-yellow-800">
                           ⚠️ La separación fue desmarcada como NO pagada
                         </p>
@@ -321,6 +389,28 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                             </div>
                             <div className="text-gray-600">{abono.metodo_pago}</div>
                             {abono.notas && <div className="text-gray-500 text-xs mt-1">{abono.notas}</div>}
+
+                            {/* Verificación Finanzas */}
+                            <div className="mt-2 pt-2 border-t border-gray-200">
+                              {isFinanzas && !abono.verificado_finanzas ? (
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={false}
+                                    onChange={() => handleConfirmVerificacion(abono)}
+                                    className="w-4 h-4 text-[#1b967a] border-gray-300 rounded focus:ring-[#1b967a]"
+                                  />
+                                  <span className="text-xs font-medium text-gray-700">Verificar abono</span>
+                                </label>
+                              ) : abono.verificado_finanzas ? (
+                                <div className="text-xs text-green-700 flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3" />
+                                  Verificado por {abono.verificado_finanzas_nombre} el {formatFechaVerificacion(abono.verificado_finanzas_at!)}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-gray-400">Pendiente de verificación por Finanzas</div>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -366,6 +456,47 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
                           + Registrar Pago
                         </button>
                       )}
+
+                      {/* Historial de abonos de la cuota */}
+                      {cuota.abonos.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="text-xs font-semibold text-gray-600 mb-2">Historial de abonos</div>
+                          <div className="space-y-2">
+                            {cuota.abonos.map((abono) => (
+                              <div key={abono.id} className="bg-gray-50 border rounded-lg p-2 text-xs">
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="font-semibold text-gray-900">{formatMonto(abono.monto)}</div>
+                                  <div className="text-gray-600">{formatFecha(abono.fecha_abono)}</div>
+                                </div>
+                                <div className="text-gray-600">{abono.metodo_pago}</div>
+                                {abono.notas && <div className="text-gray-500 mt-1">{abono.notas}</div>}
+
+                                {/* Verificación Finanzas */}
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                  {isFinanzas && !abono.verificado_finanzas ? (
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={false}
+                                        onChange={() => handleConfirmVerificacion(abono)}
+                                        className="w-3 h-3 text-[#1b967a] border-gray-300 rounded focus:ring-[#1b967a]"
+                                      />
+                                      <span className="font-medium text-gray-700">Verificar abono</span>
+                                    </label>
+                                  ) : abono.verificado_finanzas ? (
+                                    <div className="text-green-700 flex items-center gap-1">
+                                      <CheckCircle className="w-3 h-3" />
+                                      Verificado por {abono.verificado_finanzas_nombre} el {formatFechaVerificacion(abono.verificado_finanzas_at!)}
+                                    </div>
+                                  ) : (
+                                    <div className="text-gray-400">Pendiente de verificación por Finanzas</div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -395,6 +526,48 @@ export default function PagosPanel({ isOpen, controlPago, onClose }: PagosPanelP
           loadData(); // Recargar datos después de cerrar el modal
         }}
       />
+
+      {/* Modal de confirmación de verificación (irreversible) */}
+      {confirmVerificacion.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <AlertCircle className="w-6 h-6 text-yellow-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">¿Verificar este abono?</h3>
+              <p className="text-sm text-gray-600 mt-2">
+                Esta acción es <span className="font-bold text-red-600">irreversible</span>.
+                Una vez verificado, no podrá deshacer esta operación.
+              </p>
+              {confirmVerificacion.abono && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm">
+                  <div className="font-semibold text-gray-900">
+                    {formatMonto(confirmVerificacion.abono.monto)}
+                  </div>
+                  <div className="text-gray-600">
+                    {formatFecha(confirmVerificacion.abono.fecha_abono)} - {confirmVerificacion.abono.metodo_pago}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmVerificacion({ isOpen: false, abono: null })}
+                className="flex-1 py-2 px-4 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleExecuteVerificacion}
+                className="flex-1 py-2 px-4 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a63] transition-colors font-medium"
+              >
+                Sí, verificar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

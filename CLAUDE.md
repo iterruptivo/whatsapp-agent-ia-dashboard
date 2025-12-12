@@ -7,10 +7,10 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 3 Diciembre 2025
-**Sesión:** 64B - 📄 **Template HTML Ficha de Inscripción**
-**Estado:** ⏳ **EN DESARROLLO**
-**Documentación:** Ver [Módulo Documentos](docs/modulos/documentos.md)
+**Fecha:** 9 Diciembre 2025
+**Sesión:** 67 - 🔐 **Sistema Verificación por Finanzas + Liberación de Comisiones**
+**Estado:** ✅ **DEPLOYED TO STAGING**
+**Documentación:** Ver detalles abajo
 
 ---
 
@@ -22,20 +22,22 @@
 | [Autenticación](docs/modulos/auth.md) | ✅ **100% ESTABLE** | **Sesión 45I (13 Nov)** | **Uptime: 100% • 2+ hrs sesión** |
 | [Leads](docs/modulos/leads.md) | ✅ OPERATIVO | Sesión 44 (12 Nov) | 1,417 leads |
 | [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 52H (22 Nov)** | 823 locales |
-| [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | Sesión 40D (8 Nov) | 22 usuarios |
+| [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | **Sesión 65 (5 Dic)** | 23 usuarios |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
-| [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 64 (2 Dic)** | docx-templates |
+| [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 66 (9 Dic)** | Logo + Docs + PDF + Contratos Word |
+| [Repulse](docs/modulos/repulse.md) | ⏳ **EN DESARROLLO** | **Sesión 65C (8 Dic)** | re-engagement leads |
 
-### **Métricas Globales (Actualizado: 10 Nov 2025)**
+### **Métricas Globales (Actualizado: 9 Dic 2025)**
 ```
 Total Leads:        1,417
 Total Locales:      823
-Usuarios Activos:   22
+Usuarios Activos:   23
   - Admins:         2 (gerente, bryan)
   - Jefe Ventas:    1
   - Vendedores:     8
   - Vendedor Caseta: 11
+  - Finanzas:       1 (Rosa Quispe)
 Proyectos:          7
 Flujos n8n Activos: 3
 Uptime General:     99.9%
@@ -74,9 +76,14 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: OPERATIVO (3 flujos activos)
 
 - **[Documentos](docs/modulos/documentos.md)** - Generación automática de documentos legales
-  - Última sesión: **64B (Template HTML Ficha de Inscripción)**
-  - Estado: EN DESARROLLO (5/8 fases completadas)
-  - Tecnología: docx-templates para templates Word + HTML templates
+  - Última sesión: **66 (Sistema Contratos Word con docx-templates)**
+  - Estado: EN DESARROLLO (6/8 fases completadas)
+  - Tecnología: docx-templates para templates Word + HTML templates + JSZip post-processing
+
+- **[Repulse](docs/modulos/repulse.md)** - Sistema de re-engagement de leads
+  - Última sesión: **65C (Inyección Mensajes en Historial + Quota Widget)**
+  - Estado: EN DESARROLLO (branch integrado a staging)
+  - Features: detección automática (30+ días), envío batch, exclusión permanente, historial visible, webhook n8n
 
 ---
 
@@ -114,6 +121,11 @@ Documentación cronológica completa de todas las sesiones.
 - **[Diciembre 2025](docs/sesiones/2025-12-diciembre.md)** - Sesiones 64+
   - **📄 Sistema Generación Documentos (64)** ✅
   - **📄 Template HTML Ficha de Inscripción (64B)** ✅
+  - **🔐 Rol Finanzas + Ficha Inscripción Modal (65)** ✅
+  - **🔄 Sistema Repulse: Integración /operativo + Exclusiones (65B)** ✅
+  - **💬 Sistema Repulse: Webhook n8n + Quota Widget (65C)** ✅
+  - **🖼️📎📄 Logo Dinámico + Docs Adjuntos + PDF + Contratos Word (66)** ✅
+  - **🔐 Sistema Verificación por Finanzas + Liberación Comisiones (67)** ✅
 
 ---
 
@@ -161,6 +173,369 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 66** (7-9 Dic) - 🖼️📎📄 ✅ **Logo Dinámico + Docs Adjuntos + PDF + Contratos Word**
+**Tipo:** Feature completo (Logo + Documentos + PDF + Sistema de Contratos)
+**Estado:** ✅ **DEPLOYED TO STAGING**
+
+**Features implementados:**
+
+---
+
+#### **PARTE 1: Logo Dinámico por Proyecto**
+
+**Problemas resueltos:**
+1. **Datos legales no aparecían en template** - Consultaba lugar incorrecto
+2. **Logo estático** - Necesidad de logo dinámico por proyecto
+
+**Cambios implementados:**
+
+| Componente | Descripción |
+|------------|-------------|
+| **Supabase Storage** | Bucket `logos-proyectos` (público) |
+| **DB** | Campo `proyectos.logo_url` (TEXT) |
+| **LogoUploader.tsx** | Componente con crop/zoom/rotación usando `react-easy-crop` |
+| **proyecto-config.ts** | Funciones `uploadProyectoLogo()`, `deleteProyectoLogo()`, `getProyectoLegalData()` |
+
+**Integración:**
+- Nueva sección "Logo Oficial del Proyecto" en `/configuracion-proyectos`
+- Template Ficha de Inscripción con placeholders `{{LOGO_URL}}`, `{{LOGO_DISPLAY}}`
+
+---
+
+#### **PARTE 2: Documentos Adjuntos Requeridos**
+
+**Requerimiento:** Subir fotos de DNI y Comprobante de depósito en la Ficha de Inscripción.
+
+**Schema actualizado (tabla `clientes_ficha`):**
+```sql
+ALTER TABLE clientes_ficha
+ADD COLUMN IF NOT EXISTS dni_fotos TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS comprobante_deposito_fotos TEXT[] DEFAULT '{}';
+```
+
+**Supabase Storage:**
+- Bucket: `documentos-ficha` (público)
+- Naming convention: `{local_id}/{tipo}/{timestamp}_{index}.jpg`
+- Ejemplo: `abc123-uuid/dni/1733580000000_0.jpg`
+
+**Componente DocumentUploader.tsx (NUEVO):**
+| Feature | Detalle |
+|---------|---------|
+| Compresión | `browser-image-compression` - max 1MB, 1000px width |
+| Formato | Conversión automática a JPEG |
+| Máximo | 2 imágenes por tipo |
+| Validación | Requiere mínimo 1 imagen de cada tipo para guardar/preview |
+| Preview | Thumbnails con botón eliminar |
+| Estados | Loading, error, required warning |
+
+**Integración en FichaInscripcionModal:**
+- Sección "DOCUMENTOS ADJUNTOS (REQUERIDOS)" al final del formulario
+- Dos DocumentUploader: DNI (max 2) y Comprobante de Depósito (max 2)
+- Validación antes de guardar y antes de vista previa
+
+**Documentos en Vista Previa/PDF:**
+- DNI en página separada (page-break)
+- Comprobante en página separada (page-break)
+- Imágenes grandes para impresión
+
+---
+
+#### **PARTE 3: Descarga PDF con Nombre Único**
+
+**Problema:** `window.print()` con "Microsoft Print to PDF" no respetaba el `document.title`
+
+**Solución implementada:**
+- Librería `html2pdf.js` cargada via CDN en el preview
+- Botón "Descargar PDF" genera archivo con nombre correcto
+- Botón "Imprimir" mantiene opción tradicional
+
+**Nombre de archivo:**
+```
+FICHA-INSCRIPCION-{CODIGO_LOCAL}-{YYYYMMDD}-{HHMMSS}.pdf
+```
+Ejemplo: `FICHA-INSCRIPCION-PRUEBA-01-20251207-213500.pdf`
+
+**Estructura del preview:**
+```html
+<div id="pdf-content">
+  <div class="ficha-container">
+    <!-- Contenido de la ficha -->
+  </div>
+  <!-- Documentos adjuntos con page-break-before -->
+  <div class="page-break-before">DNI...</div>
+  <div class="page-break-before">Comprobante...</div>
+</div>
+```
+
+**Opciones configuradas en html2pdf:**
+```javascript
+{
+  margin: 5,
+  filename: 'FICHA-INSCRIPCION-{codigo}-{fecha}-{hora}.pdf',
+  image: { type: 'jpeg', quality: 0.98 },
+  html2canvas: { scale: 2, useCORS: true },
+  jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+  pagebreak: { mode: 'css', before: '.page-break-before' }
+}
+```
+
+---
+
+**Archivos nuevos:**
+- `components/shared/LogoUploader.tsx` (292 líneas)
+- `components/shared/DocumentUploader.tsx` (268 líneas)
+- `consultas-leo/SQL_ADD_LOGO_URL.sql`
+- `consultas-leo/SQL_ADD_DOCUMENTOS_FICHA.sql`
+
+**Archivos modificados:**
+- `lib/proyecto-config.ts` - Funciones logo + `getProyectoLegalData()`
+- `lib/db.ts` - Campo `logo_url` en interface `Proyecto`
+- `lib/actions-proyecto-config.ts` - Campo `logo_url` en interface + query
+- `lib/actions-clientes-ficha.ts` - Campos `dni_fotos`, `comprobante_deposito_fotos`
+- `app/configuracion-proyectos/page.tsx` - UI LogoUploader integrado
+- `components/locales/FichaInscripcionModal.tsx` - Logo, documentos, descarga PDF
+- `package.json` - Dependencias: `react-easy-crop`, `browser-image-compression`
+
+**Dependencias agregadas:**
+```json
+"browser-image-compression": "^2.0.2",
+"react-easy-crop": "^5.1.0"
+```
+
+**Commits:**
+- `453549e` - feat: Add LogoUploader component and logo management functions
+- `3ecfcbd` - feat: Add LogoUploader to project configuration page
+- `cf22628` - feat: Add DOCUMENTOS ADJUNTOS section with DocumentUploader
+- `c906982` - fix: handleChange type for string[]
+- `bd9217f` - style: Remove labels below document images
+- `8a1768b` - feat: Separate pages for DNI and deposit proof
+- `6176004` - feat: Set document title for print filename
+- `4728bcb` - feat: Add timestamp to print filename for uniqueness
+- `08f4b91` - feat: Add direct PDF download with correct filename
+- `c235d1b` - fix: Include document images (DNI/Comprobante) in PDF download
+
+---
+
+#### **PARTE 4: Sistema de Generación de Contratos con docx-templates**
+
+**Requerimiento:** Generar contratos Word (.docx) a partir de templates con variables dinámicas.
+
+**Tecnología seleccionada:**
+- Librería: `docx-templates` (npm)
+- Almacenamiento: Supabase Storage bucket `contratos-templates`
+- Templates: Archivos .docx con placeholders `{variable}`, `{IF condicion}`, `{FOR item IN lista}`, etc.
+
+**Arquitectura del sistema:**
+
+| Componente | Descripción |
+|------------|-------------|
+| **Supabase Storage** | Bucket `contratos-templates` para almacenar templates Word |
+| **ContratoTemplateUploader.tsx** | Componente para subir templates con documentación de variables |
+| **actions-contratos.ts** | Server actions para generación de contratos |
+| **numero-a-letras.ts** | Utilidades para convertir números/fechas a texto en español |
+
+**Variables disponibles en templates:**
+
+```
+DATOS DEL PROYECTO:
+- {nombre_proyecto} - Nombre del proyecto
+- {datos_legales.razon_social} - Razón social de la empresa
+- {datos_legales.ruc} - RUC de la empresa
+- {datos_legales.direccion} - Dirección legal
+- {datos_legales.representante_legal} - Nombre del representante
+- {datos_legales.dni_representante} - DNI del representante
+- {datos_legales.cargo_representante} - Cargo del representante
+
+DATOS DEL LOCAL:
+- {local.codigo} - Código del local (ej: PRUEBA-01)
+- {local.area_m2} - Área en metros cuadrados
+
+DATOS DEL CLIENTE (TITULAR):
+- {cliente.nombres}, {cliente.apellido_paterno}, {cliente.apellido_materno}
+- {cliente.tipo_documento}, {cliente.numero_documento}
+- {cliente.estado_civil}, {cliente.direccion}, {cliente.ocupacion}
+
+DATOS DEL CÓNYUGE (condicional):
+- {tiene_conyuge} - Boolean para condicional {IF tiene_conyuge}
+- {conyuge.nombres}, {conyuge.apellido_paterno}, etc.
+
+COPROPIETARIOS (array para {FOR}):
+- {tiene_copropietarios} - Boolean
+- {copropietarios} - Array para {FOR cp IN copropietarios}
+- Cada cp tiene: cp.nombres, cp.tipo_documento, cp.numero_documento, etc.
+
+MONTOS Y FINANCIAMIENTO:
+- {precio_venta_usd}, {precio_venta_usd_texto}
+- {precio_venta_pen}, {precio_venta_pen_texto}
+- {monto_separacion_usd}, {monto_separacion_usd_texto}
+- {inicial_usd}, {inicial_usd_texto}, {inicial_pen}, {inicial_pen_texto}
+- {inicial_restante_usd}, {inicial_restante_pen}
+- {cuota_mensual_usd}, {cuota_mensual_pen}
+- {numero_cuotas}, {numero_cuotas_texto}
+- {tea_porcentaje}
+- {tipo_cambio}, {tipo_cambio_texto}
+
+FECHAS:
+- {fecha_contrato} - Formato DD/MM/YYYY
+- {fecha_contrato_texto} - "ocho de diciembre del dos mil veinticinco"
+- {fecha_primer_pago}, {fecha_ultimo_pago}
+- {dia_pago}, {dia_pago_texto} - Día del mes para cuotas
+```
+
+**Reglas críticas para templates Word:**
+
+> ⚠️ **IMPORTANTE**: Los comandos `{IF}`, `{END-IF}`, `{FOR}`, `{END-FOR}` DEBEN estar **solos en su propio párrafo** en Word.
+>
+> - Usar ENTER (no Shift+Enter) para crear nuevo párrafo
+> - NUNCA poner múltiples comandos en la misma línea
+> - Incorrecto: `{END-IF} {IF condicion}` ❌
+> - Correcto: Cada comando en línea separada ✅
+
+**Ejemplo de estructura en template:**
+
+```
+El señor {cliente.nombres} {cliente.apellido_paterno}...
+
+{IF tiene_conyuge}
+Conjuntamente con su cónyuge {conyuge.nombres}...
+{END-IF}
+
+{IF tiene_copropietarios}
+Como copropietarios:
+{FOR cp IN copropietarios}
+- {cp.nombres} {cp.apellido_paterno}, DNI {cp.numero_documento}
+{END-FOR}
+{END-IF}
+```
+
+**Post-procesamiento (removeEmptyParagraphs):**
+- Los templates generados pueden tener párrafos vacíos donde estaban los comandos
+- La función `removeEmptyParagraphs()` usa JSZip para limpiar el XML interno
+- Busca `<w:p>` vacíos (sin texto visible) y los elimina
+- Mejora la presentación final del documento
+
+**Funciones en numero-a-letras.ts:**
+
+| Función | Ejemplo |
+|---------|---------|
+| `numeroALetras(15000, 'USD')` | "QUINCE MIL Y 00/100 DÓLARES AMERICANOS" |
+| `numeroALetras(57600, 'PEN')` | "CINCUENTA Y SIETE MIL SEISCIENTOS Y 00/100 SOLES" |
+| `fechaALetras('2025-12-08')` | "ocho de diciembre del dos mil veinticinco" |
+| `numeroEnteroALetras(24)` | "VEINTICUATRO" |
+| `tipoCambioALetras(3.84)` | "Tres con 84/100 soles" |
+| `calcularFechaUltimaCuota(fecha, 24)` | Date de última cuota |
+
+**Error común y solución:**
+
+| Error | Causa | Solución |
+|-------|-------|----------|
+| "infinite loop or massive dataset detected" | Múltiples comandos `{IF}/{FOR}` en mismo párrafo Word | Separar cada comando en su propio párrafo usando ENTER |
+
+**Archivos del sistema:**
+- `lib/actions-contratos.ts` - Server actions + post-processing
+- `lib/utils/numero-a-letras.ts` - Utilidades de conversión
+- `components/shared/ContratoTemplateUploader.tsx` - UI de subida con docs
+- `modelos-contrato/` - Templates de ejemplo
+
+---
+
+### **Sesión 65** (5 Dic) - 🔐 ✅ **Rol Finanzas + Ficha Inscripción Modal + Nueva Tabla clientes_ficha**
+**Tipo:** Feature + RBAC + Database
+**Estado:** ✅ **DEPLOYED TO MAIN**
+
+**Cambios implementados:**
+
+**1. Rol `finanzas` - Acceso restringido a solo /control-pagos**
+
+| Archivo | Cambio |
+|---------|--------|
+| `middleware.ts` | Finanzas redirigido a `/control-pagos` desde todas las rutas |
+| `Sidebar.tsx` | Finanzas solo ve "Control de Pagos" en menú |
+| `app/control-pagos/page.tsx` | Agregado `finanzas` a validaciones de rol |
+
+**Acceso por rol actualizado:**
+| Rol | / | /operativo | /locales | /control-pagos | /comisiones |
+|-----|---|------------|----------|----------------|-------------|
+| admin | ✅ | ✅ | ✅ | ✅ | ✅ |
+| vendedor | ❌→/operativo | ✅ | ✅ | ❌ | ✅ |
+| jefe_ventas | ❌→/locales | ❌→/locales | ✅ | ✅ | ✅ |
+| vendedor_caseta | ❌→/locales | ✅ | ✅ | ❌ | ✅ |
+| coordinador | ❌→/locales | ❌→/locales | ✅ | ❌ | ✅ |
+| **finanzas** | ❌→/control-pagos | ❌→/control-pagos | ❌→/control-pagos | ✅ | ❌→/control-pagos |
+
+**2. Nuevo usuario creado:**
+- **Rosa Quispe** (rosaquispef@ecoplaza.com)
+- Rol: `finanzas`
+- Password: `u$432##faYh1`
+- vendedor_id: `null` (no es vendedor, no tiene relación con tabla vendedores)
+
+**3. Nueva tabla `clientes_ficha` (ejecutado en Supabase)**
+```sql
+CREATE TABLE clientes_ficha (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  local_id UUID NOT NULL REFERENCES locales(id) ON DELETE CASCADE,
+  lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
+
+  -- Datos Titular (19 campos)
+  titular_nombres, titular_apellido_paterno, titular_apellido_materno,
+  titular_tipo_documento, titular_numero_documento, titular_fecha_nacimiento,
+  titular_lugar_nacimiento, titular_estado_civil, titular_nacionalidad,
+  titular_direccion, titular_distrito, titular_provincia, titular_departamento,
+  titular_celular, titular_telefono_fijo, titular_email,
+  titular_ocupacion, titular_centro_trabajo, titular_ruc,
+
+  -- Datos Cónyuge (11 campos)
+  tiene_conyuge BOOLEAN DEFAULT false,
+  conyuge_nombres, conyuge_apellido_paterno, conyuge_apellido_materno,
+  conyuge_tipo_documento, conyuge_numero_documento, conyuge_fecha_nacimiento,
+  conyuge_lugar_nacimiento, conyuge_nacionalidad, conyuge_ocupacion,
+  conyuge_celular, conyuge_email,
+
+  -- Marketing y metadata
+  utm_source, utm_detalle, observaciones, vendedor_id,
+  created_at, updated_at
+);
+```
+
+**4. Ficha de Inscripción Modal**
+
+| Archivo | Descripción |
+|---------|-------------|
+| `lib/actions-clientes-ficha.ts` (NUEVO) | Server actions: `getClienteFichaByLocalId()`, `upsertClienteFicha()` |
+| `components/locales/FichaInscripcionModal.tsx` | Modal completo con formulario editable |
+| `components/locales/LocalesTable.tsx` | Botón "Iniciar ficha de inscripción" en locales NARANJA |
+
+**Características del modal:**
+- Pre-llena nombre y teléfono desde el lead
+- Secciones: Local, Titular (19 campos), Cónyuge (toggle + 11 campos), Marketing, Observaciones
+- Dropdowns: Tipo documento (DNI/CE/Pasaporte), Estado civil, UTM source
+- Guarda automáticamente via `upsertClienteFicha()` (insert o update)
+
+**5. Reorganización templates ficha inscripción**
+```
+templates/ficha-inscripcion/
+├── templates/
+│   └── template-estandar.html
+└── configs/
+    ├── proyecto-pruebas.json (con campo "template": "template-estandar")
+    └── preview-proyecto-pruebas.html
+```
+
+**6. Eliminación columna `lead_id` de `control_pagos`**
+- Columna nunca se usaba (siempre NULL)
+- Linking real es via `lead_nombre` y `lead_telefono` (snapshot)
+- Backup guardado en `consultas-leo/control_pagos_rows.sql`
+
+**Scripts de usuarios actualizados:**
+- `consultas-leo/manage-users/create-rosa-finanzas.js` (NUEVO - patrón sin vendedor)
+
+**Commits:**
+- `4457f49` - feat: Add clientes_ficha editable form to FichaInscripcionModal
+- `8f3ccb7` - feat: Restrict finanzas role to only /control-pagos access
+- `9ef44b4` - fix: Allow finanzas role to access /control-pagos page
+
+---
 
 ### **Sesión 63** (30 Nov) - 🛠️ ✅ **Múltiples mejoras UX + Fix timezone**
 **Tipo:** Mejoras de UX + Fixes
@@ -1419,6 +1794,18 @@ INCORRECTO (intentado en 53):
   ```
 - **Tooltips personalizados**: Usar componente `@/components/shared/Tooltip` en vez del title nativo del navegador
 - **Fechas locales**: Usar `getFullYear()`, `getMonth()`, `getDate()` en vez de `toISOString()` para evitar problemas de timezone
+
+### **docx-templates (Generación de Contratos Word)**
+- **Comandos en párrafos separados (CRÍTICO)**: `{IF}`, `{END-IF}`, `{FOR}`, `{END-FOR}` DEBEN estar solos en su propio párrafo Word
+  - Usar ENTER (no Shift+Enter) para crear nuevo párrafo
+  - Múltiples comandos en misma línea causa error "infinite loop or massive dataset detected"
+  - Incorrecto: `{END-IF} {IF tiene_conyuge}` ❌
+  - Correcto: Cada comando en línea separada ✅
+- **Análisis de templates problemáticos**: Extraer `word/document.xml` del .docx (es un ZIP) para ver estructura XML real
+- **Post-procesamiento con JSZip**: Los comandos dejan párrafos vacíos que se deben eliminar con `removeEmptyParagraphs()`
+- **Regex ES5 compatibility**: Usar `[\s\S]` en lugar de `.` con flag `s` que no es soportado en ES5
+- **Variables anidadas**: Usar notación de punto (`{cliente.nombres}`) para objetos anidados
+- **Condicionales con arrays**: `{IF array.length}` funciona para verificar si array tiene elementos
 
 ---
 
