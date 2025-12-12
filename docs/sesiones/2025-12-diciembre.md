@@ -1453,4 +1453,88 @@ WHERE jobname = 'detectar-leads-repulse';
 
 ---
 
+#### FASE 4: Paginación Tabla Repulse ✅
+
+**Problema:** Proyecto Trapiche tiene 222 leads, haciendo la tabla muy larga.
+
+**Solución:** Paginación client-side (mismo patrón que `/locales`)
+
+**Implementación:**
+
+| Componente | Descripción |
+|------------|-------------|
+| `currentPage` state | Página actual (default: 1) |
+| `itemsPerPage` | 50 leads por página |
+| `paginatedLeads` useMemo | Slice de leads filtrados |
+| Reset automático | Vuelve a página 1 al cambiar filtros |
+| UI paginación | Arriba Y abajo de la tabla |
+
+**Commits:**
+- `dc80c33` - feat: Add pagination to Repulse table (100 items per page)
+- `427714f` - feat: Update Repulse pagination - 50 items per page + top pagination
+
+---
+
+#### FASE 5: Sort por Fecha Lead ✅
+
+**Feature:** Ordenar leads por fecha de creación (más antiguos/recientes primero)
+
+**Implementación:**
+
+| Componente | Descripción |
+|------------|-------------|
+| `sortOrder` state | `'asc' \| 'desc'` (default: `'asc'` = más antiguos) |
+| `sortedLeads` useMemo | Ordena por `lead.created_at` |
+| Header clickeable | Click en "Fecha Lead" alterna orden |
+| Icono visual | ↑ (asc) o ↓ (desc) en verde primario |
+
+**Comportamiento:**
+- Default: Más antiguos primero (↑)
+- Click en header: Alterna entre asc/desc
+- Funciona combinado con filtros y paginación
+
+**Commit:** `29fc4a2` - feat: Add sort by Fecha Lead to Repulse table
+
+---
+
+#### Nota: Variables en Templates de Mensaje
+
+**Variable `{{nombre}}` cuando el lead no tiene nombre:**
+
+```typescript
+const mensajePersonalizado = mensaje
+  .replace(/\{\{nombre\}\}/g, leadTyped.nombre || 'Cliente')
+```
+
+| Template | Lead con nombre | Lead sin nombre |
+|----------|-----------------|-----------------|
+| `Hola {{nombre}}, te interesa...` | Hola **Leo**... | Hola **Cliente**... |
+
+El fallback "Cliente" es intencional para mensajes genéricos pero correctos.
+
+---
+
+### Archivos Modificados (Actualizado)
+
+| Archivo | Cambios |
+|---------|---------|
+| `components/repulse/RepulseClient.tsx` | Paginación + Sort + Modal info |
+| `docs/modulos/repulse.md` | Documentación actualizada |
+| `docs/sesiones/2025-12-diciembre.md` | Esta sesión agregada |
+| Supabase cron.job | Schedule actualizado |
+
+---
+
+### Todos los Commits de Sesión 68
+
+| Hash | Mensaje |
+|------|---------|
+| `77c0636` | feat: Add phone country code validation for lead import |
+| `acd15f0` | docs: Update Repulse info modal - cron now runs daily at 3:00 AM |
+| `dc80c33` | feat: Add pagination to Repulse table (100 items per page) |
+| `29fc4a2` | feat: Add sort by Fecha Lead to Repulse table |
+| `427714f` | feat: Update Repulse pagination - 50 items per page + top pagination |
+
+---
+
 **🤖 Generated with [Claude Code](https://claude.com/claude-code)**

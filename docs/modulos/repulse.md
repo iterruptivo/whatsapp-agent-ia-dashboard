@@ -33,6 +33,8 @@
 - ✅ Lógica de reactivación (leads enviados vuelven a pendiente tras 15 días)
 - ✅ **Widget de Quota WhatsApp** (badge con indicador de consumo diario)
 - ✅ **Modal informativo actualizado** con horario de cron correcto
+- ✅ **Paginación tabla** (50 items/página, UI arriba y abajo) - Sesión 68
+- ✅ **Sort por Fecha Lead** (click header para asc/desc) - Sesión 68
 
 ### Pendientes:
 - ⏳ Envío automático nocturno (cron job 11:00 PM)
@@ -283,9 +285,11 @@ interface RepulseHistorial {
 
 Página principal del sistema de repulse con:
 - Lista de leads en repulse
-- Filtros por estado
+- Filtros por estado y búsqueda
 - Gestión de templates
 - Botón de envío batch
+- **Paginación** (50 items por página, arriba y abajo)
+- **Sort por Fecha Lead** (click en header para alternar asc/desc)
 
 ### RepulseEnvioModal
 **Archivo:** `components/repulse/RepulseEnvioModal.tsx`
