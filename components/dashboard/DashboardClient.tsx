@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import StatsCard from '@/components/dashboard/StatsCard';
 import PieChartComponent from '@/components/dashboard/PieChart';
 import HorizontalBarChart from '@/components/dashboard/HorizontalBarChart';
+import VendedoresLeadsChart from '@/components/dashboard/VendedoresLeadsChart';
 import LeadsTable from '@/components/dashboard/LeadsTable';
 import DateRangeFilter from '@/components/dashboard/DateRangeFilter';
 import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
@@ -230,6 +231,38 @@ export default function DashboardClient({
     }));
   }, [filteredLeads]);
 
+  // SESIÓN 68: Calculate leads per vendedor (vendedor + vendedor_caseta roles)
+  // Shows ALL vendors including those with 0 leads assigned
+  const vendedoresLeadsData = useMemo(() => {
+    // Get usuarios with vendedor or vendedor_caseta role that are active
+    const vendedorUsuarios = usuarios.filter(
+      (u) => (u.rol === 'vendedor' || u.rol === 'vendedor_caseta') && u.activo
+    );
+
+    // Map each usuario to their lead counts
+    return vendedorUsuarios.map((usuario) => {
+      // Get leads assigned to this usuario's vendedor_id
+      const assignedLeads = filteredLeads.filter(
+        (lead) => lead.vendedor_asignado_id === usuario.vendedor_id
+      );
+
+      // Count manual vs automatic leads
+      const leadsManuales = assignedLeads.filter(
+        (lead) => lead.estado === 'lead_manual'
+      ).length;
+      const leadsAutomaticos = assignedLeads.length - leadsManuales;
+
+      return {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        rol: usuario.rol as 'vendedor' | 'vendedor_caseta',
+        leadsManuales,
+        leadsAutomaticos,
+        total: assignedLeads.length,
+      };
+    });
+  }, [usuarios, filteredLeads]);
+
   const handleClearFilters = () => {
     setDateFrom(initialDateFrom);
     setDateTo(initialDateTo);
@@ -374,6 +407,14 @@ export default function DashboardClient({
         <HorizontalBarChart
           data={utmData}
           title="Distribución por UTM"
+        />
+      </div>
+
+      {/* Chart: Leads por Vendedor - Full width */}
+      <div className="mb-8">
+        <VendedoresLeadsChart
+          data={vendedoresLeadsData}
+          title="Leads por Vendedor"
         />
       </div>
 
