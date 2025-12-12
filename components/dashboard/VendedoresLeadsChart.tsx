@@ -148,16 +148,21 @@ export default function VendedoresLeadsChart({ data, title }: VendedoresLeadsCha
                 stackId="leads"
                 fill="#1b967a"
                 radius={[0, 4, 4, 0]}
-                label={{
-                  position: 'right',
-                  fill: '#6b7280',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  formatter: (value: number, entry: { payload?: VendedorLeadsData }) => {
-                    // Mostrar total solo si hay leads
-                    const total = entry?.payload?.total;
-                    return total && total > 0 ? total : '';
-                  }
+                label={({ x, y, width, height, value, index }: { x: number; y: number; width: number; height: number; value: number; index: number }) => {
+                  const total = sortedData[index]?.total;
+                  if (!total || total === 0) return null;
+                  return (
+                    <text
+                      x={x + width + 8}
+                      y={y + height / 2}
+                      fill="#6b7280"
+                      fontSize={11}
+                      fontWeight={600}
+                      dominantBaseline="middle"
+                    >
+                      {total}
+                    </text>
+                  );
                 }}
               />
             </BarChart>
