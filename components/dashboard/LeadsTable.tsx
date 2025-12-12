@@ -335,7 +335,6 @@ export default function LeadsTable({
                       vendedores={vendedores.filter(v => v.activo).map(v => ({
                         id: v.id,
                         nombre: v.nombre,
-                        rol: v.rol,
                         activo: v.activo,
                       }))}
                       value={lead.vendedor_asignado_id}
@@ -347,6 +346,7 @@ export default function LeadsTable({
                       placeholder="-- Sin Asignar --"
                       allowClear={true}
                       clearLabel="-- Sin Asignar --"
+                      showRolBadge={false}
                       size="sm"
                       className="min-w-[180px]"
                     />
