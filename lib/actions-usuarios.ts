@@ -402,7 +402,8 @@ export async function updateUsuario(data: UpdateUsuarioData): Promise<{
   message: string;
 }> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
-  const supabase = await createClient();
+  // Usamos admin client para bypasear RLS (solo admins ejecutan esta función)
+  const supabase = createAdminClient();
 
   // 1. Obtener usuario actual
   const { data: usuarioActual, error: fetchError } = await supabase
@@ -526,7 +527,8 @@ export async function toggleUsuarioActivo(id: string): Promise<{
 }> {
   // NOTA: La verificación de admin se hace en el middleware y en la página
   // TODO: Agregar validación para evitar desactivarse a sí mismo cuando tengamos el userId del contexto
-  const supabase = await createClient();
+  // Usamos admin client para bypasear RLS (solo admins ejecutan esta función)
+  const supabase = createAdminClient();
 
   // Obtener estado actual
   const { data: usuario, error: fetchError } = await supabase
