@@ -1,23 +1,17 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import StatsCard from '@/components/dashboard/StatsCard';
 import PieChartComponent from '@/components/dashboard/PieChart';
 import HorizontalBarChart from '@/components/dashboard/HorizontalBarChart';
 import VendedoresMiniTable from '@/components/dashboard/VendedoresMiniTable';
-import LeadsTable from '@/components/dashboard/LeadsTable';
 import DateRangeFilter from '@/components/dashboard/DateRangeFilter';
-import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
 import { Lead, Vendedor, Usuario, getAllVendedores, getAllUsuarios } from '@/lib/db';
 import { assignLeadToVendedor } from '@/lib/actions';
 import { useAuth } from '@/lib/auth-context';
-import { Users, CheckCircle, Clock, TrendingUp, AlertCircle, Download, Upload, Plus, ChevronDown } from 'lucide-react';
+import { Users, CheckCircle, Clock, TrendingUp } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
-import { exportLeadsToExcel } from '@/lib/exportToExcel';
-import LeadImportModal from '@/components/leads/LeadImportModal';
-import ManualLeadPanel from '@/components/leads/ManualLeadPanel';
 
 interface DashboardClientProps {
   initialLeads: Lead[];
@@ -32,49 +26,28 @@ export default function DashboardClient({
   initialDateTo = '',
   onRefresh,
 }: DashboardClientProps) {
-  const router = useRouter();
-  const { user, selectedProyecto } = useAuth(); // Get authenticated user and proyecto from context
+  const { user } = useAuth();
   const { isOpen, config, showDialog, closeDialog } = useConfirmDialog();
   const [dateFrom, setDateFrom] = useState(initialDateFrom);
   const [dateTo, setDateTo] = useState(initialDateTo);
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
 
-  // Vendedor state (for admin - fetches all vendedores for assignment dropdown)
+  // Vendedor state (for assignment functionality - kept for potential future use)
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
 
-  // Usuarios state (for manual lead panel - fetches all usuarios with email)
+  // Usuarios state (for VendedoresMiniTable)
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const [selectedVendedorFilter, setSelectedVendedorFilter] = useState<string>(''); // Admin-only: filter by specific vendedor
-  const [assignmentFilter, setAssignmentFilter] = useState<'todos' | 'sin_asignar'>('todos'); // Admin-only: assignment filter
 
-  // Estado filter (for both admin and vendedor)
-  const [estadoFilter, setEstadoFilter] = useState<string>(''); // Filter by lead estado
-
-  // Export state
-  const [isExporting, setIsExporting] = useState(false);
-
-  // Import state (admin only)
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-
-  // Manual Lead Panel state (admin + vendedor)
-  const [isManualPanelOpen, setIsManualPanelOpen] = useState(false);
-
-  // Dropdown state for import options
-  const [isImportDropdownOpen, setIsImportDropdownOpen] = useState(false);
-
-  // Fetch vendedores on mount (only for assignment dropdown in table)
+  // Fetch vendedores and usuarios on mount
   useEffect(() => {
     getAllVendedores().then(setVendedores);
     getAllUsuarios().then(setUsuarios);
   }, []);
 
-  // Filter leads by date range AND vendedor (admin only)
+  // Filter leads by date range
   const filteredLeads = useMemo(() => {
     let filtered = initialLeads;
 
     if (dateFrom) {
-      // Parse date string as LOCAL timezone (not UTC) to match user's timezone
       const [year, month, day] = dateFrom.split('-').map(Number);
       const fromDate = new Date(year, month - 1, day);
       fromDate.setHours(0, 0, 0, 0);
@@ -85,7 +58,6 @@ export default function DashboardClient({
     }
 
     if (dateTo) {
-      // Parse date string as LOCAL timezone (not UTC) to match user's timezone
       const [year, month, day] = dateTo.split('-').map(Number);
       const toDate = new Date(year, month - 1, day);
       toDate.setHours(23, 59, 59, 999);
@@ -95,24 +67,8 @@ export default function DashboardClient({
       });
     }
 
-    // Assignment filtering (admin only)
-    if (assignmentFilter === 'sin_asignar') {
-      filtered = filtered.filter((lead) => lead.vendedor_asignado_id === null);
-    }
-    // 'todos' shows all leads (no additional filtering)
-
-    // Admin-only: Filter by specific vendedor (dropdown)
-    if (selectedVendedorFilter && user?.rol === 'admin') {
-      filtered = filtered.filter((lead) => lead.vendedor_asignado_id === selectedVendedorFilter);
-    }
-
-    // NEW: Filter by estado (applies to both admin and vendedor)
-    if (estadoFilter) {
-      filtered = filtered.filter((lead) => lead.estado === estadoFilter);
-    }
-
     return filtered;
-  }, [initialLeads, dateFrom, dateTo, assignmentFilter, selectedVendedorFilter, estadoFilter, user?.rol]);
+  }, [initialLeads, dateFrom, dateTo]);
 
   // Calculate stats from filtered leads
   const stats = useMemo(() => {
@@ -166,64 +122,51 @@ export default function DashboardClient({
 
   // Calculate asistencias data from filtered leads
   const asistenciasData = useMemo(() => {
-    // asistio is BOOLEAN: true (visited) / false (not visited) / null (legacy)
     const asistioSi = filteredLeads.filter((l) => l.asistio === true).length;
     const asistioNo = filteredLeads.filter((l) => l.asistio === false || l.asistio === null).length;
-
-    // Debug log to verify data
-    console.log('[ASISTENCIAS] Total filtered leads:', filteredLeads.length);
-    console.log('[ASISTENCIAS] Asistió Sí:', asistioSi);
-    console.log('[ASISTENCIAS] Asistió No:', asistioNo);
-    console.log('[ASISTENCIAS] Sum check:', asistioSi + asistioNo, '(should equal', filteredLeads.length, ')');
 
     return [
       {
         name: 'Asistió: Sí',
         value: asistioSi,
-        color: '#1b967a', // Verde EcoPlaza
+        color: '#1b967a',
       },
       {
         name: 'Asistió: No',
         value: asistioNo,
-        color: '#cbd5e1', // Gris claro
+        color: '#cbd5e1',
       },
     ];
   }, [filteredLeads]);
 
-  // Calculate UTM distribution from filtered leads - SESIÓN 57: Show ALL UTMs with horizontal bar chart
+  // Calculate UTM distribution from filtered leads
   const utmData = useMemo(() => {
-    // Count leads per UTM source
     const utmCounts = filteredLeads.reduce((acc, lead) => {
       const utm = lead.utm || 'Sin UTM';
       acc[utm] = (acc[utm] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    // Sort by count descending
     const sorted = Object.entries(utmCounts)
       .sort((a, b) => b[1] - a[1]);
 
-    // Color palette for UTMs (diverse colors)
     const utmColors: Record<string, string> = {
-      'victoria': '#1b967a',      // Verde EcoPlaza
-      'facebook': '#4267B2',      // Facebook blue
-      'google': '#DB4437',        // Google red
-      'instagram': '#E4405F',     // Instagram pink
-      'referido': '#192c4d',      // Azul EcoPlaza
-      'whatsapp': '#25D366',      // WhatsApp green
-      'web': '#fbde17',           // Amarillo EcoPlaza
-      'Sin UTM': '#cbd5e1',       // Gris claro
+      'victoria': '#1b967a',
+      'facebook': '#4267B2',
+      'google': '#DB4437',
+      'instagram': '#E4405F',
+      'referido': '#192c4d',
+      'whatsapp': '#25D366',
+      'web': '#fbde17',
+      'Sin UTM': '#cbd5e1',
     };
 
-    // Default color generator for unknown UTMs
     const getColor = (utm: string, index: number): string => {
       if (utmColors[utm]) return utmColors[utm];
-      // Fallback to a color palette for unknown UTMs
       const fallbackColors = ['#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#06b6d4', '#84cc16'];
       return fallbackColors[index % fallbackColors.length];
     };
 
-    // Return ALL UTMs (no limit) - horizontal bar chart handles many items well
     return sorted.map(([name, value], index) => ({
       name,
       value,
@@ -231,22 +174,17 @@ export default function DashboardClient({
     }));
   }, [filteredLeads]);
 
-  // SESIÓN 68: Calculate leads per vendedor (vendedor + vendedor_caseta roles)
-  // Shows ALL vendors including those with 0 leads assigned
+  // Calculate leads per vendedor (vendedor + vendedor_caseta roles)
   const vendedoresLeadsData = useMemo(() => {
-    // Get usuarios with vendedor or vendedor_caseta role that are active
     const vendedorUsuarios = usuarios.filter(
       (u) => (u.rol === 'vendedor' || u.rol === 'vendedor_caseta') && u.activo
     );
 
-    // Map each usuario to their lead counts
     return vendedorUsuarios.map((usuario) => {
-      // Get leads assigned to this usuario's vendedor_id
       const assignedLeads = filteredLeads.filter(
         (lead) => lead.vendedor_asignado_id === usuario.vendedor_id
       );
 
-      // Count manual vs automatic leads
       const leadsManuales = assignedLeads.filter(
         (lead) => lead.estado === 'lead_manual'
       ).length;
@@ -268,28 +206,16 @@ export default function DashboardClient({
     setDateTo(initialDateTo);
   };
 
-  const handleLeadClick = (lead: Lead) => {
-    setSelectedLead(lead);
-    setIsPanelOpen(true);
-  };
-
-  const handleClosePanel = () => {
-    setIsPanelOpen(false);
-    // Delay clearing selectedLead for smooth animation
-    setTimeout(() => setSelectedLead(null), 300);
-  };
-
+  // Handler for assigning leads (kept for VendedoresMiniTable or future use)
   const handleAssignLead = async (leadId: string, vendedorId: string) => {
     try {
       const result = await assignLeadToVendedor(leadId, vendedorId);
 
       if (result.success) {
-        // Refetch leads BEFORE showing success dialog (real-time update)
         if (onRefresh) {
           await onRefresh(dateFrom, dateTo);
         }
 
-        // Success notification
         showDialog({
           title: '¡Asignación exitosa!',
           message: result.message || `Lead "${result.leadNombre}" asignado a ${result.vendedorNombre}`,
@@ -299,7 +225,6 @@ export default function DashboardClient({
           showCancel: false,
         });
       } else {
-        // Error notification
         showDialog({
           title: 'Error al asignar',
           message: result.message || 'No se pudo asignar el lead',
@@ -322,23 +247,6 @@ export default function DashboardClient({
     }
   };
 
-  // Handler: Export filtered leads to Excel
-  const handleExportToExcel = () => {
-    if (!user) return;
-
-    setIsExporting(true);
-    try {
-      // Export filtered leads (respects ALL active filters)
-      const proyectoNombre = initialLeads[0]?.proyecto_nombre || 'Dashboard';
-      exportLeadsToExcel(filteredLeads, proyectoNombre);
-    } catch (error) {
-      console.error('Error exporting to Excel:', error);
-    } finally {
-      // Reset loading state after a short delay (for UX feedback)
-      setTimeout(() => setIsExporting(false), 500);
-    }
-  };
-
   return (
     <>
       {/* Date Range Filter */}
@@ -352,7 +260,6 @@ export default function DashboardClient({
         defaultDateTo={initialDateTo}
         onRefresh={onRefresh ? async () => await onRefresh(dateFrom, dateTo) : undefined}
       />
-
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -417,207 +324,6 @@ export default function DashboardClient({
           title="Leads por Vendedor"
         />
       </div>
-
-      {/* Admin Filters Section - Hidden for admin and marketing roles */}
-      {user?.rol !== 'admin' && user?.rol !== 'marketing' && (
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          {/* Filter Tabs - Only visible for jefe_ventas */}
-          {user?.rol === 'jefe_ventas' && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setAssignmentFilter('todos')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  assignmentFilter === 'todos'
-                    ? 'bg-primary text-white shadow-md'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Todos
-              </button>
-              <button
-                onClick={() => setAssignmentFilter('sin_asignar')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  assignmentFilter === 'sin_asignar'
-                    ? 'bg-primary text-white shadow-md'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                Sin Asignar
-              </button>
-            </div>
-          )}
-
-          {/* Vendedor Filter Dropdown - Only for jefe_ventas */}
-          {user?.rol === 'jefe_ventas' && (
-            <div className="flex items-center gap-2">
-              <select
-                value={selectedVendedorFilter}
-                onChange={(e) => setSelectedVendedorFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors hover:bg-gray-50"
-              >
-                <option value="">Todos los vendedores</option>
-                {vendedores
-                  .filter((v) => v.activo)
-                  .map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.nombre}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          )}
-
-          {/* Estado Filter Dropdown - All non-admin roles */}
-          <div className="flex items-center gap-2">
-            <select
-              value={estadoFilter}
-              onChange={(e) => setEstadoFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors hover:bg-gray-50"
-            >
-              <option value="">Todos los estados</option>
-              <option value="lead_completo">Lead Completo</option>
-              <option value="lead_incompleto">Lead Incompleto</option>
-              <option value="en_conversacion">En Conversación</option>
-              <option value="conversacion_abandonada">Conversación Abandonada</option>
-              <option value="lead_manual">Lead Manual</option>
-            </select>
-          </div>
-
-          {/* Export & Import Buttons */}
-          <div className="flex items-center gap-2 ml-auto">
-            {/* Import Dropdown (Vendedor only in this context) */}
-            {user?.rol === 'vendedor' && (
-              <div className="relative">
-                <button
-                  onClick={() => setIsImportDropdownOpen(!isImportDropdownOpen)}
-                  className="flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 hover:shadow-md active:scale-95 font-medium transition-all duration-200"
-                  title="Opciones para importar leads manuales"
-                >
-                  <Upload className="w-5 h-5" />
-                  <span className="hidden sm:inline">Importar Leads Manuales</span>
-                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isImportDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {/* Dropdown Menu */}
-                {isImportDropdownOpen && (
-                  <>
-                    {/* Backdrop to close dropdown */}
-                    <div
-                      className="fixed inset-0 z-10"
-                      onClick={() => setIsImportDropdownOpen(false)}
-                    />
-
-                    {/* Dropdown Content */}
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-20 overflow-hidden">
-                      <button
-                        onClick={() => {
-                          setIsManualPanelOpen(true);
-                          setIsImportDropdownOpen(false);
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors group"
-                      >
-                        <Plus className="w-5 h-5 text-accent group-hover:scale-110 transition-transform" />
-                        <div>
-                          <p className="font-medium text-gray-900">Agregar Lead</p>
-                          <p className="text-xs text-gray-500">Formulario visual paso a paso</p>
-                        </div>
-                      </button>
-
-                      <div className="border-t border-gray-100" />
-
-                      <button
-                        onClick={() => {
-                          setIsImportModalOpen(true);
-                          setIsImportDropdownOpen(false);
-                        }}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors group"
-                      >
-                        <Upload className="w-5 h-5 text-secondary group-hover:scale-110 transition-transform" />
-                        <div>
-                          <p className="font-medium text-gray-900">Importar CSV/Excel</p>
-                          <p className="text-xs text-gray-500">Subir archivo con múltiples leads</p>
-                        </div>
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Export Button - Only for jefe_ventas (admin is already excluded from parent condition) */}
-            {user?.rol === 'jefe_ventas' && (
-              <button
-                onClick={handleExportToExcel}
-                disabled={isExporting || filteredLeads.length === 0}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  isExporting || filteredLeads.length === 0
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-primary text-white hover:bg-primary/90 hover:shadow-md active:scale-95'
-                }`}
-                title={filteredLeads.length === 0 ? 'No hay leads para exportar' : 'Exportar leads filtrados a Excel'}
-              >
-                <Download className={`w-5 h-5 ${isExporting ? 'animate-bounce' : ''}`} />
-                <span className="hidden sm:inline">
-                  {isExporting ? 'Exportando...' : 'Exportar a Excel'}
-                </span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Table Section - Hidden for admin and marketing users */}
-      {user?.rol !== 'admin' && user?.rol !== 'marketing' && (
-        <LeadsTable
-          leads={filteredLeads}
-          totalLeads={initialLeads.length}
-          onLeadClick={handleLeadClick}
-          vendedores={vendedores}
-          currentVendedorId={user?.vendedor_id || null}
-          onAssignLead={handleAssignLead}
-          userRole={user?.rol || null}
-        />
-      )}
-
-      {/* Lead Detail Panel - Hidden for admin and marketing users */}
-      {user?.rol !== 'admin' && user?.rol !== 'marketing' && (
-        <LeadDetailPanel lead={selectedLead} isOpen={isPanelOpen} onClose={handleClosePanel} />
-      )}
-
-      {/* Manual Lead Panel (Admin + Vendedor) */}
-      {(user?.rol === 'admin' || user?.rol === 'vendedor') && selectedProyecto && (
-        <ManualLeadPanel
-          isOpen={isManualPanelOpen}
-          onClose={() => setIsManualPanelOpen(false)}
-          onSuccess={() => {
-            setIsManualPanelOpen(false);
-            // Refresh leads after successful import
-            if (onRefresh) {
-              onRefresh(dateFrom, dateTo);
-            }
-          }}
-          proyectoId={selectedProyecto.id}
-          proyectoNombre={selectedProyecto.nombre}
-          usuarios={usuarios}
-        />
-      )}
-
-      {/* Import Modal (Admin + Vendedor) */}
-      {(user?.rol === 'admin' || user?.rol === 'vendedor') && selectedProyecto && (
-        <LeadImportModal
-          isOpen={isImportModalOpen}
-          onClose={() => setIsImportModalOpen(false)}
-          onSuccess={() => {
-            setIsImportModalOpen(false);
-            // Refresh leads after successful import
-            if (onRefresh) {
-              onRefresh(dateFrom, dateTo);
-            }
-          }}
-          proyectoId={selectedProyecto.id}
-          proyectoNombre={selectedProyecto.nombre}
-        />
-      )}
 
       {/* Confirm Dialog */}
       <ConfirmDialog
