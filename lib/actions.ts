@@ -176,8 +176,16 @@ export async function importManualLeads(
     utm: string; // REQUERIDO para leads manuales
     email?: string;
     rubro?: string;
+    phoneValidation?: {
+      isValid: boolean;
+      error?: string;
+      country?: string;
+    };
   }>
 ) {
+  // Dynamic import to avoid issues with server-side rendering
+  const { validatePhoneNumber } = await import('@/lib/utils/phone-validation');
+
   try {
     // Create server-side Supabase client with cookies (authenticated role)
     const cookieStore = await cookies();
@@ -197,11 +205,24 @@ export async function importManualLeads(
     const duplicates: Array<{ nombre: string; telefono: string }> = [];
     const invalidVendors: Array<{ email: string; row: number; reason?: string }> = [];
     const missingUtm: Array<{ nombre: string; row: number }> = [];
+    const invalidPhones: Array<{ nombre: string; telefono: string; row: number; reason: string }> = [];
 
     // Validate each lead and collect vendedor IDs
     for (let i = 0; i < leads.length; i++) {
       const lead = leads[i];
       const rowNum = i + 1;
+
+      // VALIDACIÓN TELÉFONO: Debe tener código de país válido (doble validación backend)
+      const phoneValidation = validatePhoneNumber(lead.telefono);
+      if (!phoneValidation.isValid) {
+        invalidPhones.push({
+          nombre: lead.nombre,
+          telefono: lead.telefono,
+          row: rowNum,
+          reason: phoneValidation.error || 'Teléfono inválido',
+        });
+        continue;
+      }
 
       // VALIDACIÓN UTM: Requerido para leads manuales
       if (!lead.utm || lead.utm.trim() === '') {
@@ -289,6 +310,7 @@ export async function importManualLeads(
       duplicates,
       invalidVendors,
       missingUtm, // Leads sin UTM (REQUERIDO)
+      invalidPhones, // Leads sin código de país válido
       total: leads.length,
     };
   } catch (error) {
@@ -299,6 +321,7 @@ export async function importManualLeads(
       duplicates: [],
       invalidVendors: [],
       missingUtm: [],
+      invalidPhones: [],
       total: leads.length,
     };
   }

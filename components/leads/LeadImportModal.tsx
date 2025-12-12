@@ -12,7 +12,8 @@ import { useState, useRef } from 'react';
 import { importManualLeads } from '@/lib/actions';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { X, Upload, FileText, AlertCircle, CheckCircle, Download } from 'lucide-react';
+import { X, Upload, FileText, AlertCircle, CheckCircle, Download, Phone } from 'lucide-react';
+import { validatePhoneNumber } from '@/lib/utils/phone-validation';
 
 interface LeadImportModalProps {
   isOpen: boolean;
@@ -29,6 +30,11 @@ interface ParsedLead {
   utm: string; // REQUERIDO para leads manuales
   email?: string;
   rubro?: string;
+  phoneValidation?: {
+    isValid: boolean;
+    error?: string;
+    country?: string;
+  };
 }
 
 export default function LeadImportModal({
@@ -47,6 +53,7 @@ export default function LeadImportModal({
     duplicates: Array<{ nombre: string; telefono: string }>;
     invalidVendors: Array<{ email: string; row: number; reason?: string }>;
     missingUtm: Array<{ nombre: string; row: number }>;
+    invalidPhones: Array<{ nombre: string; telefono: string; row: number; reason: string }>;
     total: number;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -100,14 +107,23 @@ export default function LeadImportModal({
           header: true,
           skipEmptyLines: true,
           complete: (results) => {
-            const leads = results.data.map((row: any) => ({
-              nombre: row.nombre || '',
-              telefono: String(row.telefono || '').replace(/\D/g, ''), // Solo dígitos
-              email_vendedor: row.email_vendedor || '',
-              utm: row.utm || '', // REQUERIDO
-              email: row.email || '',
-              rubro: row.rubro || '',
-            }));
+            const leads = results.data.map((row: any) => {
+              const rawPhone = String(row.telefono || '');
+              const validation = validatePhoneNumber(rawPhone);
+              return {
+                nombre: row.nombre || '',
+                telefono: validation.cleanedNumber, // Solo dígitos, limpiado
+                email_vendedor: row.email_vendedor || '',
+                utm: row.utm || '', // REQUERIDO
+                email: row.email || '',
+                rubro: row.rubro || '',
+                phoneValidation: {
+                  isValid: validation.isValid,
+                  error: validation.error,
+                  country: validation.country,
+                },
+              };
+            });
             setParsedData(leads);
           },
         });
@@ -118,14 +134,23 @@ export default function LeadImportModal({
         const sheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-        const leads = jsonData.map((row: any) => ({
-          nombre: row.nombre || '',
-          telefono: String(row.telefono || '').replace(/\D/g, ''), // Solo dígitos
-          email_vendedor: row.email_vendedor || '',
-          utm: row.utm || '', // REQUERIDO
-          email: row.email || '',
-          rubro: row.rubro || '',
-        }));
+        const leads = jsonData.map((row: any) => {
+          const rawPhone = String(row.telefono || '');
+          const validation = validatePhoneNumber(rawPhone);
+          return {
+            nombre: row.nombre || '',
+            telefono: validation.cleanedNumber, // Solo dígitos, limpiado
+            email_vendedor: row.email_vendedor || '',
+            utm: row.utm || '', // REQUERIDO
+            email: row.email || '',
+            rubro: row.rubro || '',
+            phoneValidation: {
+              isValid: validation.isValid,
+              error: validation.error,
+              country: validation.country,
+            },
+          };
+        });
         setParsedData(leads);
       }
     };
@@ -156,12 +181,44 @@ export default function LeadImportModal({
       return;
     }
 
+    // Filtrar leads con teléfonos válidos vs inválidos
+    const validLeads = parsedData.filter((lead) => lead.phoneValidation?.isValid);
+    const invalidPhoneLeads = parsedData
+      .map((lead, idx) => ({
+        nombre: lead.nombre,
+        telefono: lead.telefono,
+        row: idx + 1,
+        reason: lead.phoneValidation?.error || 'Teléfono inválido',
+        isValid: lead.phoneValidation?.isValid,
+      }))
+      .filter((lead) => !lead.isValid);
+
+    if (validLeads.length === 0) {
+      alert(
+        'Ningún lead tiene un teléfono válido con código de país. Por favor revisa el archivo.'
+      );
+      return;
+    }
+
     setImporting(true);
 
-    const importResult = await importManualLeads(proyectoId, parsedData);
+    // Solo enviar leads con teléfonos válidos
+    const importResult = await importManualLeads(proyectoId, validLeads);
+
+    // Agregar los teléfonos inválidos al resultado
+    const finalResult = {
+      ...importResult,
+      invalidPhones: invalidPhoneLeads.map((l) => ({
+        nombre: l.nombre,
+        telefono: l.telefono,
+        row: l.row,
+        reason: l.reason,
+      })),
+      total: parsedData.length, // Total original incluyendo inválidos
+    };
 
     setImporting(false);
-    setResult(importResult);
+    setResult(finalResult);
 
     // NO auto-refresh: usuario controla cuándo actualizar dashboard
   };
@@ -320,12 +377,27 @@ export default function LeadImportModal({
           {/* Preview Section */}
           {file && parsedData.length > 0 && !result && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-gray-700">
-                <FileText className="w-5 h-5" />
-                <span className="font-medium">{file.name}</span>
-                <span className="text-sm text-gray-500">
-                  ({parsedData.length} {parsedData.length === 1 ? 'lead' : 'leads'})
-                </span>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-gray-700">
+                  <FileText className="w-5 h-5" />
+                  <span className="font-medium">{file.name}</span>
+                  <span className="text-sm text-gray-500">
+                    ({parsedData.length} {parsedData.length === 1 ? 'lead' : 'leads'})
+                  </span>
+                </div>
+                {/* Contador de teléfonos válidos/inválidos */}
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="text-green-600 flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4" />
+                    {parsedData.filter((l) => l.phoneValidation?.isValid).length} válidos
+                  </span>
+                  {parsedData.filter((l) => !l.phoneValidation?.isValid).length > 0 && (
+                    <span className="text-red-600 flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {parsedData.filter((l) => !l.phoneValidation?.isValid).length} inválidos
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Preview Table */}
@@ -347,10 +419,39 @@ export default function LeadImportModal({
                     </thead>
                     <tbody>
                       {parsedData.slice(0, 5).map((lead, idx) => (
-                        <tr key={idx} className="border-t border-gray-200">
+                        <tr
+                          key={idx}
+                          className={`border-t border-gray-200 ${
+                            !lead.phoneValidation?.isValid ? 'bg-red-50' : ''
+                          }`}
+                        >
                           <td className="py-2 px-3 text-gray-600">{idx + 1}</td>
                           <td className="py-2 px-3 text-gray-900">{lead.nombre}</td>
-                          <td className="py-2 px-3 text-gray-900">{lead.telefono}</td>
+                          <td className="py-2 px-3">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={
+                                  lead.phoneValidation?.isValid
+                                    ? 'text-gray-900'
+                                    : 'text-red-600 font-medium'
+                                }
+                              >
+                                {lead.telefono || '(vacío)'}
+                              </span>
+                              {lead.phoneValidation?.isValid ? (
+                                <span className="text-xs text-green-600 bg-green-100 px-1.5 py-0.5 rounded">
+                                  {lead.phoneValidation.country}
+                                </span>
+                              ) : (
+                                <span
+                                  className="text-xs text-red-600 bg-red-100 px-1.5 py-0.5 rounded"
+                                  title={lead.phoneValidation?.error}
+                                >
+                                  Sin código país
+                                </span>
+                              )}
+                            </div>
+                          </td>
                           <td className="py-2 px-3 text-gray-900">{lead.email_vendedor}</td>
                           <td className="py-2 px-3 text-gray-900">{lead.utm}</td>
                           <td className="py-2 px-3 text-gray-600">{lead.email || '-'}</td>
@@ -369,14 +470,33 @@ export default function LeadImportModal({
                 </div>
               </div>
 
+              {/* Warning si hay teléfonos inválidos */}
+              {parsedData.filter((l) => !l.phoneValidation?.isValid).length > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-start gap-3">
+                  <Phone className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-orange-900 font-medium">
+                      {parsedData.filter((l) => !l.phoneValidation?.isValid).length} leads tienen
+                      teléfono inválido
+                    </p>
+                    <p className="text-sm text-orange-800 mt-1">
+                      Los teléfonos deben incluir código de país (ej: 51987654321 para Perú). Los
+                      leads con teléfono inválido NO se importarán.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex gap-3">
                 <button
                   onClick={handleImport}
-                  disabled={importing}
+                  disabled={importing || parsedData.filter((l) => l.phoneValidation?.isValid).length === 0}
                   className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
                 >
-                  {importing ? 'Importando...' : `Importar ${parsedData.length} leads`}
+                  {importing
+                    ? 'Importando...'
+                    : `Importar ${parsedData.filter((l) => l.phoneValidation?.isValid).length} leads válidos`}
                 </button>
                 <button
                   onClick={handleReset}
@@ -455,6 +575,23 @@ export default function LeadImportModal({
                     {result.missingUtm.map((missing, idx) => (
                       <p key={idx} className="text-sm text-red-800">
                         • Fila {missing.row}: {missing.nombre} (UTM vacío o faltante)
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Invalid Phones */}
+              {result.invalidPhones && result.invalidPhones.length > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                  <p className="text-sm text-orange-900 font-medium mb-2 flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    Teléfonos sin código de país (no importados):
+                  </p>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {result.invalidPhones.map((inv, idx) => (
+                      <p key={idx} className="text-sm text-orange-800">
+                        • Fila {inv.row}: {inv.nombre} - {inv.telefono || '(vacío)'} ({inv.reason})
                       </p>
                     ))}
                   </div>
