@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { Lead, Vendedor } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
 import { Search, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Calendar, UserCheck, Mail, Check, Zap, X } from 'lucide-react';
+import VendedorSearchDropdown from '@/components/shared/VendedorSearchDropdown';
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -327,28 +328,28 @@ export default function LeadsTable({
                   )}
                 </td>
                 <td className="py-3 px-4">{getEstadoBadge(lead.estado)}</td>
-                <td className="py-3 px-4">
-                  {userRole === 'admin' && vendedores && onAssignLead ? (
-                    // ADMIN: Always show dropdown (can reassign or liberate)
-                    <select
-                      value={lead.vendedor_asignado_id || ''}
-                      onChange={(e) => {
-                        if (e.target.value !== lead.vendedor_asignado_id) {
-                          onAssignLead(lead.id, e.target.value);
+                <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                  {(userRole === 'admin' || userRole === 'jefe_ventas') && vendedores && onAssignLead ? (
+                    // ADMIN/JEFE_VENTAS: Dropdown con búsqueda (puede reasignar o liberar)
+                    <VendedorSearchDropdown
+                      vendedores={vendedores.filter(v => v.activo).map(v => ({
+                        id: v.id,
+                        nombre: v.nombre,
+                        rol: v.rol,
+                        activo: v.activo,
+                      }))}
+                      value={lead.vendedor_asignado_id}
+                      onChange={(vendedorId) => {
+                        if (vendedorId !== lead.vendedor_asignado_id) {
+                          onAssignLead(lead.id, vendedorId);
                         }
                       }}
-                      onClick={(e) => e.stopPropagation()} // Prevent row click when clicking dropdown
-                      className="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                    >
-                      <option value="">-- Sin Asignar --</option>
-                      {vendedores
-                        .filter((v) => v.activo)
-                        .map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.nombre}
-                          </option>
-                        ))}
-                    </select>
+                      placeholder="-- Sin Asignar --"
+                      allowClear={true}
+                      clearLabel="-- Sin Asignar --"
+                      size="sm"
+                      className="min-w-[180px]"
+                    />
                   ) : lead.vendedor_asignado_id ? (
                     // VENDEDOR: Already assigned - READ ONLY
                     <span className="text-gray-700 font-medium">
@@ -363,7 +364,7 @@ export default function LeadsTable({
                           onAssignLead(lead.id, e.target.value);
                         }
                       }}
-                      onClick={(e) => e.stopPropagation()} // Prevent row click when clicking dropdown
+                      onClick={(e) => e.stopPropagation()}
                       className="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                     >
                       <option value="">-- Tomar Lead --</option>
