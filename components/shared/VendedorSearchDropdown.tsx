@@ -64,10 +64,13 @@ export default function VendedorSearchDropdown({
     const shouldOpenUp = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
 
     setOpenDirection(shouldOpenUp ? 'up' : 'down');
+    // Dropdown 50% más ancho que el trigger, alineado a la izquierda
+    const dropdownWidth = rect.width * 1.5;
+
     setDropdownPosition({
       top: shouldOpenUp ? rect.top - dropdownHeight : rect.bottom + 4,
       left: rect.left,
-      width: rect.width,
+      width: dropdownWidth,
     });
   };
 
