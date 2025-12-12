@@ -418,8 +418,8 @@ export default function DashboardClient({
         />
       </div>
 
-      {/* Admin Filters Section - Hidden for admin role */}
-      {user?.rol !== 'admin' && (
+      {/* Admin Filters Section - Hidden for admin and marketing roles */}
+      {user?.rol !== 'admin' && user?.rol !== 'marketing' && (
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           {/* Filter Tabs - Only visible for jefe_ventas */}
           {user?.rol === 'jefe_ventas' && (
@@ -566,8 +566,8 @@ export default function DashboardClient({
         </div>
       )}
 
-      {/* Table Section - Hidden for admin users */}
-      {user?.rol !== 'admin' && (
+      {/* Table Section - Hidden for admin and marketing users */}
+      {user?.rol !== 'admin' && user?.rol !== 'marketing' && (
         <LeadsTable
           leads={filteredLeads}
           totalLeads={initialLeads.length}
@@ -579,8 +579,8 @@ export default function DashboardClient({
         />
       )}
 
-      {/* Lead Detail Panel - Hidden for admin users */}
-      {user?.rol !== 'admin' && (
+      {/* Lead Detail Panel - Hidden for admin and marketing users */}
+      {user?.rol !== 'admin' && user?.rol !== 'marketing' && (
         <LeadDetailPanel lead={selectedLead} isOpen={isPanelOpen} onClose={handleClosePanel} />
       )}
 
