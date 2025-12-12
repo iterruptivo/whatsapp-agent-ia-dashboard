@@ -441,7 +441,7 @@ export default function RepulseClient({
                     <div className="flex flex-col items-center gap-2">
                       <Users className="w-12 h-12 text-gray-300" />
                       <p>No hay leads en repulse</p>
-                      <p className="text-sm">Los leads se agregan automáticamente cada 10 días o manualmente desde /operativo</p>
+                      <p className="text-sm">Los leads se agregan automáticamente cada día (3:00 AM) o manualmente desde /operativo</p>
                     </div>
                   </td>
                 </tr>
@@ -681,16 +681,16 @@ export default function RepulseClient({
                     Detección automática
                   </h3>
                   <p className="text-gray-600 mb-2">
-                    Cada <strong>15 días</strong>, el sistema automáticamente:
+                    <strong>Todos los días a las 3:00 AM</strong> (hora Perú), el sistema automáticamente:
                   </p>
                   <ul className="text-gray-600 space-y-1 ml-4">
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-1">1.</span>
-                      Detecta <strong>nuevos leads</strong> que cumplen los criterios
+                      Detecta <strong>nuevos leads</strong> que cumplen los criterios (30+ días sin compra)
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-primary mt-1">2.</span>
-                      <strong>Reactiva</strong> leads en estado "Enviado" que tienen 15+ días desde el último envío
+                      <strong>Reactiva</strong> leads en estado &quot;Enviado&quot; que tienen 15+ días desde el último envío
                     </li>
                   </ul>
                 </div>
