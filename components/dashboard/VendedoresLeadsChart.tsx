@@ -155,7 +155,6 @@ export default function VendedoresLeadsChart({ data, title }: VendedoresLeadsCha
                   fill="#6b7280"
                   fontSize={11}
                   fontWeight={600}
-                  formatter={(value: number) => value > 0 ? value : ''}
                 />
               </Bar>
             </BarChart>
