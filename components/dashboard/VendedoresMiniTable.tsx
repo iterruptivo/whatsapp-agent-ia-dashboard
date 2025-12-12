@@ -70,23 +70,26 @@ export default function VendedoresMiniTable({
             <thead>
               <tr className="text-xs text-gray-500 border-b border-gray-200">
                 <th className="text-left py-2 w-8">#</th>
-                <th className="text-left py-2">Vendedor</th>
-                <th className="text-right py-2 w-20">Lead Manual</th>
-                <th className="text-right py-2 w-20">NO Manual</th>
-                <th className="text-right py-2 w-16">Total</th>
-                <th className="py-2 w-32">
-                  {/* Legend - aligned with Total column */}
-                  <div className="flex items-center justify-end gap-3 text-xs text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                      <span>Vendedor</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-                      <span>Caseta</span>
+                <th className="text-left py-2">
+                  <div className="flex items-center gap-4">
+                    <span>Vendedor</span>
+                    {/* Legend - next to Vendedor header */}
+                    <div className="flex items-center gap-3 text-gray-400 font-normal">
+                      <div className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                        <span>Vendedor</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+                        <span>Vendedor Caseta</span>
+                      </div>
                     </div>
                   </div>
                 </th>
+                <th className="text-right py-2 w-20">Lead Manual</th>
+                <th className="text-right py-2 w-20">NO Manual</th>
+                <th className="text-right py-2 w-16">Total</th>
+                <th className="py-2 w-32"></th>
               </tr>
             </thead>
             <tbody>
@@ -105,10 +108,10 @@ export default function VendedoresMiniTable({
                     <td className="py-2 text-sm text-gray-400">{index + 1}</td>
                     <td className="py-2">
                       <div className="flex items-center gap-1.5">
-                        {/* Role indicator: gray for vendedor, blue for caseta */}
+                        {/* Role indicator: red for vendedor, blue for caseta */}
                         <span
                           className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            vendedor.rol === 'vendedor_caseta' ? 'bg-sky-500' : 'bg-gray-400'
+                            vendedor.rol === 'vendedor_caseta' ? 'bg-sky-500' : 'bg-red-500'
                           }`}
                         ></span>
                         <span className="text-sm font-medium text-gray-800">
