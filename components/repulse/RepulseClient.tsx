@@ -257,7 +257,8 @@ export default function RepulseClient({
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {/* Grid 4 cols: Total, Pendientes, Enviados, Excluidos (Respondieron y Sin respuesta ocultos) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-100 rounded-lg">
@@ -294,7 +295,8 @@ export default function RepulseClient({
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-4">
+        {/* TODO: Habilitar cuando se implemente tracking de respuestas via n8n */}
+        {/* <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
               <CheckCircle className="w-5 h-5 text-green-600" />
@@ -316,7 +318,7 @@ export default function RepulseClient({
               <p className="text-xs text-gray-500">Sin respuesta</p>
             </div>
           </div>
-        </div>
+        </div> */}
 
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center gap-3">
@@ -355,8 +357,9 @@ export default function RepulseClient({
               <option value="todos">Todos los estados</option>
               <option value="pendiente">Pendientes</option>
               <option value="enviado">Enviados</option>
-              <option value="respondio">Respondieron</option>
-              <option value="sin_respuesta">Sin respuesta</option>
+              {/* TODO: Habilitar cuando se implemente tracking de respuestas via n8n */}
+              {/* <option value="respondio">Respondieron</option> */}
+              {/* <option value="sin_respuesta">Sin respuesta</option> */}
               <option value="excluido">Excluidos</option>
             </select>
           </div>
