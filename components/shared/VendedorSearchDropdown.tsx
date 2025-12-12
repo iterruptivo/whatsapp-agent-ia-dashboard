@@ -44,7 +44,32 @@ export default function VendedorSearchDropdown({
 }: VendedorSearchDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [openDirection, setOpenDirection] = useState<'up' | 'down'>('down');
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Calcular dirección y posición del dropdown al abrir
+  const calculatePosition = () => {
+    if (!triggerRef.current) return;
+
+    const rect = triggerRef.current.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const dropdownHeight = 280; // Altura aproximada del dropdown
+
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    // Abrir hacia arriba si no hay espacio suficiente abajo y hay más espacio arriba
+    const shouldOpenUp = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
+
+    setOpenDirection(shouldOpenUp ? 'up' : 'down');
+    setDropdownPosition({
+      top: shouldOpenUp ? rect.top - dropdownHeight : rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+    });
+  };
 
   // Cerrar dropdown al hacer click fuera
   useEffect(() => {
@@ -58,6 +83,23 @@ export default function VendedorSearchDropdown({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Recalcular posición en scroll/resize
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleScrollOrResize = () => {
+      calculatePosition();
+    };
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [isOpen]);
 
   // Obtener vendedor seleccionado
   const selectedVendedor = vendedores.find(v => v.id === value);
@@ -96,10 +138,16 @@ export default function VendedorSearchDropdown({
     <div className={`relative ${className}`} ref={dropdownRef}>
       {/* Trigger Button */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          if (!disabled) setIsOpen(!isOpen);
+          if (!disabled) {
+            if (!isOpen) {
+              calculatePosition();
+            }
+            setIsOpen(!isOpen);
+          }
         }}
         disabled={disabled}
         className={`w-full ${styles.trigger} text-left border border-gray-300 rounded-lg bg-white hover:border-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors flex items-center justify-between ${
@@ -114,10 +162,15 @@ export default function VendedorSearchDropdown({
         />
       </button>
 
-      {/* Dropdown */}
+      {/* Dropdown - Fixed position para evitar clipping por overflow de padres */}
       {isOpen && (
         <div
-          className={`absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg ${styles.dropdown} overflow-hidden`}
+          className={`fixed z-[9999] bg-white border border-gray-300 rounded-lg shadow-lg ${styles.dropdown} overflow-hidden`}
+          style={{
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
+            width: `${dropdownPosition.width}px`,
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Search Input */}
