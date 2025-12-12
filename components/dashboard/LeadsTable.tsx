@@ -13,7 +13,7 @@ interface LeadsTableProps {
   vendedores?: Vendedor[];
   currentVendedorId?: string | null;
   onAssignLead?: (leadId: string, vendedorId: string) => Promise<void>;
-  userRole?: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | null;
+  userRole?: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | null;
   // Repulse multi-select
   showRepulseSelection?: boolean;
   selectedLeadIds?: string[];
