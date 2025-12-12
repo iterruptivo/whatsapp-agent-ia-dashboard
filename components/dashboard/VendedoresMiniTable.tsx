@@ -4,8 +4,8 @@
 // Descripción: Mini tabla compacta mostrando Top 5 vendedores con leads
 // - Vista compacta por defecto (Top 5)
 // - Expandible para ver todos los vendedores
-// - Columnas: #, Vendedor, Manual, Auto, Total, Barra visual
-// - Badge sutil de rol (vendedor vs vendedor_caseta)
+// - Columnas: #, Vendedor, Lead Manual, NO Manual, Total, Barra visual
+// - Badge de rol: gris para vendedor, azul para vendedor_caseta
 // ============================================================================
 
 'use client';
@@ -63,22 +63,6 @@ export default function VendedoresMiniTable({
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 mb-3 text-xs text-gray-500">
-        <div className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded bg-purple-500"></span>
-          <span>Manual</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="w-3 h-3 rounded bg-[#1b967a]"></span>
-          <span>Automático</span>
-        </div>
-        <div className="flex items-center gap-1 ml-2">
-          <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-          <span>Caseta</span>
-        </div>
-      </div>
-
       {/* Table */}
       {sortedData.length > 0 ? (
         <div className="overflow-hidden">
@@ -87,10 +71,22 @@ export default function VendedoresMiniTable({
               <tr className="text-xs text-gray-500 border-b border-gray-200">
                 <th className="text-left py-2 w-8">#</th>
                 <th className="text-left py-2">Vendedor</th>
-                <th className="text-right py-2 w-16">Manual</th>
-                <th className="text-right py-2 w-16">Auto</th>
+                <th className="text-right py-2 w-20">Lead Manual</th>
+                <th className="text-right py-2 w-20">NO Manual</th>
                 <th className="text-right py-2 w-16">Total</th>
-                <th className="py-2 w-24"></th>
+                <th className="py-2 w-32">
+                  {/* Legend - aligned with Total column */}
+                  <div className="flex items-center justify-end gap-3 text-xs text-gray-400">
+                    <div className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                      <span>Vendedor</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-sky-500"></span>
+                      <span>Caseta</span>
+                    </div>
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -109,10 +105,13 @@ export default function VendedoresMiniTable({
                     <td className="py-2 text-sm text-gray-400">{index + 1}</td>
                     <td className="py-2">
                       <div className="flex items-center gap-1.5">
-                        {vendedor.rol === 'vendedor_caseta' && (
-                          <span className="w-2 h-2 rounded-full bg-sky-500 flex-shrink-0"></span>
-                        )}
-                        <span className="text-sm font-medium text-gray-800 truncate max-w-[150px]">
+                        {/* Role indicator: gray for vendedor, blue for caseta */}
+                        <span
+                          className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            vendedor.rol === 'vendedor_caseta' ? 'bg-sky-500' : 'bg-gray-400'
+                          }`}
+                        ></span>
+                        <span className="text-sm font-medium text-gray-800">
                           {vendedor.nombre}
                         </span>
                       </div>
@@ -186,11 +185,11 @@ export default function VendedoresMiniTable({
       <div className="mt-4 pt-3 border-t border-gray-200">
         <div className="grid grid-cols-3 gap-4 text-center">
           <div>
-            <p className="text-xs text-gray-500">Manual</p>
+            <p className="text-xs text-gray-500">Lead Manual</p>
             <p className="text-lg font-bold text-purple-600">{totalManuales}</p>
           </div>
           <div>
-            <p className="text-xs text-gray-500">Automático</p>
+            <p className="text-xs text-gray-500">NO Manual</p>
             <p className="text-lg font-bold text-[#1b967a]">{totalAutomaticos}</p>
           </div>
           <div>
