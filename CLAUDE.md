@@ -7,8 +7,8 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 9 Diciembre 2025
-**Sesión:** 67 - 🔐 **Sistema Verificación por Finanzas + Liberación de Comisiones**
+**Fecha:** 11 Diciembre 2025
+**Sesión:** 68 - 📞🔄 **Limpieza Teléfonos + Cron Repulse Diario**
 **Estado:** ✅ **DEPLOYED TO STAGING**
 **Documentación:** Ver detalles abajo
 
@@ -26,9 +26,9 @@
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
 | [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 66 (9 Dic)** | Logo + Docs + PDF + Contratos Word |
-| [Repulse](docs/modulos/repulse.md) | ⏳ **EN DESARROLLO** | **Sesión 65C (8 Dic)** | re-engagement leads |
+| [Repulse](docs/modulos/repulse.md) | ✅ **OPERATIVO** | **Sesión 68 (11 Dic)** | re-engagement leads (cron diario) |
 
-### **Métricas Globales (Actualizado: 9 Dic 2025)**
+### **Métricas Globales (Actualizado: 11 Dic 2025)**
 ```
 Total Leads:        1,417
 Total Locales:      823
@@ -81,9 +81,9 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Tecnología: docx-templates para templates Word + HTML templates + JSZip post-processing
 
 - **[Repulse](docs/modulos/repulse.md)** - Sistema de re-engagement de leads
-  - Última sesión: **65C (Inyección Mensajes en Historial + Quota Widget)**
-  - Estado: EN DESARROLLO (branch integrado a staging)
-  - Features: detección automática (30+ días), envío batch, exclusión permanente, historial visible, webhook n8n
+  - Última sesión: **68 (Cron Diario 3:00 AM + Limpieza Teléfonos)**
+  - Estado: ✅ OPERATIVO (branch integrado a staging)
+  - Features: detección automática DIARIA, envío batch, exclusión permanente, historial visible, webhook n8n
 
 ---
 
@@ -126,6 +126,7 @@ Documentación cronológica completa de todas las sesiones.
   - **💬 Sistema Repulse: Webhook n8n + Quota Widget (65C)** ✅
   - **🖼️📎📄 Logo Dinámico + Docs Adjuntos + PDF + Contratos Word (66)** ✅
   - **🔐 Sistema Verificación por Finanzas + Liberación Comisiones (67)** ✅
+  - **📞🔄 Limpieza Teléfonos + Cron Repulse Diario (68)** ✅
 
 ---
 

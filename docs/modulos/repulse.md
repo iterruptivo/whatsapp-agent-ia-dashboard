@@ -15,8 +15,8 @@
 
 ## 🔄 Estado Actual
 
-**COMPLETADO** - Branch: `feature/repulse`
-**Última actualización:** Sesión 65C (7 Dic 2025)
+**COMPLETADO** - Branch: `feature/repulse` → merged to `staging`
+**Última actualización:** Sesión 68 (11 Dic 2025)
 
 ### Funcionalidades Implementadas:
 - ✅ Tablas de base de datos (repulse_leads, repulse_templates, repulse_historial)
@@ -29,9 +29,10 @@
 - ✅ Campo `excluido_repulse` en interface Lead
 - ✅ Integración webhook n8n para envío de mensajes WhatsApp
 - ✅ ConfirmModal elegante (reemplaza `confirm()` del navegador)
-- ✅ Cron job pg_cron cada 15 días
+- ✅ **Cron job pg_cron DIARIO (3:00 AM Perú)** - Actualizado Sesión 68
 - ✅ Lógica de reactivación (leads enviados vuelven a pendiente tras 15 días)
 - ✅ **Widget de Quota WhatsApp** (badge con indicador de consumo diario)
+- ✅ **Modal informativo actualizado** con horario de cron correcto
 
 ### Pendientes:
 - ⏳ Envío automático nocturno (cron job 11:00 PM)
@@ -364,7 +365,7 @@ handleToggleExcludeRepulse(leadId, exclude) // Exclusión
 
 ### 1. Detección Automática (pg_cron)
 ```
-pg_cron (cada 15 días, 1:00 PM Perú)
+pg_cron (DIARIO, 3:00 AM Perú)
     ↓
 detectar_leads_repulse() [SQL por cada proyecto activo]
     ↓
@@ -374,11 +375,11 @@ detectar_leads_repulse() [SQL por cada proyecto activo]
 Leads listos en /repulse para envío manual
 ```
 
-**Configuración del cron job:**
+**Configuración del cron job (Actualizada Sesión 68 - 11 Dic 2025):**
 ```sql
 SELECT cron.schedule(
   'detectar-leads-repulse',
-  '0 18 */15 * *',  -- 18:00 UTC = 1:00 PM Perú
+  '0 8 * * *',  -- 08:00 UTC = 3:00 AM Perú
   $$
   SELECT detectar_leads_repulse(id)
   FROM proyectos
@@ -386,6 +387,8 @@ SELECT cron.schedule(
   $$
 );
 ```
+
+> **Cambio Sesión 68:** Cron actualizado de cada 15 días a **DIARIO** para detectar leads más rápidamente.
 
 ### 2. Agregado Manual desde /operativo
 ```
@@ -748,6 +751,7 @@ quota_disponible = 250 - COUNT(leads HOY donde estado != 'lead_manual')
 | `015b604` | feat: replace browser confirm() with ConfirmModal in RepulseClient |
 | `3a09381` | fix: sync repulse_leads status when re-including lead from /operativo |
 | `b8a8fd4` | feat: improve quota badge UX - position, timezone, tooltip |
+| `acd15f0` | docs: Update Repulse info modal - cron now runs daily at 3:00 AM |
 
 ---
 
@@ -781,10 +785,10 @@ const showRepulseButton = ['admin', 'jefe_ventas'].includes(role);
 
 ## 📚 Referencias
 
-- **Branch:** `feature/repulse`
-- **Sesiones de desarrollo:** 65, 65B, 65C (5-7 Dic 2025)
+- **Branch:** `feature/repulse` → merged to `staging`
+- **Sesiones de desarrollo:** 65, 65B, 65C, 68 (5-11 Dic 2025)
 - **Integración:** n8n + WhatsApp Business API ✅ COMPLETADA
-- **Cron job:** pg_cron cada 15 días (18:00 UTC / 1:00 PM Perú)
+- **Cron job:** pg_cron **DIARIO** (08:00 UTC / 3:00 AM Perú) - Actualizado Sesión 68
 - **Widget Quota:** Implementado con timezone Perú (UTC-5)
 
 ---
@@ -793,16 +797,32 @@ const showRepulseButton = ['admin', 'jefe_ventas'].includes(role);
 
 ```sql
 -- Verificar cron job
-SELECT * FROM cron.job;
+SELECT jobname, schedule, active FROM cron.job WHERE jobname = 'detectar-leads-repulse';
 
 -- Ver historial de ejecuciones
 SELECT * FROM cron.job_run_details ORDER BY start_time DESC LIMIT 10;
 
--- Ejecutar detección manualmente (para testing)
+-- Ejecutar detección manualmente para TODOS los proyectos
+SELECT
+  p.nombre AS proyecto,
+  detectar_leads_repulse(p.id) AS leads_agregados
+FROM proyectos p
+WHERE p.activo = true;
+
+-- Ejecutar detección para UN proyecto específico
 SELECT detectar_leads_repulse('uuid-del-proyecto');
 
--- Eliminar cron job (si necesario)
+-- Reprogramar cron (ejemplo: cambiar horario)
 SELECT cron.unschedule('detectar-leads-repulse');
+SELECT cron.schedule(
+  'detectar-leads-repulse',
+  '0 8 * * *',  -- 3:00 AM Perú
+  $$
+  SELECT detectar_leads_repulse(id)
+  FROM proyectos
+  WHERE activo = true
+  $$
+);
 ```
 
 ---

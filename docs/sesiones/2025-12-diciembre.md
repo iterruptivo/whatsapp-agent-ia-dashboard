@@ -8,6 +8,7 @@
 - [Sesión 65C](#sesión-65c---7-diciembre-2025) - Widget Quota WhatsApp + Mejoras UX
 - [Sesión 66](#sesión-66---8-diciembre-2025) - 👥 Sistema Administración de Usuarios
 - [Sesión 67](#sesión-67---9-diciembre-2025) - 🔐 Sistema Verificación por Finanzas + Liberación de Comisiones
+- [Sesión 68](#sesión-68---11-diciembre-2025) - 📞🔄 Limpieza Teléfonos + Cron Repulse Diario
 
 ---
 
@@ -1267,6 +1268,188 @@ DROP TRIGGER IF EXISTS trigger_comisiones_inicial_verificado ON abonos_pago;
 
 -- 3. Las columnas de verificación pueden quedarse (no afectan funcionamiento)
 ```
+
+---
+
+## Sesión 68 - 11 Diciembre 2025
+
+### 📞🔄 Limpieza Teléfonos + Cron Repulse Diario
+
+**Tipo:** Mantenimiento de datos + Configuración
+**Estado:** ✅ COMPLETADO
+**Branch:** `staging`
+
+---
+
+### Objetivo
+
+1. Limpiar leads con teléfonos sin código de país (51)
+2. Actualizar cron de Repulse de cada 15 días a DIARIO
+
+---
+
+### Trabajo Realizado
+
+#### FASE 1: Limpieza de Teléfonos sin Código de País ✅
+
+**Problema identificado:** Existían leads con teléfonos de 9 dígitos (sin el prefijo `51` de Perú), causando inconsistencias en el sistema.
+
+**Proyectos afectados:**
+
+| Proyecto | Leads sin 51 | Duplicados | Acción |
+|----------|--------------|------------|--------|
+| Proyecto Callao | 18 → 5 | 12 eliminados | DELETE duplicados + UPDATE restantes |
+| Proyecto San Gabriel | 3 | 0 | UPDATE (agregar 51) |
+
+**SQL utilizado para detectar:**
+
+```sql
+-- Leads sin código de país por proyecto
+SELECT
+  p.nombre AS proyecto,
+  p.id AS proyecto_id,
+  COUNT(l.id) AS telefonos_sin_51
+FROM proyectos p
+LEFT JOIN leads l
+  ON l.proyecto_id = p.id
+  AND l.telefono NOT LIKE '51%'
+  AND LENGTH(l.telefono) = 9
+WHERE p.activo = true
+GROUP BY p.id, p.nombre
+ORDER BY telefonos_sin_51 DESC;
+```
+
+**SQL para encontrar duplicados:**
+
+```sql
+-- Encontrar leads sin 51 que tienen duplicado con 51
+SELECT
+  s.id AS id_sin_51,
+  s.nombre AS nombre_sin_51,
+  s.telefono AS tel_sin_51,
+  c.id AS id_con_51,
+  c.nombre AS nombre_con_51,
+  c.telefono AS tel_con_51
+FROM leads s
+INNER JOIN leads c
+  ON s.telefono = SUBSTRING(c.telefono FROM 3)
+  AND c.telefono LIKE '51%'
+WHERE s.proyecto_id = 'UUID_PROYECTO'
+  AND s.telefono NOT LIKE '51%'
+  AND LENGTH(s.telefono) = 9
+  AND c.proyecto_id = 'UUID_PROYECTO';
+```
+
+**Acciones ejecutadas:**
+
+1. **Proyecto Callao:**
+   - 12 leads duplicados eliminados (los que NO tenían 51)
+   - 5 leads únicos actualizados (agregado prefijo 51)
+
+2. **Proyecto San Gabriel:**
+   - 0 duplicados encontrados
+   - 3 leads únicos actualizados (agregado prefijo 51)
+
+**SQL para agregar prefijo 51:**
+
+```sql
+UPDATE leads
+SET telefono = '51' || telefono
+WHERE proyecto_id = 'UUID_PROYECTO'
+  AND telefono NOT LIKE '51%'
+  AND LENGTH(telefono) = 9;
+```
+
+---
+
+#### FASE 2: Cron Repulse Actualizado a DIARIO ✅
+
+**Cambio:** De cada 15 días → DIARIO a las 3:00 AM (hora Perú)
+
+**Razón:** Detectar leads elegibles para repulse más rápidamente, sin impacto en rendimiento (la función es ligera e idempotente).
+
+**SQL ejecutado en Supabase:**
+
+```sql
+-- Eliminar cron anterior (cada 15 días)
+SELECT cron.unschedule('detectar-leads-repulse');
+
+-- Crear cron diario (3:00 AM Perú = 8:00 AM UTC)
+SELECT cron.schedule(
+  'detectar-leads-repulse',
+  '0 8 * * *',
+  $$
+  SELECT detectar_leads_repulse(id)
+  FROM proyectos
+  WHERE activo = true
+  $$
+);
+```
+
+**Verificación:**
+
+```sql
+SELECT jobname, schedule, active
+FROM cron.job
+WHERE jobname = 'detectar-leads-repulse';
+-- Resultado: schedule = '0 8 * * *', active = true
+```
+
+**Ejecución manual previa:** Se ejecutó la detección manualmente para todos los proyectos antes de activar el cron diario.
+
+---
+
+#### FASE 3: Actualización Modal Informativo ✅
+
+**Archivo:** `components/repulse/RepulseClient.tsx`
+
+**Cambios:**
+- Empty state: "cada 10 días" → "cada día (3:00 AM)"
+- Modal info: "Cada 15 días" → "Todos los días a las 3:00 AM (hora Perú)"
+
+**Commit:** `acd15f0`
+
+---
+
+### Análisis Técnico
+
+**¿Por qué el cron diario no afecta el rendimiento?**
+
+1. **Función ligera:** `detectar_leads_repulse()` usa queries con índices
+2. **Idempotente:** `ON CONFLICT DO NOTHING` evita duplicados
+3. **Background:** Se ejecuta en el servidor de Supabase, no afecta requests de usuarios
+4. **Horario óptimo:** 3:00 AM cuando nadie usa el dashboard
+5. **~7 proyectos:** Solo 7 queries pequeñas por ejecución
+
+---
+
+### Archivos Modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `components/repulse/RepulseClient.tsx` | Textos del modal actualizados |
+| `docs/modulos/repulse.md` | Documentación actualizada |
+| `docs/sesiones/2025-12-diciembre.md` | Esta sesión agregada |
+| Supabase cron.job | Schedule actualizado |
+
+---
+
+### Commits
+
+| Hash | Mensaje |
+|------|---------|
+| `acd15f0` | docs: Update Repulse info modal - cron now runs daily at 3:00 AM |
+
+---
+
+### Configuración Final del Sistema Repulse
+
+| Parámetro | Valor |
+|-----------|-------|
+| **Cron schedule** | `0 8 * * *` (diario 3:00 AM Perú) |
+| **Detección leads** | 30+ días sin compra |
+| **Reactivación** | 15+ días desde último envío |
+| **Envío mensajes** | MANUAL (usuario selecciona y envía) |
 
 ---
 
