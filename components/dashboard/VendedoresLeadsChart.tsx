@@ -67,7 +67,7 @@ const CustomYAxisTick = ({ x, y, payload, data }: { x?: number; y?: number; payl
       </text>
       {isVendedorCaseta && (
         <circle
-          cx={-payload?.value?.length * 6 - 12}
+          cx={-(payload?.value?.length || 0) * 6 - 12}
           cy={0}
           r={4}
           fill="#0ea5e9"
