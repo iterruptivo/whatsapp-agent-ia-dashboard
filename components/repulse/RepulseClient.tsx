@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Zap,
   Users,
@@ -25,6 +25,8 @@ import {
   Info,
   X,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
   type RepulseLead,
@@ -76,6 +78,10 @@ export default function RepulseClient({
   const [showEnvioModal, setShowEnvioModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 100;
+
   // State para ConfirmModal
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -114,8 +120,22 @@ export default function RepulseClient({
     });
   }, [leads, estadoFilter, searchTerm]);
 
-  // Leads seleccionables (solo pendientes)
-  const selectableLeads = filteredLeads.filter((l) => l.estado === 'pendiente');
+  // Paginated leads
+  const paginatedLeads = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return filteredLeads.slice(start, end);
+  }, [filteredLeads, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredLeads.length / itemsPerPage);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, estadoFilter]);
+
+  // Leads seleccionables (solo pendientes de la página actual)
+  const selectableLeads = paginatedLeads.filter((l) => l.estado === 'pendiente');
 
   // Toggle selección individual
   const toggleSelection = (id: string) => {
@@ -435,7 +455,7 @@ export default function RepulseClient({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredLeads.length === 0 ? (
+              {paginatedLeads.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center gap-2">
@@ -446,7 +466,7 @@ export default function RepulseClient({
                   </td>
                 </tr>
               ) : (
-                filteredLeads.map((repulseLead, idx) => (
+                paginatedLeads.map((repulseLead, idx) => (
                   <tr
                     key={repulseLead.id}
                     className={`${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 transition-colors`}
@@ -524,6 +544,34 @@ export default function RepulseClient({
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredLeads.length)} de {filteredLeads.length} leads
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm text-gray-600 px-3">
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modals */}
