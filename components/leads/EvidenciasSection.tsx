@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { FileWarning, Upload, Image, Video, User, Calendar, Loader2, X, Play } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { supabase } from '@/lib/supabase';
-import { getEvidenciasByLeadId, uploadEvidencia, Evidencia } from '@/lib/actions-evidencias';
+import { getEvidenciasByLeadId, Evidencia } from '@/lib/actions-evidencias';
 
 interface EvidenciasSectionProps {
   leadId: string;
@@ -155,19 +155,30 @@ export default function EvidenciasSection({
           .from('evidencias-leads')
           .getPublicUrl(fileName);
 
-        const result = await uploadEvidencia(
-          leadId,
-          usuarioId,
-          usuarioNombre,
-          usuarioRol,
-          urlData.publicUrl,
-          isImage ? 'imagen' : 'video',
-          file.name,
-          finalSize
-        );
+        // Insert directly from client (has auth context)
+        const { data: insertedData, error: insertError } = await supabase
+          .from('lead_evidencias')
+          .insert({
+            lead_id: leadId,
+            usuario_id: usuarioId,
+            usuario_nombre: usuarioNombre,
+            usuario_rol: usuarioRol,
+            archivo_url: urlData.publicUrl,
+            archivo_tipo: isImage ? 'imagen' : 'video',
+            archivo_nombre: file.name,
+            archivo_size: finalSize,
+          })
+          .select()
+          .single();
 
-        if (result.success && result.evidencia) {
-          setEvidencias((prev) => [result.evidencia!, ...prev]);
+        if (insertError) {
+          console.error('Error inserting evidencia:', insertError);
+          setError(`Error al guardar "${file.name}"`);
+          continue;
+        }
+
+        if (insertedData) {
+          setEvidencias((prev) => [insertedData as Evidencia, ...prev]);
         }
       }
     } catch (err) {
