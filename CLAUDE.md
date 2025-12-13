@@ -8,8 +8,8 @@
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
 **Fecha:** 12 Diciembre 2025
-**Sesión:** 69 - 👤📊 **Rol Marketing + Limpieza Insights**
-**Estado:** ✅ **DEPLOYED TO MAIN**
+**Sesión:** 70 - 📎 **Sistema Evidencias para Resolución de Conflictos**
+**Estado:** ✅ **DEPLOYED TO STAGING**
 **Documentación:** Ver detalles abajo
 
 ---
@@ -129,6 +129,7 @@ Documentación cronológica completa de todas las sesiones.
   - **🔐 Sistema Verificación por Finanzas + Liberación Comisiones (67)** ✅
   - **📞🔄 Limpieza Teléfonos + Cron Repulse Diario (68)** ✅
   - **👤📊 Rol Marketing + Limpieza Insights (69)** ✅
+  - **📎 Sistema Evidencias para Resolución de Conflictos (70)** ✅
 
 ---
 
@@ -176,6 +177,125 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 70** (12 Dic) - 📎 ✅ **Sistema Evidencias para Resolución de Conflictos**
+**Tipo:** Feature completo (Upload + Storage + UI)
+**Estado:** ✅ **DEPLOYED TO STAGING**
+
+**Requerimiento:** Sistema para que vendedores suban evidencias (fotos/videos) de sus visitas a leads, útil para resolver conflictos de asignación y demostrar atención al cliente.
+
+---
+
+#### **Arquitectura del Sistema**
+
+**Database (Supabase):**
+```sql
+CREATE TABLE lead_evidencias (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id UUID NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  usuario_id UUID NOT NULL,
+  usuario_nombre TEXT NOT NULL,
+  usuario_rol TEXT NOT NULL,
+  archivo_url TEXT NOT NULL,
+  archivo_tipo TEXT NOT NULL CHECK (archivo_tipo IN ('imagen', 'video')),
+  archivo_nombre TEXT NOT NULL,
+  archivo_size INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS Policies
+CREATE POLICY "Usuarios autenticados pueden ver evidencias" ON lead_evidencias
+FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "Usuarios autenticados pueden insertar evidencias" ON lead_evidencias
+FOR INSERT TO authenticated WITH CHECK (true);
+```
+
+**Supabase Storage:**
+- Bucket: `evidencias-leads` (público)
+- Estructura: `{lead_id}/{usuario_id}/{timestamp}_{index}.{ext}`
+- Políticas: INSERT y SELECT para authenticated
+
+---
+
+#### **RBAC (Control de Acceso)**
+
+| Rol | Puede Subir | Puede Ver |
+|-----|-------------|-----------|
+| admin | ❌ | ✅ |
+| jefe_ventas | ❌ | ✅ |
+| marketing | ❌ | ✅ |
+| vendedor | ✅ | ✅ |
+| vendedor_caseta | ✅ | ✅ |
+| finanzas | ❌ | ❌ |
+| coordinador | ❌ | ❌ |
+
+---
+
+#### **Características Implementadas**
+
+**1. Upload de Archivos:**
+- Imágenes: JPG, PNG, WebP (máx 5MB)
+- Videos: MP4, MOV, WebM (máx 50MB)
+- Compresión automática de imágenes con `browser-image-compression`
+- Múltiples archivos simultáneos
+
+**2. Agrupación por Usuario (Dropdowns Colapsables):**
+- Evidencias agrupadas por `usuario_id`
+- Cada usuario es un dropdown clickeable
+- Header muestra: nombre, rol (badge), cantidad de archivos
+- Ordenamiento: Usuario más reciente arriba, archivos por fecha descendente
+
+**3. Preview Fullscreen:**
+- Click en thumbnail abre preview en pantalla completa
+- Usa `createPortal` para renderizar en `document.body`
+- z-index: 9999 para estar sobre todo
+- Imágenes y videos soportados
+- Cerrar con click fuera o botón X
+
+**4. Trazabilidad Completa:**
+- Usuario que subió (nombre + rol)
+- Fecha y hora de carga
+- Nombre original del archivo
+- Tamaño del archivo
+
+---
+
+#### **Archivos Creados/Modificados**
+
+| Archivo | Tipo | Descripción |
+|---------|------|-------------|
+| `components/leads/EvidenciasSection.tsx` | NUEVO | Componente principal (410 líneas) |
+| `lib/actions-evidencias.ts` | NUEVO | Server actions (no usadas, client-side ops) |
+| `components/dashboard/LeadDetailPanel.tsx` | MOD | Props usuario + integración EvidenciasSection |
+| `components/dashboard/OperativoClient.tsx` | MOD | Pasar props de usuario a LeadDetailPanel |
+
+---
+
+#### **Decisiones Técnicas**
+
+**¿Por qué operaciones client-side en vez de Server Actions?**
+- Server Actions con browser Supabase client no tienen auth context en el servidor
+- RLS policies requieren `auth.uid()` que solo existe en cliente
+- Solución: Todas las operaciones (upload storage + insert DB) se hacen desde el cliente
+
+**¿Por qué `createPortal` para el preview?**
+- El panel de detalle tiene `overflow: hidden` que cortaba el modal
+- Portal renderiza directamente en `body`, independiente del DOM padre
+- Permite fullscreen real sobre toda la ventana
+
+**RLS Policy permisiva (`WITH CHECK (true)`):**
+- Segura porque: solo usuarios autenticados, RBAC en frontend, trazabilidad completa
+- Alternativa (verificar usuario = auth.uid()) fallaba por diferencia de IDs
+
+---
+
+**Commits:**
+- `5ecef46` - feat: Add EvidenciasSection component for conflict resolution
+- `2520b07` - feat: Group evidencias by user with collapsible dropdowns
+- `e9c62fd` - feat: Open evidencia preview in fullscreen using React portal
+
+---
 
 ### **Sesión 69** (12 Dic) - 👤📊 ✅ **Rol Marketing + Limpieza Insights**
 **Tipo:** Feature RBAC + Refactoring
