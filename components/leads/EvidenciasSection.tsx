@@ -4,7 +4,19 @@ import { useState, useEffect, useRef } from 'react';
 import { FileWarning, Upload, Image, Video, User, Calendar, Loader2, X, Play } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { supabase } from '@/lib/supabase';
-import { getEvidenciasByLeadId, Evidencia } from '@/lib/actions-evidencias';
+
+interface Evidencia {
+  id: string;
+  lead_id: string;
+  usuario_id: string;
+  usuario_nombre: string;
+  usuario_rol: string;
+  archivo_url: string;
+  archivo_tipo: 'imagen' | 'video';
+  archivo_nombre: string;
+  archivo_size: number | null;
+  created_at: string;
+}
 
 interface EvidenciasSectionProps {
   leadId: string;
@@ -44,8 +56,23 @@ export default function EvidenciasSection({
 
   const loadEvidencias = async () => {
     setLoading(true);
-    const data = await getEvidenciasByLeadId(leadId);
-    setEvidencias(data);
+    try {
+      const { data, error } = await supabase
+        .from('lead_evidencias')
+        .select('*')
+        .eq('lead_id', leadId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching evidencias:', error);
+        setEvidencias([]);
+      } else {
+        setEvidencias(data || []);
+      }
+    } catch (err) {
+      console.error('Error in loadEvidencias:', err);
+      setEvidencias([]);
+    }
     setLoading(false);
   };
 
