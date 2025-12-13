@@ -4,6 +4,7 @@ import { Lead } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
 import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check, Zap, Ban, CircleSlash } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import EvidenciasSection from '@/components/leads/EvidenciasSection';
 
 interface LeadDetailPanelProps {
   lead: Lead | null;
@@ -12,6 +13,9 @@ interface LeadDetailPanelProps {
   onSendToRepulse?: (leadId: string) => void;
   onToggleExcludeRepulse?: (leadId: string, exclude: boolean) => void;
   showRepulseButton?: boolean;
+  usuarioId?: string;
+  usuarioNombre?: string;
+  usuarioRol?: string;
 }
 
 // Message type for chat bubbles
@@ -91,7 +95,7 @@ function parseMessages(historial: string | null): ChatMessage[] {
   return messages;
 }
 
-export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse, onToggleExcludeRepulse, showRepulseButton = false }: LeadDetailPanelProps) {
+export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse, onToggleExcludeRepulse, showRepulseButton = false, usuarioId, usuarioNombre, usuarioRol }: LeadDetailPanelProps) {
   // State for dropdown toggles
   const [isHistorialRecienteOpen, setIsHistorialRecienteOpen] = useState(false);
   const [isHistorialCompletoOpen, setIsHistorialCompletoOpen] = useState(false);
@@ -575,6 +579,18 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
               </div>
             </div>
           </section>
+
+          {/* Evidencias Section - Only for vendedor and vendedor_caseta (upload) or admin/jefe_ventas/marketing (view) */}
+          {usuarioId && usuarioNombre && usuarioRol && (
+            <EvidenciasSection
+              leadId={lead.id}
+              usuarioId={usuarioId}
+              usuarioNombre={usuarioNombre}
+              usuarioRol={usuarioRol}
+              canUpload={usuarioRol === 'vendedor' || usuarioRol === 'vendedor_caseta'}
+              canView={['admin', 'jefe_ventas', 'marketing', 'vendedor', 'vendedor_caseta'].includes(usuarioRol)}
+            />
+          )}
         </div>
       </div>
     </>

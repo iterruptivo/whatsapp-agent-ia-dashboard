@@ -526,6 +526,9 @@ export default function OperativoClient({
         showRepulseButton={user?.rol === 'admin' || user?.rol === 'jefe_ventas'}
         onSendToRepulse={handleSendToRepulse}
         onToggleExcludeRepulse={handleToggleExcludeRepulse}
+        usuarioId={user?.id}
+        usuarioNombre={user?.nombre || user?.email || 'Usuario'}
+        usuarioRol={user?.rol}
       />
 
       {/* Manual Lead Panel (Admin + Vendedor + Vendedor Caseta) */}
