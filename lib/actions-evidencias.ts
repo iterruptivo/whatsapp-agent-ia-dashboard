@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { supabase } from './supabase';
 
 export interface Evidencia {
   id: string;
@@ -17,8 +17,6 @@ export interface Evidencia {
 
 export async function getEvidenciasByLeadId(leadId: string): Promise<Evidencia[]> {
   try {
-    const supabase = await createClient();
-
     const { data, error } = await supabase
       .from('lead_evidencias')
       .select('*')
@@ -48,8 +46,6 @@ export async function uploadEvidencia(
   archivoSize: number
 ): Promise<{ success: boolean; evidencia?: Evidencia; error?: string }> {
   try {
-    const supabase = await createClient();
-
     const { data, error } = await supabase
       .from('lead_evidencias')
       .insert({

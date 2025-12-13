@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { FileWarning, Upload, Image, Video, User, Calendar, Loader2, X, Play } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { getEvidenciasByLeadId, uploadEvidencia, Evidencia } from '@/lib/actions-evidencias';
 
 interface EvidenciasSectionProps {
@@ -138,7 +138,6 @@ export default function EvidenciasSection({
         const extension = isImage ? 'jpg' : file.name.split('.').pop() || 'mp4';
         const fileName = `${leadId}/${usuarioId}/${timestamp}_${i}.${extension}`;
 
-        const supabase = createClient();
         const { error: uploadError } = await supabase.storage
           .from('evidencias-leads')
           .upload(fileName, fileToUpload, {
@@ -152,7 +151,7 @@ export default function EvidenciasSection({
           continue;
         }
 
-        const { data: urlData } = supabase.storage
+        const { data: urlData } = await supabase.storage
           .from('evidencias-leads')
           .getPublicUrl(fileName);
 
