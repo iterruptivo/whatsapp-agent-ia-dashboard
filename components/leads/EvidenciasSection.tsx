@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { FileWarning, Upload, Image, Video, User, Calendar, Loader2, X, Play, ChevronDown, ChevronUp } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { supabase } from '@/lib/supabase';
@@ -420,22 +421,23 @@ export default function EvidenciasSection({
         </div>
       )}
 
-      {previewUrl && (
+      {/* Preview modal - usando portal para renderizar en fullscreen sobre toda la ventana */}
+      {previewUrl && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4"
           onClick={closePreview}
         >
           <button
-            className="absolute top-4 right-4 text-white hover:text-gray-300"
+            className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
             onClick={closePreview}
           >
-            <X className="w-8 h-8" />
+            <X className="w-10 h-10" />
           </button>
           {previewType === 'imagen' ? (
             <img
               src={previewUrl}
               alt="Preview"
-              className="max-w-full max-h-full object-contain"
+              className="max-w-[95vw] max-h-[95vh] object-contain"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
@@ -443,11 +445,12 @@ export default function EvidenciasSection({
               src={previewUrl}
               controls
               autoPlay
-              className="max-w-full max-h-full"
+              className="max-w-[95vw] max-h-[95vh]"
               onClick={(e) => e.stopPropagation()}
             />
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </section>
   );
