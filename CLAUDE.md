@@ -7,9 +7,9 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 11 Diciembre 2025
-**Sesión:** 68 - 📞🔄 **Limpieza Teléfonos + Cron Repulse Diario**
-**Estado:** ✅ **DEPLOYED TO STAGING**
+**Fecha:** 12 Diciembre 2025
+**Sesión:** 69 - 👤📊 **Rol Marketing + Limpieza Insights**
+**Estado:** ✅ **DEPLOYED TO MAIN**
 **Documentación:** Ver detalles abajo
 
 ---
@@ -22,22 +22,23 @@
 | [Autenticación](docs/modulos/auth.md) | ✅ **100% ESTABLE** | **Sesión 45I (13 Nov)** | **Uptime: 100% • 2+ hrs sesión** |
 | [Leads](docs/modulos/leads.md) | ✅ OPERATIVO | Sesión 44 (12 Nov) | 1,417 leads |
 | [Locales](docs/modulos/locales.md) | ✅ OPERATIVO | **Sesión 52H (22 Nov)** | 823 locales |
-| [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | **Sesión 65 (5 Dic)** | 23 usuarios |
+| [Usuarios](docs/modulos/usuarios.md) | ✅ OPERATIVO | **Sesión 69 (12 Dic)** | 24 usuarios, 7 roles |
 | [Proyectos](docs/modulos/proyectos.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 7 proyectos |
 | [Integraciones](docs/modulos/integraciones.md) | ✅ OPERATIVO | Sesión 40B (8 Nov) | 3 flujos n8n |
 | [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 66 (9 Dic)** | Logo + Docs + PDF + Contratos Word |
 | [Repulse](docs/modulos/repulse.md) | ✅ **OPERATIVO** | **Sesión 68 (11 Dic)** | re-engagement leads (cron diario) |
 
-### **Métricas Globales (Actualizado: 11 Dic 2025)**
+### **Métricas Globales (Actualizado: 12 Dic 2025)**
 ```
 Total Leads:        1,417
 Total Locales:      823
-Usuarios Activos:   23
+Usuarios Activos:   24
   - Admins:         2 (gerente, bryan)
   - Jefe Ventas:    1
   - Vendedores:     8
   - Vendedor Caseta: 11
   - Finanzas:       1 (Rosa Quispe)
+  - Marketing:      1
 Proyectos:          7
 Flujos n8n Activos: 3
 Uptime General:     99.9%
@@ -64,8 +65,8 @@ Cada módulo contiene: Estado actual, sesiones relacionadas, funcionalidades, c�
   - Estado: OPERATIVO (823 locales con real-time + PDF + control de pagos post-venta)
 
 - **[Usuarios](docs/modulos/usuarios.md)** - Roles, permisos, CRUD
-  - Última sesión: 40D (Nuevo admin Bryan)
-  - Estado: OPERATIVO (22 usuarios activos)
+  - Última sesión: **69 (Rol Marketing)**
+  - Estado: OPERATIVO (24 usuarios activos, 7 roles)
 
 - **[Proyectos](docs/modulos/proyectos.md)** - Gestión multiproyecto + configuración TEA/cuotas
   - Última sesión: **51 (Sistema configuración completo)**
@@ -127,6 +128,7 @@ Documentación cronológica completa de todas las sesiones.
   - **🖼️📎📄 Logo Dinámico + Docs Adjuntos + PDF + Contratos Word (66)** ✅
   - **🔐 Sistema Verificación por Finanzas + Liberación Comisiones (67)** ✅
   - **📞🔄 Limpieza Teléfonos + Cron Repulse Diario (68)** ✅
+  - **👤📊 Rol Marketing + Limpieza Insights (69)** ✅
 
 ---
 
@@ -174,6 +176,87 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 69** (12 Dic) - 👤📊 ✅ **Rol Marketing + Limpieza Insights**
+**Tipo:** Feature RBAC + Refactoring
+**Estado:** ✅ **DEPLOYED TO MAIN**
+
+**Cambios implementados:**
+
+---
+
+#### **PARTE 1: Nuevo Rol `marketing`**
+
+**Requerimiento:** Crear rol para equipo de marketing con acceso limitado.
+
+**Permisos del rol:**
+| Permiso | Estado |
+|---------|--------|
+| Acceso a Insights (`/`) | ✅ Landing page |
+| Acceso a Operativo (`/operativo`) | ✅ |
+| Reasignar vendedores a leads | ✅ |
+| Exportar leads | ❌ |
+| Importar leads | ❌ |
+| Acceso a Locales | ❌ |
+| Acceso a Control de Pagos | ❌ |
+| Acceso a Comisiones | ❌ |
+
+**Archivos modificados:**
+
+| Archivo | Cambio |
+|---------|--------|
+| `middleware.ts` | Routing para marketing → `/` como landing |
+| `components/shared/Sidebar.tsx` | Menú: solo Insights y Operativo |
+| `components/dashboard/DashboardHeader.tsx` | Badge rosa para marketing |
+| `lib/auth-context.tsx` | Tipo `marketing` en UserRole |
+| `components/admin/UsuarioFormModal.tsx` | Marketing en dropdown de roles |
+| `components/admin/UsuariosClient.tsx` | Label y color para marketing |
+| `components/dashboard/LeadsTable.tsx` | userRole type incluye marketing |
+
+**Database:** Requiere actualizar constraint en Supabase:
+```sql
+ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS usuarios_rol_check;
+ALTER TABLE usuarios ADD CONSTRAINT usuarios_rol_check
+CHECK (rol IN ('admin', 'vendedor', 'jefe_ventas', 'vendedor_caseta', 'coordinador', 'finanzas', 'marketing'));
+```
+
+---
+
+#### **PARTE 2: Limpieza de Insights (DashboardClient)**
+
+**Contexto:** Insights (`/`) solo es accedido por `admin` y `marketing`. Ambos usan `/operativo` para gestión de leads, haciendo redundante la tabla en Insights.
+
+**Removido completamente de DashboardClient.tsx:**
+
+| Componente/Feature | Líneas |
+|--------------------|--------|
+| `LeadsTable` import y componente | ~15 |
+| `LeadDetailPanel` import y componente | ~10 |
+| `LeadImportModal` import y componente | ~20 |
+| `ManualLeadPanel` import y componente | ~20 |
+| State variables (selectedLead, isPanelOpen, filters, etc.) | ~15 |
+| Handlers (handleLeadClick, handleClosePanel, handleExportToExcel) | ~50 |
+| Admin Filters Section (dropdowns, botones export/import) | ~150 |
+| Imports no usados (Download, Upload, Plus, ChevronDown, etc.) | ~5 |
+
+**Resultado:** Archivo reducido de **638 líneas a 344 líneas** (-46%)
+
+**Lo que permanece en Insights:**
+- Stats cards (Total Leads, Completos, En Conversación, etc.)
+- Gráficos (PieChart estados, PieChart asistencias, HorizontalBarChart UTM)
+- VendedoresMiniTable (Leads por vendedor)
+- DateRangeFilter (filtro por fechas)
+- ConfirmDialog (notificaciones)
+
+---
+
+**Commits:**
+- `ee36c50` - feat: Add marketing to LeadsTable userRole type
+- `870c511` - feat: Add marketing role to admin user management
+- `e172661` - fix: Hide leads table and filters from marketing role in Insights
+- `307b97c` - refactor: Remove LeadsTable and filters from Insights (DashboardClient)
+
+---
 
 ### **Sesión 66** (7-9 Dic) - 🖼️📎📄 ✅ **Logo Dinámico + Docs Adjuntos + PDF + Contratos Word**
 **Tipo:** Feature completo (Logo + Documentos + PDF + Sistema de Contratos)
