@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { FileWarning, Upload, Image, Video, User, Calendar, Loader2, X, Play } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { FileWarning, Upload, Image, Video, User, Calendar, Loader2, X, Play, ChevronDown, ChevronUp } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 import { supabase } from '@/lib/supabase';
 
@@ -46,7 +46,53 @@ export default function EvidenciasSection({
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewType, setPreviewType] = useState<'imagen' | 'video' | null>(null);
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Agrupar evidencias por usuario
+  const evidenciasPorUsuario = useMemo(() => {
+    const grouped = new Map<string, { nombre: string; rol: string; evidencias: Evidencia[] }>();
+
+    evidencias.forEach((ev) => {
+      if (!grouped.has(ev.usuario_id)) {
+        grouped.set(ev.usuario_id, {
+          nombre: ev.usuario_nombre,
+          rol: ev.usuario_rol,
+          evidencias: [],
+        });
+      }
+      grouped.get(ev.usuario_id)!.evidencias.push(ev);
+    });
+
+    // Convertir a array y ordenar por fecha más reciente
+    return Array.from(grouped.entries())
+      .map(([userId, data]) => ({
+        userId,
+        ...data,
+        // Ordenar evidencias dentro de cada grupo por fecha descendente
+        evidencias: data.evidencias.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        ),
+      }))
+      .sort((a, b) => {
+        // Ordenar grupos por fecha más reciente de cualquier evidencia
+        const aLatest = new Date(a.evidencias[0]?.created_at || 0).getTime();
+        const bLatest = new Date(b.evidencias[0]?.created_at || 0).getTime();
+        return bLatest - aLatest;
+      });
+  }, [evidencias]);
+
+  const toggleUserExpanded = (userId: string) => {
+    setExpandedUsers((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(userId)) {
+        newSet.delete(userId);
+      } else {
+        newSet.add(userId);
+      }
+      return newSet;
+    });
+  };
 
   useEffect(() => {
     if (canView) {
@@ -293,59 +339,84 @@ export default function EvidenciasSection({
           <p className="text-sm text-gray-500">No hay evidencias registradas</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {evidencias.map((evidencia) => (
-            <div
-              key={evidencia.id}
-              className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 cursor-pointer"
-                  onClick={() => openPreview(evidencia.archivo_url, evidencia.archivo_tipo)}
+        <div className="space-y-2">
+          {evidenciasPorUsuario.map((grupo) => {
+            const isExpanded = expandedUsers.has(grupo.userId);
+            return (
+              <div key={grupo.userId} className="border border-gray-200 rounded-lg overflow-hidden">
+                {/* Header del dropdown - clickeable */}
+                <button
+                  type="button"
+                  onClick={() => toggleUserExpanded(grupo.userId)}
+                  className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
-                  {evidencia.archivo_tipo === 'imagen' ? (
-                    <img
-                      src={evidencia.archivo_url}
-                      alt={evidencia.archivo_nombre}
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-gray-500" />
+                    <span className="font-medium text-gray-900">{grupo.nombre}</span>
+                    {getRolBadge(grupo.rol)}
+                    <span className="text-xs text-gray-500 ml-2">
+                      ({grupo.evidencias.length} archivo{grupo.evidencias.length !== 1 ? 's' : ''})
+                    </span>
+                  </div>
+                  {isExpanded ? (
+                    <ChevronUp className="w-5 h-5 text-gray-400" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                      <Play className="w-6 h-6 text-white" />
-                    </div>
+                    <ChevronDown className="w-5 h-5 text-gray-400" />
                   )}
-                </div>
+                </button>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    {evidencia.archivo_tipo === 'imagen' ? (
-                      <Image className="w-4 h-4 text-blue-500" />
-                    ) : (
-                      <Video className="w-4 h-4 text-purple-500" />
-                    )}
-                    <span className="text-sm font-medium text-gray-900 truncate">
-                      {evidencia.archivo_nombre}
-                    </span>
-                    <span className="text-xs text-gray-400">
-                      {formatFileSize(evidencia.archivo_size)}
-                    </span>
-                  </div>
+                {/* Contenido colapsable */}
+                {isExpanded && (
+                  <div className="p-3 space-y-2 bg-white">
+                    {grupo.evidencias.map((evidencia) => (
+                      <div
+                        key={evidencia.id}
+                        className="flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <div
+                          className="w-14 h-14 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 cursor-pointer"
+                          onClick={() => openPreview(evidencia.archivo_url, evidencia.archivo_tipo)}
+                        >
+                          {evidencia.archivo_tipo === 'imagen' ? (
+                            <img
+                              src={evidencia.archivo_url}
+                              alt={evidencia.archivo_nombre}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                              <Play className="w-5 h-5 text-white" />
+                            </div>
+                          )}
+                        </div>
 
-                  <div className="flex items-center gap-2 text-xs text-gray-600">
-                    <User className="w-3 h-3" />
-                    <span>{evidencia.usuario_nombre}</span>
-                    {getRolBadge(evidencia.usuario_rol)}
-                  </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            {evidencia.archivo_tipo === 'imagen' ? (
+                              <Image className="w-3.5 h-3.5 text-blue-500" />
+                            ) : (
+                              <Video className="w-3.5 h-3.5 text-purple-500" />
+                            )}
+                            <span className="text-sm font-medium text-gray-900 truncate">
+                              {evidencia.archivo_nombre}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {formatFileSize(evidencia.archivo_size)}
+                            </span>
+                          </div>
 
-                  <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
-                    <Calendar className="w-3 h-3" />
-                    <span>{formatDate(evidencia.created_at)}</span>
+                          <div className="flex items-center gap-1 text-xs text-gray-500">
+                            <Calendar className="w-3 h-3" />
+                            <span>{formatDate(evidencia.created_at)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
