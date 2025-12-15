@@ -95,6 +95,15 @@ export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // ============================================================================
+  // EXTENSION API ROUTES - Allow without middleware auth (API handles its own auth)
+  // ============================================================================
+  if (pathname.startsWith('/api/extension')) {
+    // Las rutas de la extensión Chrome manejan su propia autenticación via Bearer token
+    // No necesitan pasar por el middleware de sesión de cookies
+    return res;
+  }
+
+  // ============================================================================
   // PUBLIC ROUTES - Allow without authentication
   // ============================================================================
   if (pathname === '/login') {
