@@ -63,7 +63,7 @@ function parseMessages(historial: string | null): ChatMessage[] {
 
     // Check for sender prefixes (case insensitive)
     const userMatch = trimmedLine.match(/^(Usuario|User|Cliente):\s*(.+)/i);
-    const botMatch = trimmedLine.match(/^(Noa|Victoria|Bot|Asistente|Assistant|AgenteIA):\s*(.+)/i);
+    const botMatch = trimmedLine.match(/^(Noa|Victoria|Bot|Asistente|Assistant|AgenteIA|Vendedor):\s*(.+)/i);
 
     if (userMatch) {
       // Start new user message
