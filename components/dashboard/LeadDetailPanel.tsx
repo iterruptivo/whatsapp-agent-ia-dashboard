@@ -20,7 +20,7 @@ interface LeadDetailPanelProps {
 
 // Message type for chat bubbles
 interface ChatMessage {
-  sender: 'user' | 'bot';
+  sender: 'user' | 'bot' | 'date_separator';
   text: string;
   tipo?: 'repulse'; // Identificador especial para mensajes de Repulse
 }
@@ -53,7 +53,16 @@ function parseMessages(historial: string | null): ChatMessage[] {
     const trimmedLine = line.trim();
     if (!trimmedLine) continue;
 
-    // Check for REPULSE messages first (formato: [REPULSE DD/MM/YYYY, HH:MM]: mensaje)
+    // Check for DATE SEPARATORS first (formato: --- DD/MM/YYYY ---)
+    const dateSeparatorMatch = trimmedLine.match(/^---\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*---$/);
+    if (dateSeparatorMatch) {
+      if (currentMessage) messages.push(currentMessage);
+      currentMessage = null;
+      messages.push({ sender: 'date_separator', text: dateSeparatorMatch[1] });
+      continue;
+    }
+
+    // Check for REPULSE messages (formato: [REPULSE DD/MM/YYYY, HH:MM]: mensaje)
     const repulseMatch = trimmedLine.match(/^\[REPULSE[^\]]*\]:\s*(.+)/i);
     if (repulseMatch) {
       if (currentMessage) messages.push(currentMessage);
@@ -439,27 +448,36 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
                         {/* WhatsApp-like Chat Bubbles */}
                         <div className="space-y-3">
                           {parseMessages(lead.historial_reciente).map((message, index) => (
-                            <div
-                              key={index}
-                              className={`flex ${message.sender === 'user' ? 'justify-start' : 'justify-end'}`}
-                            >
-                              <div
-                                className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
-                                  message.tipo === 'repulse'
-                                    ? 'bg-purple-500 text-white'
-                                    : message.sender === 'user'
-                                    ? 'bg-white text-gray-900'
-                                    : 'bg-primary text-white'
-                                }`}
-                              >
-                                {message.tipo === 'repulse' && (
-                                  <span className="inline-block bg-purple-700 text-white text-xs px-1.5 py-0.5 rounded mb-1">
-                                    Repulse
-                                  </span>
-                                )}
-                                <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+                            message.sender === 'date_separator' ? (
+                              // Date separator
+                              <div key={index} className="flex items-center justify-center my-4">
+                                <div className="bg-gray-200 text-gray-600 text-xs font-medium px-3 py-1 rounded-full shadow-sm">
+                                  {message.text}
+                                </div>
                               </div>
-                            </div>
+                            ) : (
+                              <div
+                                key={index}
+                                className={`flex ${message.sender === 'user' ? 'justify-start' : 'justify-end'}`}
+                              >
+                                <div
+                                  className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
+                                    message.tipo === 'repulse'
+                                      ? 'bg-purple-500 text-white'
+                                      : message.sender === 'user'
+                                      ? 'bg-white text-gray-900'
+                                      : 'bg-primary text-white'
+                                  }`}
+                                >
+                                  {message.tipo === 'repulse' && (
+                                    <span className="inline-block bg-purple-700 text-white text-xs px-1.5 py-0.5 rounded mb-1">
+                                      Repulse
+                                    </span>
+                                  )}
+                                  <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+                                </div>
+                              </div>
+                            )
                           ))}
                           {parseMessages(lead.historial_reciente).length === 0 && (
                             <p className="text-sm text-gray-500 text-center italic">No hay mensajes para mostrar</p>
@@ -493,27 +511,36 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
                               ? lead.historial_conversacion
                               : JSON.stringify(lead.historial_conversacion, null, 2)
                           ).map((message, index) => (
-                            <div
-                              key={index}
-                              className={`flex ${message.sender === 'user' ? 'justify-start' : 'justify-end'}`}
-                            >
-                              <div
-                                className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
-                                  message.tipo === 'repulse'
-                                    ? 'bg-purple-500 text-white'
-                                    : message.sender === 'user'
-                                    ? 'bg-white text-gray-900'
-                                    : 'bg-primary text-white'
-                                }`}
-                              >
-                                {message.tipo === 'repulse' && (
-                                  <span className="inline-block bg-purple-700 text-white text-xs px-1.5 py-0.5 rounded mb-1">
-                                    Repulse
-                                  </span>
-                                )}
-                                <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+                            message.sender === 'date_separator' ? (
+                              // Date separator
+                              <div key={index} className="flex items-center justify-center my-4">
+                                <div className="bg-gray-200 text-gray-600 text-xs font-medium px-3 py-1 rounded-full shadow-sm">
+                                  {message.text}
+                                </div>
                               </div>
-                            </div>
+                            ) : (
+                              <div
+                                key={index}
+                                className={`flex ${message.sender === 'user' ? 'justify-start' : 'justify-end'}`}
+                              >
+                                <div
+                                  className={`max-w-[75%] px-4 py-2 rounded-2xl shadow-sm ${
+                                    message.tipo === 'repulse'
+                                      ? 'bg-purple-500 text-white'
+                                      : message.sender === 'user'
+                                      ? 'bg-white text-gray-900'
+                                      : 'bg-primary text-white'
+                                  }`}
+                                >
+                                  {message.tipo === 'repulse' && (
+                                    <span className="inline-block bg-purple-700 text-white text-xs px-1.5 py-0.5 rounded mb-1">
+                                      Repulse
+                                    </span>
+                                  )}
+                                  <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+                                </div>
+                              </div>
+                            )
                           ))}
                           {parseMessages(
                             typeof lead.historial_conversacion === 'string'
