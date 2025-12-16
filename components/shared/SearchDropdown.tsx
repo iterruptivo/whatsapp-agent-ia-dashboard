@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, ChevronDown } from 'lucide-react';
 
 export interface DropdownOption {
@@ -36,8 +37,15 @@ export default function SearchDropdown({
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [isMounted, setIsMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // Para usar createPortal necesitamos estar en el cliente
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const calculatePosition = () => {
     if (!triggerRef.current) return;
@@ -50,7 +58,7 @@ export default function SearchDropdown({
     const spaceAbove = rect.top;
 
     const shouldOpenUp = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
-    const dropdownWidth = Math.max(rect.width * 1.2, 250);
+    const dropdownWidth = rect.width;
 
     setDropdownPosition({
       top: shouldOpenUp ? rect.top - dropdownHeight : rect.bottom + 4,
@@ -61,15 +69,29 @@ export default function SearchDropdown({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearchTerm('');
+      // Only process if dropdown is open
+      if (!isOpen) return;
+
+      const target = event.target as Node;
+
+      // Check if click is inside the container (button area)
+      if (containerRef.current?.contains(target)) {
+        return; // Click inside container, do nothing
       }
+
+      // Check if click is inside the dropdown menu
+      if (dropdownRef.current?.contains(target)) {
+        return; // Click inside dropdown, do nothing
+      }
+
+      // Click is outside both - close the dropdown
+      setIsOpen(false);
+      setSearchTerm('');
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -117,7 +139,7 @@ export default function SearchDropdown({
   const styles = sizeStyles[size];
 
   return (
-    <div className={`${className}`} ref={dropdownRef}>
+    <div className={`${className}`} ref={containerRef}>
       {label && (
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {label}
@@ -149,14 +171,16 @@ export default function SearchDropdown({
           />
         </button>
 
-        {isOpen && (
+        {isOpen && isMounted && createPortal(
           <div
-            className={`fixed z-[9999] bg-white border border-gray-300 rounded-lg shadow-lg ${styles.dropdown} overflow-hidden`}
+            ref={dropdownRef}
+            className={`fixed z-[9999] bg-white border border-gray-300 rounded-lg shadow-xl ${styles.dropdown} overflow-hidden`}
             style={{
               top: `${dropdownPosition.top}px`,
               left: `${dropdownPosition.left}px`,
               width: `${dropdownPosition.width}px`,
             }}
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-2 border-b border-gray-200">
@@ -168,7 +192,7 @@ export default function SearchDropdown({
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Buscar..."
                   className={`w-full pl-9 pr-3 ${styles.searchInput} border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-sm`}
-                  autoFocus
+                  onMouseDown={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
                 />
               </div>
@@ -178,6 +202,7 @@ export default function SearchDropdown({
               {allowClear && (
                 <button
                   type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
                   onClick={() => handleSelect('')}
                   className={`w-full ${styles.option} text-left hover:bg-gray-50 transition-colors border-b border-gray-100 text-gray-500`}
                 >
@@ -189,6 +214,7 @@ export default function SearchDropdown({
                 <button
                   key={option.value}
                   type="button"
+                  onMouseDown={(e) => e.stopPropagation()}
                   onClick={() => handleSelect(option.value)}
                   className={`w-full ${styles.option} text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0 ${
                     value === option.value ? 'bg-primary/5 font-medium' : ''
@@ -204,7 +230,8 @@ export default function SearchDropdown({
                 </p>
               )}
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>
