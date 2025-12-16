@@ -75,6 +75,9 @@ export async function POST(request: NextRequest) {
       historialConversacion,
       historialReciente,
       ultimoMensaje,
+      tipificacionNivel1,
+      tipificacionNivel2,
+      tipificacionNivel3,
     } = body;
 
     // Validar campos requeridos
@@ -153,6 +156,9 @@ export async function POST(request: NextRequest) {
         historial_conversacion: historialConversacion || null,
         historial_reciente: historialReciente || null,
         ultimo_mensaje: ultimoMensaje || null,
+        tipificacion_nivel_1: tipificacionNivel1 || null,
+        tipificacion_nivel_2: tipificacionNivel2 || null,
+        tipificacion_nivel_3: tipificacionNivel3 || null,
         fecha_captura: new Date().toISOString(),
       })
       .select('id, nombre, telefono')
