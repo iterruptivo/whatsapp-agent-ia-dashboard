@@ -11,7 +11,8 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Users } from 'lucide-react';
+import { ChevronDown, ChevronUp, Users, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface VendedorLeadsData {
   id: string;
@@ -50,6 +51,51 @@ export default function VendedoresMiniTable({
   const totalManuales = data.reduce((sum, v) => sum + v.leadsManuales, 0);
   const totalAutomaticos = data.reduce((sum, v) => sum + v.leadsAutomaticos, 0);
 
+  // Función para exportar a Excel
+  const handleExportToExcel = () => {
+    // Preparar datos para Excel
+    const excelData = sortedData.map((v, index) => ({
+      '#': index + 1,
+      'Vendedor': v.nombre,
+      'Rol': v.rol === 'vendedor_caseta' ? 'Vendedor Caseta' : 'Vendedor',
+      'Lead Manual': v.leadsManuales,
+      'NO Manual': v.leadsAutomaticos,
+      'Total': v.total,
+    }));
+
+    // Agregar fila de totales (usar unknown para evitar conflicto de tipos)
+    excelData.push({
+      '#': '' as unknown as number,
+      'Vendedor': 'TOTALES',
+      'Rol': '',
+      'Lead Manual': totalManuales,
+      'NO Manual': totalAutomaticos,
+      'Total': totalLeads,
+    });
+
+    // Crear workbook y worksheet
+    const ws = XLSX.utils.json_to_sheet(excelData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Leads por Vendedor');
+
+    // Ajustar ancho de columnas
+    ws['!cols'] = [
+      { wch: 5 },   // #
+      { wch: 35 },  // Vendedor
+      { wch: 18 },  // Rol
+      { wch: 12 },  // Lead Manual
+      { wch: 12 },  // NO Manual
+      { wch: 10 },  // Total
+    ];
+
+    // Generar nombre de archivo con fecha
+    const fecha = new Date().toISOString().split('T')[0];
+    const filename = `Leads_por_Vendedor_${fecha}.xlsx`;
+
+    // Descargar
+    XLSX.writeFile(wb, filename);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
       {/* Header */}
@@ -58,8 +104,20 @@ export default function VendedoresMiniTable({
           <Users className="w-5 h-5 text-gray-600" />
           <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
         </div>
-        <div className="text-sm text-gray-500">
-          {data.length} vendedores • {totalLeads} leads
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-500">
+            {data.length} vendedores • {totalLeads} leads
+          </span>
+          {sortedData.length > 0 && (
+            <button
+              onClick={handleExportToExcel}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#1b967a] bg-[#1b967a]/10 hover:bg-[#1b967a]/20 rounded-lg transition-colors"
+              title="Exportar a Excel"
+            >
+              <Download className="w-4 h-4" />
+              Excel
+            </button>
+          )}
         </div>
       </div>
 
