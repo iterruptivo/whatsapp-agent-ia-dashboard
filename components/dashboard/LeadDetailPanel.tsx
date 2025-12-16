@@ -2,9 +2,78 @@
 
 import { Lead } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
-import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check, Zap, Ban, CircleSlash } from 'lucide-react';
+import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check, Zap, Ban, CircleSlash, Tag } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import EvidenciasSection from '@/components/leads/EvidenciasSection';
+import SearchDropdown from '@/components/shared/SearchDropdown';
+import { updateLeadTipificacion } from '@/lib/actions-tipificacion';
+
+// Opciones de tipificación jerárquica
+const TIPIFICACION_NIVEL_1 = [
+  { value: 'contactado', label: 'Contactado' },
+  { value: 'no_contactado', label: 'No Contactado' },
+  { value: 'seguimiento', label: 'Seguimiento' },
+  { value: 'otros', label: 'Otros' },
+];
+
+const TIPIFICACION_NIVEL_2: Record<string, { value: string; label: string }[]> = {
+  contactado: [
+    { value: 'interesado', label: 'Interesado' },
+    { value: 'no_interesado', label: 'No Interesado' },
+    { value: 'cliente_evaluacion', label: 'Cliente en Evaluación' },
+    { value: 'cliente_negociacion', label: 'Cliente en Negociación' },
+    { value: 'cliente_cierre', label: 'Cliente en Cierre' },
+  ],
+  no_contactado: [
+    { value: 'no_contesta', label: 'No contesta' },
+    { value: 'buzon_mensaje', label: 'Buzón / mensaje de voz' },
+    { value: 'telefono_apagado', label: 'Teléfono apagado' },
+    { value: 'telefono_fuera_servicio', label: 'Teléfono fuera de servicio' },
+    { value: 'numero_incorrecto', label: 'Número incorrecto' },
+  ],
+  seguimiento: [
+    { value: 'pendiente_visita', label: 'Pendiente de visita' },
+    { value: 'pendiente_decision', label: 'Pendiente de decisión' },
+  ],
+  otros: [
+    { value: 'contacto_otra_area', label: 'Solicita contacto con otra área' },
+  ],
+};
+
+const TIPIFICACION_NIVEL_3 = [
+  { value: 'solicita_info_proyecto', label: 'Solicita información del proyecto' },
+  { value: 'requiere_cotizacion', label: 'Requiere cotización' },
+  { value: 'agenda_visita', label: 'Agenda visita / cita presencial' },
+  { value: 'contactar_despues', label: 'Quiere ser contactado más adelante' },
+  { value: 'interesado_otro_proyecto', label: 'Interesado en otro proyecto' },
+  { value: 'no_califica', label: 'No califica' },
+  { value: 'no_desea_comprar', label: 'No desea comprar' },
+  { value: 'adquirio_otra_propiedad', label: 'Ya adquirió otra propiedad' },
+  { value: 'precio_fuera_presupuesto', label: 'Precio fuera de presupuesto' },
+  { value: 'ubicacion_no_conveniente', label: 'Ubicación no conveniente' },
+  { value: 'condiciones_no_convencen', label: 'Condiciones/beneficios no le convencen' },
+  { value: 'evaluacion_crediticia', label: 'En evaluación crediticia' },
+  { value: 'falta_sustento_docs', label: 'Falta sustento / documentos' },
+  { value: 'observado_banco', label: 'Observado por banco' },
+  { value: 'aprobado_banco', label: 'Aprobado por banco' },
+  { value: 'requiere_asesoria_financiera', label: 'Requiere asesoría financiera' },
+  { value: 'revision_contrato', label: 'Revisión de contrato' },
+  { value: 'aprobacion_familiar_pendiente', label: 'Aprobación familiar pendiente' },
+  { value: 'negociacion_precio', label: 'Negociación de precio/descuento' },
+  { value: 'separacion_pagada', label: 'Separación pagada' },
+  { value: 'agendado_firma', label: 'Agendado para firma de contrato' },
+  { value: 'firma_contrato', label: 'Firma de contrato' },
+  { value: 'visita_confirmada', label: 'Visita confirmada' },
+  { value: 'visita_reprogramada', label: 'Visita reprogramada' },
+  { value: 'visita_no_asistida', label: 'Visita no asistida' },
+  { value: 'cotizacion_enviada', label: 'Cotización enviada' },
+  { value: 'evaluacion_familiar', label: 'En evaluación familiar' },
+  { value: 'comparando_proyectos', label: 'Comparando con otros proyectos' },
+  { value: 'postventa', label: 'Postventa' },
+  { value: 'reclamos', label: 'Reclamos' },
+  { value: 'administracion_pagos', label: 'Administración / pagos' },
+  { value: 'area_comercial_presencial', label: 'Área comercial presencial' },
+];
 
 interface LeadDetailPanelProps {
   lead: Lead | null;
@@ -108,6 +177,58 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
   // State for dropdown toggles
   const [isHistorialRecienteOpen, setIsHistorialRecienteOpen] = useState(false);
   const [isHistorialCompletoOpen, setIsHistorialCompletoOpen] = useState(false);
+
+  // State for tipificación
+  const [nivel1, setNivel1] = useState<string | null>(null);
+  const [nivel2, setNivel2] = useState<string | null>(null);
+  const [nivel3, setNivel3] = useState<string | null>(null);
+  const [isSavingTipificacion, setIsSavingTipificacion] = useState(false);
+
+  // Sync tipificación state when lead changes
+  useEffect(() => {
+    if (lead) {
+      setNivel1(lead.tipificacion_nivel_1 || null);
+      setNivel2(lead.tipificacion_nivel_2 || null);
+      setNivel3(lead.tipificacion_nivel_3 || null);
+    }
+  }, [lead?.id, lead?.tipificacion_nivel_1, lead?.tipificacion_nivel_2, lead?.tipificacion_nivel_3]);
+
+  // Get nivel2 options based on nivel1
+  const nivel2Options = nivel1 ? TIPIFICACION_NIVEL_2[nivel1] || [] : [];
+
+  // Handle nivel1 change (reset nivel2)
+  const handleNivel1Change = async (value: string) => {
+    const newNivel1 = value || null;
+    setNivel1(newNivel1);
+    setNivel2(null); // Reset nivel2 when nivel1 changes
+    if (lead) {
+      setIsSavingTipificacion(true);
+      await updateLeadTipificacion(lead.id, newNivel1, null, nivel3);
+      setIsSavingTipificacion(false);
+    }
+  };
+
+  // Handle nivel2 change
+  const handleNivel2Change = async (value: string) => {
+    const newNivel2 = value || null;
+    setNivel2(newNivel2);
+    if (lead) {
+      setIsSavingTipificacion(true);
+      await updateLeadTipificacion(lead.id, nivel1, newNivel2, nivel3);
+      setIsSavingTipificacion(false);
+    }
+  };
+
+  // Handle nivel3 change
+  const handleNivel3Change = async (value: string) => {
+    const newNivel3 = value || null;
+    setNivel3(newNivel3);
+    if (lead) {
+      setIsSavingTipificacion(true);
+      await updateLeadTipificacion(lead.id, nivel1, nivel2, newNivel3);
+      setIsSavingTipificacion(false);
+    }
+  };
 
   // ESC key handler
   useEffect(() => {
@@ -264,6 +385,56 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
                   </div>
                 </div>
               </div>
+            </div>
+          </section>
+
+          {/* Tipificación del Lead Section */}
+          <section>
+            <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-4 border-b border-gray-200 pb-2 flex items-center gap-2">
+              <Tag className="w-5 h-5" />
+              Tipificación del Lead
+              {isSavingTipificacion && (
+                <span className="text-xs font-normal text-gray-500 animate-pulse">Guardando...</span>
+              )}
+            </h3>
+            <div className="space-y-4">
+              {/* Nivel 1 */}
+              <SearchDropdown
+                label="Nivel 1"
+                options={TIPIFICACION_NIVEL_1}
+                value={nivel1}
+                onChange={handleNivel1Change}
+                placeholder="Seleccionar nivel 1..."
+                allowClear={true}
+                clearLabel="-- Ninguno --"
+                size="md"
+              />
+
+              {/* Nivel 2 - Depende de Nivel 1 */}
+              <SearchDropdown
+                label="Nivel 2"
+                options={nivel2Options}
+                value={nivel2}
+                onChange={handleNivel2Change}
+                placeholder={nivel1 ? "Seleccionar nivel 2..." : "Primero selecciona Nivel 1"}
+                disabled={!nivel1}
+                allowClear={true}
+                clearLabel="-- Ninguno --"
+                size="md"
+              />
+
+              {/* Nivel 3 - Habilitado cuando hay Nivel 2 */}
+              <SearchDropdown
+                label="Nivel 3"
+                options={TIPIFICACION_NIVEL_3}
+                value={nivel3}
+                onChange={handleNivel3Change}
+                placeholder={nivel2 ? "Seleccionar nivel 3..." : "Primero selecciona Nivel 2"}
+                disabled={!nivel2}
+                allowClear={true}
+                clearLabel="-- Ninguno --"
+                size="md"
+              />
             </div>
           </section>
 

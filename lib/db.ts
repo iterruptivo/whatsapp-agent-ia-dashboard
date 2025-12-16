@@ -65,6 +65,10 @@ export interface Lead {
   asistio: boolean; // Indica si el lead visitó físicamente el proyecto (default: false)
   utm: string | null; // Origen del lead (referral desde n8n: facebook, google, trapiche, etc.) - nullable
   excluido_repulse: boolean; // Indica si el lead está excluido permanentemente del sistema de repulse
+  // Tipificación del lead (Sesión 71)
+  tipificacion_nivel_1: string | null;
+  tipificacion_nivel_2: string | null;
+  tipificacion_nivel_3: string | null;
 }
 
 // Vendedor interface matching Supabase vendedores table
