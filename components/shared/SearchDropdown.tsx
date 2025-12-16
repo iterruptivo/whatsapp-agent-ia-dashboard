@@ -9,6 +9,8 @@ export interface DropdownOption {
   label: string;
 }
 
+type ColorScheme = 'default' | 'blue' | 'green' | 'lime';
+
 interface SearchDropdownProps {
   options: DropdownOption[];
   value: string | null;
@@ -20,6 +22,7 @@ interface SearchDropdownProps {
   className?: string;
   size?: 'sm' | 'md';
   label?: string;
+  colorScheme?: ColorScheme;
 }
 
 export default function SearchDropdown({
@@ -33,6 +36,7 @@ export default function SearchDropdown({
   className = '',
   size = 'md',
   label,
+  colorScheme = 'default',
 }: SearchDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -136,7 +140,32 @@ export default function SearchDropdown({
     },
   };
 
+  // Colores por nivel de tipificación
+  const colorStyles: Record<ColorScheme, { bg: string; border: string; text: string }> = {
+    default: {
+      bg: 'bg-white',
+      border: 'border-gray-300 hover:border-gray-400',
+      text: 'text-gray-900',
+    },
+    blue: {
+      bg: 'bg-blue-50',
+      border: 'border-blue-400 hover:border-blue-500',
+      text: 'text-blue-900',
+    },
+    green: {
+      bg: 'bg-green-50',
+      border: 'border-green-500 hover:border-green-600',
+      text: 'text-green-900',
+    },
+    lime: {
+      bg: 'bg-lime-50',
+      border: 'border-lime-500 hover:border-lime-600',
+      text: 'text-lime-900',
+    },
+  };
+
   const styles = sizeStyles[size];
+  const colors = colorStyles[colorScheme];
 
   return (
     <div className={`${className}`} ref={containerRef}>
@@ -159,11 +188,11 @@ export default function SearchDropdown({
             }
           }}
           disabled={disabled}
-          className={`w-full ${styles.trigger} text-left border border-gray-300 rounded-lg bg-white hover:border-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors flex items-center justify-between ${
-            disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+          className={`w-full ${styles.trigger} text-left border rounded-lg ${colors.bg} ${colors.border} focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors flex items-center justify-between ${
+            disabled ? '!bg-gray-100 !border-gray-300 cursor-not-allowed opacity-60' : ''
           }`}
         >
-          <span className={`truncate ${selectedOption ? 'text-gray-900' : 'text-gray-500'}`}>
+          <span className={`truncate ${selectedOption ? colors.text : 'text-gray-500'}`}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <ChevronDown

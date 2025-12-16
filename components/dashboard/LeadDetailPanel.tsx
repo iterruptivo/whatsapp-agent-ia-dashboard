@@ -398,7 +398,7 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
               )}
             </h3>
             <div className="space-y-4">
-              {/* Nivel 1 */}
+              {/* Nivel 1 - Azul */}
               <SearchDropdown
                 label="Nivel 1"
                 options={TIPIFICACION_NIVEL_1}
@@ -408,9 +408,10 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
                 allowClear={true}
                 clearLabel="-- Ninguno --"
                 size="md"
+                colorScheme="blue"
               />
 
-              {/* Nivel 2 - Depende de Nivel 1 */}
+              {/* Nivel 2 - Verde */}
               <SearchDropdown
                 label="Nivel 2"
                 options={nivel2Options}
@@ -421,9 +422,10 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
                 allowClear={true}
                 clearLabel="-- Ninguno --"
                 size="md"
+                colorScheme="green"
               />
 
-              {/* Nivel 3 - Habilitado cuando hay Nivel 2 */}
+              {/* Nivel 3 - Lima */}
               <SearchDropdown
                 label="Nivel 3"
                 options={TIPIFICACION_NIVEL_3}
@@ -434,6 +436,7 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
                 allowClear={true}
                 clearLabel="-- Ninguno --"
                 size="md"
+                colorScheme="lime"
               />
             </div>
           </section>
