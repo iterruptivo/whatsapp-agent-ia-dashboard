@@ -9,6 +9,8 @@
 - [Sesión 66](#sesión-66---8-diciembre-2025) - 👥 Sistema Administración de Usuarios
 - [Sesión 67](#sesión-67---9-diciembre-2025) - 🔐 Sistema Verificación por Finanzas + Liberación de Comisiones
 - [Sesión 68](#sesión-68---11-diciembre-2025) - 📞🔄 Limpieza Teléfonos + Cron Repulse Diario
+- [Sesión 72](#sesión-72---16-diciembre-2025) - 📊 Página de Reportería Multi-Proyecto (Vista Matriz)
+- [Sesión 73](#sesión-73---17-diciembre-2025) - 👤 Acceso a Insights para Jefe de Ventas
 
 ---
 
@@ -2331,7 +2333,8 @@ Los datos de tipificación son **idénticos** en:
 ### 📊 Página de Reportería Multi-Proyecto
 
 **Tipo:** Feature - Nueva página de reportería para admin/jefe_ventas/marketing
-**Estado:** ✅ COMPLETADO - PENDIENTE DEPLOY
+**Estado:** ✅ **DEPLOYED TO MAIN**
+**Commits:** `577d144` (staging), `fde5089` (main)
 **Testing:** ✅ Playwright verificado (admin, marketing, vendedor)
 
 ---
@@ -2587,6 +2590,116 @@ Los cambios están en local, pendiente commit y push:
 - `app/login/page.tsx` (modificado +15 líneas)
 
 **Total:** ~820 líneas netas
+
+---
+
+**🤖 Generated with [Claude Code](https://claude.com/claude-code)**
+
+---
+
+## Sesión 73 - 17 Diciembre 2025
+
+### 👤 Acceso a Insights para Jefe de Ventas
+
+**Tipo:** Feature - RBAC Update
+**Estado:** ✅ **DEPLOYED TO MAIN**
+**Commits:** `9ab4d21`, `cb56f84`, `c154589` (staging), `8c4da7d` (main)
+
+---
+
+### Objetivo
+
+Dar acceso al rol `jefe_ventas` a la página Insights (`/`) y configurarla como su landing page por defecto después del login.
+
+---
+
+### Cambios Implementados
+
+#### 1. Middleware (`middleware.ts`)
+
+| Cambio | Antes | Después |
+|--------|-------|---------|
+| Landing page post-login | `/operativo` | `/` |
+| Acceso a Insights | ❌ Redirigido a `/locales` | ✅ Permitido |
+
+**Líneas modificadas:**
+- Línea 118: `jefe_ventas` agregado al grupo que va a `/` después de login
+- Línea 214: `jefe_ventas` puede acceder a Insights (ya no redirige a `/locales`)
+
+#### 2. Sidebar (`components/shared/Sidebar.tsx`)
+
+**Menú actualizado para `jefe_ventas`:**
+
+```typescript
+// Antes
+directItems: [{ href: '/operativo', label: 'Dashboard Operativo', icon: Users }]
+
+// Después
+directItems: [
+  { href: '/', label: 'Insights', icon: LayoutDashboard },
+  { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+]
+```
+
+#### 3. Auth Context (`lib/auth-context.tsx`)
+
+**Función `signIn()` - Redirect post-login:**
+
+```typescript
+// Antes
+} else if (userData.rol === 'jefe_ventas' || userData.rol === 'coordinador' || userData.rol === 'finanzas') {
+  router.push('/locales');
+}
+
+// Después
+if (userData.rol === 'admin' || userData.rol === 'marketing' || userData.rol === 'jefe_ventas') {
+  router.push('/');
+} else if (userData.rol === 'coordinador') {
+  router.push('/locales');
+} else if (userData.rol === 'finanzas') {
+  router.push('/control-pagos');
+}
+```
+
+**Función `useRequireRole()` - Redirects actualizados:**
+- `jefe_ventas` intentando acceso admin → `/` (Insights)
+- `finanzas` intentando acceso admin → `/control-pagos`
+- `vendedor_caseta/coordinador` → `/locales`
+
+---
+
+### Tabla de Acceso Actualizada
+
+| Rol | Landing Page | Acceso Insights |
+|-----|--------------|-----------------|
+| admin | `/` | ✅ |
+| marketing | `/` | ✅ |
+| **jefe_ventas** | **`/`** | **✅** |
+| vendedor | `/operativo` | ❌ |
+| vendedor_caseta | `/operativo` | ❌ |
+| coordinador | `/locales` | ❌ |
+| finanzas | `/control-pagos` | ❌ |
+
+---
+
+### Archivos Modificados
+
+| Archivo | Cambio |
+|---------|--------|
+| `middleware.ts` | +8/-8 líneas - RBAC actualizado |
+| `components/shared/Sidebar.tsx` | +5/-2 líneas - Menú Insights |
+| `lib/auth-context.tsx` | +14/-6 líneas - Redirects post-login |
+
+---
+
+### Commits
+
+| Branch | Commit | Descripción |
+|--------|--------|-------------|
+| staging | `9ab4d21` | feat: Add jefe_ventas access to Insights (/) as landing page |
+| staging | `cb56f84` | feat: Add Insights menu item for jefe_ventas role |
+| staging | `c154589` | fix: Update jefe_ventas redirect to Insights (/) after login |
+| main | `8c4da7d` | Merge staging: jefe_ventas access to Insights |
 
 ---
 
