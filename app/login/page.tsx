@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getAllProyectos, Proyecto } from '@/lib/db';
-import { Lock, Mail, LogIn, AlertCircle, FolderOpen } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { Lock, Mail, LogIn, AlertCircle, FolderOpen, BarChart3 } from 'lucide-react';
 
 export default function LoginPage() {
   const { signIn, loading } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [proyectoId, setProyectoId] = useState('');
@@ -45,17 +47,87 @@ export default function LoginPage() {
       return;
     }
 
-    // MULTI-PROYECTO: Validate proyecto is selected
-    if (!proyectoId) {
-      setError('Por favor selecciona un proyecto');
-      setIsSubmitting(false);
-      return;
-    }
-
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Por favor ingresa un email válido');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // REPORTERÍA MODE: If "Reportería" is selected
+    if (proyectoId === 'REPORTERIA') {
+      try {
+        // Manual authentication for reportería mode
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) {
+          setError(error.message);
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (!data.user) {
+          setError('No se pudo obtener información del usuario');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Fetch user data to verify role
+        const { data: userData, error: userError } = await supabase
+          .from('usuarios')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (userError || !userData) {
+          await supabase.auth.signOut();
+          setError('Usuario no autorizado');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Check if user is active
+        if (!userData.activo) {
+          await supabase.auth.signOut();
+          setError('Tu cuenta ha sido desactivada. Contacta al administrador.');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Verify user has permission for Reportería
+        if (userData.rol !== 'admin' && userData.rol !== 'jefe_ventas' && userData.rol !== 'marketing') {
+          await supabase.auth.signOut();
+          setError('No tienes permisos para acceder a Reportería');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Set a temporary proyecto in localStorage for the session
+        const firstProyecto = proyectos.length > 0 ? proyectos[0] : null;
+        if (firstProyecto) {
+          localStorage.setItem('selected_proyecto_id', firstProyecto.id);
+          localStorage.setItem('selected_proyecto', JSON.stringify(firstProyecto));
+          // Set cookie for server components
+          document.cookie = `selected_proyecto_id=${firstProyecto.id}; path=/; max-age=${60 * 60 * 24 * 30}`;
+        }
+
+        // Redirect to reportería
+        router.push('/reporteria');
+      } catch (error) {
+        console.error('Error during reportería login:', error);
+        setError('Error inesperado. Por favor intenta nuevamente.');
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // MULTI-PROYECTO: Validate proyecto is selected
+    if (!proyectoId) {
+      setError('Por favor selecciona un proyecto');
       setIsSubmitting(false);
       return;
     }
@@ -153,7 +225,11 @@ export default function LoginPage() {
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FolderOpen className="h-5 w-5 text-gray-400" />
+                    {proyectoId === 'REPORTERIA' ? (
+                      <BarChart3 className="h-5 w-5 text-gray-400" />
+                    ) : (
+                      <FolderOpen className="h-5 w-5 text-gray-400" />
+                    )}
                   </div>
                   <select
                     id="proyecto"
@@ -168,6 +244,14 @@ export default function LoginPage() {
                         {proyecto.nombre}
                       </option>
                     ))}
+                    {/* Separator line - rendered as disabled option */}
+                    <option disabled className="text-gray-400">
+                      ──────────────────────
+                    </option>
+                    {/* Reportería option - shown for all users, will validate role on submit */}
+                    <option value="REPORTERIA" className="font-semibold">
+                      📊 Reportería
+                    </option>
                   </select>
                   {/* Custom dropdown arrow */}
                   <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
