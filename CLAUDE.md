@@ -7,9 +7,9 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 12 Diciembre 2025
-**Sesión:** 70 - 📎 **Sistema Evidencias para Resolución de Conflictos**
-**Estado:** ✅ **DEPLOYED TO STAGING**
+**Fecha:** 16 Diciembre 2025
+**Sesión:** 72 - 📊 **Página de Reportería Multi-Proyecto**
+**Estado:** ✅ **COMPLETADO - PENDIENTE DEPLOY**
 **Documentación:** Ver detalles abajo
 
 ---
@@ -28,9 +28,9 @@
 | [Documentos](docs/modulos/documentos.md) | ⏳ **EN DESARROLLO** | **Sesión 66 (9 Dic)** | Logo + Docs + PDF + Contratos Word |
 | [Repulse](docs/modulos/repulse.md) | ✅ **OPERATIVO** | **Sesión 68 (11 Dic)** | re-engagement leads (cron diario) |
 
-### **Métricas Globales (Actualizado: 12 Dic 2025)**
+### **Métricas Globales (Actualizado: 16 Dic 2025)**
 ```
-Total Leads:        1,417
+Total Leads:        ~20,000 (19,998 según reportería)
 Total Locales:      823
 Usuarios Activos:   24
   - Admins:         2 (gerente, bryan)
@@ -130,6 +130,8 @@ Documentación cronológica completa de todas las sesiones.
   - **📞🔄 Limpieza Teléfonos + Cron Repulse Diario (68)** ✅
   - **👤📊 Rol Marketing + Limpieza Insights (69)** ✅
   - **📎 Sistema Evidencias para Resolución de Conflictos (70)** ✅
+  - **🏷️ Chrome Extension v1.2.0 - Tipificación de Leads (71)** ✅
+  - **📊 Página de Reportería Multi-Proyecto (72)** ⏳ PENDIENTE DEPLOY
 
 ---
 
@@ -177,6 +179,49 @@ Decisiones técnicas, stack tecnológico, estructura del proyecto.
 ---
 
 ## 🎯 ÚLTIMAS 5 SESIONES (Resumen Ejecutivo)
+
+### **Sesión 72** (16 Dic) - 📊 ⏳ **Página de Reportería Multi-Proyecto**
+**Tipo:** Feature - Nueva página standalone para reportería
+**Estado:** ⏳ **COMPLETADO - PENDIENTE DEPLOY**
+
+**Requerimiento:** Página `/reporteria` sin sidebar que muestre todos los vendedores con leads de TODOS los proyectos activos, con filtros y exportación Excel.
+
+**Características:**
+- Acceso: admin, jefe_ventas, marketing
+- Entrada: Dropdown de login → "📊 Reportería"
+- Filtros: Proyecto, fecha desde/hasta, búsqueda por nombre
+- Exportación: Excel con XLSX library
+- Responsive: Cards móvil, tabla desktop
+
+**Archivos creados:**
+- `lib/actions-reporteria.ts` (240 líneas) - Server actions con keyset pagination
+- `app/reporteria/page.tsx` (85 líneas) - Página con RBAC
+- `components/reporteria/ReporteriaClient.tsx` (477 líneas) - UI completa
+
+**Archivos modificados:**
+- `middleware.ts` (+16 líneas) - RBAC para /reporteria
+- `app/login/page.tsx` (+15 líneas) - Opción "Reportería" en dropdown
+
+**Bug corregido:** Server Actions usaban browser Supabase client → Cambiado a `createServerClient` con cookies
+
+**Testing Playwright:** ✅ Admin, Marketing, Vendedor verificados
+
+---
+
+### **Sesión 71** (16 Dic) - 🏷️ ✅ **Chrome Extension v1.2.0 - Tipificación de Leads**
+**Tipo:** Feature - Sistema de clasificación de leads en extensión
+**Estado:** ✅ **DEPLOYADO**
+
+**Características:**
+- 3 niveles de tipificación en cascada (como en dashboard)
+- Nivel 1 (azul): 4 opciones
+- Nivel 2 (verde): Dinámico según Nivel 1
+- Nivel 3 (lima): 34 opciones detalladas
+
+**Archivos modificados:** popup.html, popup.css, popup.js, manifest.json (v1.2.0)
+**API:** `app/api/extension/create-lead/route.ts` - Campos tipificación
+
+---
 
 ### **Sesión 70** (12 Dic) - 📎 ✅ **Sistema Evidencias para Resolución de Conflictos**
 **Tipo:** Feature completo (Upload + Storage + UI)

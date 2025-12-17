@@ -1647,4 +1647,947 @@ Meta Lead Ad → n8n Facebook Trigger → HTTP Request → /api/leads/meta → N
 
 ---
 
+## Sesión 70 - 15 Diciembre 2025
+
+### 🔌 Chrome Extension v1.1.0 - Panel Lateral + Separadores de Fecha
+
+**Tipo:** Feature - Chrome Extension Major Update
+**Estado:** ✅ COMPLETADO
+**Versión:** 1.1.0
+**Archivos generados:** ZIP + Tutorial PDF
+
+---
+
+### Objetivo
+
+1. Corregir formato de "Horario de Visita" a AM/PM (12 horas)
+2. Agregar separadores de fecha al historial de conversaciones
+3. Convertir popup a panel lateral permanente (iframe)
+4. Validar que exista conversación activa antes de permitir captura
+
+---
+
+### Trabajo Realizado
+
+#### FASE 1: Formato Horario de Visita AM/PM ✅
+
+**Problema:** El campo "Horario de Visita" usaba formato 24 horas, difícil para usuarios.
+
+**Solución:** Datetime picker con campos separados (fecha + hora + minuto + AM/PM)
+
+**Archivos modificados:**
+
+| Archivo | Cambio |
+|---------|--------|
+| `popup/popup.html` | Nuevo datetime picker con inputs separados |
+| `popup/popup.js` | Función `buildHorarioVisita()` para construir ISO timestamp |
+| `popup/popup.css` | Estilos para `.datetime-picker`, `.datetime-time-group` |
+
+**Formato generado:**
+- Display: `DD/MM/YYYY H:MMAM/PM` (ej: "15/12/2025 10:30AM")
+- Timestamp: ISO 8601 con offset Lima (`2025-12-15T10:30:00-05:00`)
+
+---
+
+#### FASE 2: Separadores de Fecha en Historial ✅
+
+**Problema:** Mensajes de diferentes días aparecían como conversación continua.
+
+**Solución:** Capturar fecha de cada mensaje y agregar separadores.
+
+**Implementación en `whatsapp.js`:**
+
+Nueva función `extractMessageTimeAndDate()`:
+```javascript
+function extractMessageTimeAndDate(row) {
+  // Extrae de data-pre-plain-text: "[11:08 a.m., 15/12/2025] +51..."
+  const dateMatch = preText.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+  return { time, date };
+}
+```
+
+**Implementación en `popup.js`:**
+
+```javascript
+function formatMessagesForStorage() {
+  let lastDate = null;
+  for (const msg of capturedMessages) {
+    if (msg.date && msg.date !== lastDate) {
+      formatted.push(`--- ${msg.date} ---`);  // Separador
+      lastDate = msg.date;
+    }
+    formatted.push(`${prefix}: ${msg.text}`);
+  }
+}
+```
+
+**Implementación en `LeadDetailPanel.tsx`:**
+
+```typescript
+interface ChatMessage {
+  sender: 'user' | 'bot' | 'date_separator';  // Nuevo tipo
+  text: string;
+}
+
+// Parsing
+const dateSeparatorMatch = trimmedLine.match(/^---\s*(\d{1,2}\/\d{1,2}\/\d{4})\s*---$/);
+
+// Rendering
+message.sender === 'date_separator' ? (
+  <div className="bg-gray-200 text-gray-600 text-xs font-medium px-3 py-1 rounded-full">
+    {message.text}
+  </div>
+)
+```
+
+---
+
+#### FASE 3: Panel Lateral con Iframe ✅
+
+**Problema:** El popup se cerraba al hacer click fuera, impidiendo copiar/pegar de la conversación.
+
+**Solución:** Panel lateral permanente que carga `popup.html` en un iframe.
+
+**Cambios en `manifest.json`:**
+
+```json
+{
+  "version": "1.1.0",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "action": {
+    // Removido "default_popup" - ahora usa click handler
+    "default_title": "EcoPlaza Lead Capture - Abrir/Cerrar Panel"
+  },
+  "content_scripts": [{
+    "css": ["content-scripts/panel.css"]  // Nuevo CSS
+  }],
+  "web_accessible_resources": [{
+    "resources": ["popup/popup.html", "popup/popup.css", "popup/popup.js", "assets/icons/*"],
+    "matches": ["https://web.whatsapp.com/*"]
+  }]
+}
+```
+
+**Nuevo archivo `content-scripts/panel.css`:**
+
+```css
+.ecoplaza-panel {
+  position: fixed;
+  top: 0;
+  right: -400px;  /* Oculto por defecto */
+  width: 400px;
+  height: 100vh;
+  z-index: 999999;
+  transition: right 0.3s ease-in-out;
+}
+
+.ecoplaza-panel.ecoplaza-panel-visible {
+  right: 0;
+}
+
+body.ecoplaza-panel-active #app {
+  width: calc(100% - 400px) !important;  /* Ajusta WhatsApp */
+}
+```
+
+**Funciones agregadas a `whatsapp.js`:**
+
+| Función | Descripción |
+|---------|-------------|
+| `createSidePanel()` | Crea div + header + iframe |
+| `toggleSidePanel(show)` | Muestra/oculta panel |
+| `hasActiveConversation()` | Verifica si hay chat abierto |
+| `handleIframeMessage(event)` | Comunicación bidireccional |
+| `notifyIframePanelState(visible)` | Notifica estado al iframe |
+
+**Comunicación iframe ↔ content script:**
+
+| Mensaje | Dirección | Acción |
+|---------|-----------|--------|
+| `ECOPLAZA_GET_PHONE` | iframe → parent | Solicita teléfono |
+| `ECOPLAZA_PHONE_RESULT` | parent → iframe | Responde teléfono |
+| `ECOPLAZA_GET_CHAT` | iframe → parent | Solicita chat |
+| `ECOPLAZA_CHAT_RESULT` | parent → iframe | Responde mensajes |
+| `ECOPLAZA_CHECK_CONVERSATION` | iframe → parent | Verifica conversación |
+| `ECOPLAZA_CONVERSATION_STATUS` | parent → iframe | Estado conversación |
+
+**Modificaciones en `popup.js`:**
+
+```javascript
+// Detectar contexto
+const isInIframe = window.self !== window.top;
+
+// En modo iframe, usar postMessage en vez de chrome.tabs
+if (isInIframe) {
+  capturePhoneFromWhatsApp = async function() {
+    window.parent.postMessage({ type: 'ECOPLAZA_GET_PHONE' }, '*');
+  };
+
+  // Polling cada 2 segundos para verificar conversación
+  setInterval(checkConversationStatus, 2000);
+}
+```
+
+**Actualización `background/service-worker.js`:**
+
+```javascript
+chrome.action.onClicked.addListener(async (tab) => {
+  if (tab.url.includes('web.whatsapp.com')) {
+    await chrome.tabs.sendMessage(tab.id, { action: 'togglePanel' });
+  }
+});
+```
+
+---
+
+#### FASE 4: Validación de Conversación Activa ✅
+
+**Requerimiento:** No permitir capturar leads si no hay conversación seleccionada.
+
+**Implementación:**
+
+1. **Detección en `whatsapp.js`:**
+```javascript
+function hasActiveConversation() {
+  const mainArea = document.querySelector('#main');
+  if (!mainArea) return false;
+
+  const messageRows = mainArea.querySelectorAll('[role="row"]');
+  const headerButton = mainArea.querySelector('header button[role="button"]');
+
+  return messageRows.length > 0 || !!headerButton;
+}
+```
+
+2. **Overlay en `popup.js`:**
+```javascript
+function createNoConversationOverlay() {
+  // Muestra mensaje "Sin conversación activa"
+  // "Selecciona un chat en WhatsApp para capturar un lead"
+}
+
+function updateConversationOverlay(hasConversation) {
+  overlay.style.display = hasConversation ? 'none' : 'flex';
+}
+```
+
+3. **Estilos en `popup.css`:**
+```css
+.no-conversation-overlay {
+  position: fixed;
+  background: rgba(255, 255, 255, 0.98);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+```
+
+---
+
+#### FASE 5: Tutorial PDF Generado ✅
+
+**Herramienta:** Playwright MCP para captura y generación PDF
+
+**Archivos generados:**
+
+| Archivo | Ubicación | Tamaño |
+|---------|-----------|--------|
+| `EcoPlaza-Lead-Capture-Extension-v1.1.0.zip` | `/chrome-extension/../` | 31 KB |
+| `tutorial-ecoplaza-extension.pdf` | `/chrome-extension/` | 168 KB |
+| `TUTORIAL_INSTALACION.html` | `/chrome-extension/` | 15 KB |
+| `tutorial-preview.png` | `/chrome-extension/` | 366 KB |
+
+**Contenido del tutorial:**
+1. Novedades v1.1.0 (panel lateral, copiar/pegar, validación, separadores fecha)
+2. Instalación paso a paso (6 pasos con screenshots)
+3. Cómo usar la extensión (8 pasos)
+4. Solución de problemas comunes
+
+---
+
+### Archivos Creados/Modificados
+
+| Archivo | Acción | Líneas |
+|---------|--------|--------|
+| `manifest.json` | Modificado | +15 (web_accessible_resources, scripting) |
+| `content-scripts/whatsapp.js` | Modificado | +170 (panel, iframe, communication) |
+| `content-scripts/panel.css` | **NUEVO** | 120 (estilos panel lateral) |
+| `popup/popup.js` | Modificado | +110 (iframe detection, postMessage) |
+| `popup/popup.css` | Modificado | +60 (datetime picker, overlay) |
+| `popup/popup.html` | Modificado | +15 (datetime picker inputs) |
+| `background/service-worker.js` | Modificado | +35 (action.onClicked handler) |
+| `TUTORIAL_INSTALACION.html` | **NUEVO** | 350 (tutorial completo) |
+| `dashboard/LeadDetailPanel.tsx` | Modificado | +30 (date_separator type) |
+| `dashboard/api/create-lead/route.ts` | Modificado | +2 (horarioVisitaTimestamp) |
+
+**Total:** +907 líneas netas
+
+---
+
+### Decisiones Técnicas
+
+| Decisión | Opción Elegida | Razón |
+|----------|----------------|-------|
+| Panel lateral vs popup | Iframe en panel lateral | Permite copiar/pegar sin cerrar |
+| Comunicación | postMessage | Estándar para cross-origin iframe |
+| Verificación conversación | Polling 2s | Balance entre responsividad y rendimiento |
+| Fecha en historial | Separador `--- DD/MM/YYYY ---` | Fácil de parsear en dashboard |
+| Timezone | Lima UTC-5 en ISO | Consistencia con hora local del usuario |
+
+---
+
+### Compatibilidad
+
+| Feature | Popup Normal | Panel Lateral |
+|---------|--------------|---------------|
+| Captura teléfono | ✅ chrome.tabs | ✅ postMessage |
+| Captura chat | ✅ chrome.tabs | ✅ postMessage |
+| Login/Logout | ✅ | ✅ |
+| Guardar lead | ✅ | ✅ |
+| Conversación activa | N/A | ✅ Validación |
+
+**Backward compatible:** El popup normal sigue funcionando si se abre directamente el HTML.
+
+---
+
+### Flujo de Uso (Panel Lateral)
+
+```
+1. Usuario abre WhatsApp Web
+2. Click en icono EcoPlaza (toolbar)
+   ↓
+3. Service worker envía 'togglePanel' a content script
+   ↓
+4. Content script crea panel con iframe (popup.html)
+5. WhatsApp se reduce a 60% del ancho
+   ↓
+6. Iframe detecta isInIframe = true
+7. Polling cada 2s: ¿Hay conversación activa?
+   ↓
+8. SIN conversación → Overlay "Selecciona un chat"
+   CON conversación → Formulario habilitado
+   ↓
+9. Usuario captura teléfono/chat (via postMessage)
+10. Usuario completa datos (puede copiar de WhatsApp)
+11. Guarda lead
+   ↓
+12. Click X o icono → Panel se oculta
+```
+
+---
+
+### Testing Checklist
+
+- [x] Panel se abre al click en icono
+- [x] Panel se cierra con botón X
+- [x] Panel se cierra con click en icono (toggle)
+- [x] Overlay aparece sin conversación activa
+- [x] Overlay desaparece al seleccionar chat
+- [x] Captura teléfono funciona
+- [x] Captura chat funciona con scroll
+- [x] Separadores de fecha aparecen en preview
+- [x] Login/logout funciona
+- [x] Lead se guarda correctamente
+- [x] Horario de visita en formato AM/PM
+- [x] Dashboard muestra separadores de fecha
+
+---
+
+### Distribución
+
+**Para usuarios:**
+1. Enviar `EcoPlaza-Lead-Capture-Extension-v1.1.0.zip`
+2. Enviar `tutorial-ecoplaza-extension.pdf`
+
+**Instrucciones rápidas:**
+1. Descomprimir ZIP
+2. `chrome://extensions` → Modo desarrollador ON
+3. "Cargar sin empaquetar" → Seleccionar carpeta
+4. Ir a WhatsApp Web → Click en icono verde
+
+---
+
+## Sesión 71 - 16 Diciembre 2025
+
+### 🏷️ Chrome Extension v1.2.0 - Tipificación de Leads
+
+**Tipo:** Feature - Sistema de clasificación de leads
+**Estado:** ✅ COMPLETADO Y DEPLOYADO
+**Versión:** 1.2.0
+**Commits:** `bdca5c1` (API), archivos locales (extensión)
+
+---
+
+### Objetivo
+
+Implementar el sistema de tipificación de leads (3 niveles jerárquicos) en la extensión de Chrome, igualando la funcionalidad del dashboard.
+
+---
+
+### Trabajo Realizado
+
+#### FASE 1: HTML - Sección de Tipificación ✅
+
+**Archivo:** `chrome-extension/popup/popup.html`
+
+Agregada sección de tipificación entre Email y Horario de Visita:
+
+```html
+<!-- Tipificación del Lead -->
+<div class="tipificacion-section">
+  <label class="tipificacion-title">
+    <svg>...</svg>
+    Tipificación del Lead
+  </label>
+
+  <div class="form-group">
+    <label for="tipificacion-nivel1">Nivel 1</label>
+    <select id="tipificacion-nivel1" class="select-tipificacion select-blue">
+      <option value="">-- Seleccionar --</option>
+      <option value="contactado">Contactado</option>
+      <option value="no_contactado">No Contactado</option>
+      <option value="seguimiento">Seguimiento</option>
+      <option value="otros">Otros</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="tipificacion-nivel2">Nivel 2</label>
+    <select id="tipificacion-nivel2" class="select-tipificacion select-green" disabled>
+      <option value="">-- Primero selecciona Nivel 1 --</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label for="tipificacion-nivel3">Nivel 3</label>
+    <select id="tipificacion-nivel3" class="select-tipificacion select-lime" disabled>
+      <option value="">-- Primero selecciona Nivel 2 --</option>
+    </select>
+  </div>
+</div>
+```
+
+---
+
+#### FASE 2: CSS - Estilos de Tipificación ✅
+
+**Archivo:** `chrome-extension/popup/popup.css`
+
+Estilos color-coded para los 3 niveles:
+
+```css
+.tipificacion-section {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+/* Nivel 1 - Azul */
+.select-blue {
+  background-color: #eff6ff;
+  border: 1px solid #60a5fa;
+  color: #1e40af;
+}
+
+/* Nivel 2 - Verde */
+.select-green {
+  background-color: #f0fdf4;
+  border: 1px solid #22c55e;
+  color: #166534;
+}
+
+/* Nivel 3 - Lima */
+.select-lime {
+  background-color: #f7fee7;
+  border: 1px solid #84cc16;
+  color: #3f6212;
+}
+
+/* Disabled state */
+.select-tipificacion:disabled {
+  background-color: var(--gray-100) !important;
+  border-color: var(--gray-300) !important;
+  color: var(--gray-400) !important;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+```
+
+---
+
+#### FASE 3: JavaScript - Lógica de Cascada ✅
+
+**Archivo:** `chrome-extension/popup/popup.js`
+
+**Datos de opciones:**
+
+```javascript
+const TIPIFICACION_NIVEL_2 = {
+  contactado: [
+    { value: 'interesado', label: 'Interesado' },
+    { value: 'no_interesado', label: 'No Interesado' },
+    { value: 'cliente_evaluacion', label: 'Cliente en Evaluación' },
+    { value: 'cliente_negociacion', label: 'Cliente en Negociación' },
+    { value: 'cliente_cierre', label: 'Cliente en Cierre' },
+  ],
+  no_contactado: [...],
+  seguimiento: [...],
+  otros: [...],
+};
+
+const TIPIFICACION_NIVEL_3 = [
+  { value: 'solicita_info_proyecto', label: 'Solicita información del proyecto' },
+  // ... 34 opciones totales
+];
+```
+
+**Funciones de cascada:**
+
+```javascript
+function handleNivel1Change() {
+  const nivel1Value = tipificacionNivel1.value;
+
+  // Reset nivel 2
+  tipificacionNivel2.innerHTML = '';
+  tipificacionNivel2.disabled = true;
+
+  // Reset nivel 3
+  tipificacionNivel3.innerHTML = '<option value="">-- Primero selecciona Nivel 2 --</option>';
+  tipificacionNivel3.disabled = true;
+
+  if (!nivel1Value) {
+    tipificacionNivel2.innerHTML = '<option value="">-- Primero selecciona Nivel 1 --</option>';
+    return;
+  }
+
+  // Populate nivel 2 options based on nivel 1
+  const nivel2Options = TIPIFICACION_NIVEL_2[nivel1Value] || [];
+  tipificacionNivel2.innerHTML = '<option value="">-- Seleccionar --</option>' +
+    nivel2Options.map(opt => `<option value="${opt.value}">${opt.label}</option>`).join('');
+  tipificacionNivel2.disabled = false;
+}
+
+function handleNivel2Change() {
+  // Similar: habilita nivel 3 con las 34 opciones
+}
+
+// Event listeners
+tipificacionNivel1.addEventListener('change', handleNivel1Change);
+tipificacionNivel2.addEventListener('change', handleNivel2Change);
+```
+
+**Integración con handleSubmitLead():**
+
+```javascript
+// Get tipificación values
+const tipNivel1 = tipificacionNivel1.value || null;
+const tipNivel2 = tipificacionNivel2.value || null;
+const tipNivel3 = tipificacionNivel3.value || null;
+
+const result = await apiCreateLead({
+  // ... otros campos
+  tipificacionNivel1: tipNivel1,
+  tipificacionNivel2: tipNivel2,
+  tipificacionNivel3: tipNivel3,
+});
+```
+
+**Reset en resetLeadForm():**
+
+```javascript
+tipificacionNivel1.value = '';
+tipificacionNivel2.innerHTML = '<option value="">-- Primero selecciona Nivel 1 --</option>';
+tipificacionNivel2.disabled = true;
+tipificacionNivel3.innerHTML = '<option value="">-- Primero selecciona Nivel 2 --</option>';
+tipificacionNivel3.disabled = true;
+```
+
+---
+
+#### FASE 4: API Endpoint Actualizado ✅
+
+**Archivo:** `dashboard/app/api/extension/create-lead/route.ts`
+
+**Cambios:**
+
+```typescript
+const {
+  // ... campos existentes
+  tipificacionNivel1,
+  tipificacionNivel2,
+  tipificacionNivel3,
+} = body;
+
+// En INSERT:
+tipificacion_nivel_1: tipificacionNivel1 || null,
+tipificacion_nivel_2: tipificacionNivel2 || null,
+tipificacion_nivel_3: tipificacionNivel3 || null,
+```
+
+**Commit:** `bdca5c1` - feat(chrome-extension): Add tipificación fields to create-lead API
+
+---
+
+#### FASE 5: Tutorial y ZIP Actualizados ✅
+
+**Archivos modificados:**
+
+| Archivo | Cambio |
+|---------|--------|
+| `manifest.json` | version: "1.1.0" → "1.2.0" |
+| `TUTORIAL_INSTALACION.html` | Actualizado a v1.2.0, nueva sección de tipificación |
+
+**Nuevo ZIP generado:**
+- `EcoPlaza-Lead-Capture-Extension-v1.2.0.zip`
+
+**Novedades documentadas en tutorial:**
+- Sistema de Tipificación de Leads
+- Nivel 1 (Azul): Contactado, No Contactado, Seguimiento, Otros
+- Nivel 2 (Verde): Opciones dinámicas según Nivel 1
+- Nivel 3 (Lima): 34 opciones detalladas
+
+---
+
+### Archivos Modificados
+
+| Archivo | Acción | Descripción |
+|---------|--------|-------------|
+| `chrome-extension/popup/popup.html` | Modificado | +35 líneas (sección tipificación) |
+| `chrome-extension/popup/popup.css` | Modificado | +100 líneas (estilos color-coded) |
+| `chrome-extension/popup/popup.js` | Modificado | +110 líneas (datos, cascada, handlers) |
+| `chrome-extension/manifest.json` | Modificado | version 1.2.0 |
+| `chrome-extension/TUTORIAL_INSTALACION.html` | Modificado | Actualizado a v1.2.0 |
+| `dashboard/app/api/extension/create-lead/route.ts` | Modificado | +6 líneas (campos tipificación) |
+
+**Total:** +250 líneas netas
+
+---
+
+### Flujo de Tipificación
+
+```
+1. Usuario selecciona Nivel 1 (azul)
+   ↓
+2. Nivel 2 se habilita con opciones específicas (verde)
+   ↓
+3. Usuario selecciona Nivel 2
+   ↓
+4. Nivel 3 se habilita con 34 opciones (lima)
+   ↓
+5. Usuario selecciona Nivel 3 (opcional)
+   ↓
+6. Al guardar lead, los 3 valores se envían al API
+   ↓
+7. API guarda en campos tipificacion_nivel_1/2/3
+```
+
+---
+
+### Sincronización Dashboard ↔ Extensión
+
+Los datos de tipificación son **idénticos** en:
+- `LeadDetailPanel.tsx` (dashboard)
+- `popup.js` (extensión)
+
+| Nivel | Opciones |
+|-------|----------|
+| Nivel 1 | 4 opciones principales |
+| Nivel 2 | 5-2 opciones según Nivel 1 |
+| Nivel 3 | 34 opciones universales |
+
+---
+
+### Distribución v1.2.0
+
+**Para usuarios:**
+1. Descargar `EcoPlaza-Lead-Capture-Extension-v1.2.0.zip`
+2. Si ya tienen instalada la extensión:
+   - Reemplazar carpeta
+   - Click "Actualizar" en `chrome://extensions`
+3. Si es instalación nueva: seguir tutorial PDF
+
+**Cambios visibles:**
+- Nueva sección "Tipificación del Lead" en formulario
+- 3 dropdowns con colores distintivos (azul/verde/lima)
+- Dropdowns se habilitan en cascada
+
+---
+
+### Deploy
+
+| Componente | Destino | Estado |
+|------------|---------|--------|
+| API endpoint | main + staging | ✅ Deployado |
+| Extensión Chrome | Archivos locales + ZIP | ✅ Listo |
+| Tutorial | TUTORIAL_INSTALACION.html | ✅ Actualizado |
+
+---
+
+## Sesión 72 - 16 Diciembre 2025
+
+### 📊 Página de Reportería Multi-Proyecto
+
+**Tipo:** Feature - Nueva página de reportería para admin/jefe_ventas/marketing
+**Estado:** ✅ COMPLETADO - PENDIENTE DEPLOY
+**Testing:** ✅ Playwright verificado (admin, marketing, vendedor)
+
+---
+
+### Objetivo
+
+Crear una página `/reporteria` standalone (sin sidebar) que muestre todos los vendedores con sus leads de TODOS los proyectos activos, con filtros avanzados y exportación a Excel.
+
+---
+
+### Especificaciones
+
+| Aspecto | Detalle |
+|---------|---------|
+| **Acceso** | admin, jefe_ventas, marketing |
+| **Navegación** | Sin sidebar - página standalone |
+| **Entrada** | Dropdown de login → opción "📊 Reportería" |
+| **Filtros** | Proyecto (todos/específico), Fecha desde/hasta, Búsqueda por nombre |
+| **Exportación** | Excel con XLSX library |
+| **Responsive** | Cards en móvil, tabla en desktop |
+
+---
+
+### Archivos Creados
+
+| Archivo | Descripción | Líneas |
+|---------|-------------|--------|
+| `lib/actions-reporteria.ts` | Server actions con keyset pagination | 240 |
+| `app/reporteria/page.tsx` | Página principal con validación RBAC | 85 |
+| `components/reporteria/ReporteriaClient.tsx` | Componente cliente con UI completa | 477 |
+
+---
+
+### Archivos Modificados
+
+| Archivo | Cambio |
+|---------|--------|
+| `middleware.ts` | +16 líneas - RBAC para /reporteria (líneas 328-343) |
+| `app/login/page.tsx` | +15 líneas - Opción "Reportería" en dropdown |
+
+---
+
+### Arquitectura Backend
+
+**Server Actions (`lib/actions-reporteria.ts`):**
+
+```typescript
+// Helper con contexto de servidor (cookies)
+async function createSupabaseServer() {
+  const cookieStore = await cookies();
+  return createServerClient(/* config con cookies */);
+}
+
+// Función principal con keyset pagination
+export async function getReporteriaData(filters: ReporteriaFilters) {
+  // STEP 1: Obtener proyectos activos
+  // STEP 2: Obtener usuarios vendedor/vendedor_caseta
+  // STEP 3: Fetch leads con pagination (batches de 1000, máx 20 batches)
+  // STEP 4: Agrupar por vendedor_id + proyecto_id
+  // Retorna: VendedorReporteriaData[]
+}
+
+// Proyectos para dropdown de filtro
+export async function getProyectosForFilter(): Promise<Proyecto[]>
+```
+
+**Interfaces:**
+
+```typescript
+interface VendedorReporteriaData {
+  id: string;
+  nombre: string;
+  rol: 'vendedor' | 'vendedor_caseta';
+  proyecto_id: string;
+  proyecto_nombre: string;
+  proyecto_color: string | null;
+  leadsManuales: number;
+  leadsAutomaticos: number;
+  total: number;
+}
+
+interface ReporteriaFilters {
+  proyectoId?: string | null;
+  dateFrom?: string; // YYYY-MM-DD
+  dateTo?: string;   // YYYY-MM-DD
+  searchTerm?: string;
+}
+```
+
+---
+
+### Arquitectura Frontend
+
+**Página (`app/reporteria/page.tsx`):**
+- Client Component con useAuth()
+- Validación de rol (admin, jefe_ventas, marketing)
+- Modal "Acceso Denegado" para roles no autorizados
+- Loading spinner mientras valida auth
+
+**Cliente (`components/reporteria/ReporteriaClient.tsx`):**
+
+| Sección | Descripción |
+|---------|-------------|
+| **Header sticky** | Logo EcoPlaza, título, botón "Volver al Dashboard", info usuario |
+| **Filtros** | Grid 4 columnas: Proyecto, Desde, Hasta, Búsqueda |
+| **Acciones** | Botón "Exportar Excel" (disabled si no hay datos) |
+| **Tabla desktop** | 7 columnas: #, Vendedor (con badge rol), Proyecto, Lead Manual, NO Manual, Total, Distribución |
+| **Cards móvil** | Layout responsivo con misma información |
+| **Footer** | Totales: Lead Manual, NO Manual, Total general |
+
+**Barra de distribución:**
+- Púrpura: Leads manuales
+- Verde (#1b967a): Leads automáticos
+- Proporcional al total máximo de la tabla
+
+---
+
+### RBAC en Middleware
+
+```typescript
+// middleware.ts líneas 328-343
+const isReporteriaRoute = pathname.startsWith('/reporteria');
+
+if (isReporteriaRoute) {
+  if (userData.rol !== 'admin' && userData.rol !== 'jefe_ventas' && userData.rol !== 'marketing') {
+    // Redirect según rol
+    if (userData.rol === 'vendedor') {
+      return NextResponse.redirect(new URL('/operativo', req.url));
+    } else if (userData.rol === 'finanzas') {
+      return NextResponse.redirect(new URL('/control-pagos', req.url));
+    } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+      return NextResponse.redirect(new URL('/locales', req.url));
+    }
+  }
+  return res;
+}
+```
+
+---
+
+### Entrada desde Login
+
+**Cambio en `app/login/page.tsx`:**
+
+```tsx
+{/* Separador y opción Reportería */}
+<div className="border-t border-gray-200 my-1"></div>
+<button
+  onClick={() => {
+    setSelectedProyecto({ id: 'REPORTERIA', nombre: '📊 Reportería', slug: 'reporteria' });
+    setShowProyectoDropdown(false);
+  }}
+  className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
+>
+  📊 Reportería
+</button>
+```
+
+**Flujo de login:**
+1. Usuario selecciona "📊 Reportería" en dropdown
+2. Al hacer login, se detecta `selectedProyecto.id === 'REPORTERIA'`
+3. Redirect a `/reporteria` en lugar del dashboard normal
+
+---
+
+### Bug Corregido Durante Desarrollo
+
+**Problema:** Datos no cargaban (spinner infinito "Cargando datos...")
+
+**Causa raíz:** Server Actions usaban `import { supabase } from './supabase'` (cliente browser) que no tiene acceso a cookies en contexto de servidor.
+
+**Solución:**
+```typescript
+// ANTES (incorrecto)
+import { supabase } from './supabase';
+
+// DESPUÉS (correcto)
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+
+async function createSupabaseServer() {
+  const cookieStore = await cookies();
+  return createServerClient(/* config */);
+}
+```
+
+---
+
+### Testing con Playwright
+
+| Test | Usuario | Resultado |
+|------|---------|-----------|
+| Admin acceso | gerencia@ecoplaza.com | ✅ Acceso permitido, datos cargan |
+| Marketing acceso | asanchez@ecoplaza.com.pe | ✅ Acceso permitido, 59 entries, 19,998 leads |
+| Vendedor denegado | leo@ecoplaza.com | ✅ Modal "Acceso Denegado" correcto |
+| Filtro proyecto | - | ✅ Funciona |
+| Búsqueda nombre | - | ✅ Funciona |
+| Export Excel | - | ✅ Botón habilitado con datos |
+
+---
+
+### Métricas de Datos (Test)
+
+```
+Total entries:     59 (vendedor + proyecto combinations)
+Total leads:       19,998
+Usuarios vendedor: 19
+Proyectos activos: 7
+Batches fetched:   20 (límite de seguridad alcanzado)
+```
+
+---
+
+### Exportación Excel
+
+**Columnas exportadas:**
+1. # (índice)
+2. Vendedor
+3. Rol
+4. Proyecto
+5. Lead Manual
+6. NO Manual
+7. Total
+
+**Nombre de archivo:** `reporteria-leads-{YYYYMMDD}.xlsx`
+
+---
+
+### Screenshots de Testing
+
+| Archivo | Descripción |
+|---------|-------------|
+| `reporteria-admin-con-acceso.png` | Vista admin con datos |
+| `reporteria-marketing-con-acceso.png` | Vista marketing con datos |
+| `reporteria-vendedor-sin-acceso.png` | Modal acceso denegado |
+
+---
+
+### Pendiente
+
+- [ ] Deploy a staging (requiere aprobación del usuario)
+- [ ] Deploy a production (requiere aprobación del usuario)
+
+---
+
+### Commits Pendientes
+
+Los cambios están en local, pendiente commit y push:
+- `lib/actions-reporteria.ts` (nuevo)
+- `app/reporteria/page.tsx` (nuevo)
+- `components/reporteria/ReporteriaClient.tsx` (nuevo)
+- `middleware.ts` (modificado +16 líneas)
+- `app/login/page.tsx` (modificado +15 líneas)
+
+**Total:** ~820 líneas netas
+
+---
+
 **🤖 Generated with [Claude Code](https://claude.com/claude-code)**

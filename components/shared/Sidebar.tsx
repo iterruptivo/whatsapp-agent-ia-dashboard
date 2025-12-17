@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3 } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -76,6 +76,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         ],
         categories: [finanzasCategory],
         bottomItems: [
+          { href: '/reporteria', label: 'Reportería', icon: BarChart3 },
           { href: '/repulse', label: 'Repulse', icon: Zap },
           { href: '/admin/usuarios', label: 'Adm. de Usuarios', icon: UserCog },
           { href: '/configuracion-proyectos', label: 'Configurar Proyectos', icon: Settings },
@@ -91,12 +92,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // jefe_ventas tiene acceso a Operativo y Repulse
+    // jefe_ventas tiene acceso a Operativo, Reportería y Repulse
     if (user?.rol === 'jefe_ventas') {
       return {
         directItems: [{ href: '/operativo', label: 'Dashboard Operativo', icon: Users }],
         categories: [finanzasCategory],
         bottomItems: [
+          { href: '/reporteria', label: 'Reportería', icon: BarChart3 },
           { href: '/repulse', label: 'Repulse', icon: Zap },
         ],
       };
@@ -122,7 +124,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // marketing SOLO ve Insights y Operativo
+    // marketing ve Insights, Operativo y Reportería
     if (user?.rol === 'marketing') {
       return {
         directItems: [
@@ -130,7 +132,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
         ],
         categories: [],
-        bottomItems: [] as MenuItem[],
+        bottomItems: [
+          { href: '/reporteria', label: 'Reportería', icon: BarChart3 },
+        ],
       };
     }
 

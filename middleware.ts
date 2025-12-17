@@ -207,6 +207,7 @@ export async function middleware(req: NextRequest) {
   const isControlPagosRoute = pathname.startsWith('/control-pagos');
   const isComisionesRoute = pathname.startsWith('/comisiones');
   const isRepulseRoute = pathname.startsWith('/repulse');
+  const isReporteriaRoute = pathname.startsWith('/reporteria');
 
   // ADMIN ROUTES (/) - Admin and Marketing can access
   if (isAdminRoute) {
@@ -322,6 +323,23 @@ export async function middleware(req: NextRequest) {
       }
     }
     // Admin and jefe_ventas can access
+    return res;
+  }
+
+  // REPORTERIA ROUTES (/reporteria) - Admin, jefe_ventas and marketing only
+  // Página especial sin sidebar, accesible desde dropdown de login
+  if (isReporteriaRoute) {
+    if (userData.rol !== 'admin' && userData.rol !== 'jefe_ventas' && userData.rol !== 'marketing') {
+      // Non-authorized user trying to access reporteria - redirect based on role
+      if (userData.rol === 'vendedor') {
+        return NextResponse.redirect(new URL('/operativo', req.url));
+      } else if (userData.rol === 'finanzas') {
+        return NextResponse.redirect(new URL('/control-pagos', req.url));
+      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+        return NextResponse.redirect(new URL('/locales', req.url));
+      }
+    }
+    // Admin, jefe_ventas and marketing can access
     return res;
   }
 

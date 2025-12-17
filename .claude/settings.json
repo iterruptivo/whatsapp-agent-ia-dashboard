@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "Stop": [{
+      "matcher": "",
+      "hooks": [{
+        "type": "command",
+        "command": "python \"C:\\Users\\josel\\AppData\\Local\\Claude Voice\\hook_speak.py\""
+      }]
+    }]
+  }
+}

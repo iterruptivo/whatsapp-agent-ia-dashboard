@@ -64,7 +64,13 @@
       "Bash(git merge:*)",
       "Bash(start chrome \"e:\\Iterruptivo\\Proyectos-Clientes\\EcoPlaza\\AgenteIA-Whatsapp\\dashboard\\templates\\ficha-inscripcion\\preview-proyecto-pruebas.html\")",
       "Bash(start chrome:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebFetch(domain:support.wati.io)",
+      "WebFetch(domain:docs.n8n.io)",
+      "Bash(exit)",
+      "Bash(npx next lint:*)",
+      "Bash(ls:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []
