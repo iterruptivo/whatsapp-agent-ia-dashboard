@@ -607,12 +607,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       document.cookie = `selected_proyecto_id=${proyectoId}; path=/; max-age=${60 * 60 * 24 * 30}`; // 30 días
 
       // Redirect based on role
-      if (userData.rol === 'admin' || userData.rol === 'marketing') {
+      if (userData.rol === 'admin' || userData.rol === 'marketing' || userData.rol === 'jefe_ventas') {
         router.push('/');
       } else if (userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta') {
         router.push('/operativo');
-      } else if (userData.rol === 'jefe_ventas' || userData.rol === 'coordinador' || userData.rol === 'finanzas') {
+      } else if (userData.rol === 'coordinador') {
         router.push('/locales');
+      } else if (userData.rol === 'finanzas') {
+        router.push('/control-pagos');
       }
 
       // SESIÓN 45H: Resetear cooldown para que eventos de login se procesen
@@ -697,10 +699,16 @@ export function useRequireRole(requiredRole: 'admin' | 'vendedor' | 'jefe_ventas
       // Redirect based on role
       if (user?.rol === 'vendedor' && requiredRole === 'admin') {
         router.push('/operativo'); // Vendedor trying to access admin
-      } else if ((user?.rol === 'jefe_ventas' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador' || user?.rol === 'finanzas') && requiredRole === 'admin') {
-        router.push('/locales'); // Jefe/Caseta/Coordinador/Finanzas trying to access admin
-      } else if ((user?.rol === 'jefe_ventas' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador' || user?.rol === 'finanzas') && requiredRole === 'vendedor') {
-        router.push('/locales'); // Jefe/Caseta/Coordinador/Finanzas trying to access vendedor routes
+      } else if (user?.rol === 'jefe_ventas' && requiredRole === 'admin') {
+        router.push('/'); // Jefe ventas va a Insights
+      } else if ((user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && requiredRole === 'admin') {
+        router.push('/locales'); // Caseta/Coordinador trying to access admin
+      } else if (user?.rol === 'finanzas' && requiredRole === 'admin') {
+        router.push('/control-pagos'); // Finanzas trying to access admin
+      } else if ((user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && requiredRole === 'vendedor') {
+        router.push('/locales'); // Caseta/Coordinador trying to access vendedor routes
+      } else if (user?.rol === 'finanzas' && requiredRole === 'vendedor') {
+        router.push('/control-pagos'); // Finanzas trying to access vendedor routes
       } else {
         router.push('/login'); // Not authenticated
       }

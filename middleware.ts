@@ -115,9 +115,9 @@ export async function middleware(req: NextRequest) {
         .eq('id', validatedUser.id)
         .single();
 
-      if (userData?.rol === 'admin' || userData?.rol === 'marketing') {
+      if (userData?.rol === 'admin' || userData?.rol === 'marketing' || userData?.rol === 'jefe_ventas') {
         return NextResponse.redirect(new URL('/', req.url));
-      } else if (userData?.rol === 'vendedor' || userData?.rol === 'jefe_ventas') {
+      } else if (userData?.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
       } else if (userData?.rol === 'vendedor_caseta' || userData?.rol === 'coordinador') {
         return NextResponse.redirect(new URL('/locales', req.url));
@@ -209,10 +209,10 @@ export async function middleware(req: NextRequest) {
   const isRepulseRoute = pathname.startsWith('/repulse');
   const isReporteriaRoute = pathname.startsWith('/reporteria');
 
-  // ADMIN ROUTES (/) - Admin and Marketing can access
+  // ADMIN ROUTES (/) - Admin, Marketing and Jefe Ventas can access
   if (isAdminRoute) {
-    if (userData.rol === 'admin' || userData.rol === 'marketing') {
-      // Admin and Marketing can access Insights
+    if (userData.rol === 'admin' || userData.rol === 'marketing' || userData.rol === 'jefe_ventas') {
+      // Admin, Marketing and Jefe Ventas can access Insights
       return res;
     } else if (userData.rol === 'vendedor') {
       // Vendedor trying to access admin dashboard - redirect to operativo
@@ -220,8 +220,8 @@ export async function middleware(req: NextRequest) {
     } else if (userData.rol === 'finanzas') {
       // Finanzas SOLO puede acceder a /control-pagos
       return NextResponse.redirect(new URL('/control-pagos', req.url));
-    } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
-      // Jefe/Caseta/Coordinador trying to access admin - redirect to locales
+    } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+      // Caseta/Coordinador trying to access admin - redirect to locales
       return NextResponse.redirect(new URL('/locales', req.url));
     }
     return res;
@@ -237,7 +237,7 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/control-pagos', req.url));
       } else if (userData.rol === 'marketing') {
         return NextResponse.redirect(new URL('/', req.url));
-      } else if (userData.rol === 'jefe_ventas' || userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
         return NextResponse.redirect(new URL('/locales', req.url));
       }
     }

@@ -92,10 +92,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // jefe_ventas tiene acceso a Operativo, Reportería y Repulse
+    // jefe_ventas tiene acceso a Insights, Operativo, Reportería y Repulse
     if (user?.rol === 'jefe_ventas') {
       return {
-        directItems: [{ href: '/operativo', label: 'Dashboard Operativo', icon: Users }],
+        directItems: [
+          { href: '/', label: 'Insights', icon: LayoutDashboard },
+          { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+        ],
         categories: [finanzasCategory],
         bottomItems: [
           { href: '/reporteria', label: 'Reportería', icon: BarChart3 },
