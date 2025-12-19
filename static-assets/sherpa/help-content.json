@@ -1469,14 +1469,14 @@
           "position": "bottom"
         },
         {
-          "target": "main button[class*='import'], main > div > div:nth-child(2) button:first-of-type",
+          "target": "button[class*='gap'][class*='items-center']:has(svg):first-of-type, main > div > div:nth-child(2) > div:last-of-type > button:first-of-type",
           "title": "Importar Leads",
-          "content": "Dos opciones: Agregar Lead (formulario individual para uno o pocos leads) o Importar CSV/Excel (carga masiva desde archivo). Descarga la plantilla primero.",
+          "content": "Haz clic para agregar leads manualmente. Puedes ingresar un lead individual o importar desde CSV/Excel para carga masiva. Descarga la plantilla primero.",
           "position": "left"
         },
         {
-          "target": "main button[class*='export'], main > div > div:nth-child(2) button:last-of-type",
-          "title": "Exportar Datos",
+          "target": "button[class*='gap'][class*='items-center']:has(svg):last-of-type, main > div > div:nth-child(2) > div:last-of-type > button:last-of-type",
+          "title": "Exportar a Excel",
           "content": "Descarga todos los leads filtrados actualmente en formato Excel. Tip: Aplica primero los filtros deseados para obtener solo los datos que necesitas.",
           "position": "left"
         },
@@ -1493,9 +1493,9 @@
           "position": "bottom"
         },
         {
-          "target": "th input[type='checkbox']",
+          "target": "th input[type='checkbox'], thead checkbox",
           "title": "Seleccion Multiple",
-          "content": "Usa este checkbox para seleccionar todos los leads de la pagina. Util para acciones masivas como asignar vendedor a multiples leads.",
+          "content": "Usa este checkbox para seleccionar todos los leads de la pagina. Util para enviar multiples leads a Repulse de forma masiva.",
           "position": "right"
         },
         {
@@ -1664,22 +1664,22 @@
           "position": "bottom"
         },
         {
-          "target": "table thead",
-          "title": "Tabla de Comisiones",
-          "content": "Detalle: Local, Vendedor, Monto Venta, Fase (Gestion/Vendedor), Porcentaje, Monto, Estado, Fechas y Acciones.",
+          "target": "button:nth-of-type(2), div > button:last-of-type",
+          "title": "Pestana Control Comisiones",
+          "content": "Como administrador, haz clic aqui para ver la tabla completa con comisiones de TODOS los vendedores. Veras desgloses de porcentajes y podras marcar comisiones como pagadas.",
           "position": "bottom"
         },
         {
-          "target": "table tbody td:nth-child(6) button",
-          "title": "Ver Desglose de Comision",
-          "content": "Haz clic en el porcentaje para ver el desglose completo: trazabilidad del proceso y como se reparte la comision entre todos los involucrados.",
-          "position": "left"
+          "target": "div > button:first-of-type",
+          "title": "Pestana Mis Comisiones",
+          "content": "Esta pestana muestra solo TUS comisiones personales. Cada vendedor ve unicamente las suyas. El grafico y resumen reflejan tu rendimiento individual.",
+          "position": "bottom"
         },
         {
-          "target": "table tbody tr:first-child td:last-child",
-          "title": "Acciones",
-          "content": "Marcar Pagada: registra que ya pagaste la comision al vendedor. Por verificar: comisiones pendientes de pago inicial del cliente.",
-          "position": "left"
+          "target": "h3, [class*='heading']",
+          "title": "Fin del Tour",
+          "content": "Explora ambas pestanas. En Control Comisiones encontraras la tabla con acciones para marcar pagadas y ver desgloses de cada comision.",
+          "position": "bottom"
         }
       ]
     },
@@ -1876,9 +1876,9 @@
           "position": "bottom"
         },
         {
-          "target": "button",
-          "title": "Selector de Proyecto",
-          "content": "Haz clic aqui para cambiar de proyecto. Cada proyecto tiene sus propios parametros independientes.",
+          "target": "main button, h2 + div button",
+          "title": "Proyecto Actual",
+          "content": "Estas viendo la configuracion del proyecto que tienes en sesion. Para cambiar de proyecto, cierra sesion y selecciona otro al iniciar.",
           "position": "bottom"
         },
         {
