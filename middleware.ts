@@ -247,17 +247,13 @@ export async function middleware(req: NextRequest) {
 
   // OPERATIVO ROUTES (/operativo)
   if (isOperativoRoute) {
-    // Admin, jefe_ventas, vendedor, vendedor_caseta and marketing can access operativo
-    if (userData.rol === 'admin' || userData.rol === 'jefe_ventas' || userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta' || userData.rol === 'marketing') {
+    // Admin, jefe_ventas, vendedor, vendedor_caseta, marketing and coordinador can access operativo
+    if (userData.rol === 'admin' || userData.rol === 'jefe_ventas' || userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta' || userData.rol === 'marketing' || userData.rol === 'coordinador') {
       return res;
     }
     // Finanzas SOLO puede acceder a /control-pagos
     if (userData.rol === 'finanzas') {
       return NextResponse.redirect(new URL('/control-pagos', req.url));
-    }
-    // Coordinador trying to access operativo - redirect to locales
-    if (userData.rol === 'coordinador') {
-      return NextResponse.redirect(new URL('/locales', req.url));
     }
     return res;
   }
@@ -358,8 +354,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public files (public folder)
+     * - public files (images, js, css, json)
+     * - sherpa folder (help center widget)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.gif).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sherpa/|.*\\.png|.*\\.jpg|.*\\.jpeg|.*\\.svg|.*\\.gif|.*\\.js|.*\\.css|.*\\.json).*)',
   ],
 };

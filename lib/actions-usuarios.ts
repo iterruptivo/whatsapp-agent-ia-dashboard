@@ -334,12 +334,12 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
 
   // Si es vendedor, crear en tabla vendedores primero
   if (['vendedor', 'vendedor_caseta'].includes(data.rol)) {
+    // NOTA: La tabla vendedores solo tiene: id, nombre, telefono, activo (NO tiene email)
     const { data: nuevoVendedor, error: vendedorError } = await supabaseAdmin
       .from('vendedores')
       .insert({
         nombre: data.nombre,
-        telefono: data.telefono || '',
-        email: data.email_alternativo || data.email
+        telefono: data.telefono || ''
       })
       .select('id')
       .single();
@@ -468,11 +468,10 @@ export async function updateUsuario(data: UpdateUsuarioData): Promise<{
   const rolActual = data.rol || usuarioActual.rol;
 
   if (['vendedor', 'vendedor_caseta'].includes(rolActual) && usuarioActual.vendedor_id) {
-    // Actualizar vendedores
+    // Actualizar vendedores (solo tiene: id, nombre, telefono, activo - NO tiene email)
     const updateVendedorData: Record<string, unknown> = {};
     if (data.nombre !== undefined) updateVendedorData.nombre = data.nombre;
     if (data.telefono !== undefined) updateVendedorData.telefono = data.telefono;
-    if (data.email_alternativo !== undefined) updateVendedorData.email = data.email_alternativo;
 
     if (Object.keys(updateVendedorData).length > 0) {
       await supabase

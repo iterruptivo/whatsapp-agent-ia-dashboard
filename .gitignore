@@ -48,4 +48,14 @@ Victoria*.json
 # Carpeta de consultas y documentación temporal
 /consultas-leo/
 
+# Static assets copiados durante build (generados automáticamente)
+/public/sherpa/
+
+# Claude Code configuración local
+.claude-voice
+.claude/
+
+# Playwright MCP screenshots
+.playwright-mcp/
+
 nul

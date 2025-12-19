@@ -1,0 +1,1994 @@
+{
+  "version": "1.1.0",
+  "generatedAt": "2025-12-18T10:00:00.000Z",
+  "app": {
+    "name": "EcoPlaza Dashboard",
+    "baseUrl": "https://ecodashboard.iterruptivo.com"
+  },
+  "pages": [
+    {
+      "id": "login",
+      "url": "https://ecodashboard.iterruptivo.com/login",
+      "urlPattern": "/login",
+      "title": "Inicio de Sesion",
+      "description": "Pantalla de acceso al sistema EcoPlaza Dashboard. Permite a los usuarios autenticarse con su correo electronico y contrasena, y seleccionar el proyecto en el que desean trabajar.",
+      "purpose": "Autenticar usuarios y seleccionar proyecto de trabajo",
+      "elements": [
+        {
+          "id": "el-email",
+          "selector": "input[type='email']",
+          "type": "input",
+          "title": "Correo Electronico",
+          "description": "Campo para ingresar el correo electronico registrado en el sistema",
+          "howToUse": "Ingresa tu correo electronico corporativo"
+        },
+        {
+          "id": "el-password",
+          "selector": "input[type='password']",
+          "type": "input",
+          "title": "Contrasena",
+          "description": "Campo para ingresar la contrasena de acceso",
+          "howToUse": "Ingresa tu contrasena. Si la olvidaste, contacta al administrador"
+        },
+        {
+          "id": "el-project-select",
+          "selector": "select",
+          "type": "select",
+          "title": "Selector de Proyecto",
+          "description": "Permite seleccionar el proyecto inmobiliario en el que deseas trabajar",
+          "howToUse": "Selecciona el proyecto antes de iniciar sesion"
+        },
+        {
+          "id": "el-login-btn",
+          "selector": "button[type='submit']",
+          "type": "button",
+          "title": "Boton Iniciar Sesion",
+          "description": "Boton para enviar las credenciales y acceder al sistema",
+          "howToUse": "Haz clic despues de completar todos los campos"
+        }
+      ],
+      "tips": [
+        "Asegurate de seleccionar el proyecto correcto antes de iniciar sesion",
+        "Si olvidaste tu contrasena, contacta al administrador del sistema"
+      ]
+    },
+    {
+      "id": "insights",
+      "url": "https://ecodashboard.iterruptivo.com/",
+      "urlPattern": "/",
+      "title": "Insights - Dashboard Principal",
+      "description": "Panel de control con metricas clave del negocio inmobiliario. Muestra estadisticas de leads, distribucion por vendedores, fuentes UTM, asistencias y rendimiento general del equipo de ventas.",
+      "purpose": "Visualizar KPIs y metricas de rendimiento de ventas en tiempo real",
+      "elements": [
+        {
+          "id": "el-date-filter",
+          "selector": "input[type='date'], .date-picker, [class*='date']",
+          "type": "input",
+          "title": "Filtro de Fechas",
+          "description": "Campos Desde/Hasta para seleccionar el rango de fechas a analizar. Por defecto muestra los ultimos 30 dias.",
+          "howToUse": "Selecciona las fechas y haz clic en Actualizar para ver los datos del periodo"
+        },
+        {
+          "id": "el-kpi-cards",
+          "selector": ".kpi-card, .stat-card",
+          "type": "other",
+          "title": "Tarjetas de Metricas",
+          "description": "Muestran indicadores clave: Total Leads, Leads Completos, En Conversacion, Lead Manual, Lead Incompleto, Abandonado y Tasa de Conversion",
+          "howToUse": "Revisa estas tarjetas para un resumen rapido del estado actual"
+        },
+        {
+          "id": "el-status-distribution",
+          "selector": "[class*='chart'], canvas, [class*='distribution']",
+          "type": "other",
+          "title": "Distribucion de Estados",
+          "description": "Grafico de dona que muestra la proporcion de leads por estado: Lead Completo, Lead Incompleto, En Conversacion, Abandonado, Lead Manual",
+          "howToUse": "Pasa el cursor sobre las secciones para ver porcentajes y cantidades exactas"
+        },
+        {
+          "id": "el-utm-chart",
+          "selector": ".recharts-wrapper",
+          "type": "other",
+          "title": "Distribucion por UTM",
+          "description": "Grafico de barras horizontal que muestra el origen de los leads: web_whatsapp, facebook, instagram, google, referido, tiktok, etc.",
+          "howToUse": "Identifica que canales generan mas leads para optimizar tu inversion en marketing"
+        },
+        {
+          "id": "el-vendor-ranking",
+          "selector": "table, .vendor-list, .ranking-table",
+          "type": "other",
+          "title": "Tabla de Vendedores",
+          "description": "Lista de vendedores con metricas de rendimiento: Lead Manual, NO Manual y Total. Incluye filtro por tipo de vendedor.",
+          "howToUse": "Haz clic en Excel para exportar. Usa Ver mas vendedores para ver la lista completa."
+        }
+      ],
+      "tips": [
+        "Revisa este dashboard diariamente para monitorear el progreso",
+        "Usa los filtros de fecha para comparar periodos",
+        "Los graficos son interactivos - pasa el cursor para ver valores exactos",
+        "Exporta a Excel para analisis mas detallados"
+      ]
+    },
+    {
+      "id": "dashboard-operativo",
+      "url": "https://ecodashboard.iterruptivo.com/operativo",
+      "urlPattern": "/operativo",
+      "title": "Dashboard Operativo",
+      "description": "Centro de operaciones para gestion de leads. Permite ver, filtrar, asignar, tipificar y dar seguimiento a todos los prospectos del sistema con historial de conversaciones y acciones de Repulse.",
+      "purpose": "Gestionar leads y asignaciones de vendedores de manera eficiente",
+      "elements": [
+        {
+          "id": "el-menu-btn",
+          "selector": "button[aria-label='Abrir menú'], button:has(img[alt*='menu'])",
+          "type": "button",
+          "title": "Menu de Navegacion",
+          "description": "Abre el menu lateral para navegar a otras secciones del dashboard",
+          "howToUse": "Haz clic para ver todas las opciones: Insights, Dashboard Operativo, Locales, Control de Pagos, Comisiones, Reporteria, Repulse, Admin Usuarios, Configurar Proyectos"
+        },
+        {
+          "id": "el-user-info",
+          "selector": "header [class*='user'], .user-info",
+          "type": "other",
+          "title": "Informacion de Usuario",
+          "description": "Muestra tu nombre y rol actual (ej: DrChang - Administrador)",
+          "howToUse": "Verifica que estas logueado con el usuario correcto"
+        },
+        {
+          "id": "el-logout-btn",
+          "selector": "button:has-text('Cerrar Sesión'), button[aria-label='Cerrar sesión']",
+          "type": "button",
+          "title": "Cerrar Sesion",
+          "description": "Cierra tu sesion actual y regresa a la pantalla de login",
+          "howToUse": "Usa al terminar tu jornada o para cambiar de usuario"
+        },
+        {
+          "id": "el-date-from",
+          "selector": "input[type='date']:first-of-type, input[aria-label*='Desde']",
+          "type": "input",
+          "title": "Fecha Desde",
+          "description": "Define el inicio del rango de fechas para filtrar leads",
+          "howToUse": "Selecciona la fecha inicial. Por defecto muestra 30 dias atras"
+        },
+        {
+          "id": "el-date-to",
+          "selector": "input[type='date']:last-of-type, input[aria-label*='Hasta']",
+          "type": "input",
+          "title": "Fecha Hasta",
+          "description": "Define el fin del rango de fechas para filtrar leads",
+          "howToUse": "Selecciona la fecha final. Por defecto es la fecha de hoy"
+        },
+        {
+          "id": "el-update-btn",
+          "selector": "button:has-text('Actualizar')",
+          "type": "button",
+          "title": "Boton Actualizar",
+          "description": "Aplica los filtros de fecha seleccionados y recarga la tabla",
+          "howToUse": "Haz clic despues de cambiar las fechas para ver los resultados"
+        },
+        {
+          "id": "el-tab-todos",
+          "selector": "button:has-text('Todos')",
+          "type": "button",
+          "title": "Ver Todos los Leads",
+          "description": "Muestra todos los leads sin importar si tienen vendedor asignado",
+          "howToUse": "Selecciona para ver la lista completa de leads"
+        },
+        {
+          "id": "el-tab-sin-asignar",
+          "selector": "button:has-text('Sin Asignar')",
+          "type": "button",
+          "title": "Leads Sin Asignar",
+          "description": "Filtra para mostrar solo los leads que no tienen vendedor asignado",
+          "howToUse": "Util para distribuir leads nuevos al equipo de ventas"
+        },
+        {
+          "id": "el-vendor-filter",
+          "selector": "select:has(option:has-text('Todos los vendedores'))",
+          "type": "select",
+          "title": "Filtro por Vendedor",
+          "description": "Dropdown con lista completa de vendedores del proyecto. Permite filtrar leads por vendedor asignado",
+          "howToUse": "Selecciona un vendedor especifico para ver solo sus leads asignados"
+        },
+        {
+          "id": "el-status-filter",
+          "selector": "select:has(option:has-text('Todos los estados'))",
+          "type": "select",
+          "title": "Filtro por Estado",
+          "description": "Filtra leads por estado: Lead Completo, Lead Incompleto, En Conversacion, Conversacion Abandonada",
+          "howToUse": "Selecciona un estado para segmentar la lista de leads"
+        },
+        {
+          "id": "el-import-dropdown",
+          "selector": "button:has-text('Importar Leads Manuales')",
+          "type": "button",
+          "title": "Importar Leads Manuales",
+          "description": "Abre un menu con dos opciones: Agregar Lead (formulario individual) o Importar CSV/Excel (carga masiva)",
+          "howToUse": "Haz clic para ver las opciones de importacion"
+        },
+        {
+          "id": "el-add-lead-form",
+          "selector": "button:has-text('Agregar Lead')",
+          "type": "button",
+          "title": "Agregar Lead Individual",
+          "description": "Abre formulario para crear un lead manualmente con campos: Nombre, Telefono (con codigo de pais), Vendedor asignado, UTM, Email (opcional), Rubro (opcional)",
+          "howToUse": "Completa los campos requeridos (*) y haz clic en Agregar a la Lista. Puedes agregar varios antes de importar"
+        },
+        {
+          "id": "el-import-csv",
+          "selector": "button:has-text('Importar CSV/Excel')",
+          "type": "button",
+          "title": "Importar desde Archivo",
+          "description": "Permite subir un archivo Excel con multiples leads. Muestra ejemplo de formato con columnas: nombre, telefono, email_vendedor, utm, email, rubro",
+          "howToUse": "Descarga la plantilla, completala con tus leads y subela. Campos requeridos: nombre, telefono, email_vendedor, utm"
+        },
+        {
+          "id": "el-export-btn",
+          "selector": "button:has-text('Exportar a Excel')",
+          "type": "button",
+          "title": "Exportar a Excel",
+          "description": "Descarga todos los leads filtrados actualmente en formato Excel",
+          "howToUse": "Aplica primero los filtros deseados (fecha, vendedor, estado) y luego exporta"
+        },
+        {
+          "id": "el-search-input",
+          "selector": "input[placeholder*='Buscar leads']",
+          "type": "input",
+          "title": "Buscar Leads",
+          "description": "Campo de busqueda para encontrar leads por nombre, telefono u otros datos",
+          "howToUse": "Escribe para filtrar la tabla en tiempo real"
+        },
+        {
+          "id": "el-leads-table",
+          "selector": "table",
+          "type": "other",
+          "title": "Tabla de Leads",
+          "description": "Lista de leads con columnas: Seleccionar, Nombre, Telefono, Rubro, UTM, Horario de Visita, Email, Asistio, Estado, Vendedor Asignado, Fecha, Acciones",
+          "howToUse": "Haz clic en cualquier fila para abrir el panel de detalle del lead"
+        },
+        {
+          "id": "el-select-all",
+          "selector": "th input[type='checkbox'], input[aria-label='Seleccionar todos']",
+          "type": "input",
+          "title": "Seleccionar Todos",
+          "description": "Checkbox para seleccionar/deseleccionar todos los leads de la pagina actual",
+          "howToUse": "Util para acciones masivas como asignar vendedor a multiples leads"
+        },
+        {
+          "id": "el-horario-badge",
+          "selector": "[class*='badge'], .horario-badge",
+          "type": "other",
+          "title": "Badge de Horario",
+          "description": "Indica si el horario de visita ya paso (Pasado), es pronto (Proximo 24h) o es futuro (Futuro)",
+          "howToUse": "Usa el color del badge para priorizar: Proximo = atencion urgente"
+        },
+        {
+          "id": "el-vendor-dropdown",
+          "selector": "td button:has(img[alt*='chevron'])",
+          "type": "button",
+          "title": "Cambiar Vendedor Asignado",
+          "description": "Dropdown en cada fila para cambiar el vendedor asignado rapidamente sin abrir el detalle",
+          "howToUse": "Haz clic en el nombre del vendedor para ver la lista y seleccionar otro"
+        },
+        {
+          "id": "el-pagination",
+          "selector": "[class*='pagination'], nav:has(button:has-text('Anterior'))",
+          "type": "other",
+          "title": "Paginacion",
+          "description": "Controles para navegar entre paginas de leads: Anterior, numeros de pagina, Siguiente. Muestra 'Pagina X de Y'",
+          "howToUse": "Haz clic en los numeros o botones para cambiar de pagina"
+        },
+        {
+          "id": "el-lead-detail-panel",
+          "selector": "dialog, [role='dialog']",
+          "type": "other",
+          "title": "Panel Detalle del Lead",
+          "description": "Panel lateral que muestra informacion completa del lead al hacer clic en una fila. Incluye: Informacion de Contacto, Tipificacion, Informacion de Negocio, Estado, Conversacion, Informacion Adicional y Evidencias",
+          "howToUse": "Haz clic en cualquier fila de la tabla para abrir este panel"
+        },
+        {
+          "id": "el-tipificacion",
+          "selector": "[class*='tipificacion'], .tipificacion-section",
+          "type": "other",
+          "title": "Tipificacion del Lead (3 Niveles)",
+          "description": "Sistema de clasificacion en 3 niveles: Nivel 1 (Contactado, No Contactado), Nivel 2 (Interesado, No Interesado), Nivel 3 (Requiere cotizacion, Visita agendada, etc.)",
+          "howToUse": "Selecciona el nivel apropiado en cada dropdown para clasificar al lead"
+        },
+        {
+          "id": "el-repulse-actions",
+          "selector": "button:has-text('Enviar a Repulse'), button:has-text('Excluir')",
+          "type": "button",
+          "title": "Acciones de Repulse",
+          "description": "Dos botones: Enviar a Repulse (agrega al sistema de re-engagement) y Excluir permanentemente (no volvera a aparecer en Repulse)",
+          "howToUse": "Usa Enviar a Repulse para leads frios. Usa Excluir si el lead pidio no ser contactado"
+        },
+        {
+          "id": "el-historial-reciente",
+          "selector": "button:has-text('Historial Reciente')",
+          "type": "button",
+          "title": "Historial Reciente",
+          "description": "Expande para ver los ultimos mensajes de la conversacion con el lead via WhatsApp",
+          "howToUse": "Haz clic para ver los mensajes recientes sin salir del dashboard"
+        },
+        {
+          "id": "el-historial-completo",
+          "selector": "button:has-text('Historial Completo')",
+          "type": "button",
+          "title": "Historial Completo de Conversacion",
+          "description": "Abre el historial completo de toda la conversacion con el lead",
+          "howToUse": "Util para revisar el contexto completo antes de contactar al lead"
+        },
+        {
+          "id": "el-info-adicional",
+          "selector": "[class*='info-adicional']",
+          "type": "other",
+          "title": "Informacion Adicional",
+          "description": "Muestra metadatos del lead: Fecha de Captura, Creado, Ultima Actualizacion, Intentos del Bot, Notificacion Enviada",
+          "howToUse": "Consulta para ver cuando fue capturado el lead y su historial de interacciones"
+        },
+        {
+          "id": "el-evidencias",
+          "selector": "[class*='evidencias'], [class*='conflictos']",
+          "type": "other",
+          "title": "Resolucion de Conflictos / Evidencias",
+          "description": "Seccion para adjuntar evidencias en caso de disputas de asignacion entre vendedores",
+          "howToUse": "Sube capturas de pantalla u otros documentos como respaldo"
+        }
+      ],
+      "tips": [
+        "Usa los filtros combinados (fecha + vendedor + estado) para encontrar leads rapidamente",
+        "Revisa diariamente los leads Sin Asignar para distribuirlos al equipo",
+        "El badge Proximo (24h) indica visitas urgentes que requieren preparacion",
+        "La tipificacion en 3 niveles ayuda a priorizar: Nivel 3 = leads mas calificados",
+        "Puedes cambiar el vendedor asignado directamente desde la tabla sin abrir el detalle",
+        "El Historial Reciente muestra los ultimos mensajes para contexto rapido",
+        "Enviar a Repulse reactiva leads que no han comprado en 30 dias",
+        "Exporta a Excel despues de aplicar filtros para reportes personalizados"
+      ]
+    },
+    {
+      "id": "gestion-locales",
+      "url": "https://ecodashboard.iterruptivo.com/locales",
+      "urlPattern": "/locales",
+      "title": "Gestion de Locales",
+      "description": "Centro de control del inventario de locales comerciales. Permite gestionar estados (Libre, Negociando, Confirmado, Vendido), asignar vendedores, editar precios, registrar visitas, importar locales masivamente y generar fichas de inscripcion completas para ventas confirmadas.",
+      "purpose": "Controlar el inventario de propiedades, asignar vendedores y gestionar el proceso de venta desde la negociacion hasta la ficha de inscripcion",
+      "elements": [
+        {
+          "id": "el-search-codigo",
+          "selector": "input[placeholder*='codigo']",
+          "type": "input",
+          "title": "Busqueda por Codigo",
+          "description": "Campo de busqueda para encontrar un local especifico por su codigo exacto (ej: P-1, LC-001)",
+          "howToUse": "Escribe el codigo del local y presiona Enter o haz clic en Buscar"
+        },
+        {
+          "id": "el-total-locales",
+          "selector": "[class*='total']",
+          "type": "other",
+          "title": "Contador de Locales",
+          "description": "Muestra el total de locales en el proyecto y cuantos se estan mostrando segun los filtros aplicados",
+          "howToUse": "Referencia rapida para saber cuantos locales hay disponibles"
+        },
+        {
+          "id": "el-status-checkboxes",
+          "selector": "input[type='checkbox']",
+          "type": "input",
+          "title": "Filtros de Estado (Checkboxes)",
+          "description": "Checkboxes para filtrar por estado: Verde (Libre), Amarillo (Negociando), Naranja (Confirmado), Rojo (Vendido). Puedes seleccionar multiples estados",
+          "howToUse": "Marca o desmarca los estados que deseas ver. Por defecto muestra Libre, Negociando y Confirmado"
+        },
+        {
+          "id": "el-project-filter",
+          "selector": "[class*='proyecto']",
+          "type": "other",
+          "title": "Filtro de Proyecto",
+          "description": "Muestra el proyecto actual de la sesion. Los locales se filtran automaticamente por este proyecto",
+          "howToUse": "Para cambiar de proyecto, cierra sesion y selecciona otro al iniciar"
+        },
+        {
+          "id": "el-metraje-min",
+          "selector": "input[type='number']:first-of-type",
+          "type": "input",
+          "title": "Metraje Minimo",
+          "description": "Campo para filtrar locales por metraje minimo en metros cuadrados",
+          "howToUse": "Ingresa el metraje minimo deseado y haz clic en Actualizar"
+        },
+        {
+          "id": "el-metraje-max",
+          "selector": "input[type='number']:last-of-type",
+          "type": "input",
+          "title": "Metraje Maximo",
+          "description": "Campo para filtrar locales por metraje maximo en metros cuadrados",
+          "howToUse": "Ingresa el metraje maximo deseado y haz clic en Actualizar"
+        },
+        {
+          "id": "el-import-btn",
+          "selector": "button[class*='import']",
+          "type": "button",
+          "title": "Importar Locales",
+          "description": "Abre modal para importar locales masivamente desde Excel. Requiere columnas: codigo, metraje. Opcionales: estado, precio_base. Incluye descarga de plantilla",
+          "howToUse": "Descarga la plantilla, completala con tus locales y subela. Se importaran al proyecto actual"
+        },
+        {
+          "id": "el-visita-btn",
+          "selector": "button[class*='visita']",
+          "type": "button",
+          "title": "Visita sin Local",
+          "description": "Registra cuando un prospecto visita el proyecto pero no se decide por un local especifico. Busca al lead por telefono",
+          "howToUse": "Ingresa el telefono con codigo de pais (ej: 51987654321), busca el lead y registra la visita"
+        },
+        {
+          "id": "el-update-btn",
+          "selector": "button[class*='actualizar']",
+          "type": "button",
+          "title": "Boton Actualizar",
+          "description": "Aplica los filtros de metraje y recarga la tabla de locales",
+          "howToUse": "Haz clic despues de cambiar filtros de metraje"
+        },
+        {
+          "id": "el-locales-table",
+          "selector": "table",
+          "type": "other",
+          "title": "Tabla de Locales",
+          "description": "Lista de locales con columnas: Codigo, Precio Base (editable), Proyecto, Metraje, Estado (con botones de cambio), Monto Venta, Vendedor Actual, Acciones (Historial)",
+          "howToUse": "Cada fila muestra un local con sus datos y acciones disponibles segun su estado"
+        },
+        {
+          "id": "el-precio-base",
+          "selector": "td input[type='text']",
+          "type": "input",
+          "title": "Editar Precio Base",
+          "description": "Campo editable para modificar el precio base del local en USD. Incluye boton para guardar cambios",
+          "howToUse": "Modifica el valor y haz clic en el icono de guardar (checkmark) para actualizar"
+        },
+        {
+          "id": "el-estado-btns",
+          "selector": "td button",
+          "type": "button",
+          "title": "Botones de Cambio de Estado",
+          "description": "Botones para cambiar el estado del local: Libre, Negociando, Confirmado, Vendido. El estado actual se muestra resaltado",
+          "howToUse": "Haz clic en el estado destino. Si es Negociando o Confirmado, deberas seleccionar un vendedor"
+        },
+        {
+          "id": "el-asignar-vendedor-modal",
+          "selector": "dialog, [role='dialog']",
+          "type": "other",
+          "title": "Modal Asignar Vendedor",
+          "description": "Al cambiar a Negociando o Confirmado, aparece este modal para seleccionar el vendedor responsable. Muestra lista con rol (Vendedor/Caseta)",
+          "howToUse": "Selecciona el vendedor de la lista desplegable y confirma la asignacion"
+        },
+        {
+          "id": "el-countdown",
+          "selector": "[class*='countdown']",
+          "type": "other",
+          "title": "Countdown de Confirmacion",
+          "description": "Cuando un local esta en estado Confirmado, muestra un contador regresivo (ej: Quedan 3d 23h 25m). Indica tiempo limite para completar la ficha de inscripcion",
+          "howToUse": "Monitorea el tiempo restante. Si expira, el local puede volver a estado Libre"
+        },
+        {
+          "id": "el-ficha-btn",
+          "selector": "button[class*='ficha']",
+          "type": "button",
+          "title": "Iniciar Ficha de Inscripcion",
+          "description": "Solo disponible para locales Confirmados. Abre formulario completo para registrar la venta: datos del local, financiamiento, datos del titular, conyuge, copropietarios, documentos adjuntos (DNI, voucher) y fuente de captacion",
+          "howToUse": "Completa todos los campos requeridos, sube documentos y guarda. Puedes ver vista previa antes de guardar"
+        },
+        {
+          "id": "el-ficha-uin",
+          "selector": "[class*='uin']",
+          "type": "other",
+          "title": "Seccion UIN (Ficha)",
+          "description": "Datos de la unidad: Codigo, Proyecto, Metraje, Precio. Modalidad de pago (Contado/Financiado). Campos de financiamiento: T. Cambio, Separacion, % Inicial, Cuotas, TEA, Cuota mensual",
+          "howToUse": "Selecciona modalidad, ingresa monto de separacion, numero de cuotas y fechas"
+        },
+        {
+          "id": "el-ficha-titular",
+          "selector": "[class*='titular']",
+          "type": "other",
+          "title": "Datos del Titular (Ficha)",
+          "description": "Informacion personal completa: Nombres, Apellidos, Documento, Fecha/Lugar nacimiento, Estado civil, Direccion, Telefono, Email, Ocupacion, Ingresos, Estudios, etc.",
+          "howToUse": "Completa todos los campos obligatorios marcados con asterisco"
+        },
+        {
+          "id": "el-ficha-conyuge",
+          "selector": "input[type='checkbox'][name*='conyuge']",
+          "type": "input",
+          "title": "Incluir Conyuge (Ficha)",
+          "description": "Checkbox para agregar datos del conyuge si el cliente es casado",
+          "howToUse": "Marca si aplica y completa los datos del conyuge"
+        },
+        {
+          "id": "el-ficha-copropietarios",
+          "selector": "button[class*='agregar']",
+          "type": "button",
+          "title": "Copropietarios (Ficha)",
+          "description": "Seccion para agregar otros copropietarios del local. Boton Agregar para incluir mas personas",
+          "howToUse": "Haz clic en Agregar para cada copropietario adicional"
+        },
+        {
+          "id": "el-ficha-documentos",
+          "selector": "[class*='documentos']",
+          "type": "other",
+          "title": "Documentos Adjuntos (Ficha)",
+          "description": "Seccion obligatoria para subir: Foto de DNI (anverso/reverso, max 2 imagenes) y Comprobante de Deposito (max 2 imagenes). JPG/PNG hasta 5MB",
+          "howToUse": "Haz clic en el area de carga o arrastra las imagenes. Se requiere al menos 1 de cada tipo"
+        },
+        {
+          "id": "el-ficha-fuente",
+          "selector": "[class*='fuente'], [class*='entero']",
+          "type": "other",
+          "title": "Fuente de Captacion (Ficha)",
+          "description": "Como se entero del proyecto: Caseta, Facebook, Instagram, WhatsApp, Web, Volante, Panel, Ferias, Evento, Buses, TikTok, Referido, TV, Radio, Revistas",
+          "howToUse": "Selecciona la opcion que corresponda"
+        },
+        {
+          "id": "el-ficha-preview",
+          "selector": "button[class*='preview']",
+          "type": "button",
+          "title": "Vista Previa (Ficha)",
+          "description": "Muestra como quedara el documento de ficha de inscripcion antes de guardar",
+          "howToUse": "Revisa que todos los datos esten correctos antes de guardar"
+        },
+        {
+          "id": "el-historial-btn",
+          "selector": "button[class*='historial']",
+          "type": "button",
+          "title": "Historial del Local",
+          "description": "Abre panel lateral con informacion del local (Proyecto, Metraje, Estado, Bloqueado) y el historial de todos los cambios de estado",
+          "howToUse": "Haz clic para ver quien y cuando cambio el estado del local"
+        }
+      ],
+      "tips": [
+        "El codigo de colores facilita identificar disponibilidad: Verde=Libre, Amarillo=Negociando, Naranja=Confirmado, Rojo=Vendido",
+        "Cuando un local pasa a Confirmado, inicia un countdown. Completa la ficha de inscripcion antes de que expire",
+        "Puedes editar el precio base directamente en la tabla sin abrir formularios",
+        "Al cambiar estado a Negociando o Confirmado, el sistema te pedira asignar un vendedor responsable",
+        "Usa Visita sin Local cuando un prospecto visita pero no elige local especifico",
+        "Importa locales masivamente con Excel: solo necesitas codigo y metraje, lo demas es opcional",
+        "La ficha de inscripcion requiere subir DNI y comprobante de deposito para poder guardar",
+        "El historial muestra todos los cambios de estado, util para auditar quien modifico que"
+      ]
+    },
+    {
+      "id": "control-pagos",
+      "url": "https://ecodashboard.iterruptivo.com/control-pagos",
+      "urlPattern": "/control-pagos",
+      "title": "Control de Pagos",
+      "description": "Sistema completo de seguimiento y gestion de pagos para locales vendidos. Muestra separacion, inicial, cuotas con intereses TEA, historial de abonos y generacion de contratos Word.",
+      "purpose": "Gestionar cobranzas, registrar abonos, dar seguimiento a cuotas y generar contratos de venta",
+      "elements": [
+        {
+          "id": "el-payments-header",
+          "selector": "h2",
+          "type": "other",
+          "title": "Header Locales en Control",
+          "description": "Muestra titulo 'Locales en Control de Pagos' y total de locales procesados en el proyecto actual"
+        },
+        {
+          "id": "el-payments-table",
+          "selector": "table",
+          "type": "other",
+          "title": "Tabla de Locales Vendidos",
+          "description": "Lista de ventas con columnas: Codigo Local (metraje), Proyecto, Cliente (nombre y telefono), Precio Base, Monto Venta, Inicial (% y monto), Restante, Cuotas (cantidad y TEA), Financiamiento (Si/No), Proximo Pago, Acciones"
+        },
+        {
+          "id": "el-precio-base-btn",
+          "selector": "table tbody td button",
+          "type": "button",
+          "title": "Comparativo de Precios",
+          "description": "Al hacer clic en el precio base, abre modal comparativo que muestra: Precio Base vs Monto Venta, y el descuento aplicado en porcentaje y monto"
+        },
+        {
+          "id": "el-ver-btn",
+          "selector": "button:has-text('Ver')",
+          "type": "button",
+          "title": "Ver Detalle de Pagos",
+          "description": "Abre panel lateral con control completo de pagos: resumen financiero, separacion, inicial y cronograma de cuotas con historial de abonos"
+        },
+        {
+          "id": "el-contrato-btn",
+          "selector": "button:has-text('Contrato')",
+          "type": "button",
+          "title": "Generar Contrato Word",
+          "description": "Descarga automaticamente un archivo Word (.docx) con el contrato de venta completo, listo para imprimir y firmar"
+        },
+        {
+          "id": "el-panel-resumen",
+          "selector": ".control-pagos-panel",
+          "type": "other",
+          "title": "Resumen Financiero (Panel)",
+          "description": "Muestra: Monto venta, Intereses acumulados, Total abonado y Falta por pagar. Tambien muestra estado de Inicial (completado/pendiente) y progreso de Cuotas"
+        },
+        {
+          "id": "el-separacion",
+          "selector": ".separacion-section",
+          "type": "other",
+          "title": "Seccion Separacion",
+          "description": "Muestra el pago de separacion con checkbox de pagado, monto e historial de abonos con verificacion. La separacion se paga al momento de la venta"
+        },
+        {
+          "id": "el-tabs-pagos",
+          "selector": "button:has-text('Inicial'), button:has-text('Cuotas')",
+          "type": "button",
+          "title": "Tabs Inicial / Cuotas",
+          "description": "Cambia entre la vista del pago inicial y el cronograma de cuotas. El numero en parentesis indica cantidad de cuotas"
+        },
+        {
+          "id": "el-cuota-item",
+          "selector": ".cuota-item",
+          "type": "other",
+          "title": "Detalle de Cuota",
+          "description": "Cada cuota muestra: numero, fecha de vencimiento, monto y estado (pendiente/parcial/completado). Incluye boton '+ Registrar Pago'"
+        },
+        {
+          "id": "el-registrar-pago",
+          "selector": "button:has-text('Registrar Pago')",
+          "type": "button",
+          "title": "Registrar Abono",
+          "description": "Abre modal para registrar un abono. Campos: Monto, Fecha, Metodo de Pago (Efectivo, Transferencia, Yape, Plin, Deposito, Cheque, Tarjeta) y Notas opcionales"
+        },
+        {
+          "id": "el-historial-abonos",
+          "selector": ".historial-abonos",
+          "type": "other",
+          "title": "Historial de Abonos",
+          "description": "Lista de todos los pagos realizados para una cuota o inicial. Muestra: monto, fecha, metodo, notas y quien verifico el pago"
+        }
+      ],
+      "tips": [
+        "El icono de calendario indica la fecha del proximo pago. Las fechas vencidas aparecen resaltadas",
+        "Los intereses TEA se calculan automaticamente segun la configuracion del proyecto",
+        "Puedes registrar abonos parciales - el sistema lleva el control del saldo pendiente",
+        "El boton Contrato genera un documento Word completo listo para firmar",
+        "Haz clic en el precio base para ver el descuento que se aplico sobre el precio original",
+        "La separacion debe pagarse al momento de confirmar la venta y se registra automaticamente",
+        "El historial de abonos muestra quien verifico cada pago para auditoria",
+        "Los metodos de pago incluyen: Efectivo, Transferencia, Yape, Plin, Deposito, Cheque y Tarjeta"
+      ]
+    },
+    {
+      "id": "comisiones",
+      "url": "https://ecodashboard.iterruptivo.com/comisiones",
+      "urlPattern": "/comisiones",
+      "title": "Comisiones",
+      "description": "Sistema completo de gestion de comisiones. Incluye dos vistas: 'Mis Comisiones' (vista personal del vendedor) y 'Control Comisiones' (vista admin consolidada). Muestra KPIs, grafico mensual, desglose por mes con estados (Pendiente Inicial, Disponible, Pagada) y trazabilidad completa de cada comision.",
+      "purpose": "Calcular, visualizar y gestionar el pago de comisiones del equipo de ventas",
+      "elements": [
+        {
+          "id": "el-tabs-comisiones",
+          "selector": "button",
+          "type": "button",
+          "title": "Tabs Mis Comisiones / Control Comisiones",
+          "description": "Dos vistas: 'Mis Comisiones' muestra solo tus comisiones personales. 'Control Comisiones' (admin) muestra todas las comisiones de todos los vendedores del proyecto"
+        },
+        {
+          "id": "el-kpi-total",
+          "selector": "h3",
+          "type": "other",
+          "title": "KPI Total Generado",
+          "description": "Suma de todas las comisiones generadas en el proyecto. Muestra monto total y cantidad de comisiones"
+        },
+        {
+          "id": "el-kpi-disponible",
+          "selector": "h3",
+          "type": "other",
+          "title": "KPI Disponible",
+          "description": "Comisiones listas para pagar (ya verificadas). El vendedor puede solicitar su pago"
+        },
+        {
+          "id": "el-kpi-pagado",
+          "selector": "h3",
+          "type": "other",
+          "title": "KPI Pagado",
+          "description": "Comisiones que ya fueron pagadas al vendedor. Incluye fecha de pago"
+        },
+        {
+          "id": "el-kpi-pendiente",
+          "selector": "h3",
+          "type": "other",
+          "title": "KPI Pendiente Inicial",
+          "description": "Comisiones pendientes de verificacion. Requieren que se complete el pago inicial del local para pasar a Disponible"
+        },
+        {
+          "id": "el-chart-mensual",
+          "selector": "svg",
+          "type": "other",
+          "title": "Grafico Comisiones por Mes",
+          "description": "Grafico de barras apiladas con 3 colores: Disponible (verde), Pagado (morado), Pendiente Inicial (amarillo). Muestra 12 meses"
+        },
+        {
+          "id": "el-filtro-busqueda",
+          "selector": "input[placeholder*='Buscar']",
+          "type": "input",
+          "title": "Buscar por Codigo o Proyecto",
+          "description": "Campo de busqueda para filtrar comisiones por codigo del local o nombre del proyecto"
+        },
+        {
+          "id": "el-filtro-vendedor",
+          "selector": "select",
+          "type": "select",
+          "title": "Filtro por Vendedor (Solo en Control)",
+          "description": "Dropdown para filtrar por vendedor especifico: gerente, Leo D Leon, Alonso Palacios, Leo Caseta, Leo Jefe Ventas, etc."
+        },
+        {
+          "id": "el-filtro-estado",
+          "selector": "select",
+          "type": "select",
+          "title": "Filtro por Estado",
+          "description": "Filtra comisiones por estado: Pendiente Inicial, Disponible, Pagada. O muestra todos los estados"
+        },
+        {
+          "id": "el-filtro-anio",
+          "selector": "select",
+          "type": "select",
+          "title": "Filtro por Año",
+          "description": "Filtra comisiones por año: 2025, 2024, etc. O muestra todos los años"
+        },
+        {
+          "id": "el-grupo-mensual",
+          "selector": "button",
+          "type": "button",
+          "title": "Acordeon Mensual",
+          "description": "Agrupa comisiones por mes (ej: Diciembre 2025). Muestra resumen: cantidad de comisiones, total y distribucion por estado con colores"
+        },
+        {
+          "id": "el-tabla-comisiones",
+          "selector": "table",
+          "type": "other",
+          "title": "Tabla de Comisiones",
+          "description": "Columnas: Codigo Local, Proyecto, Vendedor, Monto Venta, Fase (Gestion/Vendedor), % Com., Monto Comision, Estado, Fecha Procesado, Fecha Disponible, Acciones"
+        },
+        {
+          "id": "el-btn-porcentaje",
+          "selector": "table button",
+          "type": "button",
+          "title": "Ver Desglose de Comision",
+          "description": "Al hacer clic en el porcentaje (ej: 10.00%) abre modal con: Monto Venta, Trazabilidad del proceso, Distribucion de comisiones entre todos los involucrados"
+        },
+        {
+          "id": "el-btn-marcar-pagada",
+          "selector": "button",
+          "type": "button",
+          "title": "Marcar como Pagada",
+          "description": "Boton para registrar que una comision Disponible fue pagada al vendedor. Solo visible para admins en comisiones con estado Disponible"
+        },
+        {
+          "id": "el-modal-desglose",
+          "selector": "dialog",
+          "type": "other",
+          "title": "Modal Desglose de Comisiones",
+          "description": "Muestra: Monto de Venta, Trazabilidad (Lead asignado, Confirmo local, Bloqueo local, Proceso venta), Distribucion de comisiones (cada persona con %, monto, rol, estado)"
+        },
+        {
+          "id": "el-trazabilidad",
+          "selector": ".trazabilidad",
+          "type": "other",
+          "title": "Trazabilidad del Proceso",
+          "description": "Historial completo de quien participo en la venta: Lead asignado a, Confirmo local (naranja), Bloqueo local (rojo), Proceso venta. Cada accion genera comision"
+        }
+      ],
+      "tips": [
+        "Las comisiones se generan automaticamente cuando un local pasa a estado Vendido",
+        "Estado Pendiente Inicial: la comision existe pero el cliente no ha pagado el inicial completo",
+        "Estado Disponible: el inicial fue pagado, el vendedor puede solicitar el pago de su comision",
+        "Estado Pagada: la empresa ya pago la comision al vendedor",
+        "El porcentaje de comision depende del rol: Gestion (admin/jefe) vs Vendedor",
+        "Haz clic en el % para ver como se repartio la comision entre todos los involucrados",
+        "La trazabilidad muestra quien hizo cada accion: asignar lead, confirmar, bloquear y procesar",
+        "Si hay Split 50/50, significa que dos vendedores compartieron la comision de ese rol",
+        "Los filtros permiten ver comisiones de un vendedor, estado o año especifico",
+        "En Control Comisiones puedes ver todas las comisiones y marcarlas como pagadas"
+      ]
+    },
+    {
+      "id": "reporteria",
+      "url": "https://ecodashboard.iterruptivo.com/reporteria",
+      "urlPattern": "/reporteria",
+      "title": "Reporteria",
+      "description": "Centro de reportes gerenciales con matriz cruzada Vendedor x Proyecto. Muestra el rendimiento de cada vendedor en todos los proyectos activos. Por defecto carga los ultimos 3 dias de data.",
+      "purpose": "Generar reportes gerenciales y analisis cruzados de todos los proyectos para medir desempeno de vendedores",
+      "elements": [
+        {
+          "id": "el-header-reporteria",
+          "selector": "h1",
+          "type": "other",
+          "title": "Encabezado Reporteria",
+          "description": "Muestra el titulo 'Reporteria' con descripcion 'Analisis de leads por vendedor en todos los proyectos'. Incluye boton Volver al Dashboard.",
+          "howToUse": "Usa Volver al Dashboard para regresar a la vista principal"
+        },
+        {
+          "id": "el-project-filter",
+          "selector": "select, combobox",
+          "type": "select",
+          "title": "Filtro de Proyecto",
+          "description": "Dropdown con 11 proyectos activos: Boulevard, Callao, Huancayo, Mirador de Santa Clara, Paraiso de Santa Clara, Pruebas, San Gabriel, Trapiche, Urb. La Estacion, Urbanizacion San Gabriel, Wilson. Por defecto muestra 'Todos los proyectos'.",
+          "howToUse": "Selecciona un proyecto especifico para filtrar la matriz o deja 'Todos' para ver el panorama completo"
+        },
+        {
+          "id": "el-date-desde",
+          "selector": "input[type='date']:first-of-type",
+          "type": "input",
+          "title": "Fecha Desde",
+          "description": "Fecha inicial del rango de analisis. Por defecto: 3 dias antes de hoy.",
+          "howToUse": "Selecciona la fecha de inicio del periodo que quieres analizar"
+        },
+        {
+          "id": "el-date-hasta",
+          "selector": "input[type='date']:last-of-type",
+          "type": "input",
+          "title": "Fecha Hasta",
+          "description": "Fecha final del rango de analisis. Por defecto: fecha actual.",
+          "howToUse": "Selecciona la fecha final para cerrar el periodo de analisis"
+        },
+        {
+          "id": "el-buscar-vendedor",
+          "selector": "input[placeholder*='Nombre']",
+          "type": "input",
+          "title": "Buscar Vendedor",
+          "description": "Campo de busqueda para filtrar vendedores por nombre. Actualiza la tabla en tiempo real.",
+          "howToUse": "Escribe el nombre del vendedor para encontrarlo rapidamente en la lista"
+        },
+        {
+          "id": "el-nota-fecha",
+          "selector": "p",
+          "type": "other",
+          "title": "Nota de Fecha Default",
+          "description": "Indica que por defecto se muestran los ultimos 3 dias de actividad.",
+          "howToUse": "Recuerda que puedes cambiar el rango de fechas segun necesites"
+        },
+        {
+          "id": "el-toggle-tipo-lead",
+          "selector": "[role='group'], .toggle",
+          "type": "other",
+          "title": "Toggle Tipo de Lead",
+          "description": "Selector de 3 opciones: Manual (leads ingresados manualmente), No Manual (leads automaticos de integraciones), Total (suma de ambos).",
+          "howToUse": "Selecciona el tipo de lead para filtrar. Manual = caseta/telefono, No Manual = web/WhatsApp automatico"
+        },
+        {
+          "id": "el-export-excel",
+          "selector": "button",
+          "type": "button",
+          "title": "Exportar Excel",
+          "description": "Descarga la matriz completa en formato Excel con todos los datos filtrados actualmente.",
+          "howToUse": "Haz clic para descargar. El archivo incluye todos los vendedores y proyectos visibles"
+        },
+        {
+          "id": "el-matriz-table",
+          "selector": "table",
+          "type": "other",
+          "title": "Matriz Cruzada Vendedor x Proyecto",
+          "description": "Tabla pivote que cruza vendedores (filas) con proyectos (columnas). Columnas: #, Vendedor, Rol, luego cada proyecto, y TOTAL al final. Cada celda muestra 3 valores: Manual (verde), No Manual (azul), Total.",
+          "howToUse": "Analiza el rendimiento cruzado: que vendedor trabaja en cuales proyectos y cuantos leads genera"
+        },
+        {
+          "id": "el-columna-vendedor",
+          "selector": "table td:nth-child(2)",
+          "type": "other",
+          "title": "Columna Vendedor",
+          "description": "Nombre completo del vendedor. Los vendedores estan ordenados por TOTAL descendente (los mas productivos primero).",
+          "howToUse": "Identifica rapidamente quien lidera en captacion de leads"
+        },
+        {
+          "id": "el-columna-rol",
+          "selector": "table td:nth-child(3)",
+          "type": "other",
+          "title": "Columna Rol",
+          "description": "Rol del usuario: Vendedor (atencion virtual), Vendedor Caseta (atencion presencial en proyecto), Admin, etc.",
+          "howToUse": "Diferencia el rendimiento entre vendedores virtuales y de caseta"
+        },
+        {
+          "id": "el-celda-proyecto",
+          "selector": "table td:nth-child(4)",
+          "type": "other",
+          "title": "Celdas por Proyecto",
+          "description": "Cada celda muestra 3 valores apilados: numero verde (Manual), numero azul (No Manual), numero gris (Total). Representan leads captados en ese proyecto por ese vendedor.",
+          "howToUse": "Compara celdas para ver en que proyectos destaca cada vendedor"
+        },
+        {
+          "id": "el-columna-total",
+          "selector": "table td:last-child",
+          "type": "other",
+          "title": "Columna TOTAL",
+          "description": "Suma total de leads del vendedor en todos los proyectos. Es el indicador principal de productividad.",
+          "howToUse": "Usa esta columna para ranking de vendedores por desempeno general"
+        }
+      ],
+      "tips": [
+        "La matriz se ordena por TOTAL descendente: los vendedores mas productivos aparecen primero",
+        "Cada celda muestra 3 valores: Manual (verde) / No Manual (azul) / Total - identifica de donde vienen los leads",
+        "Leads Manuales = ingresados por vendedor en caseta o telefono. No Manuales = automaticos de web, WhatsApp, Meta",
+        "Usa el filtro de proyecto para enfocarte en un proyecto especifico y ver que vendedores lo atienden",
+        "Por defecto muestra ultimos 3 dias. Cambia las fechas para analisis de periodos mas largos (semana, mes)",
+        "Exporta a Excel para crear graficos, tablas dinamicas o compartir en reuniones de directorio",
+        "El campo 'Buscar vendedor' filtra en tiempo real - util cuando tienes 50+ vendedores",
+        "Vendedor Caseta = atencion presencial en proyecto. Vendedor = atencion virtual/remota",
+        "Una celda vacia o con ceros indica que ese vendedor no tiene leads en ese proyecto en el periodo seleccionado",
+        "Combina filtros: proyecto especifico + fechas + tipo de lead para analisis detallados"
+      ]
+    },
+    {
+      "id": "repulse",
+      "url": "https://ecodashboard.iterruptivo.com/repulse",
+      "urlPattern": "/repulse",
+      "title": "Sistema Repulse",
+      "description": "Sistema de re-engagement para leads frios. Permite enviar mensajes personalizados via WhatsApp para reactivar el interes de clientes potenciales. Los leads entran automaticamente despues de 30 dias sin compra o se agregan manualmente desde el Dashboard Operativo.",
+      "purpose": "Reactivar leads frios mediante mensajes de seguimiento por WhatsApp",
+      "elements": [
+        {
+          "id": "el-header-repulse",
+          "selector": "h1",
+          "type": "other",
+          "title": "Encabezado Sistema Repulse",
+          "description": "Titulo principal de la seccion que indica que estas en el modulo de reimpulso de leads",
+          "howToUse": "Identifica visualmente que estas en la seccion Repulse"
+        },
+        {
+          "id": "el-help-btn",
+          "selector": "button",
+          "type": "button",
+          "title": "Como funciona Repulse",
+          "description": "Boton que abre un panel de ayuda con explicacion detallada del ciclo de vida de estados en Repulse",
+          "howToUse": "Haz clic para ver la documentacion completa del sistema y los estados"
+        },
+        {
+          "id": "el-kpi-total",
+          "selector": "[ref*='e55']",
+          "type": "other",
+          "title": "KPI Total",
+          "description": "Muestra el numero total de leads en el sistema Repulse",
+          "howToUse": "Indica cuantos leads tienes en total para reactivar"
+        },
+        {
+          "id": "el-kpi-pendientes",
+          "selector": "[ref*='e65']",
+          "type": "other",
+          "title": "KPI Pendientes",
+          "description": "Leads que estan listos para recibir un mensaje de reactivacion",
+          "howToUse": "Estos leads pueden ser contactados ahora mismo"
+        },
+        {
+          "id": "el-kpi-enviados",
+          "selector": "[ref*='e74']",
+          "type": "other",
+          "title": "KPI Enviados",
+          "description": "Leads a los que ya se les envio un mensaje y estan esperando respuesta",
+          "howToUse": "No los contactes de nuevo hasta que respondan o pasen 15 dias"
+        },
+        {
+          "id": "el-kpi-respondieron",
+          "selector": "[ref*='e83']",
+          "type": "other",
+          "title": "KPI Respondieron",
+          "description": "Leads que respondieron al mensaje de reactivacion (exito!)",
+          "howToUse": "Estos leads estan interesados - dalos seguimiento inmediato"
+        },
+        {
+          "id": "el-kpi-sin-respuesta",
+          "selector": "[ref*='e93']",
+          "type": "other",
+          "title": "KPI Sin Respuesta",
+          "description": "Leads que no respondieron despues de enviarles mensaje",
+          "howToUse": "Despues de 15 dias volveran automaticamente a Pendientes"
+        },
+        {
+          "id": "el-kpi-excluidos",
+          "selector": "[ref*='e102']",
+          "type": "other",
+          "title": "KPI Excluidos",
+          "description": "Leads marcados para no ser contactados (pidieron no recibir mensajes)",
+          "howToUse": "No se les enviaran mensajes - respeta su decision"
+        },
+        {
+          "id": "el-search-filter",
+          "selector": "input[placeholder*='Buscar']",
+          "type": "input",
+          "title": "Buscar Lead",
+          "description": "Campo de busqueda para filtrar leads por nombre, telefono o rubro",
+          "howToUse": "Escribe cualquier texto para encontrar leads especificos rapidamente"
+        },
+        {
+          "id": "el-status-filter",
+          "selector": "select, combobox",
+          "type": "select",
+          "title": "Filtro de Estado",
+          "description": "Dropdown para filtrar por estado: Todos, Pendientes, Enviados, Respondieron, Sin respuesta, Excluidos",
+          "howToUse": "Selecciona un estado para ver solo los leads en esa categoria"
+        },
+        {
+          "id": "el-quota-indicator",
+          "selector": "[ref*='e115']",
+          "type": "other",
+          "title": "Quota de Mensajes",
+          "description": "Indicador de uso: muestra cuantos mensajes has usado del limite diario (ej: 246/250)",
+          "howToUse": "Monitorea tu uso para no exceder el limite de mensajes WhatsApp"
+        },
+        {
+          "id": "el-actualizar-btn",
+          "selector": "button[ref='e118']",
+          "type": "button",
+          "title": "Boton Actualizar",
+          "description": "Refresca la lista de leads para ver los ultimos cambios",
+          "howToUse": "Haz clic para actualizar la informacion de la tabla"
+        },
+        {
+          "id": "el-templates-btn",
+          "selector": "button[ref='e124']",
+          "type": "button",
+          "title": "Boton Templates",
+          "description": "Abre el gestor de plantillas de mensajes para crear, editar y eliminar templates",
+          "howToUse": "Usa {{nombre}} en tus templates para personalizar automaticamente con el nombre del lead"
+        },
+        {
+          "id": "el-leads-table",
+          "selector": "table",
+          "type": "table",
+          "title": "Tabla de Leads Repulse",
+          "description": "Lista de todos los leads en el sistema con columnas: Lead, Telefono, Rubro, Origen, Estado, Repulses, Fecha Lead, Acciones",
+          "howToUse": "Selecciona leads con el checkbox para enviar mensajes masivos, o usa acciones individuales"
+        },
+        {
+          "id": "el-table-header",
+          "selector": "table thead",
+          "type": "other",
+          "title": "Encabezados de Tabla",
+          "description": "Columnas: Lead, Telefono, Rubro, Origen, Estado, Repulses, Fecha Lead (ordenable), Acciones",
+          "howToUse": "Haz clic en Fecha Lead para ordenar por fecha"
+        },
+        {
+          "id": "el-col-acciones",
+          "selector": "table th:last-child",
+          "type": "other",
+          "title": "Columna Acciones",
+          "description": "Botones para cada lead: Enviar mensaje, Ver historial, Excluir, etc.",
+          "howToUse": "Usa estas acciones para gestionar leads individualmente"
+        }
+      ],
+      "tips": [
+        "Los leads entran a Repulse automaticamente despues de 30 dias sin compra",
+        "Tambien puedes agregar leads manualmente desde el Dashboard Operativo",
+        "El sistema detecta nuevos leads cada dia a las 3:00 AM (hora Peru)",
+        "El envio de mensajes es siempre MANUAL - tu decides cuando enviar",
+        "Despues de 15 dias de enviado sin respuesta, el lead vuelve a Pendiente automaticamente",
+        "Puedes excluir permanentemente leads que pidieron no ser contactados",
+        "Usa templates con {{nombre}} para mensajes personalizados automaticamente",
+        "La quota diaria de mensajes protege tu cuenta de WhatsApp de baneos",
+        "Leads que responden son los mas valiosos - dalos prioridad de seguimiento",
+        "El rubro del lead te ayuda a personalizar el mensaje segun su negocio"
+      ]
+    },
+    {
+      "id": "admin-usuarios",
+      "url": "https://ecodashboard.iterruptivo.com/admin/usuarios",
+      "urlPattern": "/admin/usuarios",
+      "title": "Administracion de Usuarios",
+      "description": "Gestion completa de usuarios del sistema. Permite crear, editar, activar/desactivar usuarios y asignar roles. Incluye importacion masiva desde Excel y busqueda avanzada.",
+      "purpose": "Administrar el acceso de usuarios al sistema",
+      "elements": [
+        {
+          "id": "el-header-admin",
+          "selector": "h1",
+          "type": "other",
+          "title": "Encabezado Admin Usuarios",
+          "description": "Titulo principal que indica que estas en el modulo de administracion de usuarios",
+          "howToUse": "Esta seccion solo es accesible para administradores"
+        },
+        {
+          "id": "el-kpi-total",
+          "selector": "p",
+          "type": "other",
+          "title": "KPI Total Usuarios",
+          "description": "Muestra el numero total de usuarios registrados en el sistema",
+          "howToUse": "Incluye usuarios activos e inactivos"
+        },
+        {
+          "id": "el-kpi-activos",
+          "selector": "p:nth-of-type(2)",
+          "type": "other",
+          "title": "KPI Usuarios Activos",
+          "description": "Cantidad de usuarios que pueden acceder al sistema",
+          "howToUse": "Solo usuarios activos pueden iniciar sesion"
+        },
+        {
+          "id": "el-kpi-inactivos",
+          "selector": "p:nth-of-type(3)",
+          "type": "other",
+          "title": "KPI Usuarios Inactivos",
+          "description": "Usuarios desactivados que no pueden acceder al sistema",
+          "howToUse": "Puedes reactivarlos cuando sea necesario"
+        },
+        {
+          "id": "el-kpi-roles",
+          "selector": "p:nth-of-type(4)",
+          "type": "other",
+          "title": "KPI Roles",
+          "description": "Cantidad de roles diferentes configurados en el sistema",
+          "howToUse": "Roles disponibles: Administrador, Jefe de Ventas, Vendedor, Vendedor Caseta, Coordinador, Finanzas"
+        },
+        {
+          "id": "el-section-title",
+          "selector": "h2",
+          "type": "other",
+          "title": "Seccion Usuarios del Sistema",
+          "description": "Titulo de la seccion principal con la lista de usuarios",
+          "howToUse": "Aqui se gestionan todos los usuarios"
+        },
+        {
+          "id": "el-btn-actualizar",
+          "selector": "button",
+          "type": "button",
+          "title": "Boton Actualizar",
+          "description": "Refresca la lista de usuarios para ver los ultimos cambios",
+          "howToUse": "Usa despues de crear o modificar usuarios"
+        },
+        {
+          "id": "el-btn-importar",
+          "selector": "button:nth-of-type(2)",
+          "type": "button",
+          "title": "Boton Importar",
+          "description": "Importacion masiva de usuarios desde archivo Excel. Descarga la plantilla primero.",
+          "howToUse": "Formato: nombre, email, rol, telefono. Las contrasenas se generan automaticamente"
+        },
+        {
+          "id": "el-btn-nuevo",
+          "selector": "button:nth-of-type(3)",
+          "type": "button",
+          "title": "Boton Nuevo Usuario",
+          "description": "Abre el formulario para crear un usuario individual con nombre, email, rol, telefono",
+          "howToUse": "Puedes generar contrasena segura automaticamente con el boton de dados"
+        },
+        {
+          "id": "el-search-user",
+          "selector": "input[placeholder*='Buscar']",
+          "type": "input",
+          "title": "Buscador de Usuarios",
+          "description": "Busca usuarios por nombre, email o numero de telefono",
+          "howToUse": "Escribe cualquier texto para filtrar la tabla instantaneamente"
+        },
+        {
+          "id": "el-filter-rol",
+          "selector": "select, combobox",
+          "type": "select",
+          "title": "Filtro por Rol",
+          "description": "Filtra usuarios por rol: Administrador, Jefe de Ventas, Vendedor, Vendedor Caseta, Coordinador, Finanzas",
+          "howToUse": "Selecciona un rol para ver solo usuarios de ese tipo"
+        },
+        {
+          "id": "el-filter-estado",
+          "selector": "combobox:nth-of-type(2)",
+          "type": "select",
+          "title": "Filtro por Estado",
+          "description": "Filtra usuarios por estado: Todos, Activos, Inactivos",
+          "howToUse": "Util para encontrar usuarios desactivados que necesitan reactivarse"
+        },
+        {
+          "id": "el-table-usuarios",
+          "selector": "table",
+          "type": "table",
+          "title": "Tabla de Usuarios",
+          "description": "Lista de todos los usuarios con columnas: Usuario (nombre/email), Contacto (telefono), Rol, Estado, Acciones",
+          "howToUse": "Haz clic en un usuario para ver detalles o usar las acciones"
+        },
+        {
+          "id": "el-table-header",
+          "selector": "table thead",
+          "type": "other",
+          "title": "Encabezados de Tabla",
+          "description": "Columnas: Usuario, Contacto, Rol, Estado, Acciones",
+          "howToUse": "Las columnas te ayudan a identificar la informacion de cada usuario"
+        },
+        {
+          "id": "el-col-acciones",
+          "selector": "table th:last-child",
+          "type": "other",
+          "title": "Columna Acciones",
+          "description": "Botones de accion por usuario: Editar, Activar/Desactivar, Restablecer contrasena",
+          "howToUse": "Usa estas acciones para gestionar usuarios individualmente"
+        }
+      ],
+      "tips": [
+        "Los usuarios necesitan email @ecoplaza.pe para login en el sistema",
+        "Las contrasenas se generan automaticamente al importar desde Excel (16 caracteres seguros)",
+        "Roles disponibles: Administrador, Jefe de Ventas, Vendedor, Vendedor Caseta, Coordinador, Finanzas",
+        "El email alternativo es solo referencia para contacto, NO se usa para login",
+        "Puedes desactivar usuarios sin eliminarlos - asi conservas su historial",
+        "Usa el boton de dados al crear usuario para generar contrasena segura automaticamente",
+        "La importacion desde Excel permite crear multiples usuarios a la vez",
+        "Descarga la plantilla de importacion antes de preparar tu archivo Excel",
+        "Los usuarios inactivos no pueden iniciar sesion pero su informacion se conserva",
+        "Solo los administradores pueden crear, editar o desactivar otros usuarios"
+      ]
+    },
+    {
+      "id": "configuracion-proyectos",
+      "url": "https://ecodashboard.iterruptivo.com/configuracion-proyectos",
+      "urlPattern": "/configuracion-proyectos",
+      "title": "Configuracion de Proyectos",
+      "description": "Centro de configuracion completo del proyecto. Permite ajustar parametros financieros (TEA, porcentaje inicial, cuotas), comisiones por rol, datos legales para contratos, representantes y cuentas bancarias.",
+      "purpose": "Configurar parametros del proyecto para ventas, financiamiento y generacion de contratos",
+      "elements": [
+        {
+          "id": "el-header-config",
+          "selector": "h1",
+          "type": "other",
+          "title": "Encabezado Configuracion",
+          "description": "Titulo principal que indica que estas en la configuracion del proyecto activo",
+          "howToUse": "El nombre del proyecto actual se muestra en el subtitulo"
+        },
+        {
+          "id": "el-section-title",
+          "selector": "h2",
+          "type": "other",
+          "title": "Seccion Principal",
+          "description": "Titulo de la seccion de configuracion de proyectos",
+          "howToUse": "Todas las configuraciones se aplican al proyecto seleccionado"
+        },
+        {
+          "id": "el-project-selector",
+          "selector": "button",
+          "type": "button",
+          "title": "Selector de Proyecto",
+          "description": "Boton que muestra el proyecto actual y permite cambiar entre proyectos",
+          "howToUse": "Haz clic para ver y seleccionar otro proyecto"
+        },
+        {
+          "id": "el-tea-input",
+          "selector": "spinbutton",
+          "type": "input",
+          "title": "TEA del Proyecto",
+          "description": "Tasa Efectiva Anual para calculo de cuotas con intereses",
+          "howToUse": "Ingresa el porcentaje TEA (ej: 16 para 16%)"
+        },
+        {
+          "id": "el-color-picker",
+          "selector": "input[type='text']",
+          "type": "input",
+          "title": "Color del Proyecto",
+          "description": "Color hexadecimal para identificacion visual del proyecto en el dashboard",
+          "howToUse": "Ingresa un color en formato #RRGGBB o usa el selector visual"
+        },
+        {
+          "id": "el-estado-toggle",
+          "selector": "button[ref*='68']",
+          "type": "button",
+          "title": "Estado del Proyecto",
+          "description": "Toggle para activar o desactivar el proyecto",
+          "howToUse": "Proyectos inactivos no aparecen en las listas de seleccion"
+        },
+        {
+          "id": "el-inicial-percent",
+          "selector": "spinbutton[disabled]",
+          "type": "input",
+          "title": "Porcentaje de Inicial",
+          "description": "Define el porcentaje de cuota inicial requerido (ej: 30%)",
+          "howToUse": "Solo se permite un valor por proyecto. Borra el existente para agregar otro."
+        },
+        {
+          "id": "el-cuotas-sin-interes",
+          "selector": "spinbutton[ref*='90']",
+          "type": "input",
+          "title": "Cuotas sin Intereses",
+          "description": "Meses de financiamiento sin intereses disponibles (ej: 6, 12 meses)",
+          "howToUse": "Agrega las opciones en meses y ordenalas. El cliente elegira una al comprar."
+        },
+        {
+          "id": "el-cuotas-con-interes",
+          "selector": "spinbutton[ref*='127']",
+          "type": "input",
+          "title": "Cuotas con Intereses",
+          "description": "Meses de financiamiento con intereses usando la TEA configurada",
+          "howToUse": "Estas cuotas aplicaran la TEA del proyecto para calcular intereses"
+        },
+        {
+          "id": "el-comisiones",
+          "selector": "select, combobox",
+          "type": "select",
+          "title": "Mantenimiento de Comisiones",
+          "description": "Configura el porcentaje de comision por rol de usuario y vendedor especifico",
+          "howToUse": "Selecciona un rol, luego asigna el porcentaje. Puedes tener diferentes comisiones por vendedor."
+        },
+        {
+          "id": "el-datos-legales",
+          "selector": "h3",
+          "type": "other",
+          "title": "Datos para Tramites Legales",
+          "description": "Informacion legal de la empresa para documentos: Acuerdo de Separacion, contratos, fichas",
+          "howToUse": "Completa todos los campos correctamente para generar documentos validos"
+        },
+        {
+          "id": "el-logo",
+          "selector": "img[alt*='Logo']",
+          "type": "other",
+          "title": "Logo Oficial del Proyecto",
+          "description": "Logo que aparecera en documentos oficiales como la Ficha de Inscripcion",
+          "howToUse": "Sube una imagen PNG o JPG. Recomendado: fondo transparente, 500x500px minimo"
+        },
+        {
+          "id": "el-template-contrato",
+          "selector": "h4",
+          "type": "other",
+          "title": "Template de Contrato",
+          "description": "Archivo Word (.docx) con variables para generar contratos automaticamente",
+          "howToUse": "Sube un .docx con variables como {CLIENTE_NOMBRE}. Ver todas las variables disponibles."
+        },
+        {
+          "id": "el-razon-social",
+          "selector": "input[placeholder*='ECO PLAZA']",
+          "type": "input",
+          "title": "Razon Social",
+          "description": "Nombre legal de la empresa (ej: ECO PLAZA S.A.C.)",
+          "howToUse": "Debe coincidir exactamente con el registro de SUNAT"
+        },
+        {
+          "id": "el-ruc",
+          "selector": "input[placeholder*='RUC']",
+          "type": "input",
+          "title": "RUC de la Empresa",
+          "description": "Numero de RUC de 11 digitos",
+          "howToUse": "Verifica que sea correcto en el portal de SUNAT"
+        },
+        {
+          "id": "el-representantes",
+          "selector": "input[placeholder*='Nombre completo']",
+          "type": "input",
+          "title": "Representantes Legales",
+          "description": "Personas autorizadas para firmar contratos con Nombre, DNI y Cargo",
+          "howToUse": "Agrega todos los representantes que podrian firmar los contratos"
+        },
+        {
+          "id": "el-cuentas-bancarias",
+          "selector": "input[placeholder*='banco']",
+          "type": "input",
+          "title": "Cuentas Bancarias",
+          "description": "Cuentas donde se recibiran los pagos: Banco, Numero, Tipo, Moneda",
+          "howToUse": "Agrega todas las cuentas disponibles en Soles (PEN) y Dolares (USD)"
+        },
+        {
+          "id": "el-btn-guardar",
+          "selector": "button[ref*='418']",
+          "type": "button",
+          "title": "Boton Guardar",
+          "description": "Guarda todos los cambios realizados en la configuracion",
+          "howToUse": "IMPORTANTE: Siempre guarda antes de salir de la pagina"
+        }
+      ],
+      "tips": [
+        "La TEA (Tasa Efectiva Anual) se usa para calcular intereses en cuotas de financiamiento",
+        "Las variables del template de contrato usan sintaxis {VARIABLE} - consulta Ver Variables",
+        "Puedes tener diferentes comisiones para el mismo rol asignando a vendedores especificos",
+        "SIEMPRE guarda los cambios antes de salir de la pagina o se perderan",
+        "El logo aparece en la Ficha de Inscripcion y otros documentos oficiales",
+        "Solo puedes tener un porcentaje de inicial por proyecto - borra el existente primero",
+        "Ordena las cuotas con las flechas para definir cual aparece primero en la venta",
+        "Las cuotas sin intereses son mas atractivas para el cliente",
+        "Los representantes legales deben tener poder vigente en registros publicos",
+        "Agrega cuentas en Soles y Dolares para dar opciones de pago al cliente"
+      ]
+    }
+  ],
+  "tours": [
+    {
+      "id": "tour-login",
+      "name": "Como Iniciar Sesion",
+      "description": "Aprende a acceder al sistema EcoPlaza en 4 simples pasos",
+      "trigger": {
+        "type": "auto",
+        "pages": ["/login"]
+      },
+      "steps": [
+        {
+          "target": "input[type='email'], input[placeholder*='email'], input[name='email']",
+          "title": "Ingresa tu Email",
+          "content": "Escribe tu correo electronico corporativo. Este es el mismo que usaste para registrarte en el sistema.",
+          "position": "bottom"
+        },
+        {
+          "target": "input[type='password'], input[placeholder*='password'], input[name='password']",
+          "title": "Tu Contrasena",
+          "content": "Ingresa tu contrasena de acceso. Si la olvidaste, contacta al administrador del sistema.",
+          "position": "bottom"
+        },
+        {
+          "target": "select, [role='combobox']",
+          "title": "Selecciona el Proyecto",
+          "content": "MUY IMPORTANTE: Elige el proyecto inmobiliario en el que vas a trabajar. Esto determina que datos veras en el sistema.",
+          "position": "bottom"
+        },
+        {
+          "target": "form button[type='submit'], button.bg-gradient-to-r",
+          "title": "Accede al Sistema",
+          "content": "Una vez completados todos los campos, haz clic aqui para ingresar. Si hay algun error, veras un mensaje indicando el problema.",
+          "position": "top"
+        }
+      ]
+    },
+    {
+      "id": "tour-insights",
+      "name": "Dashboard de Insights",
+      "description": "Conoce las metricas clave de tu negocio inmobiliario",
+      "trigger": {
+        "type": "auto",
+        "pages": ["/", "/insights"]
+      },
+      "steps": [
+        {
+          "target": "input[type='date']",
+          "title": "Filtros de Fecha",
+          "content": "Usa estos campos para seleccionar el rango de fechas que deseas analizar. Por defecto muestra los ultimos 30 dias.",
+          "position": "bottom"
+        },
+        {
+          "target": ".grid.gap-6.mb-8, [class*='kpi'], [class*='stat']",
+          "title": "Metricas Principales",
+          "content": "Estas tarjetas muestran tus KPIs mas importantes: total de leads, leads completos, en conversacion y tasa de conversion.",
+          "position": "bottom"
+        },
+        {
+          "target": ".recharts-wrapper, .recharts-responsive-container, canvas",
+          "title": "Graficos Interactivos",
+          "content": "Los graficos son interactivos. Pasa el cursor sobre ellos para ver valores exactos. Puedes ver distribucion de estados, fuentes UTM y asistencias.",
+          "position": "right"
+        },
+        {
+          "target": "table",
+          "title": "Ranking de Vendedores",
+          "content": "Esta tabla muestra el rendimiento de cada vendedor. Puedes exportar a Excel y ver mas vendedores con el boton inferior.",
+          "position": "top"
+        }
+      ]
+    },
+    {
+      "id": "tour-operativo",
+      "name": "Gestion de Leads - Tour Completo",
+      "description": "Aprende a gestionar leads de manera eficiente con todas las herramientas disponibles",
+      "trigger": {
+        "type": "manual",
+        "pages": ["/operativo"]
+      },
+      "steps": [
+        {
+          "target": "h1",
+          "title": "Bienvenido al Dashboard Operativo",
+          "content": "Este es el centro de operaciones para gestionar todos tus leads. Aqui puedes filtrar, asignar vendedores, tipificar y dar seguimiento a cada prospecto.",
+          "position": "bottom"
+        },
+        {
+          "target": "input[type='date']",
+          "title": "Filtros de Fecha",
+          "content": "Usa los campos Desde y Hasta para definir el rango de fechas. Por defecto muestra los ultimos 30 dias. Haz clic en Actualizar para aplicar los cambios.",
+          "position": "bottom"
+        },
+        {
+          "target": "main > div:nth-child(2) > div:first-child",
+          "title": "Tabs de Asignacion",
+          "content": "Todos: muestra todos los leads. Sin Asignar: filtra leads que aun no tienen vendedor. Revisa Sin Asignar diariamente para distribuir nuevos leads.",
+          "position": "bottom"
+        },
+        {
+          "target": "main select",
+          "title": "Filtros Avanzados",
+          "content": "Combina el filtro de Vendedor (para ver leads de un vendedor especifico) con el filtro de Estado (Lead Completo, Incompleto, En Conversacion, Abandonada).",
+          "position": "bottom"
+        },
+        {
+          "target": "main button[class*='import'], main > div > div:nth-child(2) button:first-of-type",
+          "title": "Importar Leads",
+          "content": "Dos opciones: Agregar Lead (formulario individual para uno o pocos leads) o Importar CSV/Excel (carga masiva desde archivo). Descarga la plantilla primero.",
+          "position": "left"
+        },
+        {
+          "target": "main button[class*='export'], main > div > div:nth-child(2) button:last-of-type",
+          "title": "Exportar Datos",
+          "content": "Descarga todos los leads filtrados actualmente en formato Excel. Tip: Aplica primero los filtros deseados para obtener solo los datos que necesitas.",
+          "position": "left"
+        },
+        {
+          "target": "input[placeholder*='Buscar']",
+          "title": "Busqueda Rapida",
+          "content": "Escribe nombre, telefono o cualquier dato para filtrar la tabla instantaneamente. La busqueda se aplica en tiempo real.",
+          "position": "bottom"
+        },
+        {
+          "target": "table thead",
+          "title": "Columnas de la Tabla",
+          "content": "La tabla muestra: Nombre, Telefono, Rubro, UTM (origen), Horario de Visita, Email, Asistio, Estado, Vendedor Asignado y Fecha. Puedes hacer clic en una fila para ver detalles.",
+          "position": "bottom"
+        },
+        {
+          "target": "th input[type='checkbox']",
+          "title": "Seleccion Multiple",
+          "content": "Usa este checkbox para seleccionar todos los leads de la pagina. Util para acciones masivas como asignar vendedor a multiples leads.",
+          "position": "right"
+        },
+        {
+          "target": "table tbody tr",
+          "title": "Ver Detalle del Lead",
+          "content": "Haz clic en cualquier fila para abrir el panel lateral con informacion completa: datos de contacto, tipificacion, historial de conversacion y opciones de Repulse.",
+          "position": "top"
+        },
+        {
+          "target": "main > div:last-child > div:last-child",
+          "title": "Navegacion de Paginas",
+          "content": "Si tienes muchos leads, usa la paginacion para navegar. Muestra 10 leads por pagina con el indicador Pagina X de Y.",
+          "position": "top"
+        }
+      ]
+    },
+    {
+      "id": "tour-locales",
+      "name": "Gestion de Locales - Tour Completo",
+      "description": "Aprende a gestionar el inventario de locales, cambiar estados, asignar vendedores y generar fichas de inscripcion",
+      "trigger": {
+        "type": "manual",
+        "pages": ["/locales"]
+      },
+      "steps": [
+        {
+          "target": "h1",
+          "title": "Bienvenido a Gestion de Locales",
+          "content": "Este modulo te permite controlar todo el inventario de locales: ver disponibilidad, cambiar estados, asignar vendedores y generar fichas de inscripcion para ventas.",
+          "position": "bottom"
+        },
+        {
+          "target": "input[placeholder^='Buscar']",
+          "title": "Busqueda por Codigo",
+          "content": "Busca un local especifico por su codigo exacto (ej: P-1, LC-001). Util cuando tienes muchos locales y necesitas encontrar uno rapidamente.",
+          "position": "bottom"
+        },
+        {
+          "target": "input[type='checkbox']",
+          "title": "Filtros de Estado",
+          "content": "Checkboxes para filtrar por estado: Verde (Libre), Amarillo (Negociando), Naranja (Confirmado), Rojo (Vendido). Marca varios para combinar.",
+          "position": "bottom"
+        },
+        {
+          "target": "input[type='number']",
+          "title": "Filtros de Metraje",
+          "content": "Define un rango de metros cuadrados (min-max) para encontrar locales de un tamano especifico. Haz clic en Actualizar para aplicar.",
+          "position": "bottom"
+        },
+        {
+          "target": "table thead",
+          "title": "Tabla de Locales",
+          "content": "Cada fila muestra: Codigo, Precio Base (editable), Proyecto, Metraje, Estado (con botones de cambio), Monto Venta, Vendedor y Acciones.",
+          "position": "bottom"
+        },
+        {
+          "target": "table tbody td:nth-child(5)",
+          "title": "Cambio de Estado",
+          "content": "Los botones de estado (Libre, Negociando, Confirmado, Vendido) permiten cambiar el estado. Al pasar a Negociando o Confirmado, deberas asignar un vendedor.",
+          "position": "top"
+        },
+        {
+          "target": "table tbody td:nth-child(2) input",
+          "title": "Editar Precio Base",
+          "content": "El precio base es editable directamente. Modifica el valor y haz clic en el icono de guardar para actualizarlo sin abrir formularios.",
+          "position": "bottom"
+        },
+        {
+          "target": "table tbody tr td:last-child button",
+          "title": "Historial del Local",
+          "content": "Ver el historial de cambios de estado del local: quien lo cambio y cuando. Util para auditorias y seguimiento.",
+          "position": "left"
+        }
+      ]
+    },
+    {
+      "id": "tour-pagos",
+      "name": "Control de Pagos - Tour Completo",
+      "description": "Aprende a gestionar pagos, registrar abonos, ver cronogramas de cuotas y generar contratos",
+      "trigger": {
+        "type": "manual",
+        "pages": ["/control-pagos"]
+      },
+      "steps": [
+        {
+          "target": "h1",
+          "title": "Bienvenido a Control de Pagos",
+          "content": "Este modulo te permite gestionar todos los pagos de locales vendidos: separacion, inicial, cuotas con intereses y generacion de contratos.",
+          "position": "bottom"
+        },
+        {
+          "target": "h2",
+          "title": "Locales en Control",
+          "content": "Aqui ves el total de locales que estan en proceso de pago en el proyecto actual.",
+          "position": "bottom"
+        },
+        {
+          "target": "table thead",
+          "title": "Tabla de Locales Vendidos",
+          "content": "Cada fila muestra: Codigo, Cliente, Precio Base, Monto Venta, Inicial (% y monto), Restante, Cuotas, Financiamiento, Proximo Pago y Acciones.",
+          "position": "bottom"
+        },
+        {
+          "target": "table tbody td:nth-child(4) button",
+          "title": "Comparativo de Precios",
+          "content": "Haz clic en el precio base para ver el comparativo: Precio Base vs Monto Venta y el descuento aplicado.",
+          "position": "bottom"
+        },
+        {
+          "target": "table tbody td:nth-child(10)",
+          "title": "Proximo Pago",
+          "content": "Esta columna muestra la fecha del proximo pago pendiente. Las fechas vencidas se resaltan para facilitar el seguimiento.",
+          "position": "left"
+        },
+        {
+          "target": "table tbody tr:first-child td:last-child button:first-child",
+          "title": "Ver Detalle de Pagos",
+          "content": "Abre el panel lateral con el control completo: resumen financiero, separacion, inicial, cronograma de cuotas e historial de abonos.",
+          "position": "left"
+        },
+        {
+          "target": "table tbody tr:first-child td:last-child button:last-child",
+          "title": "Generar Contrato",
+          "content": "Descarga automaticamente un archivo Word con el contrato de venta completo, listo para imprimir y firmar por el cliente.",
+          "position": "left"
+        }
+      ]
+    },
+    {
+      "id": "tour-comisiones",
+      "name": "Gestion de Comisiones - Tour Completo",
+      "description": "Aprende a ver tus comisiones, entender los estados, ver desgloses y marcar pagos",
+      "trigger": {
+        "type": "manual",
+        "pages": ["/comisiones"]
+      },
+      "steps": [
+        {
+          "target": "h1",
+          "title": "Bienvenido a Comisiones",
+          "content": "Este modulo te permite ver y gestionar todas las comisiones generadas por ventas de locales. Hay dos vistas: Mis Comisiones (personal) y Control Comisiones (admin).",
+          "position": "bottom"
+        },
+        {
+          "target": "h3",
+          "title": "KPIs de Comisiones",
+          "content": "4 tarjetas resumen: Total Generado, Disponible (listas para pagar), Pagado (ya pagadas) y Pendiente Inicial (esperando pago del cliente).",
+          "position": "bottom"
+        },
+        {
+          "target": "svg",
+          "title": "Grafico por Mes",
+          "content": "Grafico de barras apiladas mostrando comisiones por mes. Verde=Disponible, Morado=Pagado, Amarillo=Pendiente. Pasa el cursor para ver valores.",
+          "position": "right"
+        },
+        {
+          "target": "input[placeholder*='Buscar']",
+          "title": "Busqueda y Filtros",
+          "content": "Busca por codigo de local o proyecto. Usa los dropdowns para filtrar por vendedor, estado (Pendiente/Disponible/Pagada) y año.",
+          "position": "bottom"
+        },
+        {
+          "target": "h4",
+          "title": "Agrupacion Mensual",
+          "content": "Las comisiones se agrupan por mes. Cada grupo muestra cantidad, total y distribucion por estado con colores.",
+          "position": "bottom"
+        },
+        {
+          "target": "table thead",
+          "title": "Tabla de Comisiones",
+          "content": "Detalle: Local, Vendedor, Monto Venta, Fase (Gestion/Vendedor), Porcentaje, Monto, Estado, Fechas y Acciones.",
+          "position": "bottom"
+        },
+        {
+          "target": "table tbody td:nth-child(6) button",
+          "title": "Ver Desglose de Comision",
+          "content": "Haz clic en el porcentaje para ver el desglose completo: trazabilidad del proceso y como se reparte la comision entre todos los involucrados.",
+          "position": "left"
+        },
+        {
+          "target": "table tbody tr:first-child td:last-child",
+          "title": "Acciones",
+          "content": "Marcar Pagada: registra que ya pagaste la comision al vendedor. Por verificar: comisiones pendientes de pago inicial del cliente.",
+          "position": "left"
+        }
+      ]
+    },
+    {
+      "id": "tour-reporteria",
+      "name": "Reporteria - Matriz Cruzada de Vendedores",
+      "description": "Aprende a analizar el rendimiento de vendedores por proyecto con la matriz cruzada",
+      "trigger": {
+        "type": "auto",
+        "pages": ["/reporteria"]
+      },
+      "steps": [
+        {
+          "target": "h1",
+          "title": "Bienvenido a Reporteria",
+          "content": "Este modulo te permite analizar el rendimiento de vendedores en todos los proyectos con una matriz cruzada. Ideal para reuniones gerenciales.",
+          "position": "bottom"
+        },
+        {
+          "target": "select, combobox",
+          "title": "Filtro de Proyecto",
+          "content": "Filtra por proyecto especifico o deja 'Todos los proyectos' para ver el panorama completo de los 11 proyectos activos.",
+          "position": "bottom"
+        },
+        {
+          "target": "input[placeholder*='Nombre']",
+          "title": "Buscar Vendedor",
+          "content": "Escribe el nombre de un vendedor para encontrarlo rapidamente. Filtra en tiempo real entre los 50+ vendedores.",
+          "position": "bottom"
+        },
+        {
+          "target": "p",
+          "title": "Periodo de Analisis",
+          "content": "Por defecto muestra los ultimos 3 dias. Usa los selectores de fecha Desde/Hasta para cambiar el periodo.",
+          "position": "bottom"
+        },
+        {
+          "target": "button",
+          "title": "Exportar a Excel",
+          "content": "Descarga la matriz completa en Excel. Perfecto para crear graficos, tablas dinamicas o compartir en reuniones.",
+          "position": "left"
+        },
+        {
+          "target": "table thead",
+          "title": "Matriz Cruzada",
+          "content": "Tabla pivote: filas = vendedores, columnas = proyectos. Vendedores ordenados por TOTAL (los mas productivos primero).",
+          "position": "bottom"
+        },
+        {
+          "target": "table tbody td:nth-child(4)",
+          "title": "Lectura de Celdas",
+          "content": "Cada celda muestra 3 valores: Manual (verde), No Manual (azul), Total. Manual = caseta/telefono. No Manual = web/WhatsApp auto.",
+          "position": "left"
+        },
+        {
+          "target": "table tbody td:last-child",
+          "title": "Columna TOTAL",
+          "content": "El total de leads del vendedor en todos los proyectos. Usa esta columna para medir productividad general.",
+          "position": "left"
+        }
+      ]
+    },
+    {
+      "id": "tour-repulse",
+      "name": "Sistema de Re-engagement",
+      "description": "Aprende a usar Repulse para reactivar leads frios",
+      "trigger": {
+        "type": "auto",
+        "pages": ["/repulse"]
+      },
+      "steps": [
+        {
+          "target": "h1",
+          "title": "Bienvenido a Repulse",
+          "content": "Este es el sistema de re-engagement para reactivar leads frios. Los leads entran automaticamente despues de 30 dias sin compra, o puedes agregarlos manualmente desde /operativo.",
+          "position": "bottom"
+        },
+        {
+          "target": "button",
+          "title": "Ayuda del Sistema",
+          "content": "Haz clic aqui para ver como funciona el ciclo completo de estados: Pendiente > Enviado > Respondio/Sin respuesta > Excluido.",
+          "position": "bottom"
+        },
+        {
+          "target": "p",
+          "title": "Tarjetas de Estado (KPIs)",
+          "content": "6 indicadores: Total de leads, Pendientes (listos para contactar), Enviados (esperando respuesta), Respondieron (exito!), Sin respuesta, y Excluidos (no contactar).",
+          "position": "bottom"
+        },
+        {
+          "target": "input[placeholder*='Buscar']",
+          "title": "Buscador de Leads",
+          "content": "Busca leads por nombre, numero de telefono o rubro. Muy util cuando tienes muchos leads en la lista.",
+          "position": "bottom"
+        },
+        {
+          "target": "select, combobox",
+          "title": "Filtro por Estado",
+          "content": "Filtra la tabla para ver solo leads en un estado especifico: Pendientes, Enviados, Respondieron, Sin respuesta o Excluidos.",
+          "position": "bottom"
+        },
+        {
+          "target": "table thead",
+          "title": "Tabla de Leads",
+          "content": "Columnas: Lead (nombre), Telefono, Rubro (tipo de negocio), Origen (de donde vino), Estado actual, Repulses (intentos), Fecha Lead, y Acciones.",
+          "position": "bottom"
+        },
+        {
+          "target": "table th:last-child",
+          "title": "Acciones por Lead",
+          "content": "Desde aqui puedes: Enviar mensaje individual, Ver historial de contactos, Excluir permanentemente, o Agregar notas.",
+          "position": "left"
+        },
+        {
+          "target": "table",
+          "title": "Seleccion Multiple",
+          "content": "Usa los checkboxes para seleccionar varios leads y enviar mensajes masivos. Selecciona el checkbox del encabezado para marcar todos.",
+          "position": "top"
+        }
+      ]
+    },
+    {
+      "id": "tour-admin-usuarios",
+      "name": "Administrar Usuarios",
+      "description": "Aprende a gestionar usuarios del sistema",
+      "trigger": {
+        "type": "auto",
+        "pages": ["/admin/usuarios"]
+      },
+      "steps": [
+        {
+          "target": "h1",
+          "title": "Bienvenido a Admin Usuarios",
+          "content": "Este modulo te permite gestionar todos los usuarios del sistema. Solo los administradores tienen acceso a esta seccion.",
+          "position": "bottom"
+        },
+        {
+          "target": "p",
+          "title": "Tarjetas de Resumen (KPIs)",
+          "content": "4 indicadores: Total de usuarios registrados, cuantos estan Activos, cuantos Inactivos, y la cantidad de Roles disponibles.",
+          "position": "bottom"
+        },
+        {
+          "target": "h2",
+          "title": "Seccion de Usuarios",
+          "content": "Aqui gestionas la lista completa de usuarios con todas las herramientas disponibles.",
+          "position": "bottom"
+        },
+        {
+          "target": "button",
+          "title": "Boton Actualizar",
+          "content": "Refresca la lista de usuarios para ver los cambios mas recientes realizados por otros administradores.",
+          "position": "bottom"
+        },
+        {
+          "target": "input[placeholder*='Buscar']",
+          "title": "Buscador de Usuarios",
+          "content": "Busca rapidamente por nombre, email o telefono. La tabla se filtra instantaneamente mientras escribes.",
+          "position": "bottom"
+        },
+        {
+          "target": "select, combobox",
+          "title": "Filtro por Rol",
+          "content": "Filtra usuarios por rol: Administrador, Jefe de Ventas, Vendedor, Vendedor Caseta, Coordinador o Finanzas.",
+          "position": "bottom"
+        },
+        {
+          "target": "table thead",
+          "title": "Tabla de Usuarios",
+          "content": "Columnas: Usuario (nombre y email), Contacto (telefono), Rol asignado, Estado (activo/inactivo), y Acciones disponibles.",
+          "position": "bottom"
+        },
+        {
+          "target": "table th:last-child",
+          "title": "Acciones por Usuario",
+          "content": "Desde aqui puedes: Editar datos del usuario, Activar/Desactivar acceso, y Restablecer contrasena si el usuario la olvido.",
+          "position": "left"
+        }
+      ]
+    },
+    {
+      "id": "tour-config-proyectos",
+      "name": "Configurar Proyecto",
+      "description": "Aprende a configurar los parametros del proyecto",
+      "trigger": {
+        "type": "auto",
+        "pages": ["/configuracion-proyectos"]
+      },
+      "steps": [
+        {
+          "target": "h2",
+          "title": "Bienvenido a Configuracion",
+          "content": "Este modulo te permite configurar todos los parametros del proyecto: financieros, comisiones, datos legales y mas.",
+          "position": "bottom"
+        },
+        {
+          "target": "button",
+          "title": "Selector de Proyecto",
+          "content": "Haz clic aqui para cambiar de proyecto. Cada proyecto tiene sus propios parametros independientes.",
+          "position": "bottom"
+        },
+        {
+          "target": "input[type='number']",
+          "title": "TEA del Proyecto",
+          "content": "La Tasa Efectiva Anual (TEA) se usa para calcular intereses en cuotas de financiamiento. Ej: 16 significa 16%.",
+          "position": "right"
+        },
+        {
+          "target": "input[type='text']",
+          "title": "Color del Proyecto",
+          "content": "Elige un color para identificar visualmente este proyecto en el dashboard. Usa formato hexadecimal (#RRGGBB).",
+          "position": "right"
+        },
+        {
+          "target": "select, combobox",
+          "title": "Comisiones por Rol",
+          "content": "Configura el porcentaje de comision para cada rol. Puedes asignar comisiones diferentes a vendedores especificos.",
+          "position": "bottom"
+        },
+        {
+          "target": "h3",
+          "title": "Datos para Tramites Legales",
+          "content": "Esta seccion contiene toda la informacion legal: logo, template de contrato, datos de la empresa, representantes y cuentas bancarias.",
+          "position": "bottom"
+        },
+        {
+          "target": "h4",
+          "title": "Template de Contrato",
+          "content": "Sube un archivo Word (.docx) con variables como {CLIENTE_NOMBRE}. El sistema las reemplazara automaticamente al generar contratos.",
+          "position": "bottom"
+        },
+        {
+          "target": "img[alt*='Logo']",
+          "title": "Logo del Proyecto",
+          "content": "Este logo aparecera en documentos oficiales como la Ficha de Inscripcion. Sube una imagen PNG o JPG.",
+          "position": "right"
+        }
+      ]
+    }
+  ],
+  "hotspots": [
+    {
+      "id": "hs-login-project",
+      "selector": "select, [role='combobox']",
+      "page": "/login",
+      "title": "Importante!",
+      "content": "Selecciona el proyecto correcto ANTES de iniciar sesion. Esto determina que datos veras en el sistema.",
+      "style": {
+        "type": "pulse",
+        "color": "#f59e0b",
+        "size": "medium"
+      }
+    },
+    {
+      "id": "hs-insights-filters",
+      "selector": "input[type='date'], [class*='date-filter']",
+      "page": "/",
+      "title": "Tip Rapido",
+      "content": "Usa los filtros de fecha para comparar periodos. Por ejemplo: Este Mes vs Mes Anterior.",
+      "style": {
+        "type": "beacon",
+        "size": "small"
+      }
+    },
+    {
+      "id": "hs-operativo-search",
+      "selector": "input[type='search'], .search-input",
+      "page": "/operativo",
+      "title": "Busqueda Rapida",
+      "content": "Escribe al menos 3 caracteres para buscar. Funciona con nombre, telefono, correo o DNI.",
+      "style": {
+        "type": "beacon",
+        "size": "small"
+      }
+    },
+    {
+      "id": "hs-locales-colors",
+      "selector": "[class*='filter'], .status-filters",
+      "page": "/locales",
+      "title": "Codigo de Colores",
+      "content": "Verde = Libre, Amarillo = Negociando, Naranja = Confirmado, Rojo = Vendido",
+      "style": {
+        "type": "badge",
+        "size": "small"
+      }
+    },
+    {
+      "id": "hs-repulse-quota",
+      "selector": "[class*='quota']",
+      "page": "/repulse",
+      "title": "Limite Diario",
+      "content": "Tienes un limite de 250 mensajes por dia. El contador se reinicia a medianoche.",
+      "style": {
+        "type": "beacon",
+        "color": "#ef4444",
+        "size": "small"
+      }
+    },
+    {
+      "id": "hs-config-tea",
+      "selector": "[name*='tea'], .tea-input",
+      "page": "/configuracion-proyectos",
+      "title": "TEA Importante",
+      "content": "Esta tasa se usa para calcular los intereses en cuotas con financiamiento. Asegurate de que sea correcta.",
+      "style": {
+        "type": "pulse",
+        "color": "#3b82f6",
+        "size": "medium"
+      }
+    }
+  ]
+}
