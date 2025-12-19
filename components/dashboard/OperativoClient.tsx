@@ -421,8 +421,8 @@ export default function OperativoClient({
 
         {/* Export & Import Buttons */}
         <div className="flex items-center gap-2 ml-auto">
-          {/* Import Dropdown (Admin + Vendedor + Vendedor Caseta) */}
-          {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') && (
+          {/* Import Dropdown (Admin + Vendedor + Vendedor Caseta + Coordinador) */}
+          {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && (
             <div className="relative">
               <button
                 onClick={() => setIsImportDropdownOpen(!isImportDropdownOpen)}
@@ -531,8 +531,8 @@ export default function OperativoClient({
         usuarioRol={user?.rol}
       />
 
-      {/* Manual Lead Panel (Admin + Vendedor + Vendedor Caseta) */}
-      {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') && selectedProyecto && (
+      {/* Manual Lead Panel (Admin + Vendedor + Vendedor Caseta + Coordinador) */}
+      {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && selectedProyecto && (
         <ManualLeadPanel
           isOpen={isManualPanelOpen}
           onClose={() => setIsManualPanelOpen(false)}
@@ -563,8 +563,8 @@ export default function OperativoClient({
         showCancel={config.showCancel}
       />
 
-      {/* Import Modal (Admin + Vendedor + Vendedor Caseta) */}
-      {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') && selectedProyecto && (
+      {/* Import Modal (Admin + Vendedor + Vendedor Caseta + Coordinador) */}
+      {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && selectedProyecto && (
         <LeadImportModal
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
