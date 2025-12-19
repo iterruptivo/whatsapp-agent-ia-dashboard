@@ -107,10 +107,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // coordinador solo ve Finanzas (locales, comisiones, etc)
+    // coordinador ve Operativo + Finanzas (locales, comisiones)
     if (user?.rol === 'coordinador') {
       return {
-        directItems: [],
+        directItems: [
+          { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+        ],
         categories: [finanzasCategory],
         bottomItems: [] as MenuItem[],
       };
