@@ -15,22 +15,30 @@ interface TimerCountdownProps {
 }
 
 export default function TimerCountdown({ naranjaTimestamp }: TimerCountdownProps) {
-  const [currentTime, setCurrentTime] = useState(Date.now());
+  // HYDRATION FIX: Iniciar con null para evitar mismatch servidor/cliente
+  const [currentTime, setCurrentTime] = useState<number | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
-  // Solo actualizar cada segundo si hay timestamp
+  // Marcar que estamos en el cliente y establecer tiempo inicial
   useEffect(() => {
-    if (!naranjaTimestamp) return;
+    setIsClient(true);
+    setCurrentTime(Date.now());
+  }, []);
+
+  // Solo actualizar cada segundo si hay timestamp y estamos en cliente
+  useEffect(() => {
+    if (!naranjaTimestamp || !isClient) return;
 
     const interval = setInterval(() => {
       setCurrentTime(Date.now());
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [naranjaTimestamp]);
+  }, [naranjaTimestamp, isClient]);
 
   // Calcular tiempo restante
   const calcularTiempoRestante = () => {
-    if (!naranjaTimestamp) return null;
+    if (!naranjaTimestamp || currentTime === null) return null;
 
     const inicio = new Date(naranjaTimestamp);
     const ahora = new Date(currentTime);

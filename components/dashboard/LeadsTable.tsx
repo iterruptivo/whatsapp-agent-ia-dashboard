@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Lead, Vendedor } from '@/lib/db';
+import { Lead } from '@/lib/db';
+import { VendedorActivo } from '@/lib/locales';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
 import { Search, ChevronLeft, ChevronRight, ChevronRight as ChevronRightIcon, Calendar, UserCheck, Mail, Check, Zap, X } from 'lucide-react';
 import VendedorSearchDropdown from '@/components/shared/VendedorSearchDropdown';
@@ -10,7 +11,7 @@ interface LeadsTableProps {
   leads: Lead[];
   totalLeads?: number;
   onLeadClick?: (lead: Lead) => void;
-  vendedores?: Vendedor[];
+  vendedores?: VendedorActivo[]; // Incluye coordinadores (Sesión 74)
   currentVendedorId?: string | null;
   onAssignLead?: (leadId: string, vendedorId: string) => Promise<void>;
   userRole?: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | null;

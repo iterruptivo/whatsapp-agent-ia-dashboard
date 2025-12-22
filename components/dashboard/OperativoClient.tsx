@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import LeadsTable from '@/components/dashboard/LeadsTable';
 import DateRangeFilter from '@/components/dashboard/DateRangeFilter';
 import LeadDetailPanel from '@/components/dashboard/LeadDetailPanel';
-import { Lead, Vendedor, Usuario, getAllVendedores, getAllUsuarios } from '@/lib/db';
+import { Lead, Usuario, getAllUsuarios } from '@/lib/db';
+import { getAllVendedoresActivos, VendedorActivo } from '@/lib/locales';
 import { assignLeadToVendedor } from '@/lib/actions';
 import { useAuth } from '@/lib/auth-context';
 import { Download, Upload, Plus, ChevronDown, Zap } from 'lucide-react';
@@ -38,7 +39,8 @@ export default function OperativoClient({
   const [isPanelOpen, setIsPanelOpen] = useState(false);
 
   // Vendedor state (for admin - fetches all vendedores for assignment dropdown)
-  const [vendedores, setVendedores] = useState<Vendedor[]>([]);
+  // NOTA: Usa VendedorActivo que incluye coordinadores (Sesión 74)
+  const [vendedores, setVendedores] = useState<VendedorActivo[]>([]);
 
   // Usuarios state (for manual lead panel - fetches all usuarios with email)
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
@@ -65,8 +67,9 @@ export default function OperativoClient({
   const [isAddingToRepulse, setIsAddingToRepulse] = useState(false);
 
   // Fetch vendedores on mount (only for assignment dropdown in table)
+  // NOTA: Usa getAllVendedoresActivos para incluir coordinadores (Sesión 74)
   useEffect(() => {
-    getAllVendedores().then(setVendedores);
+    getAllVendedoresActivos().then(setVendedores);
     getAllUsuarios().then(setUsuarios);
   }, []);
 

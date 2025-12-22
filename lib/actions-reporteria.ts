@@ -42,7 +42,7 @@ export interface ProyectoLeads {
 export interface VendedorReporteriaRow {
   vendedor_id: string;
   nombre: string;
-  rol: 'vendedor' | 'vendedor_caseta';
+  rol: 'vendedor' | 'vendedor_caseta' | 'coordinador';
   proyectos: ProyectoLeads[]; // Array con datos de CADA proyecto
   totalGeneral: number; // Suma de todos los proyectos
 }
@@ -51,7 +51,7 @@ export interface VendedorReporteriaRow {
 export interface VendedorReporteriaData {
   id: string;
   nombre: string;
-  rol: 'vendedor' | 'vendedor_caseta';
+  rol: 'vendedor' | 'vendedor_caseta' | 'coordinador';
   proyecto_id: string;
   proyecto_nombre: string;
   proyecto_color: string | null;
@@ -99,12 +99,13 @@ export async function getReporteriaData(filters: ReporteriaFilters = {}): Promis
     console.log(`[REPORTERIA] Proyectos activos: ${proyectos.length}`);
     console.log(`[REPORTERIA] Proyectos a usar (con filtro): ${proyectosToUse.length}`);
 
-    // STEP 2: Obtener todos los usuarios con rol vendedor o vendedor_caseta
+    // STEP 2: Obtener todos los usuarios con rol vendedor, vendedor_caseta o coordinador
+    // NOTA: Coordinadores también pueden vender, por eso se incluyen en reportería
     let usuariosQuery = supabase
       .from('usuarios')
       .select('id, nombre, rol, vendedor_id')
       .eq('activo', true)
-      .in('rol', ['vendedor', 'vendedor_caseta'])
+      .in('rol', ['vendedor', 'vendedor_caseta', 'coordinador'])
       .order('nombre', { ascending: true });
 
     const { data: usuariosData, error: usuariosError } = await usuariosQuery;

@@ -14,6 +14,47 @@
 
 ---
 
+## 🔐 CREDENCIALES DE TESTING (OBLIGATORIO)
+
+> ⚠️ **REGLA MANDATORIA:** SIEMPRE usar **PROYECTO PRUEBAS** al iniciar sesión para testing.
+> Solo cambiar de proyecto si el usuario lo solicita EXPLÍCITAMENTE.
+
+### **Usuarios de Prueba por Rol**
+
+| Rol | Email | Contraseña |
+|-----|-------|------------|
+| **Admin** | `gerencia@ecoplaza.com` | `q0#CsgL8my3$` |
+| **Jefe Ventas** | `leojefeventas@ecoplaza.com` | `67hgs53899#` |
+| **Vendedor** | `alonso@ecoplaza.com` | `Q0KlC36J4M_y` |
+| **Vendedor Caseta** | `leocaseta@ecoplaza.com` | `y62$3904h%$$3` |
+
+### **Guía de Selección de Usuario**
+- **Probar features de admin/gestión:** Usar `gerencia@ecoplaza.com`
+- **Probar features de supervisión:** Usar `leojefeventas@ecoplaza.com`
+- **Probar features de vendedor campo:** Usar `alonso@ecoplaza.com`
+- **Probar features de vendedor caseta:** Usar `leocaseta@ecoplaza.com`
+
+---
+
+## 🚨 REGLAS CRÍTICAS - NUNCA VIOLAR
+
+> ⛔ **REGLA #1: NUNCA MATAR TODOS LOS PROCESOS NODE**
+>
+> **PROHIBIDO:** `taskkill /F /IM node.exe` - Esto mata Claude Code y otras sesiones
+>
+> **CORRECTO para matar puerto específico:**
+> ```bash
+> # 1. Buscar PID del puerto
+> netstat -ano | grep :3000 | grep LISTEN
+>
+> # 2. Matar SOLO ese PID (ejemplo: 12345)
+> taskkill /F /PID 12345
+> ```
+>
+> **MEJOR AÚN:** Dejar que Next.js use puerto disponible automáticamente (3001, 3002, etc.)
+
+---
+
 ## 📊 ESTADO DEL PROYECTO
 
 ### **Módulos Activos**

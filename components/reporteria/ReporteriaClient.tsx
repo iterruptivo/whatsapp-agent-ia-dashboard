@@ -241,11 +241,19 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
   };
 
   // Helper para obtener badge de rol
-  const getRolBadge = (rol: 'vendedor' | 'vendedor_caseta') => {
+  // NOTA: Coordinadores también pueden vender y aparecer en reportería (Sesión 74)
+  const getRolBadge = (rol: 'vendedor' | 'vendedor_caseta' | 'coordinador') => {
     if (rol === 'vendedor') {
       return (
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
           Vendedor
+        </span>
+      );
+    }
+    if (rol === 'coordinador') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+          Coordinador
         </span>
       );
     }

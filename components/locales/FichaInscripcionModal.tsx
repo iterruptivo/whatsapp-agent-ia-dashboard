@@ -87,6 +87,10 @@ export default function FichaInscripcionModal({
   const [teaProyecto, setTeaProyecto] = useState<number>(0);
   const [porcentajeInicialDefault, setPorcentajeInicialDefault] = useState<number>(30); // Default 30%
 
+  // Monto separación - Currency selection
+  const [monedaSeparacion, setMonedaSeparacion] = useState<'usd' | 'pen'>('usd');
+  const [montoSeparacionInput, setMontoSeparacionInput] = useState<number | null>(null);
+
   // Datos legales del proyecto (para header/footer)
   const [proyectoLegalData, setProyectoLegalData] = useState<{
     razon_social: string;
@@ -386,6 +390,11 @@ export default function FichaInscripcionModal({
         if (existingFicha.tea !== null && existingFicha.tea !== undefined) {
           setTeaProyecto(existingFicha.tea);
         }
+        // Inicializar montoSeparacionInput con valor existente (default: USD)
+        if (existingFicha.monto_separacion_usd) {
+          setMonedaSeparacion('usd');
+          setMontoSeparacionInput(existingFicha.monto_separacion_usd);
+        }
       } else {
         // Pre-llenar con datos del lead vinculado
         // Parsear nombre completo: "Juan Carlos Perez Lopez" -> nombres: "Juan Carlos", ap_pat: "Perez", ap_mat: "Lopez"
@@ -473,6 +482,44 @@ export default function FichaInscripcionModal({
 
   const handleChange = (field: keyof ClienteFichaInput, value: string | boolean | null | Copropietario[] | number | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Handler para monto de separación con conversión de moneda
+  const handleMontoSeparacionChange = (value: number | null) => {
+    setMontoSeparacionInput(value);
+
+    if (value === null || value === 0) {
+      handleChange('monto_separacion_usd', null);
+      return;
+    }
+
+    const tipoCambio = formData.tipo_cambio ?? 0;
+
+    // Si moneda es USD, guardar directamente
+    // Si moneda es Soles, convertir a USD
+    const montoUSD = monedaSeparacion === 'usd'
+      ? value
+      : (tipoCambio > 0 ? value / tipoCambio : null);
+
+    handleChange('monto_separacion_usd', montoUSD);
+  };
+
+  // Handler para cambio de moneda de separación
+  const handleMonedaSeparacionChange = (newMoneda: 'usd' | 'pen') => {
+    setMonedaSeparacion(newMoneda);
+
+    // Si hay un valor ingresado, reconvertirlo a la nueva moneda para el input
+    if (formData.monto_separacion_usd && formData.tipo_cambio) {
+      const tipoCambio = formData.tipo_cambio;
+
+      // Si cambiamos a USD, mostrar el valor en USD (que ya está en formData)
+      // Si cambiamos a Soles, mostrar el valor en Soles (convertir de USD)
+      const newInputValue = newMoneda === 'usd'
+        ? formData.monto_separacion_usd
+        : formData.monto_separacion_usd * tipoCambio;
+
+      setMontoSeparacionInput(newInputValue);
+    }
   };
 
   const addCopropietario = () => {
@@ -665,8 +712,20 @@ export default function FichaInscripcionModal({
       }
     }
 
+    // Sanitizar campos de fecha: convertir strings vacíos a null
+    // PostgreSQL rechaza strings vacíos para columnas tipo DATE
+    const sanitizeDateField = (value: string | null | undefined): string | null => {
+      if (!value || value.trim() === '') return null;
+      return value;
+    };
+
     const result = await upsertClienteFicha({
       ...formData,
+      // Sobrescribir campos de fecha con valores sanitizados
+      fecha_separacion: sanitizeDateField(formData.fecha_separacion),
+      fecha_inicio_pago: sanitizeDateField(formData.fecha_inicio_pago),
+      titular_fecha_nacimiento: sanitizeDateField(formData.titular_fecha_nacimiento),
+      conyuge_fecha_nacimiento: sanitizeDateField(formData.conyuge_fecha_nacimiento),
       local_id: local.id,
       lead_id: leadData.lead_id,
       vendedor_id: local.usuario_paso_naranja_id || formData.vendedor_id,
@@ -750,10 +809,22 @@ export default function FichaInscripcionModal({
     setShowConfirmModal(false);
     setIsProcessing(true);
 
+    // Sanitizar campos de fecha: convertir strings vacíos a null
+    // PostgreSQL rechaza strings vacíos para columnas tipo DATE
+    const sanitizeDateField = (value: string | null | undefined): string | null => {
+      if (!value || value.trim() === '') return null;
+      return value;
+    };
+
     try {
       // PASO 1: Guardar la ficha en clientes_ficha
       const result = await upsertClienteFicha({
         ...formData,
+        // Sobrescribir campos de fecha con valores sanitizados
+        fecha_separacion: sanitizeDateField(formData.fecha_separacion),
+        fecha_inicio_pago: sanitizeDateField(formData.fecha_inicio_pago),
+        titular_fecha_nacimiento: sanitizeDateField(formData.titular_fecha_nacimiento),
+        conyuge_fecha_nacimiento: sanitizeDateField(formData.conyuge_fecha_nacimiento),
         local_id: local.id,
         lead_id: leadData.lead_id,
         vendedor_id: local.usuario_paso_naranja_id || null,
@@ -1709,26 +1780,52 @@ export default function FichaInscripcionModal({
                       placeholder="3.75"
                     />
                   </div>
-                  {/* Monto separación (USD) */}
-                  <div>
-                    <label className={labelClass}>Monto separación (USD)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      className={inputClass}
-                      value={formData.monto_separacion_usd ?? ''}
-                      onChange={e => handleChange('monto_separacion_usd', e.target.value ? parseFloat(e.target.value) : null)}
-                      onWheel={(e) => e.currentTarget.blur()}
-                      placeholder="500.00"
-                    />
-                  </div>
-                  {/* Monto separación en Soles (calculado) */}
-                  <div>
-                    <label className={labelClass}>Separación (S/)</label>
-                    <div className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-gray-100 text-gray-700">
-                      {(formData.monto_separacion_usd && formData.tipo_cambio)
-                        ? `S/ ${(formData.monto_separacion_usd * formData.tipo_cambio).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
-                        : '-'}
+                  {/* MONTO DE SEPARACIÓN - Con selección de moneda */}
+                  <div className="col-span-2">
+                    <label className={labelClass}>MONTO DE SEPARACIÓN</label>
+                    <div className="space-y-2">
+                      {/* Dropdown moneda + Input monto */}
+                      <div className="flex gap-2 items-center">
+                        {/* Dropdown moneda - compacto (sin w-full) */}
+                        <select
+                          className="w-[70px] px-2 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent flex-shrink-0"
+                          value={monedaSeparacion}
+                          onChange={(e) => handleMonedaSeparacionChange(e.target.value as 'usd' | 'pen')}
+                          disabled={!formData.tipo_cambio || formData.tipo_cambio === 0}
+                        >
+                          <option value="usd">$</option>
+                          <option value="pen">S/</option>
+                        </select>
+
+                        {/* Input monto - toma todo el espacio restante */}
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
+                          value={montoSeparacionInput ?? ''}
+                          onChange={(e) => handleMontoSeparacionChange(e.target.value ? parseFloat(e.target.value) : null)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          placeholder={monedaSeparacion === 'usd' ? '500.00' : '1875.00'}
+                          disabled={!formData.tipo_cambio || formData.tipo_cambio === 0}
+                        />
+                      </div>
+
+                      {/* Mostrar equivalente en la otra moneda */}
+                      {!formData.tipo_cambio || formData.tipo_cambio === 0 ? (
+                        <div className="px-3 py-2 rounded-lg text-sm bg-yellow-50 text-yellow-800 border border-yellow-200">
+                          ⚠️ Ingrese tipo de cambio primero
+                        </div>
+                      ) : formData.monto_separacion_usd && formData.tipo_cambio ? (
+                        <div className="px-3 py-2 rounded-lg text-sm bg-gray-100 text-gray-700">
+                          💵 Equivalente: {monedaSeparacion === 'usd'
+                            ? `S/ ${(formData.monto_separacion_usd * formData.tipo_cambio).toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+                            : `$ ${formData.monto_separacion_usd.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD`}
+                        </div>
+                      ) : (
+                        <div className="px-3 py-2 rounded-lg text-sm bg-gray-100 text-gray-500">
+                          Ingrese un monto
+                        </div>
+                      )}
                     </div>
                   </div>
                   {/* Fecha separación */}
@@ -2314,8 +2411,8 @@ export default function FichaInscripcionModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <DocumentUploader
                     title="Foto de DNI"
-                    description="Anverso y reverso (máx. 2 imágenes)"
-                    maxImages={2}
+                    description="Anverso, reverso y adicionales (máx. 10 imágenes)"
+                    maxImages={10}
                     images={formData.dni_fotos || []}
                     onImagesChange={(imgs) => handleChange('dni_fotos', imgs)}
                     localId={local?.id || ''}
@@ -2325,8 +2422,8 @@ export default function FichaInscripcionModal({
                   />
                   <DocumentUploader
                     title="Comprobante de Depósito"
-                    description="Foto/imagen del voucher (máx. 2 imágenes)"
-                    maxImages={2}
+                    description="Foto/imagen del voucher (máx. 5 imágenes)"
+                    maxImages={5}
                     images={formData.comprobante_deposito_fotos || []}
                     onImagesChange={(imgs) => handleChange('comprobante_deposito_fotos', imgs)}
                     localId={local?.id || ''}

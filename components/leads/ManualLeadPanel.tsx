@@ -276,9 +276,10 @@ export default function ManualLeadPanel({
 
   if (!isOpen) return null;
 
-  // Filtrar usuarios activos con rol "vendedor" o "vendedor_caseta"
+  // Filtrar usuarios activos con rol "vendedor", "vendedor_caseta" o "coordinador"
+  // NOTA: Coordinadores también pueden ser asignados a leads (Sesión 74)
   const activeVendedores = usuarios.filter(
-    (u) => u.activo && (u.rol === 'vendedor' || u.rol === 'vendedor_caseta')
+    (u) => u.activo && (u.rol === 'vendedor' || u.rol === 'vendedor_caseta' || u.rol === 'coordinador')
   );
 
   return (

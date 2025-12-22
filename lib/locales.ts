@@ -966,20 +966,22 @@ export async function getLocalLeads(localId: string): Promise<LocalLead[]> {
 export interface VendedorActivo {
   id: string;
   nombre: string;
-  rol: 'vendedor' | 'vendedor_caseta';
+  rol: 'vendedor' | 'vendedor_caseta' | 'coordinador';
   vendedor_id: string;
+  activo: boolean; // Incluido para compatibilidad con LeadsTable
 }
 
 /**
- * Obtiene todos los vendedores activos (rol: vendedor + vendedor_caseta)
- * Usado por admin para asignar locales
+ * Obtiene todos los vendedores activos (rol: vendedor + vendedor_caseta + coordinador)
+ * Usado por admin para asignar locales y leads
+ * NOTA: Coordinadores también pueden vender, por eso se incluyen
  */
 export async function getAllVendedoresActivos(): Promise<VendedorActivo[]> {
   try {
     const { data, error } = await supabase
       .from('usuarios')
-      .select('id, nombre, rol, vendedor_id')
-      .in('rol', ['vendedor', 'vendedor_caseta'])
+      .select('id, nombre, rol, vendedor_id, activo')
+      .in('rol', ['vendedor', 'vendedor_caseta', 'coordinador'])
       .eq('activo', true)
       .order('nombre', { ascending: true });
 

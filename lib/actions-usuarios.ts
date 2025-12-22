@@ -332,8 +332,9 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
   // 4. Crear registro en tabla usuarios
   let vendedor_id: string | null = null;
 
-  // Si es vendedor, crear en tabla vendedores primero
-  if (['vendedor', 'vendedor_caseta'].includes(data.rol)) {
+  // Si es vendedor o coordinador, crear en tabla vendedores primero
+  // NOTA: Coordinadores también pueden ser asignados a leads, por eso necesitan vendedor_id
+  if (['vendedor', 'vendedor_caseta', 'coordinador'].includes(data.rol)) {
     // NOTA: La tabla vendedores solo tiene: id, nombre, telefono, activo (NO tiene email)
     const { data: nuevoVendedor, error: vendedorError } = await supabaseAdmin
       .from('vendedores')
