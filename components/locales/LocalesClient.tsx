@@ -341,9 +341,10 @@ export default function LocalesClient({
   };
 
   const handleRegistrarVisita = async (telefono: string, nombre: string, proyectoId: string) => {
-    // Solo validar vendedor_id para roles vendedor/vendedor_caseta
+    // Solo validar vendedor_id para roles vendedor/vendedor_caseta/coordinador
     // admin/jefe_ventas pueden crear leads sin vendedor asignado
-    if (!user?.vendedor_id && (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta')) {
+    // SESIÓN 74: Agregar 'coordinador' a la validación
+    if (!user?.vendedor_id && (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador')) {
       setConfirmModal({
         isOpen: true,
         variant: 'danger',

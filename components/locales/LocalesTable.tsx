@@ -186,10 +186,11 @@ export default function LocalesTable({
       }
     }
 
-    // SESIÓN 48C: Si es vendedor/vendedor_caseta cambiando a NARANJA → mostrar modal comentario
+    // SESIÓN 48C: Si es vendedor/vendedor_caseta/coordinador cambiando a NARANJA → mostrar modal comentario
+    // SESIÓN 74: Agregar 'coordinador' a la validación
     if (
       nuevoEstado === 'naranja' &&
-      (user.rol === 'vendedor' || user.rol === 'vendedor_caseta')
+      (user.rol === 'vendedor' || user.rol === 'vendedor_caseta' || user.rol === 'coordinador')
     ) {
       // Abrir modal de comentario (NO cambiar estado todavía)
       setComentarioNaranjaModal({

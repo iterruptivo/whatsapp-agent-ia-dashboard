@@ -371,8 +371,9 @@ export default function OperativoClient({
           >
             Sin Asignar
           </button>
-          {/* Only show "Mis Leads" for vendedor and vendedor_caseta roles */}
-          {(user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') && (
+          {/* Only show "Mis Leads" for vendedor, vendedor_caseta and coordinador roles */}
+          {/* SESIÓN 74: Agregar 'coordinador' */}
+          {(user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && (
             <button
               onClick={() => setAssignmentFilter('mis_leads')}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${

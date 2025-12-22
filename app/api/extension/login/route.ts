@@ -75,8 +75,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar que el usuario tiene rol permitido (vendedor o vendedor_caseta)
-    const rolesPermitidos = ['vendedor', 'vendedor_caseta', 'admin', 'jefe_ventas'];
+    // Verificar que el usuario tiene rol permitido (vendedor, vendedor_caseta, coordinador, admin, jefe_ventas)
+    // SESIÓN 74: Agregar 'coordinador' a roles permitidos
+    const rolesPermitidos = ['vendedor', 'vendedor_caseta', 'coordinador', 'admin', 'jefe_ventas'];
     if (!rolesPermitidos.includes(userData.rol)) {
       return NextResponse.json(
         { success: false, error: 'No tienes permisos para usar esta extensión' },

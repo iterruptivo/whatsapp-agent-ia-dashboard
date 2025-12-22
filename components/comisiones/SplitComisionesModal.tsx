@@ -68,9 +68,10 @@ export default function SplitComisionesModal({
   };
 
   // Filtrar comisiones según rol del usuario
-  // Vendedor/vendedor_caseta solo ven comisiones de fase "vendedor"
+  // Vendedor/vendedor_caseta/coordinador solo ven comisiones de fase "vendedor"
   // Admin/jefe_ventas ven todas las comisiones
-  const isVendedorRole = userRole === 'vendedor' || userRole === 'vendedor_caseta';
+  // SESIÓN 74: Agregar 'coordinador' a la validación
+  const isVendedorRole = userRole === 'vendedor' || userRole === 'vendedor_caseta' || userRole === 'coordinador';
   const comisionesFiltradas = isVendedorRole
     ? comisiones.filter(c => c.fase === 'vendedor')
     : comisiones;

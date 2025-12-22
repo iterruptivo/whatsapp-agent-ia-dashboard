@@ -573,12 +573,13 @@ export async function saveDatosRegistroVenta(
     }
 
     // SESIÓN 52D: Validar que vendedor existe y tiene rol válido (usando Server Client)
+    // SESIÓN 74: Agregar 'coordinador' a roles válidos
     console.log('[DATOS VENTA] 🔍 Ejecutando query usuarios con .eq("id", vendedorId)');
     const { data: vendedorData, error: vendedorError } = await supabaseAuth
       .from('usuarios')
       .select('id, nombre, rol, vendedor_id')
       .eq('id', vendedorId)  // Buscar por ID de usuario
-      .in('rol', ['vendedor', 'vendedor_caseta'])
+      .in('rol', ['vendedor', 'vendedor_caseta', 'coordinador'])
       .single();
 
     console.log('[DATOS VENTA] 🔍 Resultado de query:', {

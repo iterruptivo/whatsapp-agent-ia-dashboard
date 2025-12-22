@@ -240,10 +240,11 @@ export async function importManualLeads(
 
       const usuario = usuarios?.[0];
 
+      // SESIÓN 74: Agregar 'coordinador' a roles válidos para importar leads
       if (
         usuarioError ||
         !usuario ||
-        (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta') ||
+        (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta' && usuario.rol !== 'coordinador') ||
         !usuario.vendedor_id
       ) {
         // Determinar razón específica del fallo
@@ -252,7 +253,7 @@ export async function importManualLeads(
           failReason = `Error DB: ${usuarioError.message}`;
         } else if (!usuario) {
           failReason = 'Usuario no existe en BD';
-        } else if (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta') {
+        } else if (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta' && usuario.rol !== 'coordinador') {
           failReason = `Rol inválido: ${usuario.rol}`;
         } else if (!usuario.vendedor_id) {
           failReason = 'Sin vendedor_id';
