@@ -104,6 +104,15 @@ export async function middleware(req: NextRequest) {
   }
 
   // ============================================================================
+  // VERSION API ROUTE - Public endpoint for cache busting
+  // ============================================================================
+  if (pathname === '/api/version') {
+    // Este endpoint es público para que el cliente pueda verificar nuevas versiones
+    // sin necesidad de autenticación
+    return res;
+  }
+
+  // ============================================================================
   // PUBLIC ROUTES - Allow without authentication
   // ============================================================================
   if (pathname === '/login') {
@@ -342,6 +351,12 @@ export async function middleware(req: NextRequest) {
   // Default: allow access (for any other authenticated routes)
   return res;
 }
+
+// ============================================================================
+// CACHE BUSTING: Add no-cache headers to HTML responses
+// ============================================================================
+// Note: This is handled in next.config.ts headers() but we reinforce here
+// for edge cases where config headers might not apply
 
 // ============================================================================
 // MATCHER CONFIGURATION

@@ -7,10 +7,27 @@
 
 ## 🔄 ÚLTIMA ACTUALIZACIÓN
 
-**Fecha:** 17 Diciembre 2025
-**Sesión:** 72 - 📊 **Página de Reportería Multi-Proyecto**
-**Estado:** ✅ **DEPLOYED TO MAIN**
+**Fecha:** 23 Diciembre 2025
+**Sesión:** 74 - Cache Busting + Fix Tomar Lead + Cruce de Ventas
+**Estado:** EN PROGRESO
 **Documentación:** Ver detalles abajo
+
+---
+
+## 📌 TAREAS ACTIVAS (LEER SIEMPRE AL INICIAR)
+
+> **IMPORTANTE:** Al iniciar una nueva sesión, SIEMPRE leer los archivos en `docs/active-tasks/` para continuar trabajo pendiente.
+
+| Tarea | Archivo | Estado |
+|-------|---------|--------|
+| Cache Busting Strategy | `docs/active-tasks/CACHE_BUSTING_STRATEGY.md` | EN PROGRESO |
+
+**Instrucciones:**
+1. Leer el archivo de la tarea activa
+2. Revisar el checklist de implementación
+3. Continuar donde se quedó la sesión anterior
+4. Actualizar el checklist conforme avances
+5. Al completar, mover a `docs/completed-tasks/`
 
 ---
 
