@@ -17,7 +17,7 @@ export const swaggerDocument: OpenAPIV3.Document = {
       description: 'Development server',
     },
     {
-      url: 'https://whatsapp-agent-ia-dashboard.vercel.app',
+      url: 'https://ecodashboard.iterruptivo.com',
       description: 'Production server',
     },
   ],

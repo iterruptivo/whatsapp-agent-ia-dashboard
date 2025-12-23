@@ -143,7 +143,7 @@ docs/
 
 **Producción:**
 - Requiere Basic Auth
-- URL: `https://whatsapp-agent-ia-dashboard.vercel.app/api/docs`
+- URL: `https://ecodashboard.iterruptivo.com/api/docs`
 - Credenciales desde env vars:
   - `SWAGGER_USERNAME=ecoplaza_admin`
   - `SWAGGER_PASSWORD=Sw4gg3r#2025!Eco`

@@ -11,7 +11,7 @@ http://localhost:3000/api/docs
 
 ### Producción
 ```
-https://whatsapp-agent-ia-dashboard.vercel.app/api/docs
+https://ecodashboard.iterruptivo.com/api/docs
 ```
 - **Autenticación:** Basic Auth
 - **Usuario:** (variable de entorno `SWAGGER_USERNAME`)

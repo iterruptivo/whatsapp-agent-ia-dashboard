@@ -37,7 +37,7 @@ Una vez desplegado, verificar:
 
 1. **Acceder a:**
    ```
-   https://whatsapp-agent-ia-dashboard.vercel.app/api/docs
+   https://ecodashboard.iterruptivo.com/api/docs
    ```
 
 2. **Debería solicitar autenticación:**
