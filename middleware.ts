@@ -113,6 +113,23 @@ export async function middleware(req: NextRequest) {
   }
 
   // ============================================================================
+  // SWAGGER/DOCS ROUTES - Allow with their own auth
+  // ============================================================================
+  if (pathname.startsWith('/api/docs')) {
+    // Las rutas de documentación Swagger manejan su propia autenticación
+    // (Basic Auth en producción, libre en desarrollo)
+    return res;
+  }
+
+  // ============================================================================
+  // PUBLIC API ROUTES - Allow without authentication
+  // ============================================================================
+  if (pathname.startsWith('/api/public')) {
+    // Las rutas públicas de API no requieren autenticación
+    return res;
+  }
+
+  // ============================================================================
   // PUBLIC ROUTES - Allow without authentication
   // ============================================================================
   if (pathname === '/login') {

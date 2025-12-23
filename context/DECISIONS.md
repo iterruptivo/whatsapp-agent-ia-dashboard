@@ -1,0 +1,97 @@
+# DECISIONS - EcoPlaza Dashboard
+
+> Decisiones tecnicas y de negocio con su justificacion.
+
+---
+
+## Arquitectura
+
+### Client Components vs Server Components
+**Decision:** Usar Client Components con useAuth() hook
+**Razon:** Proyecto inicio con este patron, mantener consistencia
+**Fecha:** Sesion 53B
+**Alternativa descartada:** Server Components con getServerSession()
+
+### Supabase Auth vs NextAuth
+**Decision:** Supabase Auth
+**Razon:** Integracion nativa con Supabase DB, RLS policies
+**Fecha:** Inicio proyecto
+**Alternativa descartada:** NextAuth (requeriria adapter adicional)
+
+---
+
+## Base de Datos
+
+### RLS Policies Permisivas vs Restrictivas
+**Decision:** Policies permisivas con validacion en frontend
+**Razon:** RLS recursivo causa error 42P17
+**Fecha:** Sesion 61
+**Ejemplo:** Comisiones usan `WITH CHECK (true)` con RBAC en frontend
+
+### Trigger Cascades
+**Decision:** Integrar logica relacionada en misma funcion
+**Razon:** PostgreSQL trigger cascades no son confiables
+**Fecha:** Sesion 62
+**Ejemplo:** update_monto_abonado_and_estado() incluye logica de comisiones
+
+---
+
+## Validaciones
+
+### Telefono Duplicado: Global vs Por Proyecto
+**Decision:** Validar por proyecto (telefono + proyecto_id)
+**Razon:** Un lead puede existir en multiples proyectos
+**Fecha:** Sesion 56
+**Impacto:** n8n UPSERT usa `?on_conflict=telefono,proyecto_id`
+
+### Filtro por Proyecto Obligatorio
+**Decision:** TODO se filtra por proyecto seleccionado
+**Razon:** Evitar confusion de datos entre proyectos
+**Fecha:** Sesion 64
+**Implementacion:** localStorage en client, cookies en server
+
+---
+
+## UI/UX
+
+### Commits sin creditos Claude
+**Decision:** NO incluir "Generated with Claude Code" ni "Co-Authored-By"
+**Razon:** Empresas aun no entienden uso de IA
+**Fecha:** Sesion 74
+**Usuario:** Solicitud explicita
+
+### Input Number con onWheel blur
+**Decision:** SIEMPRE agregar onWheel handler
+**Razon:** Evitar cambios accidentales con scroll wheel
+**Fecha:** Sesion 63
+**Codigo:** `onWheel={(e) => e.currentTarget.blur()}`
+
+---
+
+## Documentos
+
+### docx-templates vs otras librerias
+**Decision:** docx-templates para contratos Word
+**Razon:** Soporta IF/FOR/loops, sintaxis simple
+**Fecha:** Sesion 66
+**Alternativas descartadas:** docx, officegen (menos features)
+
+### Comandos en parrafos separados
+**Decision:** {IF}, {END-IF}, {FOR} solos en su parrafo
+**Razon:** Multiples comandos en misma linea causa error
+**Fecha:** Sesion 66
+**Impacto:** Templates Word deben seguir esta regla estrictamente
+
+---
+
+## Cache
+
+### Cache Busting Strategy
+**Decision:** Polling cada 60s + banner de notificacion
+**Razon:** Detectar nuevas versiones sin forzar reload
+**Fecha:** Sesion 73
+**Componentes:** /api/version, useVersionCheck, NewVersionBanner
+
+---
+
+**Politica de Rotacion:** Cuando exceda 50 decisiones, agrupar por tema y mover antiguas a context/archive/decisions/
