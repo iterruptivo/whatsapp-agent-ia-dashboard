@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import ReporteriaClient from '@/components/reporteria/ReporteriaClient';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
 
 export default function ReporteriaPage() {
   const router = useRouter();
@@ -55,5 +56,15 @@ export default function ReporteriaPage() {
 
   if (!user) return null;
 
-  return <ReporteriaClient user={user} />;
+  return (
+    <div className="min-h-screen bg-[#f4f4f4]">
+      <DashboardHeader
+        title="Reportería"
+        subtitle="Análisis de leads por vendedor en todos los proyectos"
+      />
+      <div className="max-w-[1920px] mx-auto p-6">
+        <ReporteriaClient user={user} />
+      </div>
+    </div>
+  );
 }

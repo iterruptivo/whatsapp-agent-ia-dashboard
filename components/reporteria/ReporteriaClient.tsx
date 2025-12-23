@@ -1,15 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import {
-  BarChart3,
-  ArrowLeft,
   Search,
   Download,
   Calendar,
   Filter,
-  ChevronDown
+  ChevronDown,
+  BarChart3
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
@@ -19,6 +17,8 @@ import {
   type ProyectoLeads
 } from '@/lib/actions-reporteria';
 import type { Proyecto } from '@/lib/db';
+import ReporteriaTabs, { type ReporteriaTab } from './ReporteriaTabs';
+import AtribucionIATab from './AtribucionIATab';
 
 // Tipo Usuario de auth-context (no importar de @/lib/db para evitar conflictos)
 interface Usuario {
@@ -55,7 +55,8 @@ function getDefaultDates() {
 }
 
 export default function ReporteriaClient({ user }: ReporteriaClientProps) {
-  const router = useRouter();
+  // Tab state - Session 74
+  const [activeTab, setActiveTab] = useState<ReporteriaTab>('leads_vendedor');
 
   // Referencias para scroll dual
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -264,67 +265,28 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
     );
   };
 
-  // Helper para badge de usuario actual
-  const getUserRolBadge = () => {
-    const rolMap: Record<string, { label: string; color: string }> = {
-      admin: { label: 'Admin', color: 'bg-purple-100 text-purple-800' },
-      jefe_ventas: { label: 'Jefe Ventas', color: 'bg-indigo-100 text-indigo-800' },
-      marketing: { label: 'Marketing', color: 'bg-pink-100 text-pink-800' }
-    };
-
-    const rolInfo = rolMap[user.rol];
-    if (!rolInfo) return null;
-
-    return (
-      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${rolInfo.color}`}>
-        {rolInfo.label}
-      </span>
-    );
-  };
-
   const totalesPorProyecto = calculateTotalesPorProyecto();
   const tableWidth = calculateTableWidth();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* HEADER STICKY */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col gap-4">
-            {/* Fila superior: Logo + Botón Volver */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#1b967a] rounded-lg flex items-center justify-center">
-                  <BarChart3 className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-[#192c4d]">Reportería</h1>
-                  <p className="text-sm text-gray-600">Análisis de leads por vendedor en todos los proyectos</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => router.back()}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a64] transition-colors"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Volver al Dashboard</span>
-                <span className="sm:hidden">Volver</span>
-              </button>
-            </div>
-
-            {/* Info usuario */}
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>Usuario:</span>
-              <span className="font-medium text-gray-800">{user.nombre}</span>
-              {getUserRolBadge()}
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {/* Tabs - Session 74: Sistema de Atribución IA */}
+      <ReporteriaTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userRole={user.rol}
+      />
 
       {/* CONTENIDO PRINCIPAL */}
-      <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div>
+        {/* TAB: Atribución IA */}
+        {activeTab === 'atribucion_ia' && (
+          <AtribucionIATab user={user} />
+        )}
+
+        {/* TAB: Leads por Vendedor (contenido original) */}
+        {activeTab === 'leads_vendedor' && (
+        <>
         {/* FILTROS */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -671,6 +633,8 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
             </>
           )}
         </div>
+        </>
+        )}
       </div>
     </div>
   );

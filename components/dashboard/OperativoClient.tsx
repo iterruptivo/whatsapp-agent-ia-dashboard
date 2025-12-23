@@ -511,7 +511,7 @@ export default function OperativoClient({
         totalLeads={initialLeads.length}
         onLeadClick={handleLeadClick}
         vendedores={vendedores}
-        currentVendedorId={currentVendedorId}
+        currentUserId={user?.id || null}
         onAssignLead={handleAssignLead}
         userRole={user?.rol || null}
         // Repulse multi-select (solo admin y jefe_ventas)

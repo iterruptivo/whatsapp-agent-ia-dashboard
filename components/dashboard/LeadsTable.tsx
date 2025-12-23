@@ -12,7 +12,7 @@ interface LeadsTableProps {
   totalLeads?: number;
   onLeadClick?: (lead: Lead) => void;
   vendedores?: VendedorActivo[]; // Incluye coordinadores (Sesión 74)
-  currentVendedorId?: string | null;
+  currentUserId?: string | null; // ID del usuario logueado (usuarios.id)
   onAssignLead?: (leadId: string, vendedorId: string) => Promise<void>;
   userRole?: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | null;
   // Repulse multi-select
@@ -28,7 +28,7 @@ export default function LeadsTable({
   totalLeads,
   onLeadClick,
   vendedores,
-  currentVendedorId,
+  currentUserId,
   onAssignLead,
   userRole,
   showRepulseSelection = false,
@@ -356,7 +356,7 @@ export default function LeadsTable({
                     <span className="text-gray-700 font-medium">
                       {lead.vendedor_nombre || 'Vendedor asignado'}
                     </span>
-                  ) : vendedores && onAssignLead && currentVendedorId ? (
+                  ) : vendedores && onAssignLead && currentUserId ? (
                     // VENDEDOR: Available - DROPDOWN (only shows themselves)
                     <select
                       value=""
@@ -370,7 +370,7 @@ export default function LeadsTable({
                     >
                       <option value="">-- Tomar Lead --</option>
                       {vendedores
-                        .filter((v) => v.activo && v.id === currentVendedorId)
+                        .filter((v) => v.activo && v.id === currentUserId)
                         .map((v) => (
                           <option key={v.id} value={v.id}>
                             {v.nombre}
