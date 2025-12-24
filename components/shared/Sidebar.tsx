@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3 } from 'lucide-react';
+import VersionBadge from '@/components/shared/VersionBadge';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -192,7 +193,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       />
 
       {/* Sidebar Panel */}
-      <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out">
+      <div className="fixed inset-y-0 left-0 w-64 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Menú</h2>
@@ -227,7 +228,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         {/* Navigation */}
-        <nav className="p-4 space-y-2">
+        <nav className="p-4 space-y-2 flex-1 overflow-y-auto">
           {/* Items Directos (sin categoría) */}
           {menuStructure.directItems.map((item) => {
             const Icon = item.icon;
@@ -328,6 +329,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             );
           })}
         </nav>
+
+        {/* Footer with Version Badge */}
+        <div className="border-t border-gray-200 p-4 bg-gray-50">
+          <VersionBadge variant="dashboard" />
+        </div>
       </div>
     </>
   );

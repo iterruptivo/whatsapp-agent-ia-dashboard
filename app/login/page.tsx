@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { getAllProyectos, Proyecto } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { Lock, Mail, LogIn, AlertCircle, FolderOpen, BarChart3 } from 'lucide-react';
+import VersionBadge from '@/components/shared/VersionBadge';
 
 export default function LoginPage() {
   const { signIn, loading } = useAuth();
@@ -290,6 +291,9 @@ export default function LoginPage() {
               <p className="text-xs text-gray-400 text-center mt-2">
                 Powered by: iterruptivo
               </p>
+              <div className="text-center mt-2">
+                <VersionBadge variant="login" />
+              </div>
             </div>
           </div>
         </div>
