@@ -104,8 +104,8 @@ export type ActionResult<T = any> = {
  */
 export async function getTipificacionesNivel1(): Promise<ActionResult<TipificacionNivel1[]>> {
   try {
-    const supabase = await getServerSupabase();
-    const { data, error } = await supabase
+    const supabaseServer = await getServerSupabase();
+    const { data, error } = await supabaseServer
       .from('tipificaciones_nivel_1')
       .select('*')
       .eq('activo', true)
@@ -141,8 +141,8 @@ export async function getTipificacionesNivel2(
   nivel1Codigo: string
 ): Promise<ActionResult<TipificacionNivel2[]>> {
   try {
-    const supabase = await getServerSupabase();
-    const { data, error } = await supabase
+    const supabaseServer = await getServerSupabase();
+    const { data, error } = await supabaseServer
       .from('tipificaciones_nivel_2')
       .select('*')
       .eq('nivel_1_codigo', nivel1Codigo)
@@ -176,8 +176,8 @@ export async function getTipificacionesNivel2(
  */
 export async function getTipificacionesNivel3(): Promise<ActionResult<TipificacionNivel3[]>> {
   try {
-    const supabase = await getServerSupabase();
-    const { data, error } = await supabase
+    const supabaseServer = await getServerSupabase();
+    const { data, error } = await supabaseServer
       .from('tipificaciones_nivel_3')
       .select('*')
       .eq('activo', true)
@@ -194,7 +194,7 @@ export async function getTipificacionesNivel3(): Promise<ActionResult<Tipificaci
     // Contar uso de cada N3
     const n3WithCount = await Promise.all(
       (data || []).map(async (n3) => {
-        const { count, error: countError } = await supabase
+        const { count, error: countError } = await supabaseServer
           .from('leads')
           .select('*', { count: 'exact', head: true })
           .eq('tipificacion_nivel_3', n3.codigo);
@@ -230,10 +230,10 @@ export async function getTipificacionesNivel3(): Promise<ActionResult<Tipificaci
  */
 export async function getTipificacionesTree(): Promise<ActionResult<TipificacionTreeNode[]>> {
   try {
-    const supabase = await getServerSupabase();
+    const supabaseServer = await getServerSupabase();
 
     // 1. Obtener todos los N1 activos
-    const { data: nivel1Data, error: nivel1Error } = await supabase
+    const { data: nivel1Data, error: nivel1Error } = await supabaseServer
       .from('tipificaciones_nivel_1')
       .select('*')
       .eq('activo', true)
@@ -248,7 +248,7 @@ export async function getTipificacionesTree(): Promise<ActionResult<Tipificacion
     }
 
     // 2. Obtener todos los N2 activos
-    const { data: nivel2Data, error: nivel2Error } = await supabase
+    const { data: nivel2Data, error: nivel2Error } = await supabaseServer
       .from('tipificaciones_nivel_2')
       .select('*')
       .eq('activo', true)
@@ -267,7 +267,7 @@ export async function getTipificacionesTree(): Promise<ActionResult<Tipificacion
 
     for (const n1 of nivel1Data || []) {
       // Contar uso total del N1
-      const { count: n1Count, error: n1CountError } = await supabase
+      const { count: n1Count, error: n1CountError } = await supabaseServer
         .from('leads')
         .select('*', { count: 'exact', head: true })
         .eq('tipificacion_nivel_1', n1.codigo);
@@ -284,7 +284,7 @@ export async function getTipificacionesTree(): Promise<ActionResult<Tipificacion
       // Contar uso de cada N2
       const n2WithCount = await Promise.all(
         n2List.map(async (n2) => {
-          const { count: n2Count, error: n2CountError } = await supabase
+          const { count: n2Count, error: n2CountError } = await supabaseServer
             .from('leads')
             .select('*', { count: 'exact', head: true })
             .eq('tipificacion_nivel_2', n2.codigo);
@@ -329,10 +329,10 @@ export async function getAllTipificacionesCombinations(): Promise<
   ActionResult<TipificacionCombination[]>
 > {
   try {
-    const supabase = await getServerSupabase();
+    const supabaseServer = await getServerSupabase();
 
     // Obtener todos los N2 con JOIN a N1
-    const { data, error } = await supabase
+    const { data, error } = await supabaseServer
       .from('tipificaciones_nivel_2')
       .select(`
         codigo,
@@ -418,7 +418,7 @@ export async function createTipificacionN1(data: {
     }
 
     // Validar que el código no exista ya
-    const { data: existing, error: checkError } = await supabase
+    const { data: existing, error: checkError } = await supabaseServer
       .from('tipificaciones_nivel_1')
       .select('id')
       .eq('codigo', data.codigo)
@@ -440,7 +440,7 @@ export async function createTipificacionN1(data: {
     }
 
     // Obtener el último orden
-    const { data: lastItem } = await supabase
+    const { data: lastItem } = await supabaseServer
       .from('tipificaciones_nivel_1')
       .select('orden')
       .order('orden', { ascending: false })
@@ -527,7 +527,7 @@ export async function createTipificacionN2(data: {
     }
 
     // Validar que el N1 exista
-    const { data: n1Exists, error: n1Error } = await supabase
+    const { data: n1Exists, error: n1Error } = await supabaseServer
       .from('tipificaciones_nivel_1')
       .select('id')
       .eq('codigo', data.nivel_1_codigo)
@@ -542,7 +542,7 @@ export async function createTipificacionN2(data: {
     }
 
     // Validar que la combinación N1+N2 no exista ya
-    const { data: existing, error: checkError } = await supabase
+    const { data: existing, error: checkError } = await supabaseServer
       .from('tipificaciones_nivel_2')
       .select('id')
       .eq('nivel_1_codigo', data.nivel_1_codigo)
@@ -565,7 +565,7 @@ export async function createTipificacionN2(data: {
     }
 
     // Obtener el último orden dentro del grupo N1
-    const { data: lastItem } = await supabase
+    const { data: lastItem } = await supabaseServer
       .from('tipificaciones_nivel_2')
       .select('orden')
       .eq('nivel_1_codigo', data.nivel_1_codigo)
@@ -654,7 +654,7 @@ export async function createTipificacionN3(data: {
     }
 
     // Validar que el código no exista ya
-    const { data: existing, error: checkError } = await supabase
+    const { data: existing, error: checkError } = await supabaseServer
       .from('tipificaciones_nivel_3')
       .select('id')
       .eq('codigo', data.codigo)
@@ -676,7 +676,7 @@ export async function createTipificacionN3(data: {
     }
 
     // Obtener el último orden
-    const { data: lastItem } = await supabase
+    const { data: lastItem } = await supabaseServer
       .from('tipificaciones_nivel_3')
       .select('orden')
       .order('orden', { ascending: false })

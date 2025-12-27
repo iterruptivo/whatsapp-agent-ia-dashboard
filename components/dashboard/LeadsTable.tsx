@@ -391,7 +391,7 @@ export default function LeadsTable({
                       >
                         <option value="">-- Tomar Lead --</option>
                         {vendedores
-                          .filter((v) => v.activo && v.id === currentUserId && v.vendedor_id)
+                          .filter((v): v is VendedorActivo => v.activo && v.id === currentUserId && !!v.vendedor_id)
                           .map((v) => (
                             <option key={v.id} value={v.vendedor_id}>
                               {v.nombre}
