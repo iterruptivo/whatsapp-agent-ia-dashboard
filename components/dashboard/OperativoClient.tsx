@@ -16,6 +16,10 @@ import { exportLeadsToExcel } from '@/lib/exportToExcel';
 import LeadImportModal from '@/components/leads/LeadImportModal';
 import ManualLeadPanel from '@/components/leads/ManualLeadPanel';
 import { addMultipleLeadsToRepulse, excluirLeadDeRepulse, reincluirLeadEnRepulse } from '@/lib/actions-repulse';
+// Kanban imports
+import { KanbanBoard, KanbanViewToggle, type ViewMode, type LeadCard, type KanbanColumnConfig } from '@/components/operativo/kanban';
+import { getKanbanColumns, getKanbanMappings, calculateKanbanColumn, type KanbanMapping } from '@/lib/kanban-config';
+import { moveLeadToColumn } from '@/lib/actions-kanban';
 
 interface OperativoClientProps {
   initialLeads: Lead[];
@@ -46,6 +50,7 @@ export default function OperativoClient({
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [assignmentFilter, setAssignmentFilter] = useState<'todos' | 'sin_asignar' | 'mis_leads'>('todos');
   const [selectedVendedorFilter, setSelectedVendedorFilter] = useState<string>(''); // Admin-only: filter by specific vendedor
+  const [roleDefaultsApplied, setRoleDefaultsApplied] = useState(false); // Track if role-based defaults were applied
 
   // Estado filter (for both admin and vendedor)
   const [estadoFilter, setEstadoFilter] = useState<string>(''); // Filter by lead estado
@@ -66,12 +71,46 @@ export default function OperativoClient({
   const [selectedLeadIdsForRepulse, setSelectedLeadIdsForRepulse] = useState<string[]>([]);
   const [isAddingToRepulse, setIsAddingToRepulse] = useState(false);
 
+  // Kanban state
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [kanbanColumns, setKanbanColumns] = useState<KanbanColumnConfig[]>([]);
+  const [kanbanMappings, setKanbanMappings] = useState<KanbanMapping[]>([]);
+  const [isKanbanLoading, setIsKanbanLoading] = useState(false);
+
   // Fetch vendedores on mount (only for assignment dropdown in table)
   // NOTA: Usa getAllVendedoresActivos para incluir coordinadores (Sesión 74)
   useEffect(() => {
     getAllVendedoresActivos().then(setVendedores);
     getAllUsuarios().then(setUsuarios);
   }, []);
+
+  // NOTA: Defaults cambiados a Tabla + Todos para todos los roles (Sesión 76)
+  // Anteriormente vendedores tenían Kanban + Mis Leads por defecto
+  useEffect(() => {
+    if (user && !roleDefaultsApplied) {
+      // Todos los roles usan los defaults iniciales: Tabla + Todos
+      // No aplicamos cambios automáticos de vista/filtro
+      setRoleDefaultsApplied(true);
+    }
+  }, [user, roleDefaultsApplied]);
+
+  // Fetch Kanban config when switching to kanban view
+  useEffect(() => {
+    if (viewMode === 'kanban' && kanbanColumns.length === 0) {
+      setIsKanbanLoading(true);
+      Promise.all([getKanbanColumns(), getKanbanMappings()])
+        .then(([columns, mappings]) => {
+          setKanbanColumns(columns);
+          setKanbanMappings(mappings);
+        })
+        .catch((error) => {
+          console.error('Error loading Kanban config:', error);
+        })
+        .finally(() => {
+          setIsKanbanLoading(false);
+        });
+    }
+  }, [viewMode, kanbanColumns.length]);
 
   // Get current vendedor ID from auth context
   const currentVendedorId = user?.vendedor_id || null;
@@ -124,6 +163,31 @@ export default function OperativoClient({
     return filtered;
   }, [initialLeads, dateFrom, dateTo, assignmentFilter, currentVendedorId, selectedVendedorFilter, estadoFilter, user?.rol]);
 
+  // Convert filtered leads to Kanban cards with calculated column
+  const kanbanLeads = useMemo((): LeadCard[] => {
+    if (kanbanMappings.length === 0) return [];
+
+    return filteredLeads.map((lead) => ({
+      id: lead.id,
+      nombre: lead.nombre,
+      telefono: lead.telefono,
+      rubro: lead.rubro,
+      email: lead.email,
+      utm_source: lead.utm, // El campo en Lead es 'utm', mapeamos a utm_source para Kanban
+      tipificacion_nivel_1: lead.tipificacion_nivel_1,
+      tipificacion_nivel_2: lead.tipificacion_nivel_2,
+      tipificacion_nivel_3: lead.tipificacion_nivel_3,
+      vendedor_asignado_id: lead.vendedor_asignado_id,
+      vendedor_nombre: lead.vendedor_nombre,
+      proyecto_id: lead.proyecto_id,
+      proyecto_nombre: lead.proyecto_nombre,
+      proyecto_color: lead.proyecto_color,
+      created_at: lead.created_at,
+      updated_at: lead.updated_at,
+      columna_kanban: calculateKanbanColumn(lead, kanbanMappings),
+    }));
+  }, [filteredLeads, kanbanMappings]);
+
   const handleClearFilters = () => {
     setDateFrom(initialDateFrom);
     setDateTo(initialDateTo);
@@ -132,6 +196,48 @@ export default function OperativoClient({
   const handleLeadClick = (lead: Lead) => {
     setSelectedLead(lead);
     setIsPanelOpen(true);
+  };
+
+  // Handler for Kanban card click (convert LeadCard to Lead)
+  const handleKanbanLeadClick = (leadCard: LeadCard) => {
+    const lead = filteredLeads.find((l) => l.id === leadCard.id);
+    if (lead) {
+      setSelectedLead(lead);
+      setIsPanelOpen(true);
+    }
+  };
+
+  // Handler for moving lead in Kanban
+  const handleKanbanLeadMove = async (leadId: string, targetColumn: string) => {
+    try {
+      const result = await moveLeadToColumn(leadId, targetColumn);
+
+      if (result.success) {
+        // Refresh leads to get updated tipificacion
+        if (onRefresh) {
+          await onRefresh(dateFrom, dateTo);
+        }
+      } else {
+        showDialog({
+          title: 'Error al mover lead',
+          message: result.error || 'No se pudo mover el lead',
+          type: 'error',
+          variant: 'danger',
+          confirmText: 'Aceptar',
+          showCancel: false,
+        });
+      }
+    } catch (error) {
+      console.error('Error moving lead in Kanban:', error);
+      showDialog({
+        title: 'Error inesperado',
+        message: 'Ocurrió un error al mover el lead.',
+        type: 'error',
+        variant: 'danger',
+        confirmText: 'Aceptar',
+        showCancel: false,
+      });
+    }
   };
 
   const handleClosePanel = () => {
@@ -423,8 +529,12 @@ export default function OperativoClient({
           </select>
         </div>
 
-        {/* Export & Import Buttons */}
+        {/* View Toggle + Export & Import Buttons */}
         <div className="flex items-center gap-2 ml-auto">
+          {/* View Mode Toggle */}
+          <KanbanViewToggle view={viewMode} onViewChange={setViewMode} />
+        </div>
+        <div className="flex items-center gap-2">
           {/* Import Dropdown (Admin + Vendedor + Vendedor Caseta + Coordinador) */}
           {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && (
             <div className="relative">
@@ -505,22 +615,32 @@ export default function OperativoClient({
         </div>
       </div>
 
-      {/* Leads Table */}
-      <LeadsTable
-        leads={filteredLeads}
-        totalLeads={initialLeads.length}
-        onLeadClick={handleLeadClick}
-        vendedores={vendedores}
-        currentUserId={user?.id || null}
-        onAssignLead={handleAssignLead}
-        userRole={user?.rol || null}
-        // Repulse multi-select (solo admin y jefe_ventas)
-        showRepulseSelection={user?.rol === 'admin' || user?.rol === 'jefe_ventas'}
-        selectedLeadIds={selectedLeadIdsForRepulse}
-        onSelectionChange={setSelectedLeadIdsForRepulse}
-        onSendToRepulse={handleSendMultipleToRepulse}
-        isAddingToRepulse={isAddingToRepulse}
-      />
+      {/* Leads View - Table or Kanban */}
+      {viewMode === 'table' ? (
+        <LeadsTable
+          leads={filteredLeads}
+          totalLeads={initialLeads.length}
+          onLeadClick={handleLeadClick}
+          vendedores={vendedores}
+          currentUserId={user?.id || null}
+          onAssignLead={handleAssignLead}
+          userRole={user?.rol || null}
+          // Repulse multi-select (solo admin y jefe_ventas)
+          showRepulseSelection={user?.rol === 'admin' || user?.rol === 'jefe_ventas'}
+          selectedLeadIds={selectedLeadIdsForRepulse}
+          onSelectionChange={setSelectedLeadIdsForRepulse}
+          onSendToRepulse={handleSendMultipleToRepulse}
+          isAddingToRepulse={isAddingToRepulse}
+        />
+      ) : (
+        <KanbanBoard
+          columns={kanbanColumns}
+          leads={kanbanLeads}
+          onLeadMove={handleKanbanLeadMove}
+          onLeadClick={handleKanbanLeadClick}
+          isLoading={isKanbanLoading}
+        />
+      )}
 
       {/* Lead Detail Panel */}
       <LeadDetailPanel
@@ -533,6 +653,12 @@ export default function OperativoClient({
         usuarioId={user?.id}
         usuarioNombre={user?.nombre || user?.email || 'Usuario'}
         usuarioRol={user?.rol}
+        onLeadUpdate={async () => {
+          // Refresh leads cuando se actualiza la tipificación en el panel
+          if (onRefresh) {
+            await onRefresh(dateFrom, dateTo);
+          }
+        }}
       />
 
       {/* Manual Lead Panel (Admin + Vendedor + Vendedor Caseta + Coordinador) */}

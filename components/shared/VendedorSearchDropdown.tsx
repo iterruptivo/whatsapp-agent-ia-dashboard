@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown, Loader2 } from 'lucide-react';
 
 export interface VendedorOption {
   id: string;
@@ -23,6 +23,7 @@ interface VendedorSearchDropdownProps {
   onChange: (vendedorId: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  isLoading?: boolean; // Muestra spinner mientras se procesa
   showRolBadge?: boolean;
   allowClear?: boolean; // Permite "Sin Asignar"
   clearLabel?: string;
@@ -36,6 +37,7 @@ export default function VendedorSearchDropdown({
   onChange,
   placeholder = 'Seleccionar vendedor...',
   disabled = false,
+  isLoading = false,
   showRolBadge = true,
   allowClear = true,
   clearLabel = '-- Sin Asignar --',
@@ -145,24 +147,28 @@ export default function VendedorSearchDropdown({
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          if (!disabled) {
+          if (!disabled && !isLoading) {
             if (!isOpen) {
               calculatePosition();
             }
             setIsOpen(!isOpen);
           }
         }}
-        disabled={disabled}
+        disabled={disabled || isLoading}
         className={`w-full ${styles.trigger} text-left border border-gray-300 rounded-lg bg-white hover:border-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors flex items-center justify-between ${
-          disabled ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+          disabled || isLoading ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
         }`}
       >
         <span className={selectedVendedor ? 'text-gray-900' : 'text-gray-500'}>
-          {selectedVendedor ? selectedVendedor.nombre : placeholder}
+          {isLoading ? 'Guardando...' : selectedVendedor ? selectedVendedor.nombre : placeholder}
         </span>
-        <ChevronDown
-          className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
-        />
+        {isLoading ? (
+          <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
+        ) : (
+          <ChevronDown
+            className={`w-4 h-4 text-gray-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`}
+          />
+        )}
       </button>
 
       {/* Dropdown - Fixed position para evitar clipping por overflow de padres */}

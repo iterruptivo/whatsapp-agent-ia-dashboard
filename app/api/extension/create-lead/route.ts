@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
         nombre,
         telefono,
         vendedor_asignado_id,
+        ultimo_mensaje_timestamp,
         vendedores:vendedor_asignado_id(nombre)
       `)
       .eq('telefono', telefonoLimpio)
@@ -112,14 +113,30 @@ export async function POST(request: NextRequest) {
         ? (existingLead.vendedores as any).nombre
         : 'No asignado';
 
+      // Determinar si el vendedor actual puede actualizar la conversación
+      // Solo puede si es el mismo vendedor asignado al lead
+      let finalVendedorIdForCheck = vendedorId;
+      if (!finalVendedorIdForCheck && userId) {
+        const { data: userData } = await supabase
+          .from('usuarios')
+          .select('vendedor_id')
+          .eq('id', userId)
+          .single();
+        finalVendedorIdForCheck = userData?.vendedor_id;
+      }
+
+      const canUpdate = existingLead.vendedor_asignado_id === finalVendedorIdForCheck;
+
       return NextResponse.json({
         success: false,
         duplicate: true,
+        canUpdate,
         existingLead: {
           id: existingLead.id,
           nombre: existingLead.nombre,
           telefono: existingLead.telefono,
           vendedor_nombre: vendedorNombre,
+          ultimo_mensaje_timestamp: existingLead.ultimo_mensaje_timestamp || null,
         },
       }, { headers: corsHeaders(origin) });
     }

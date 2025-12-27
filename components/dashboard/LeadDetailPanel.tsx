@@ -3,20 +3,23 @@
 import { Lead } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
 import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check, Zap, Ban, CircleSlash, Tag } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import EvidenciasSection from '@/components/leads/EvidenciasSection';
 import SearchDropdown from '@/components/shared/SearchDropdown';
 import { updateLeadTipificacion } from '@/lib/actions-tipificacion';
+import { getTipificacionesN1Client, getTipificacionesN2Client, getTipificacionesN3Client } from '@/lib/tipificaciones-client';
 
-// Opciones de tipificación jerárquica
-const TIPIFICACION_NIVEL_1 = [
+// ============================================================================
+// FALLBACK: Constantes por si la BD no está disponible
+// ============================================================================
+const FALLBACK_TIPIFICACION_NIVEL_1 = [
   { value: 'contactado', label: 'Contactado' },
   { value: 'no_contactado', label: 'No Contactado' },
   { value: 'seguimiento', label: 'Seguimiento' },
   { value: 'otros', label: 'Otros' },
 ];
 
-const TIPIFICACION_NIVEL_2: Record<string, { value: string; label: string }[]> = {
+const FALLBACK_TIPIFICACION_NIVEL_2: Record<string, { value: string; label: string }[]> = {
   contactado: [
     { value: 'interesado', label: 'Interesado' },
     { value: 'no_interesado', label: 'No Interesado' },
@@ -40,7 +43,7 @@ const TIPIFICACION_NIVEL_2: Record<string, { value: string; label: string }[]> =
   ],
 };
 
-const TIPIFICACION_NIVEL_3 = [
+const FALLBACK_TIPIFICACION_NIVEL_3 = [
   { value: 'solicita_info_proyecto', label: 'Solicita información del proyecto' },
   { value: 'requiere_cotizacion', label: 'Requiere cotización' },
   { value: 'agenda_visita', label: 'Agenda visita / cita presencial' },
@@ -85,6 +88,7 @@ interface LeadDetailPanelProps {
   usuarioId?: string;
   usuarioNombre?: string;
   usuarioRol?: string;
+  onLeadUpdate?: () => Promise<void> | void; // Callback para notificar que el lead fue actualizado
 }
 
 // Message type for chat bubbles
@@ -173,7 +177,7 @@ function parseMessages(historial: string | null): ChatMessage[] {
   return messages;
 }
 
-export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse, onToggleExcludeRepulse, showRepulseButton = false, usuarioId, usuarioNombre, usuarioRol }: LeadDetailPanelProps) {
+export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse, onToggleExcludeRepulse, showRepulseButton = false, usuarioId, usuarioNombre, usuarioRol, onLeadUpdate }: LeadDetailPanelProps) {
   // State for dropdown toggles
   const [isHistorialRecienteOpen, setIsHistorialRecienteOpen] = useState(false);
   const [isHistorialCompletoOpen, setIsHistorialCompletoOpen] = useState(false);
@@ -184,6 +188,57 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
   const [nivel3, setNivel3] = useState<string | null>(null);
   const [isSavingTipificacion, setIsSavingTipificacion] = useState(false);
 
+  // State for tipificaciones from DB (with fallbacks)
+  const [tipifN1Options, setTipifN1Options] = useState<{ value: string; label: string }[]>(FALLBACK_TIPIFICACION_NIVEL_1);
+  const [tipifN2Map, setTipifN2Map] = useState<Record<string, { value: string; label: string }[]>>(FALLBACK_TIPIFICACION_NIVEL_2);
+  const [tipifN3Options, setTipifN3Options] = useState<{ value: string; label: string }[]>(FALLBACK_TIPIFICACION_NIVEL_3);
+  const [tipifLoaded, setTipifLoaded] = useState(false);
+
+  // Cargar tipificaciones desde BD al montar
+  useEffect(() => {
+    const loadTipificaciones = async () => {
+      try {
+        // Cargar N1 y N3 en paralelo (funciones client-side)
+        const [n1Options, n3Options] = await Promise.all([
+          getTipificacionesN1Client(),
+          getTipificacionesN3Client(),
+        ]);
+
+        // Procesar N1
+        if (n1Options.length > 0) {
+          setTipifN1Options(n1Options);
+
+          // Cargar N2 para cada N1
+          const n2Map: Record<string, { value: string; label: string }[]> = {};
+          await Promise.all(
+            n1Options.map(async (n1) => {
+              const n2Options = await getTipificacionesN2Client(n1.value);
+              if (n2Options.length > 0) {
+                n2Map[n1.value] = n2Options;
+              } else {
+                // Usar fallback para este N1 si existe
+                n2Map[n1.value] = FALLBACK_TIPIFICACION_NIVEL_2[n1.value] || [];
+              }
+            })
+          );
+          setTipifN2Map(n2Map);
+        }
+
+        // Procesar N3
+        if (n3Options.length > 0) {
+          setTipifN3Options(n3Options);
+        }
+
+        setTipifLoaded(true);
+      } catch (error) {
+        console.warn('[LeadDetailPanel] Error cargando tipificaciones, usando fallback:', error);
+        setTipifLoaded(true);
+      }
+    };
+
+    loadTipificaciones();
+  }, []);
+
   // Sync tipificación state when lead changes
   useEffect(() => {
     if (lead) {
@@ -193,42 +248,54 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
     }
   }, [lead?.id, lead?.tipificacion_nivel_1, lead?.tipificacion_nivel_2, lead?.tipificacion_nivel_3]);
 
-  // Get nivel2 options based on nivel1
-  const nivel2Options = nivel1 ? TIPIFICACION_NIVEL_2[nivel1] || [] : [];
+  // Get nivel2 options based on nivel1 (from DB or fallback)
+  const nivel2Options = nivel1 ? tipifN2Map[nivel1] || [] : [];
 
   // Handle nivel1 change (reset nivel2)
-  const handleNivel1Change = async (value: string) => {
+  const handleNivel1Change = useCallback(async (value: string) => {
     const newNivel1 = value || null;
     setNivel1(newNivel1);
     setNivel2(null); // Reset nivel2 when nivel1 changes
     if (lead) {
       setIsSavingTipificacion(true);
       await updateLeadTipificacion(lead.id, newNivel1, null, nivel3);
+      // Notificar al padre que el lead fue actualizado y esperar el refresh
+      if (onLeadUpdate) {
+        await onLeadUpdate();
+      }
       setIsSavingTipificacion(false);
     }
-  };
+  }, [lead, nivel3, onLeadUpdate]);
 
   // Handle nivel2 change
-  const handleNivel2Change = async (value: string) => {
+  const handleNivel2Change = useCallback(async (value: string) => {
     const newNivel2 = value || null;
     setNivel2(newNivel2);
     if (lead) {
       setIsSavingTipificacion(true);
       await updateLeadTipificacion(lead.id, nivel1, newNivel2, nivel3);
+      // Notificar al padre que el lead fue actualizado y esperar el refresh
+      if (onLeadUpdate) {
+        await onLeadUpdate();
+      }
       setIsSavingTipificacion(false);
     }
-  };
+  }, [lead, nivel1, nivel3, onLeadUpdate]);
 
   // Handle nivel3 change
-  const handleNivel3Change = async (value: string) => {
+  const handleNivel3Change = useCallback(async (value: string) => {
     const newNivel3 = value || null;
     setNivel3(newNivel3);
     if (lead) {
       setIsSavingTipificacion(true);
       await updateLeadTipificacion(lead.id, nivel1, nivel2, newNivel3);
+      // Notificar al padre que el lead fue actualizado y esperar el refresh
+      if (onLeadUpdate) {
+        await onLeadUpdate();
+      }
       setIsSavingTipificacion(false);
     }
-  };
+  }, [lead, nivel1, nivel2, onLeadUpdate]);
 
   // ESC key handler
   useEffect(() => {
@@ -401,7 +468,7 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
               {/* Nivel 1 - Azul */}
               <SearchDropdown
                 label="Nivel 1"
-                options={TIPIFICACION_NIVEL_1}
+                options={tipifN1Options}
                 value={nivel1}
                 onChange={handleNivel1Change}
                 placeholder="Seleccionar nivel 1..."
@@ -428,7 +495,7 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
               {/* Nivel 3 - Lima */}
               <SearchDropdown
                 label="Nivel 3"
-                options={TIPIFICACION_NIVEL_3}
+                options={tipifN3Options}
                 value={nivel3}
                 onChange={handleNivel3Change}
                 placeholder={nivel2 ? "Seleccionar nivel 3..." : "Primero selecciona Nivel 2"}
@@ -788,8 +855,8 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
               usuarioId={usuarioId}
               usuarioNombre={usuarioNombre}
               usuarioRol={usuarioRol}
-              canUpload={usuarioRol === 'vendedor' || usuarioRol === 'vendedor_caseta'}
-              canView={['admin', 'jefe_ventas', 'marketing', 'vendedor', 'vendedor_caseta'].includes(usuarioRol)}
+              canUpload={usuarioRol === 'vendedor' || usuarioRol === 'vendedor_caseta' || usuarioRol === 'coordinador'}
+              canView={['admin', 'jefe_ventas', 'marketing', 'vendedor', 'vendedor_caseta', 'coordinador'].includes(usuarioRol)}
             />
           )}
         </div>

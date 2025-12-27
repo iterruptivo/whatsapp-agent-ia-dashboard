@@ -39,6 +39,7 @@ export default function LeadsTable({
 }: LeadsTableProps) {
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [assigningLeadId, setAssigningLeadId] = useState<string | null>(null); // Loading state para asignación
   const itemsPerPage = 10;
 
   const filteredLeads = useMemo(
@@ -333,17 +334,23 @@ export default function LeadsTable({
                   {(userRole === 'admin' || userRole === 'jefe_ventas') && vendedores && onAssignLead ? (
                     // ADMIN/JEFE_VENTAS: Dropdown con búsqueda (puede reasignar o liberar)
                     <VendedorSearchDropdown
-                      vendedores={vendedores.filter(v => v.activo).map(v => ({
-                        id: v.id,
+                      vendedores={vendedores.filter(v => v.activo && v.vendedor_id).map(v => ({
+                        id: v.vendedor_id, // Usar vendedor_id (tabla vendedores), no usuarios.id
                         nombre: v.nombre,
                         activo: v.activo,
                       }))}
                       value={lead.vendedor_asignado_id}
-                      onChange={(vendedorId) => {
+                      onChange={async (vendedorId) => {
                         if (vendedorId !== lead.vendedor_asignado_id) {
-                          onAssignLead(lead.id, vendedorId);
+                          setAssigningLeadId(lead.id);
+                          try {
+                            await onAssignLead(lead.id, vendedorId);
+                          } finally {
+                            setAssigningLeadId(null);
+                          }
                         }
                       }}
+                      isLoading={assigningLeadId === lead.id}
                       placeholder="-- Sin Asignar --"
                       allowClear={true}
                       clearLabel="-- Sin Asignar --"
@@ -358,25 +365,40 @@ export default function LeadsTable({
                     </span>
                   ) : vendedores && onAssignLead && currentUserId ? (
                     // VENDEDOR: Available - DROPDOWN (only shows themselves)
-                    <select
-                      value=""
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          onAssignLead(lead.id, e.target.value);
-                        }
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-                    >
-                      <option value="">-- Tomar Lead --</option>
-                      {vendedores
-                        .filter((v) => v.activo && v.id === currentUserId)
-                        .map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.nombre}
-                          </option>
-                        ))}
-                    </select>
+                    assigningLeadId === lead.id ? (
+                      <span className="flex items-center gap-2 text-sm text-gray-500">
+                        <svg className="animate-spin h-4 w-4 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Asignando...
+                      </span>
+                    ) : (
+                      <select
+                        value=""
+                        onChange={async (e) => {
+                          if (e.target.value) {
+                            setAssigningLeadId(lead.id);
+                            try {
+                              await onAssignLead(lead.id, e.target.value);
+                            } finally {
+                              setAssigningLeadId(null);
+                            }
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="border border-gray-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                      >
+                        <option value="">-- Tomar Lead --</option>
+                        {vendedores
+                          .filter((v) => v.activo && v.id === currentUserId && v.vendedor_id)
+                          .map((v) => (
+                            <option key={v.id} value={v.vendedor_id}>
+                              {v.nombre}
+                            </option>
+                          ))}
+                      </select>
+                    )
                   ) : (
                     // No vendedores or onAssignLead provided - fallback
                     <span className="text-gray-400">Disponible</span>

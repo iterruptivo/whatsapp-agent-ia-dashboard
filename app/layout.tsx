@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
 import { SherpaWidget } from "@/components/shared/SherpaWidget";
 import { NewVersionBanner } from "@/components/shared/NewVersionBanner";
+import { DevModeIndicator } from "@/components/shared/DevModeIndicator";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,6 +38,8 @@ export default function RootLayout({
         <AuthProvider>
           {/* Version Banner - Shows when new deployment is available */}
           <NewVersionBanner />
+          {/* Dev Mode Indicator - Only shows in development */}
+          <DevModeIndicator />
           {children}
         </AuthProvider>
 

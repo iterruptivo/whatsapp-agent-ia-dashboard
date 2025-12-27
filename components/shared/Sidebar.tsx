@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3 } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3, Building, Columns3, Layers } from 'lucide-react';
 import VersionBadge from '@/components/shared/VersionBadge';
 
 interface SidebarProps {
@@ -70,17 +70,27 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     };
 
     if (user?.rol === 'admin') {
+      // Categoría de Configuraciones (solo admin)
+      const configuracionesCategory: MenuCategory = {
+        label: 'Configuraciones',
+        icon: Settings,
+        items: [
+          { href: '/configuracion-proyectos', label: 'Configurar Proyecto', icon: Building },
+          { href: '/configuracion-kanban', label: 'Configurar Kanban', icon: Columns3 },
+          { href: '/configuracion-tipificaciones', label: 'Configurar Tipificaciones', icon: Layers },
+        ],
+      };
+
       return {
         directItems: [
           { href: '/', label: 'Insights', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
         ],
-        categories: [finanzasCategory],
+        categories: [finanzasCategory, configuracionesCategory],
         bottomItems: [
           { href: '/reporteria', label: 'Reportería', icon: BarChart3 },
           { href: '/repulse', label: 'Repulse', icon: Zap },
           { href: '/admin/usuarios', label: 'Adm. de Usuarios', icon: UserCog },
-          { href: '/configuracion-proyectos', label: 'Configurar Proyectos', icon: Settings },
         ],
       };
     }

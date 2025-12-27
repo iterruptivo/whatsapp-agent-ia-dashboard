@@ -94,4 +94,22 @@
 
 ---
 
+## Testing/Desarrollo
+
+### Hard Refresh despues de Edits
+**Decision:** Usar CDP hard refresh despues de editar componentes, antes de probar
+**Razon:** HMR no siempre actualiza correctamente, causa bugs "fantasma" con codigo stale
+**Fecha:** Sesion 76
+**Implementacion:** Usar browser_run_code con este patron:
+```javascript
+async (page) => {
+  const client = await page.context().newCDPSession(page);
+  await client.send('Network.clearBrowserCache');
+  await page.reload({ waitUntil: 'networkidle' });
+  return 'Hard refresh completed';
+}
+```
+
+---
+
 **Politica de Rotacion:** Cuando exceda 50 decisiones, agrupar por tema y mover antiguas a context/archive/decisions/
