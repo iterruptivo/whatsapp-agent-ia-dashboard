@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "prebuild": "node scripts/copy-static-assets.js",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -32,6 +32,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-easy-crop": "^5.1.0",
+    "react-is": "^19.2.3",
     "react-phone-number-input": "^3.4.14",
     "recharts": "^3.2.1",
     "swagger-ui-react": "^5.31.0",
