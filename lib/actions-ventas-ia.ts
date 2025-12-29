@@ -12,6 +12,7 @@
  */
 
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 
@@ -284,23 +285,65 @@ export async function importVentasExternas(
     .select('telefono');
   const existingSet = new Set(existingPhones?.map(p => p.telefono) || []);
 
-  // Pre-load all leads for fast matching
-  const { data: allLeads } = await supabase
-    .from('leads')
-    .select('id, telefono, utm, nombre, created_at');
-
-  // Build phone -> lead map for O(1) lookup
+  // Pre-load ALL leads for fast matching (paginated to avoid 1000 row limit)
+  // IMPORTANT: Supabase hard limit is 1000 rows per query, we need to paginate
   const leadsMap = new Map<string, { id: string; utm: string; nombre: string; created_at: string }>();
-  allLeads?.forEach(lead => {
-    if (lead.telefono) {
-      leadsMap.set(lead.telefono, {
-        id: lead.id,
-        utm: lead.utm || '',
-        nombre: lead.nombre || '',
-        created_at: lead.created_at,
-      });
+
+  const PAGE_SIZE = 1000; // Supabase hard limit is 1000 rows
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: leadsPage, error: leadsError } = await supabase
+      .from('leads')
+      .select('id, telefono, utm, nombre, created_at')
+      .not('telefono', 'is', null)
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (leadsError) {
+      console.error('[VENTAS IA] Error fetching leads page:', leadsError);
+      break;
     }
-  });
+
+    if (!leadsPage || leadsPage.length === 0) {
+      hasMore = false;
+    } else {
+      // Prefer Victoria leads over non-Victoria when same phone exists
+      leadsPage.forEach(lead => {
+        if (lead.telefono) {
+          const existing = leadsMap.get(lead.telefono);
+          const currentUtm = (lead.utm || '').toLowerCase();
+          const isCurrentVictoria = currentUtm === 'victoria' || /^\d+$/.test(lead.utm || '');
+
+          if (!existing) {
+            leadsMap.set(lead.telefono, {
+              id: lead.id,
+              utm: lead.utm || '',
+              nombre: lead.nombre || '',
+              created_at: lead.created_at,
+            });
+          } else {
+            const existingUtm = existing.utm.toLowerCase();
+            const isExistingVictoria = existingUtm === 'victoria' || /^\d+$/.test(existing.utm);
+            // Prefer Victoria lead for attribution
+            if (isCurrentVictoria && !isExistingVictoria) {
+              leadsMap.set(lead.telefono, {
+                id: lead.id,
+                utm: lead.utm || '',
+                nombre: lead.nombre || '',
+                created_at: lead.created_at,
+              });
+            }
+          }
+        }
+      });
+
+      offset += PAGE_SIZE;
+      hasMore = leadsPage.length === PAGE_SIZE;
+    }
+  }
+
+  console.log('[VENTAS IA] Loaded', leadsMap.size, 'leads for matching');
 
   // Process results
   const result: ImportResult = {
@@ -383,7 +426,9 @@ export async function importVentasExternas(
 
     if (lead) {
       const utm = lead.utm.toLowerCase();
-      if (utm === 'victoria') {
+      // Victoria = UTM 'victoria' OR pure numbers (IA attribution)
+      const isVictoria = utm === 'victoria' || /^\d+$/.test(lead.utm);
+      if (isVictoria) {
         matchType = 'victoria';
         result.matchesVictoria++;
       } else {
@@ -597,7 +642,21 @@ export async function getLeadDetalleParaVenta(
   leadId: string,
   ventaId: string
 ): Promise<LeadDetalle | null> {
-  const supabase = await getSupabaseServer();
+  // Use service role to bypass RLS - reporteria needs access to all projects
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+  if (!supabaseServiceKey) {
+    console.error('[VENTAS IA] SUPABASE_SERVICE_ROLE_KEY no está configurada');
+    return null;
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
 
   // Get lead data
   const { data: lead, error: leadError } = await supabase
@@ -613,8 +672,8 @@ export async function getLeadDetalleParaVenta(
       created_at,
       horario_visita,
       asistio,
-      conversacion,
-      proyecto_id
+      proyecto_id,
+      historial_conversacion
     `)
     .eq('id', leadId)
     .single();
@@ -670,7 +729,7 @@ export async function getLeadDetalleParaVenta(
     created_at: lead.created_at,
     proyecto_nombre: proyectoNombre,
     vendedor_nombre: vendedorNombre,
-    conversacion: lead.conversacion,
+    conversacion: lead.historial_conversacion || null,
     horario_visita: lead.horario_visita,
     asistio: lead.asistio,
     venta_mes: venta?.mes_venta || null,
@@ -749,4 +808,201 @@ export async function getAvailableMonths(): Promise<string[]> {
   // Get unique months
   const uniqueMonths = [...new Set(data.map(d => d.mes_venta))];
   return uniqueMonths;
+}
+
+// ============================================================================
+// RE-PROCESS VENTAS (FIX MATCHING)
+// ============================================================================
+
+export interface ReprocessResult {
+  success: boolean;
+  message: string;
+  total: number;
+  updated: number;
+  newVictoria: number;
+  newOtroUtm: number;
+  stillSinLead: number;
+}
+
+/**
+ * Re-process all ventas_externas to fix matching.
+ * This is needed because the original import had a bug where only 1000 leads were loaded.
+ * Now we load ALL leads and re-match.
+ */
+export async function reprocessVentasExternas(): Promise<ReprocessResult> {
+  const supabase = await getSupabaseServer();
+
+  // Verify user is admin
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return {
+      success: false,
+      message: 'No autenticado',
+      total: 0,
+      updated: 0,
+      newVictoria: 0,
+      newOtroUtm: 0,
+      stillSinLead: 0,
+    };
+  }
+
+  const { data: userData } = await supabase
+    .from('usuarios')
+    .select('rol')
+    .eq('id', user.id)
+    .single();
+
+  if (userData?.rol !== 'admin') {
+    return {
+      success: false,
+      message: 'Solo administradores pueden re-procesar ventas',
+      total: 0,
+      updated: 0,
+      newVictoria: 0,
+      newOtroUtm: 0,
+      stillSinLead: 0,
+    };
+  }
+
+  // Load ALL leads (paginated with 1000 limit - Supabase max)
+  const leadsMap = new Map<string, { id: string; utm: string; nombre: string; created_at: string }>();
+  const PAGE_SIZE = 1000; // Supabase hard limit
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data: leadsPage, error: leadsError } = await supabase
+      .from('leads')
+      .select('id, telefono, utm, nombre, created_at')
+      .not('telefono', 'is', null)
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (leadsError) {
+      console.error('[REPROCESS] Error fetching leads:', leadsError);
+      break;
+    }
+
+    if (!leadsPage || leadsPage.length === 0) {
+      hasMore = false;
+    } else {
+      // Prefer Victoria leads over non-Victoria when same phone exists
+      leadsPage.forEach(lead => {
+        if (lead.telefono) {
+          const existing = leadsMap.get(lead.telefono);
+          const currentUtm = (lead.utm || '').toLowerCase();
+          const isCurrentVictoria = currentUtm === 'victoria' || /^\d+$/.test(lead.utm || '');
+
+          if (!existing) {
+            leadsMap.set(lead.telefono, {
+              id: lead.id,
+              utm: lead.utm || '',
+              nombre: lead.nombre || '',
+              created_at: lead.created_at,
+            });
+          } else {
+            const existingUtm = existing.utm.toLowerCase();
+            const isExistingVictoria = existingUtm === 'victoria' || /^\d+$/.test(existing.utm);
+            // Prefer Victoria lead for attribution
+            if (isCurrentVictoria && !isExistingVictoria) {
+              leadsMap.set(lead.telefono, {
+                id: lead.id,
+                utm: lead.utm || '',
+                nombre: lead.nombre || '',
+                created_at: lead.created_at,
+              });
+            }
+          }
+        }
+      });
+      offset += PAGE_SIZE;
+      hasMore = leadsPage.length === PAGE_SIZE;
+    }
+  }
+
+  console.log('[REPROCESS] Loaded', leadsMap.size, 'leads');
+
+  // Get all ventas_externas
+  const { data: ventas, error: ventasError } = await supabase
+    .from('ventas_externas')
+    .select('id, telefono, match_type, lead_id');
+
+  if (ventasError || !ventas) {
+    return {
+      success: false,
+      message: 'Error al obtener ventas: ' + ventasError?.message,
+      total: 0,
+      updated: 0,
+      newVictoria: 0,
+      newOtroUtm: 0,
+      stillSinLead: 0,
+    };
+  }
+
+  const result: ReprocessResult = {
+    success: true,
+    message: '',
+    total: ventas.length,
+    updated: 0,
+    newVictoria: 0,
+    newOtroUtm: 0,
+    stillSinLead: 0,
+  };
+
+  // Process each venta
+  for (const venta of ventas) {
+    const lead = leadsMap.get(venta.telefono);
+    let newMatchType: 'victoria' | 'otro_utm' | 'sin_lead' = 'sin_lead';
+    let newLeadId: string | null = null;
+    let newLeadUtm: string | null = null;
+    let newLeadNombre: string | null = null;
+    let newLeadFecha: string | null = null;
+
+    if (lead) {
+      const utm = lead.utm.toLowerCase();
+      // Victoria = UTM 'victoria' OR pure numbers (IA attribution)
+      const isVictoria = utm === 'victoria' || /^\d+$/.test(lead.utm);
+      newMatchType = isVictoria ? 'victoria' : 'otro_utm';
+      newLeadId = lead.id;
+      newLeadUtm = lead.utm;
+      newLeadNombre = lead.nombre;
+      newLeadFecha = lead.created_at;
+    }
+
+    // Only update if something changed
+    if (
+      newMatchType !== venta.match_type ||
+      newLeadId !== venta.lead_id
+    ) {
+      const { error: updateError } = await supabase
+        .from('ventas_externas')
+        .update({
+          lead_id: newLeadId,
+          lead_utm: newLeadUtm,
+          lead_nombre: newLeadNombre,
+          lead_fecha_creacion: newLeadFecha,
+          match_type: newMatchType,
+          match_timestamp: new Date().toISOString(),
+        })
+        .eq('id', venta.id);
+
+      if (!updateError) {
+        result.updated++;
+      }
+    }
+
+    // Count final stats
+    if (newMatchType === 'victoria') {
+      result.newVictoria++;
+    } else if (newMatchType === 'otro_utm') {
+      result.newOtroUtm++;
+    } else {
+      result.stillSinLead++;
+    }
+  }
+
+  result.message = `Re-procesadas ${result.total} ventas. Victoria: ${result.newVictoria}, Otro UTM: ${result.newOtroUtm}, Sin Lead: ${result.stillSinLead}`;
+
+  revalidatePath('/reporteria');
+
+  return result;
 }

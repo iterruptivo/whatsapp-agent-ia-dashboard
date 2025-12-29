@@ -22,6 +22,7 @@ import {
   type LocalImportRow,
 } from './locales';
 import { createManualLead } from './actions';
+import { trackLocalStatusChanged, trackVentaCerrada } from './analytics/posthog-server';
 
 // ============================================================================
 // UPDATE ESTADO DE LOCAL
@@ -111,6 +112,27 @@ export async function updateLocalEstado(
     const result = await updateLocalEstadoQuery(localId, nuevoEstado, vendedorId, usuarioId, comentario, montoSeparacion, montoVenta, telefono, nombreCliente);
 
     if (result.success) {
+      // Track local status change in PostHog (non-blocking)
+      trackLocalStatusChanged(usuarioId || 'system', {
+        local_id: localId,
+        local_codigo: local.codigo,
+        estado_anterior: estadoAnterior,
+        estado_nuevo: nuevoEstado,
+        proyecto_id: local.proyecto_id,
+        monto_venta: montoVenta,
+      }).catch(() => {});
+
+      // Track venta cerrada if moving to ROJO
+      if (nuevoEstado === 'rojo' && montoVenta) {
+        trackVentaCerrada(usuarioId || 'system', {
+          local_id: localId,
+          local_codigo: local.codigo,
+          monto_venta: montoVenta,
+          proyecto_id: local.proyecto_id,
+          vendedor_id: vendedorId,
+        }).catch(() => {});
+      }
+
       // ============================================================================
       // VINCULACIÓN OBLIGATORIA AL CAMBIAR A NARANJA
       // ============================================================================

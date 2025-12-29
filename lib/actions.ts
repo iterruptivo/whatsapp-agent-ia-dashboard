@@ -4,6 +4,7 @@ import { supabase } from './supabase';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { trackLeadAssigned, trackLeadLiberated, trackLeadCreated, trackVisitaRegistered } from './analytics/posthog-server';
 
 /**
  * Server Action: Assign or reassign a lead to a vendedor
@@ -127,8 +128,17 @@ export async function assignLeadToVendedor(leadId: string, vendedorId: string) {
 
     // Success - construct appropriate message
     const leadNombre = lead.nombre || lead.telefono;
+
+    // Track event in PostHog (non-blocking)
+    const wasReassigned = lead.vendedor_asignado_id !== null;
     if (!vendedorId) {
-      // Lead liberated (set to NULL)
+      // Lead liberated - track event
+      trackLeadLiberated('system', {
+        lead_id: leadId,
+        lead_nombre: leadNombre,
+        proyecto_id: lead.proyecto_id,
+      }).catch(() => {}); // Non-blocking
+
       return {
         success: true,
         vendedorNombre: 'Liberado',
@@ -136,7 +146,16 @@ export async function assignLeadToVendedor(leadId: string, vendedorId: string) {
         message: `Lead "${leadNombre}" liberado (sin asignar)`,
       };
     } else {
-      // Lead assigned or reassigned
+      // Lead assigned or reassigned - track event
+      trackLeadAssigned(vendedorId, {
+        lead_id: leadId,
+        lead_nombre: leadNombre,
+        vendedor_id: vendedorId,
+        vendedor_nombre: vendedor?.nombre,
+        proyecto_id: lead.proyecto_id,
+        was_reassigned: wasReassigned,
+      }).catch(() => {}); // Non-blocking
+
       return {
         success: true,
         vendedorNombre: vendedor?.nombre || 'Vendedor',
@@ -461,6 +480,14 @@ export async function createManualLead(
     revalidatePath('/');
     revalidatePath('/locales');
 
+    // Track lead created in PostHog (non-blocking)
+    trackLeadCreated(vendedorId, {
+      lead_id: newLead.id,
+      lead_nombre: newLead.nombre,
+      proyecto_id: proyectoId,
+      source: 'vinculacion',
+    }).catch(() => {});
+
     return {
       success: true,
       message: `Lead "${newLead.nombre}" creado correctamente`,
@@ -534,6 +561,14 @@ export async function registrarVisitaSinLocal(
       }
 
       revalidatePath('/locales');
+
+      // Track visita in PostHog (non-blocking)
+      trackVisitaRegistered(vendedorId || 'system', {
+        lead_id: existingLead.id,
+        lead_nombre: existingLead.nombre,
+        proyecto_id: existingLead.proyecto_id,
+        was_new_lead: false,
+      }).catch(() => {});
 
       return {
         success: true,
@@ -641,6 +676,21 @@ export async function registrarVisitaSinLocal(
     }
 
     revalidatePath('/locales');
+
+    // Track lead created + visita in PostHog (non-blocking)
+    trackLeadCreated(vendedorId || 'system', {
+      lead_id: newLead.id,
+      lead_nombre: newLead.nombre,
+      proyecto_id: proyectoId,
+      source: 'visita_proyecto',
+    }).catch(() => {});
+
+    trackVisitaRegistered(vendedorId || 'system', {
+      lead_id: newLead.id,
+      lead_nombre: newLead.nombre,
+      proyecto_id: proyectoId,
+      was_new_lead: true,
+    }).catch(() => {});
 
     return {
       success: true,

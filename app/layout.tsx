@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth-context";
+import { AnalyticsProvider } from "@/lib/analytics";
 import { SherpaWidget } from "@/components/shared/SherpaWidget";
 import { NewVersionBanner } from "@/components/shared/NewVersionBanner";
 import { DevModeIndicator } from "@/components/shared/DevModeIndicator";
@@ -36,11 +37,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          {/* Version Banner - Shows when new deployment is available */}
-          <NewVersionBanner />
-          {/* Dev Mode Indicator - Only shows in development */}
-          <DevModeIndicator />
-          {children}
+          {/* Analytics - Se activa con NEXT_PUBLIC_ANALYTICS_ENABLED=true */}
+          <AnalyticsProvider>
+            {/* Version Banner - Shows when new deployment is available */}
+            <NewVersionBanner />
+            {/* Dev Mode Indicator - Only shows in development */}
+            <DevModeIndicator />
+            {children}
+          </AnalyticsProvider>
         </AuthProvider>
 
         {/* Sherpa Widget - Centro de Ayuda */}

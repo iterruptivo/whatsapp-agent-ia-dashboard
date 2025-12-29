@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { trackPagoRegistered } from './analytics/posthog-server';
 
 export interface PagoLocal {
   id: string;
@@ -248,7 +249,7 @@ export async function registrarAbono(data: {
 
     const { data: pago } = await supabase
       .from('pagos_local')
-      .select('monto_esperado, monto_abonado')
+      .select('monto_esperado, monto_abonado, tipo, control_pago_id')
       .eq('id', data.pagoId)
       .single();
 
@@ -285,6 +286,13 @@ export async function registrarAbono(data: {
       console.error('[PAGOS] Error registrando abono:', error);
       return { success: false, message: 'Error al registrar abono' };
     }
+
+    // Track pago in PostHog (non-blocking)
+    trackPagoRegistered(data.registradoPor, {
+      pago_id: data.pagoId,
+      tipo: pago.tipo as 'separacion' | 'inicial' | 'cuota',
+      monto: data.monto,
+    }).catch(() => {});
 
     return { success: true, message: 'Abono registrado exitosamente' };
   } catch (error) {
@@ -343,6 +351,13 @@ export async function toggleSeparacionPagada(data: {
         console.error('[PAGOS] Error marcando separación como pagada:', error);
         return { success: false, message: 'Error al marcar como pagado' };
       }
+
+      // Track pago in PostHog (non-blocking)
+      trackPagoRegistered(data.usuarioId, {
+        pago_id: data.pagoId,
+        tipo: 'separacion',
+        monto: data.montoSeparacion,
+      }).catch(() => {});
 
       return { success: true, message: 'Separación marcada como pagada' };
     } else {

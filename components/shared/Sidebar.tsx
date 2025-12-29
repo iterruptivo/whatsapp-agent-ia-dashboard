@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3, Building, Columns3, Layers } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3, Building, Columns3, Layers, Activity, PieChart, TrendingUp } from 'lucide-react';
 import VersionBadge from '@/components/shared/VersionBadge';
 
 interface SidebarProps {
@@ -35,8 +35,27 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user } = useAuth();
 
+  // Función para obtener categorías que deben estar expandidas según pathname
+  const getInitialExpandedCategories = () => {
+    const expanded = ['finanzas']; // Finanzas siempre expandida por defecto
+
+    // Rutas que pertenecen a Reportería
+    const reporteriaRoutes = ['/executive', '/reporteria', '/analytics'];
+    if (reporteriaRoutes.includes(pathname)) {
+      expanded.push('reportería');
+    }
+
+    // Rutas que pertenecen a Configuraciones
+    const configRoutes = ['/configuracion-proyectos', '/configuracion-kanban', '/configuracion-tipificaciones'];
+    if (configRoutes.includes(pathname)) {
+      expanded.push('configuraciones');
+    }
+
+    return expanded;
+  };
+
   // Estado para controlar qué categorías están expandidas
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['finanzas']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(getInitialExpandedCategories);
 
   // Toggle categoría expandida/colapsada
   const toggleCategory = (categoryLabel: string) => {
@@ -46,6 +65,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         : [...prev, categoryLabel]
     );
   };
+
+  // Actualizar categorías expandidas cuando cambia el pathname
+  useEffect(() => {
+    const reporteriaRoutes = ['/executive', '/reporteria', '/analytics'];
+    const configRoutes = ['/configuracion-proyectos', '/configuracion-kanban', '/configuracion-tipificaciones'];
+
+    if (reporteriaRoutes.includes(pathname)) {
+      setExpandedCategories(prev => prev.includes('reportería') ? prev : [...prev, 'reportería']);
+    }
+    if (configRoutes.includes(pathname)) {
+      setExpandedCategories(prev => prev.includes('configuraciones') ? prev : [...prev, 'configuraciones']);
+    }
+  }, [pathname]);
 
   // Estructura de menú basado en rol
   // Puede tener items directos O categorías con subitems
@@ -70,6 +102,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     };
 
     if (user?.rol === 'admin') {
+      // Categoría de Reportería (admin y jefe_ventas)
+      const reporteriaCategory: MenuCategory = {
+        label: 'Reportería',
+        icon: BarChart3,
+        items: [
+          { href: '/executive', label: 'Dashboard Ejecutivo', icon: TrendingUp },
+          { href: '/reporteria', label: 'Reportes', icon: FileText },
+          { href: '/analytics', label: 'Analytics', icon: Activity },
+        ],
+      };
+
       // Categoría de Configuraciones (solo admin)
       const configuracionesCategory: MenuCategory = {
         label: 'Configuraciones',
@@ -86,9 +129,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           { href: '/', label: 'Insights', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
         ],
-        categories: [finanzasCategory, configuracionesCategory],
+        categories: [finanzasCategory, reporteriaCategory, configuracionesCategory],
         bottomItems: [
-          { href: '/reporteria', label: 'Reportería', icon: BarChart3 },
           { href: '/repulse', label: 'Repulse', icon: Zap },
           { href: '/admin/usuarios', label: 'Adm. de Usuarios', icon: UserCog },
         ],
@@ -103,16 +145,26 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // jefe_ventas tiene acceso a Insights, Operativo, Reportería y Repulse
+    // jefe_ventas tiene acceso a Insights, Operativo, Reportería (categoría), y Repulse
     if (user?.rol === 'jefe_ventas') {
+      // Categoría de Reportería para jefe_ventas
+      const reporteriaCategory: MenuCategory = {
+        label: 'Reportería',
+        icon: BarChart3,
+        items: [
+          { href: '/executive', label: 'Dashboard Ejecutivo', icon: TrendingUp },
+          { href: '/reporteria', label: 'Reportes', icon: FileText },
+          { href: '/analytics', label: 'Analytics', icon: Activity },
+        ],
+      };
+
       return {
         directItems: [
           { href: '/', label: 'Insights', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
         ],
-        categories: [finanzasCategory],
+        categories: [finanzasCategory, reporteriaCategory],
         bottomItems: [
-          { href: '/reporteria', label: 'Reportería', icon: BarChart3 },
           { href: '/repulse', label: 'Repulse', icon: Zap },
         ],
       };
@@ -263,8 +315,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           {/* Categorías con Submenús */}
           {menuStructure.categories.map((category) => {
             const CategoryIcon = category.icon;
-            const isExpanded = expandedCategories.includes(category.label.toLowerCase());
+            const categoryKey = category.label.toLowerCase();
             const hasActiveItem = category.items.some((item) => pathname === item.href);
+            // Auto-expandir si tiene un item activo O si está en el estado de expandidas
+            const isExpanded = hasActiveItem || expandedCategories.includes(categoryKey);
 
             return (
               <div key={category.label} className="space-y-1">

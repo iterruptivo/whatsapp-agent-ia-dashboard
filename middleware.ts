@@ -132,7 +132,12 @@ export async function middleware(req: NextRequest) {
   // ============================================================================
   // PUBLIC ROUTES - Allow without authentication
   // ============================================================================
-  if (pathname === '/login') {
+  if (pathname === '/login' || pathname === '/showcase-components') {
+    // Showcase page is public for component testing
+    if (pathname === '/showcase-components') {
+      return res;
+    }
+
     // If already logged in (and session is valid), redirect to appropriate dashboard
     if (validatedUser) {
       const { data: userData } = await supabase
