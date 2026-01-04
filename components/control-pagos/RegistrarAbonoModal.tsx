@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { X } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { X, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { registrarAbono, type PagoConAbonos } from '@/lib/actions-pagos';
 import { useAuth } from '@/lib/auth-context';
 import AlertModal from '@/components/shared/AlertModal';
+import VoucherOCRUploader, { VoucherData } from '@/components/shared/VoucherOCRUploader';
 
 interface RegistrarAbonoModalProps {
   isOpen: boolean;
@@ -22,8 +23,11 @@ export default function RegistrarAbonoModal({
   const [monto, setMonto] = useState('');
   const [fechaAbono, setFechaAbono] = useState(new Date().toISOString().split('T')[0]);
   const [metodoPago, setMetodoPago] = useState('Efectivo');
+  const [numeroOperacion, setNumeroOperacion] = useState('');
   const [notas, setNotas] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showOCR, setShowOCR] = useState(false);
+  const [voucherPreviewUrl, setVoucherPreviewUrl] = useState<string | null>(null);
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -36,6 +40,45 @@ export default function RegistrarAbonoModal({
     variant: 'info',
   });
   const { user } = useAuth();
+
+  // Handler para cuando OCR extrae datos del voucher
+  // IMPORTANTE: Debe estar ANTES del early return para cumplir reglas de Hooks
+  const handleOCRDataExtracted = useCallback((data: VoucherData, file: File, previewUrl: string) => {
+    // Auto-rellenar campos con datos del OCR
+    if (data.monto) {
+      setMonto(data.monto.toString());
+    }
+    if (data.fecha) {
+      // Convertir fecha de formato YYYY-MM-DD
+      setFechaAbono(data.fecha);
+    }
+    if (data.numero_operacion && data.numero_operacion !== 'N/A') {
+      setNumeroOperacion(data.numero_operacion);
+    }
+    // Mapear tipo de operacion a metodo de pago
+    if (data.tipo_operacion) {
+      const tipoLower = data.tipo_operacion.toLowerCase();
+      if (tipoLower.includes('transfer')) {
+        setMetodoPago('Transferencia');
+      } else if (tipoLower.includes('deposit') || tipoLower.includes('deposito')) {
+        setMetodoPago('Depósito');
+      } else if (tipoLower.includes('yape')) {
+        setMetodoPago('Yape');
+      } else if (tipoLower.includes('plin')) {
+        setMetodoPago('Plin');
+      }
+    }
+    // Agregar info del voucher a las notas
+    const infoVoucher = [];
+    if (data.banco && data.banco !== 'N/A') infoVoucher.push(`Banco: ${data.banco}`);
+    if (data.nombre_depositante && data.nombre_depositante !== 'N/A') {
+      infoVoucher.push(`Depositante: ${data.nombre_depositante}`);
+    }
+    if (infoVoucher.length > 0) {
+      setNotas(infoVoucher.join(' | '));
+    }
+    setVoucherPreviewUrl(previewUrl);
+  }, []);
 
   if (!isOpen || !pago) return null;
 
@@ -81,12 +124,19 @@ export default function RegistrarAbonoModal({
 
     setLoading(true);
 
+    // Construir notas incluyendo numero de operacion si existe
+    let notasCompletas = notas.trim();
+    if (numeroOperacion.trim()) {
+      const prefijo = `Nro. Op: ${numeroOperacion.trim()}`;
+      notasCompletas = notasCompletas ? `${prefijo} | ${notasCompletas}` : prefijo;
+    }
+
     const result = await registrarAbono({
       pagoId: pago.id,
       monto: montoNum,
       fechaAbono,
       metodoPago,
-      notas: notas.trim() || undefined,
+      notas: notasCompletas || undefined,
       registradoPor: user.id,
     });
 
@@ -101,6 +151,9 @@ export default function RegistrarAbonoModal({
       });
       setMonto('');
       setNotas('');
+      setNumeroOperacion('');
+      setVoucherPreviewUrl(null);
+      setShowOCR(false);
     } else {
       setAlertModal({
         isOpen: true,
@@ -150,6 +203,44 @@ export default function RegistrarAbonoModal({
                   <span className="font-bold text-red-600">{formatMonto(montoRestante)}</span>
                 </div>
               </div>
+            </div>
+
+            {/* Seccion OCR - Captura inteligente de voucher */}
+            <div className="border rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowOCR(!showOCR)}
+                className="w-full px-4 py-2 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 flex items-center justify-between text-sm font-medium text-gray-700 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  <span>Captura Inteligente (OCR)</span>
+                  <span className="text-xs text-gray-500 font-normal">
+                    - Sube voucher y se autocompletan los datos
+                  </span>
+                </div>
+                {showOCR ? (
+                  <ChevronUp className="w-4 h-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                )}
+              </button>
+
+              {showOCR && (
+                <div className="p-4 bg-gray-50 border-t">
+                  <VoucherOCRUploader
+                    onDataExtracted={handleOCRDataExtracted}
+                    onError={(error) => {
+                      setAlertModal({
+                        isOpen: true,
+                        title: 'Error OCR',
+                        message: error,
+                        variant: 'warning',
+                      });
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             <div>
@@ -204,6 +295,19 @@ export default function RegistrarAbonoModal({
                 <option value="Cheque">Cheque</option>
                 <option value="Tarjeta">Tarjeta</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Número de Operación
+              </label>
+              <input
+                type="text"
+                value={numeroOperacion}
+                onChange={(e) => setNumeroOperacion(e.target.value)}
+                placeholder="Ej: 804263"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
+              />
             </div>
 
             <div>

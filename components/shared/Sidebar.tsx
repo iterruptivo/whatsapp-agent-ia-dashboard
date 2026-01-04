@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3, Building, Columns3, Layers, Activity, PieChart, TrendingUp } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3, Building, Building2, Columns3, Layers, Activity, PieChart, TrendingUp, ShieldCheck } from 'lucide-react';
 import VersionBadge from '@/components/shared/VersionBadge';
 
 interface SidebarProps {
@@ -90,6 +90,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     // Control de Pagos: Solo admin y jefe_ventas
     if (user?.rol === 'admin' || user?.rol === 'jefe_ventas') {
       finanzasItems.push({ href: '/control-pagos', label: 'Control de Pagos', icon: FileText });
+      finanzasItems.push({ href: '/validacion-bancaria', label: 'Validación Bancaria', icon: Building2 });
+      finanzasItems.push({ href: '/aprobaciones', label: 'Aprobaciones', icon: ShieldCheck });
     }
 
     // Comisiones: Todos los roles
@@ -181,11 +183,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // finanzas SOLO ve Control de Pagos (sin categorías, item directo)
+    // finanzas ve Control de Pagos y Validación Bancaria (sin categorías, items directos)
     if (user?.rol === 'finanzas') {
       return {
         directItems: [
           { href: '/control-pagos', label: 'Control de Pagos', icon: FileText },
+          { href: '/validacion-bancaria', label: 'Validación Bancaria', icon: Building2 },
         ],
         categories: [],
         bottomItems: [] as MenuItem[],

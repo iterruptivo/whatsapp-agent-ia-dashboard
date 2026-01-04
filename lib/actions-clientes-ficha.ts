@@ -99,6 +99,15 @@ export interface ClienteFicha {
   // Documentos adjuntos
   dni_fotos: string[] | null;
   comprobante_deposito_fotos: string[] | null;
+  comprobante_deposito_ocr: Array<{
+    monto: number | null;
+    moneda: 'PEN' | 'USD' | null;
+    fecha: string | null;
+    banco: string | null;
+    numero_operacion: string | null;
+    depositante: string | null;
+    confianza: number;
+  }> | null;
 
   vendedor_id: string | null;
   created_at: string;
@@ -185,6 +194,15 @@ export interface ClienteFichaInput {
   // Documentos adjuntos
   dni_fotos?: string[] | null;
   comprobante_deposito_fotos?: string[] | null;
+  comprobante_deposito_ocr?: Array<{
+    monto: number | null;
+    moneda: 'PEN' | 'USD' | null;
+    fecha: string | null;
+    banco: string | null;
+    numero_operacion: string | null;
+    depositante: string | null;
+    confianza: number;
+  }> | null;
 
   vendedor_id?: string | null;
 }

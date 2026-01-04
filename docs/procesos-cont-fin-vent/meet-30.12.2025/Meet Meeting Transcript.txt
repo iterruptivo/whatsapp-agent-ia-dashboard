@@ -1,0 +1,590 @@
+Meet Meeting
+Tue, Dec 30, 2025
+
+0:00 - Unidentified Speaker
+Ya, esa parte sí.
+
+0:00 - Alonso
+Esa parte también, ¿te acuerdas? Ese día les mostré cómo tengo un aplicativo que consolida. Entonces, eso de ahí lo voy a llevar al sistema. Y eso es lo que va a enlazar. Lo que dice la ficha, lo que dice la boleta, lo que dice el voucher y lo que dice las transacciones del banco.
+
+0:19 - Administracion Eco Plaza
+Ese Excel va a servirle para que lo suban al Concard. Sino que finanzas ahí tenía, de lo que ellos avanzaban eran tanto finanzas y contabilidad hacia su propio Excel y luego ahí ya validaban el tema de los movimientos, la numeración y todo. Pero tú ya pasarlo el consolidado al Excel también puedes avanzar.
+
+0:43 - Alonso
+Sí, correcto, eso también.
+
+0:45 - Administracion Eco Plaza
+¿Hay alguna manera de que la persona que me valía el ingreso, porque acuérdate que primero yo mandaban la ficha, el DNI, el voucher, que es la parte de venta, se tiene que validar el tema del saldo, se tiene que validar el precio, y se tiene que validar el comprobante de que no tenga algún tipo de duplicidad. Excepto de que ese comprobante se pueda aplicar a varios. ¿Puede aplicarse? ¿Como que a multis?
+
+1:17 - Alonso
+El comprobante se puede aplicar a varios... Por ejemplo. Claro.
+
+1:21 - Administracion Eco Plaza
+A varios locales o, no sé, aparte de una cuota. Porque a veces pasan cuando dices, no, yo adelanto tu cuota. Te dice, yo te adelanto la mitad de la cuota y la otra mitad te la pago en fecha o algo así.
+
+1:36 - Alonso
+Ya. Claro.
+
+1:37 - Administracion Eco Plaza
+Ya, eso sí tendríamos que ver cómo trabajarlo.
+
+1:40 - Alonso
+Ahí tendría que ver, por ejemplo, si no, si la cuota solo es 1,000 y me dan 2,000, quiere decir que eso se viviría para dos cuotas. Ahí tiene que entrar una lógica que yo tendría que revisar cómo poder pasarlo a dos cuotas o algo así, ¿no? Tengo que revisarlo ahí, sí. Pero sí, eso sí, esa parte sí es más compleja, más difícil que solamente decir, ah, esto le pertenece a dos lotes.
+
+2:10 - Administracion Eco Plaza
+Pero la lógica no podría poner ahí como que poder filtrar Por ejemplo, subo el pago para el local 10 y pongo aplicar pago también, o no sé, como fuera. Y pongo ahí, no sé, para poder seleccionar local 11, 12, 13, lo que fuese, si fueran múltiples locales. O si fueran parte de una cota, no sé, como cuando estás en el cobro de mantenimiento y te figuran aquí, tengo que pagar 500 soles, pero abono 200 y te sale y el saldo que tienes pendiente es 300. Ajá. Algo así. Ya. OK, OK, OK.
+
+2:46 - Alonso
+Eso, entonces, cuando hacen el pago. Ya, lo puedo validar ahí. Sí. Es que yo estaba pensando que es que suben el voucher nada más y sin más yo tendría que validarlo. Pero no, pues, como vamos a tener el sistema, el voucher solo es una evidencia. Tú me vas a tener que subir igual los datos del pago en monto, en dólares, es y todo eso. Lo que yo puedo hacer es contrastar que lo que tú estás escribiendo en el formulario es lo que el voucher también dice. Lo que pasa es que en el sistema que vamos a hacer tenemos una posibilidad de subir los vouchers, que son las evidencias de la transacción que se ha hecho el cliente, pero a la vez en el formulario te va a preguntar, oye vas a hacer el pago de cuánto y tú le vas a poner 500 entonces lo que yo puedo hacer es que si tú me pones 500 en el formulario yo valido con lo que me dice el voucher el voucher dice 500 ok si el voucher dice 1000 entonces ya te pregunto el voucher dice 1000 tú dices 500 esto es para otro lote más o para otra cuota más entonces ya ahí comienza otro flujo
+
+4:05 - Administracion Eco Plaza
+¿no? Una es que se hacen las validaciones.
+
+4:10 - Unidentified Speaker
+Ajá.
+
+4:10 - Administracion Eco Plaza
+Porque hay que también validar que el DNI esté de acuerdo con el nombre que figura en la ficha.
+
+4:19 - Alonso
+Correcto. Sí, esa es otra validación.
+
+4:22 - Administracion Eco Plaza
+Ya. Tendría, ahí se emite la boleta. ¿Todavía no te respondió el programa que emite la boleta? Smart Click no me dice nada.
+
+4:32 - Alonso
+Voy a volver a molestar. En todo caso, ustedes tienen contratado el servicio, ¿no? ¿No tienen un asesor directo?
+
+4:43 - Administracion Eco Plaza
+Juan debe tener un asesor directo. ¿Habría que pedirle por ahí por el grupo? Ya, le voy a decir, entonces. Digamos que ahí ya emiten la boleta. ¿Y la boleta se carga en TNDoc? ¿Puedes hacer que en vez de que se carguen 10 documentos para un cliente, cada documento se vaya anexando al mismo archivo? A ver, a ver, ¿cómo es eso?
+
+5:11 - Alonso
+O sea, a la misma ficha de inscripción, al mismo PDF, ¿a qué te refieres? Claro, claro, eso sería así. Si, por ejemplo, no sé, tengo tres vouchers, tres DNIs diferentes porque son cónyuge y copropietario, todos esos deben salir en la ficha de inscripción. Boletas, las dos boletas también salen en la misma ficha automáticamente.
+
+5:32 - Administracion Eco Plaza
+Se va armando el expediente automáticamente.
+
+5:35 - Alonso
+Correcto.
+
+5:35 - Administracion Eco Plaza
+Cada vez que se entera una documentación. Debería ser así, ¿no? ¿O lo parto por...?
+
+5:42 - Alonso
+No, no, está bien.
+
+5:44 - Administracion Eco Plaza
+Está bien que sea así, porque yo siento que tienen una persona que está unificando todo para enviar en las áreas y eso quita tiempo.
+
+5:56 - Alonso
+Claro, mejor sale un PDF con todo y ya tienen el reporte de todo lo que ha pasado, ¿no? Ahora, eso es mientras que haces la reserva y pagas la inicial. Pero si lo tienes en cuotas, ya eso sí ya es un documento aparte por cada cuota.
+
+6:15 - Administracion Eco Plaza
+O que siga saliendo. No, que siga saliendo junto para ir teniendo en un solo archivo todo el historial del cliente. OK. Ahora, hasta ahí ya hemos la boleta o factura boleto o factura esa boleta le puede llegar una notificación al vendedor para que lo descargue porque la boleta tiene que tener acceso el vendedor finanzas conta ok bueno en vez de que finanzas le envío contabilidad le envíen la boleta al vendedor por whatsapp por lo que sea mejor que el vendedor entre y descargue su boleta Y se lo manda al cliente.
+
+6:55 - Alonso
+Sí, el vendedor va a poder ver esa ficha de inscripción, va a poder ver el historial. Yo no creo que tenga ningún problema en verlo, ¿cierto?
+
+7:04 - Administracion Eco Plaza
+No, porque al final a quien le van a enviar su comprobante de pagos es el vendedor y el vendedor es quien envíe la boleta, la factura, lo que sea. Igual lo tiene.
+
+7:14 - Alonso
+Sí, OK. Entonces, no hay problema. El vendedor lo puede mirar y él se lo puede enviar a finanzas, a contabilidad, o inclusive decirle solamente, oye, tal cliente ya pagó, su boleta ya se generó, te paso este link y va directo a mirar al cliente, ¿no? Finanzas o contas. Y lo mira en el sistema. No, no.
+
+7:34 - Administracion Eco Plaza
+Pero es que ahí el vendedor tiene que descargar la boleta. Finanzas y contas también ellos si quieren pueden descargarlo. Porque he visto que cada uno lo almacena en diferente. Ah, cierto. Ya que eres nuestro gerente de TI, cada uno lo almacena en diferente. Entonces son muy... Como amigos. ¿Pero por qué lo almacenan en diferentes lugares para ellos mismos, para su editorial?
+
+7:58 - Alonso
+Porque yo entiendo que Conta almacena lo de contabilidad. ¿Y por qué pasaría eso si ya tenemos la fuente de la verdad sería el ERP o el Command Center que estamos haciendo?
+
+8:11 - Administracion Eco Plaza
+Claro, yo creo que ya todo se almacenaría ahí a través del ERP, Nada más. ¿Tendríamos un back up?
+
+8:20 - Alonso
+Ah, claro, de hecho, vamos a poner políticas de back up.
+
+8:24 - Administracion Eco Plaza
+Ya, pero ese es distinto, ¿no? No es que cada área me almacene su propio drive, toda la información.
+
+8:31 - Alonso
+No, no, ya no. Ajá.
+
+8:33 - Administracion Eco Plaza
+Todo sería de uno solo nomás. Ya, ahora, como entiendo que el tema de la conexión con los bancos para la validación de los ingresos va a tardar, ¿habría alguna manera que la persona de final, porque si hay un validador, entiendo, uno, dos validadores. Ya. Que revisan las cuentas y marcan qué ingresos efectivamente ya recibimos en la cuenta. Y le varía la prueba. Ya.
+
+8:59 - Alonso
+Pero eso de ahí, este, yo recuerdo que es con la consolidación. Día, por ejemplo, día de hoy, no sé, ¿a qué hora tiran el reporte? Imagínate, 6 de la tarde. 6 de la tarde voy y le pido el reporte al banco. Ah, pero el banco no me va a dar el reporte automático. Lo que yo puedo hacer es implementar algo que por detrás vaya al banco y saque el reporte, pero si es que me dan el usuario y password. No, no me lo va a dar el banco automático. Sí, ya.
+
+9:35 - Administracion Eco Plaza
+Y la queja de finanzas sin conta era que no tenían el acceso.
+
+9:40 - Alonso
+Claro.
+
+9:41 - Administracion Eco Plaza
+Y eso son de confianza, no te lo van a dar. Pero lo que podríamos ir viendo ahí es mantener este validador, que entiendo que es una persona de confianza, para que pueda realizar todas esas validaciones. Pero directa, no en un Excel pintado de amarillo, sino directamente en el ERP.
+
+10:00 - Alonso
+En el ERP.
+
+10:01 - Administracion Eco Plaza
+Un momento que quiere ingresar la persona, le figura automáticamente un reporte de los signos para que ya vayan cheque de validación o no. O como fuese ahí. ¿Cómo lo llaman a ese perfil?
+
+10:17 - Alonso
+¿Así nomás validador?
+
+10:19 - Administracion Eco Plaza
+¿O es alguien de finanzas? Entiendo que es alguien de finanzas que trabaja en la... En el...
+
+10:28 - Alonso
+en el Doxy creo que era.
+
+10:31 - Administracion Eco Plaza
+Pero sí, y entonces que... No, en realidad acá sí no hace poco. Que lo validen, ¿no? Como validador podemos ponerle.
+
+10:40 - Alonso
+Ya, porque otra forma de ayudar es, ok, lo único que, como nosotros no tenemos acceso al banco por usuario y password, entonces podríamos decirle nada más, todos los días a las seis de la tarde a esa persona, o a las ocho de la mañana, para empezar su día nomás, saca un reporte del banco y lo sube al sistema, y el sistema ya hace el cruce.
+
+11:03 - Administracion Eco Plaza
+Yo creo que podríamos tener esa opción para tener algo automatizado, porque Jaze se va a pedirlo. Pero siento que en la realidad esa persona tiene un horario distinto que cuando puede lo va. Por eso es que en cualquier momento del día. O tener las dos opciones, ¿no? Manual y automático. O subes el reporte del banco para que se valía de manera automática, o lo realizas manual si quieres realizar. Así tenemos contento a ambos dueños.
+
+11:30 - Alonso
+OK. ¿Cuáles son los dueños?
+
+11:33 - Administracion Eco Plaza
+Acá dice su mamá. Ah, ya.
+
+11:36 - Alonso
+Ok, ok, ok.
+
+11:38 - Administracion Eco Plaza
+Está bien. Ya. Ya. Yo entiendo, una vez validado es donde se emite la constancia de abono. Esa constancia también tiene que ser automática. Ya, eso sí. Ya, yo te voy a enviar Hoy día voy a buscar para enviarte una constancia de AON, ¿no? Para que lo puedas ahí nada más copiar. OK. Claro.
+
+12:16 - Alonso
+Envíame la plantilla y con eso ya yo la genero. ¿Dónde está el PDTA?
+
+12:29 - Administracion Eco Plaza
+Ah, ahí ya sé dónde lo tengo. Ya, sí tengo ya. No, que estoy buscándolo porque me voy a olvidar. Una boleta. ¿Es el único formato que te falta, no? Ahorita es el único formato, porque yo ya tengo ficha de inscripción, contrato, faltaría la constancia de abono.
+
+13:06 - Alonso
+No sé si tienen algo más dentro de sus procesos.
+
+13:12 - Administracion Eco Plaza
+No, solamente ese.
+
+13:18 - Administracion Eco Plaza
+Ya, me lo envían, no hay problema.
+
+13:29 - Alonso
+Y ahora avancemos.
+
+13:34 - Administracion Eco Plaza
+Sí, eso te lo tengo pendiente.
+
+13:47 - Administracion Eco Plaza
+Ah, ya tengo, ya. Te lo mando. Van a seguir la misma figura. Ahora te lo mando ahorita para que lo abras. Ok. Yo te lo mandé. Ah, son distintos tipos de constancia. Es una constancia de separación y que es constancia de abono.
+
+14:39 - Administracion Eco Plaza
+Y creo que es el mismo. Como constancia de cancelación. Creo que son diferentes tipos de constancia, o sea, te voy a enviar otro que me figura como constancia de cancelación. Victoria, un favor, ¿te puedes mandármelo a ese número?
+
+15:05 - Alonso
+Es que sigue restaurándose. Dos días va a demorar, dice. ¿Qué has hecho? Lo que pasa es que quería mostrarles un aplicativo móvil que he hecho para, como el SperanChat, porque la gente se quejaba que en la tablet no funciona, era porque el SperanChat no les ofrece el hecho de la captura de lead, como les ofrece en laptop o en PC, ya porque Google no les permite poner extensiones en una tablet. Entonces, yo agarré y dije, ok, voy a crear un aplicativo. Lo creé todo y les quería mostrar y ese día antes, Lo quise ejecutar y como la IA es la que domina todos mis dispositivos, le dije, instálalo. No sé qué hizo y pum, me bajó el, no, quiso abrir mi WhatsApp porque la idea es que pruebe WhatsApp exportar en los chats y llevárselos al nuevo aplicativo. Entró, hizo sesión acá, me sacó de la sesión de mis otros celulares y me jodió todo. No sé qué pasó de verdad. Entonces, estoy restaurando mi WhatsApp.
+
+16:08 - Administracion Eco Plaza
+Ya, ya te lo mandé ese número. Ya, bacán. Yo ahora lo reviso. Igual estoy pidiendo que me confirmen si son tres tipos. Ah, son tres tipos. ¿Y de qué depende? Es que yo creo que solamente se cambia el nombre, porque hay uno que dice constancia de cancelación, que entiendo que lo emiten cuando cancelan el... Ah, cuando cancelan ya completamente.
+
+16:34 - Alonso
+Ajá. El otro es una constancia de cuota y el otro de inicial, algo así.
+
+16:40 - Administracion Eco Plaza
+Claro, una constancia de separación y el otro debe ser de abono que lo estoy pidiendo, no lo tengo a la mano.
+
+16:48 - Alonso
+Ya, ya, ya se entiende eso.
+
+16:51 - Administracion Eco Plaza
+Ya, pero ahí toda la información lo sacan de, cuando ya tienes la ficha, vas a tener que tener la firma para generarlo automáticamente de representante. Y ahí lo único que va a cambiar es la parte de Rook, el nombre del proyecto y el nombre de la empresa y el logo.
+
+17:12 - Alonso
+Ok.
+
+17:13 - Administracion Eco Plaza
+Pero esas las tienes en los contratos. Sí, sí, sí. Ya, pero ahí sacan como que los datos de la ficha también, porque figura el nombre, DNI, depósito de tanto, tipo de cambio de tanto, monto tanto, están tanto, ¿Cuál es el rubro? ¿El metraje? ¿En qué nivel? ¿Y el nombre del proyecto? ¿Cuándo fue depositado el monto? ¿El monto? ¿El número de operación? Sí, son distintos. Porque en la separación te figura cuánto tiempo de separación tiene. Claro. Que ahí no va a ser un día, cinco días. Cinco días, sí. Y poner la fecha de vencimiento, entonces tenés que calcular la fecha de vencimiento desde que emites la constancia de separación, para que coloques la fecha de vencimiento. Después lo demás es lo mismo. La fecha de emisión y la firma.
+
+18:32 - Administracion Eco Plaza
+Pero con eso sí puedes manejarlo, ¿no? Sí.
+
+18:36 - Alonso
+Ahorita ya hay bastante que hacer. Pero, ¿qué más...?
+
+18:40 - Administracion Eco Plaza
+Es que estoy viendo que tú eres lo que toma más tiempo para avanzar con eso. Ok. Probablemente dejéis de reducir personal.
+
+18:51 - Alonso
+Sí. ¿Te cuento cuánto?
+
+18:53 - Administracion Eco Plaza
+¿No estás en altavoz?
+
+18:55 - Alonso
+¿Qué? ¿Estás en altavoz? Escríbeme, escríbeme.
+
+18:59 - Administracion Eco Plaza
+No, si ese día el viernes estaba esperando, pues me dijo, lo voy a convencer. Y le dije, a ver, apostemos.
+
+19:10 - Alonso
+Me hiciste perder mi aposta. Ah, sí, porque... Sí, me comentó. Yo también, o sea...
+
+19:18 - Administracion Eco Plaza
+Eso lo quiere desde hace medio año, pero el tema...
+
+19:24 - Alonso
+Sí, el tema es difícil, pues. Para junio, entonces yo ahorita ya he empezado un proyecto con la inteligencia artificial contándole todo lo que hace Eco Plaza y estoy viendo que me proponga un plan y vamos a ir viéndolo de a poco, porque claro no es fácil, ya le he dicho no es fácil ¿no? Pero yo supongo que por lo menos llegar lo más cercano posible a eso.
+
+19:51 - Administracion Eco Plaza
+Sí, sobre todo el tema de las tareas repetitivas.
+
+19:54 - Alonso
+Por ahí es lo primero. Ya después se va viendo cómo hacerlo más difícil. Las que requieren más de criterio, etc. Entonces, poco a poco. Pero sí, cuando yo ya tenga el camino un poco más hecho, ahí nos juntamos para revisarlo. Porque tú tienes todo el conocimiento del proceso completo de Eco Plaza. Tendría que validarlo contigo. Está bien.
+
+20:26 - Administracion Eco Plaza
+Dile a la IA que me... Que yo estaba molestándolo porque estaba haciendo su lista de los... Dile muchas gracias. ¿Ah, sí? Ajá. Dile que me apoya. Dile que también se tiene que reemplazar, le decía.
+
+20:48 - Alonso
+Usted...
+
+20:49 - Administracion Eco Plaza
+Ya, ya, ya.
+
+20:51 - Unidentified Speaker
+Ok.
+
+20:51 - Alonso
+¿Qué más?
+
+20:52 - Administracion Eco Plaza
+¿Qué más? Entonces, ¿hasta ahí?
+
+20:54 - Alonso
+¿Hasta ahí yo ya tengo ya para hacer varias cosas?
+
+20:57 - Administracion Eco Plaza
+Hasta ahí me vas a reducir entre 3, 4 personas. Si llegas a emitir las constancias y las constancias igual, se va automáticamente una notificación al vendedor. Oye, ¿se emitió la constancia de tu cliente tal? ¿O se emitió la constancia de local tal? Para que el vendedor sepa, no esté entrando a cada momento, sino lo descargue nada más y se lo envíe al cliente. Y como todo va a estar anexado a un mismo expediente, ya, digamos, ese expediente ahí puede ingresar contabilidad, finanzas y legal. Porque legal, para que pueda generarse automáticamente el contrato, recuerda que necesita la ficha, el DNI, el voucher, las boletas y la constancia.
+
+21:43 - Alonso
+Finanzas y legal, claro. OK.
+
+21:48 - Alonso
+OK. OK. Mira, yo ahorita mismo, como ayer yo les dije, estoy, he creado reportes para todo, porque estoy viendo cómo lo están usando los usuarios, quiénes están usándolo, el sistema. Ya hay varios que están ingresando sus fichas de inscripción. Porque eso de ahí va a valer para todos. Si tú llenas la ficha de inscripción que tiene todos los datos, sirve para todo el proceso hasta el final. Ay, eso sí ayudan a hacerlo entender a Heise.
+
+22:16 - Administracion Eco Plaza
+análisis, primero viene finanzas y luego ventas.
+
+22:19 - Alonso
+Ah ya, no lo va a entender, ese día también hablamos bastante, no lo entiende, no lo entiende, por eso yo le he dicho ok, voy a automatizar, la línea va a ser así, vamos a hacer el sistema, la plataforma en paralelo, tenemos que ir automatizando otras cosas, como herramientas que les vaya ayudando, no importa particularmente a cierta área, poco a poco, e ir quitando del paso ¿no? ¿cómo te puedes decir? E ir disminuyendo ¿no? Gente, pero la plataforma tiene que ser en paralelo a avanzarse, porque no lo entiende, o sea, él me dice la plataforma en que me va a ayudar, si lo entiende que lo va a ayudar a largo plazo, pero no ahorita, entonces por eso yo le he dicho ok, si no entiende ese eso no importa, yo me voy a dar el trabajo de ir en ambos a la vez, porque ya lo entenderás después. Si no tienes la plataforma, no tienes una fuente, la verdad, no tienes data estructurada, creces, por más que automatices, al final vas a caer. No tienes estructura, pues. Entonces, pero eso ya, caballero, tenemos que darnos esa chamba, ¿no? De hacerlo ambos a la vez. Ahora, eso es lo que voy a ayudar, o sea, no importa particularmente en ciertas áreas y vamos avanzando en paralelo. Y ya después poco a poco el sistema, cuando todos los vendedores y todos se vayan alineando, el sistema va a ser la fuente de la verdad y pasamos toda la automatización ahí.
+
+23:49 - Administracion Eco Plaza
+Ya, porque mira, más o menos yo sí vi como me gustaría que fuera, y el tema del registro de venta por local, los múltiples locales, clientes, ya carga de voucher, ya el tema de carga de voucher puede ser pago parcial o múltiple, que era lo que hablábamos, y recordás que había un tema de, en la validación del las reglas y el precio es digamos menor el precio de lista se necesitaba la aprobación de gerencia?
+
+24:15 - Alonso
+Sí, sí, sí, sí. Se necesita eso.
+
+24:18 - Administracion Eco Plaza
+Yo creo que podríamos manejar como que por rangos, ¿no? Uno que sea por los jefes de proyecto, podemos manejar un rango, y el otro ya gerencia.
+
+24:29 - Alonso
+Primero por jefe de proyecto, claro.
+
+24:35 - Unidentified Speaker
+Ok.
+
+24:37 - Administracion Eco Plaza
+Ok. Sí, correcto. Ya se emite por los recibidos siempre. Con numeración y trazabilidad.
+
+25:04 - Alonso
+Lo que hablamos ahorita mismo, lo del precio de lista, es precio de lista menos el descuento permitido, o sea, lo que sale en la publicidad. Eso está permitido. Más abajo de eso, si se ha vendido más abajo de eso, ya recién empieza a pedir aprobación al jefe proyecto. Ajá. Y después ya pedir aprobación a gerencia.
+
+25:30 - Administracion Eco Plaza
+Sí. OK. El tema de la emisión de la boleta siempre se emite por lo recibido, con numeración y trazabilidad. Para evitar duplicidades. Y hay que permitir que lo puedan anular. Pero solamente el jefe de finanzas puede anularlo. Los jefes de finanzas.
+
+25:52 - Alonso
+¿La numeración creo que se encarga el mismo Smart Click o uno lo coloca?
+
+26:00 - Administracion Eco Plaza
+click coloca la numeración. Sí, ya. Y la anulación solo el jefe de finanzas, nada más. Sí, la anulación solo el jefe de finanzas. Y, ah, está bien, las constancias no tienen numeración. Ya. Ya, se va a eliminar el envío de ventas van a descargar el tema de las boletas, las constancias y todo el expediente. La validación bancaria habíamos quedado que iba a ser manual y automático. Automático cuando suba en el estado de cuenta y manual cuando quiera hacer su cheque. La constancia de abono es solo cuando el pago validado con las constancias de abono y con cada abono sí se va actualizando los saldos, ¿No? Y el estado de cuenta. El cliente. Ah, ya, ¿Cuánto?
+
+27:02 - Alonso
+O sea, claro, si abonó mil, ya, o sea, si si debía solo catorce, ahora debe solo trece. Sí, eso ya ya está en control de pagos.
+
+27:12 - Administracion Eco Plaza
+Ya. Contratos legales va a ser semi automatizado desde la plantilla, yo creo que podríamos permitir una variación del cinco por ciento solo en casos especiales, A ver, a ver, a ver.
+
+27:25 - Alonso
+¿Cómo el 5% de qué?
+
+27:26 - Administracion Eco Plaza
+Lo que estaba yo consultando con legales es que la mayoría de los contratos se firman tal cual es el formato. Sin embargo, hay pequeñas excepciones de algunos clientes que solicitan algunos cambios. Y cuando les pregunté qué tanto, me dijeron más o menos 5%. Entonces, habría que permitir la modificación del contrato, puede ser. OK. ¿Sabes qué le podríamos decir a Legal?
+
+27:51 - Alonso
+¿Qué partes se modifican? La del anexo.
+
+27:54 - Administracion Eco Plaza
+Normalmente las condiciones del anexo, me dice, porque a veces la ficha te dice, te voy a pagar en dos botas, y al final viene el cliente y dice, no, ¿sabes qué?
+
+28:08 - Alonso
+Ya conversé, voy a pagarlo en seis.
+
+28:11 - Administracion Eco Plaza
+Ajá. Muy pocas veces que alguien pide cambiar el tema de cláusula general. Más que todo son las condiciones comerciales.
+
+28:20 - Alonso
+OK, OK, OK. Eso es importante. ¿Por qué? Porque en el sistema tenemos la plantilla, ¿OK? Pero esa plantilla no es como un documento normal, ¿no? Sino que donde dice nombre, por ejemplo, vas a encontrar corchete, corchete, nombre de cliente, algo así.
+
+28:37 - Administracion Eco Plaza
+Como codificando cada variable.
+
+28:38 - Alonso
+Entonces, si entra cualquiera a modificarlo, puede romper lo que ya se hizo. Hay que saber, por ejemplo, si me dice sola parte de anexo, OK, le dejo el anexo libre para que ellos lo puedan modificar. Así ya no requiere soporte de mí o de alguien más, ¿no? Ellos mismos se modifican como quieran. OK. Ya, genial.
+
+28:58 - Administracion Eco Plaza
+Ya, pero eso sí tiene que ser semiautomatizado porque también tengo como 8 personas en legal.
+
+29:03 - Alonso
+Eso, ¿has visto ya una vez que tienes la ficha de inscripción y hayas pagado todo el Ah, generas el contrato simple. Ahí lo difícil va a ser que llenen esa ficha. Que todos llenen.
+
+29:16 - Administracion Eco Plaza
+Y ahí me pasas un reporte o me pasas a un usuario para entrar y yo los molesto.
+
+29:23 - Alonso
+Ya, OK. OK, OK.
+
+29:25 - Administracion Eco Plaza
+OK, ahora te paso a tu usuario. Ya, contabilidad, lo que ellos pedían era algo que se pueda conciliar y exportar al CONCAC, ¿cierto?
+
+29:34 - Alonso
+Sí, correcto. Justamente el Excel de consolidación.
+
+29:37 - Administracion Eco Plaza
+Eso hay que permitirse no descargar tanto finanzas a todos. Ok. Ahora, para el tema de devoluciones. Entiendo que hacían una validación del ingreso, anulaban las boletas. O facturas, si se hacía, para el caso de algunos muy antiguos, ¿Qué es lo que debería acá hacer? No creo que de evoluciones podríamos todavía no ir viéndolo para que te concentres en la parte de gestión y reducir.
+
+30:31 - Alonso
+Sí, porque de evoluciones no creo que sea que sea constante, ¿no? Ya lo podemos ir viendo o ir matando cuando vayamos avanzando de lo anterior.
+
+30:44 - Administracion Eco Plaza
+Ya. Bueno, va a estar, ¿vale? Tenemos a venta, finanzas, contas, gerencia, legal, ACMI, Y en venta si tenemos los roles que ya habíamos hablado. Y ahora vamos a tocar algunas lógicas de cálculo, ya. Si en algún momento... Lo ves, pero es básicamente lo que hemos hablado.
+
+31:24 - Alonso
+Ya, ok. Igual, yo sobre esto y sobre el proceso completo que has hecho, voy a armar yo todo, o sea, lo voy a armar y se los presento seguro en estos días o la otra semana, no sé lunes, no sé cuándo ahora nos vamos a reunir para ver estos temas, y ahí ya vemos. Me dices, oye, no, cámbialo acá, súbelo acá, el cálculo y con esas observaciones nuevamente vengo y lo arreglamos.
+
+31:51 - Administracion Eco Plaza
+Sí, pero hay que ir avanzando con algo de lo que hemos conversado porque conociendo a gente se va a querer ver.
+
+32:01 - Alonso
+Sí, sí. Sí, sí, sí. Eso lo hago rápido. Igual en el 7 yo te puse algunas reglas, así que ahí también te puedes llevar. Ok. Ok.
+
+32:15 - Administracion Eco Plaza
+Sí, creo que eso es todo. Pero mira, si avanzamos lo que hemos conversado ya podemos gastar cuatro o cinco personas.
+
+32:24 - Alonso
+Ya, bacán.
+
+32:25 - Administracion Eco Plaza
+Y más legal que así, ocho. Hasta ocho puedo bajar. Ok, bacán. Bacán, bacán. Yo lo voy a tratar de resolver.
+
+32:35 - Alonso
+Igual, cualquier cosa que me falte te aviso. Los Smart Click le voy a decir ahora a Juan, si nos ayuda, y ya pues.
+
+32:46 - Administracion Eco Plaza
+Sí, ponlo por el grupo, que pase el número del asesor, y con eso avanzamos. ¿Cuándo podríamos revisar algo? A ver...
+
+32:57 - Alonso
+Ya vamos a ponernos metas rápidas, ya el viernes. Ya, el viernes continuamos. Si no lo logro por algún motivo voy a llegar seguro a un 80, o noventa, ¿no? Pero ya debe salir cosas. El viernes está bien.
+
+33:16 - Administracion Eco Plaza
+Ya, ok, entonces viernes nos juntamos. Sí, y este, ¿no te habló nada del tema de marketing? De marketing, lo que él quiere es como que lanzar campañas automáticas, quiere que se responda.
+
+33:30 - Alonso
+Desde el inicio hasta el fin.
+
+33:32 - Administracion Eco Plaza
+Claro, pero el tema de lanzar las campañas automáticas, segmentar y todo, no sé qué tanto podrías automatizarlo, me dijo que también el trabajo de la ACM que es el desarrollar plan de medios, crear el material, subirlo, el copy y ver todo el tema del alcance y el análisis de Jai para la respuesta también lo quiere hacer automático.
+
+33:53 - Alonso
+Todo, si me dijo todo, hasta el último, hasta cerrar la venta, yo le dije pero cerrar la venta no vamos a poder.
+
+34:01 - Administracion Eco Plaza
+No, le he dicho a nuestros clientes, no puedo bajar a ventas porque son personas, le digo, son comerciantes que acostumbrados al face to face que tú llegues y le digas oye mamita mira este lo otro es nuestro tipo de cliente y llegan y abrazan a sus vendedores y vienen y les dejan sus frutas les gusta ese trato son nuestros clientes.
+
+34:22 - Alonso
+Pero Victoria, tú hablas de eso porque lo has visto una vez dos veces o porque tenemos datos de verdad de que esos son...
+
+34:31 - Administracion Eco Plaza
+No, porque tenemos la data de ventas de nuestros clientes Los emprendedores son de A a C y D. Son personas que han sido para ser. Los inversionistas que nos compran son muy pocos.
+
+34:45 - Alonso
+¿Y de edad?
+
+34:46 - Administracion Eco Plaza
+De edad son más o menos de 35 para arriba. Pueden llegar hasta los 60, 70 años. Ya, ok. Empecemos por esto que ya lo tienes más mapeado.
+
+34:57 - Alonso
+Lo otro voy a ir viendo yo aparte con la IA y luego veré si yo te convenzo. Pero ¿sabes cómo podríamos hacer? Es que como me dicen, no importa, me dicen, veamos pues en paralelo, ¿no?
+
+35:10 - Administracion Eco Plaza
+No, claro, podemos ir manejando, introduciendo partes para que las clientes se vayan acostumbrando, pero yo sí le dije a Heiser, le dije a Heiser, voltea a ver quiénes nos compran, le dije. Por eso es que en el tema de la tokenización, le dije, mira, para Surco, que queremos ver un proyecto ahí, le dije, las personas están más, digamos, abiertas a concepto, le dije pero ven púselo eso a una persona que nosotros somos mercado, ya no estamos haciendo centros comerciales, mayormente estamos haciendo mercado y mercado en donde los conos. Correcto. Son poblaciones que viven de la sierra, de la selva, de aquí de Lima provincia, entonces es nuestra clientela, pero igual si podemos ir viendo algunas mejoras hay que hacerlo.
+
+35:56 - Alonso
+Sí, sí, sí, es como lo que hizo aparca, te puso donde puedes pagar automáticamente con tu tarjeta, con unos botones, no has visto esas maquinitas, el estacionamiento, y ya no necesitan personal, poco a poco lo han ido disminuyendo, el personal que va y cobra el aparcamiento. Entonces, lo que yo le digo, o sea, no fue de noche a la mañana, o sea, pusieron su maquinita y aparte había otra persona ahí, por ahora, o sea, a cómo hacerlo, pero tiene que ir en paralelo. Pero ya, ok.
+
+36:32 - Administracion Eco Plaza
+Igual también te voy a molestar para que me ayudes con el tema de emisión de órdenes y cosas que nos piden que nos tome a 100.
+
+36:42 - Alonso
+Ah, claro, esa es la idea, o sea, mándame problemas que tú digas, esta Aina lo hago todos los días y es la misma soncera, solo que hay que cambiar esto. Entonces, esos problemas debería, o sea, por área, debería ir matándolos, para que ustedes estén más tranquilos y se dediquen a hacer cosas que sean de verdad correcto y con más criterio. Entonces tú tienes, como tú sabes más de procesos, yo sé que tú vas a identificar cosas que de verdad son muy rutinarias y tú me las explicas, lo pasamos a la IA y ya está, una partecita ya solucionamos y así poco a poco, poco a poco.
+
+37:24 - Administracion Eco Plaza
+Ya, está bien. Entonces, hay que ir avanzando y el viernes lo revisamos.
+
+37:29 - Alonso
+El viernes lo revisamos.
+
+37:30 - Administracion Eco Plaza
+Voy a guardar tu número. Sí.
+
+37:32 - Alonso
+Sí, sí, ese es el número de la empresa. Victoria, ahora sí. ¿Qué hago yo con la parte de tracciones y el abono que ya le dije a Jason?
+
+37:43 - Administracion Eco Plaza
+Hablando de eso, eso también Jason me mandó. Le dije voy a hablarlo contigo a ver dónde está. Tú lo has mandado tres. Sí, los tres. Tokenización inmobiliaria avance dos. A ver, espérate. Acá si me cambio el sombrero me vuelvo mal. Déjame ver. Está ahí. Tokenización. Sí, sí, sí, sí.
+
+38:51 - Administracion Eco Plaza
+La fase 1, fase 2. Marketplace funcional y el testing completo. Buenos días. Ya, la primera del 20%, eso lo hemos hecho. Correcto.
+
+39:09 - Alonso
+La primera de la inicial, sí.
+
+39:14 - Administracion Eco Plaza
+Ya. Ah, la segunda. Correcto. ¿Ya está ocurriendo eso ya?
+
+39:21 - Alonso
+En Testnet, sí, es más, lo pasé hasta Mainnet, por eso es que te dije que te iba a mandar hasta la tercera, también, tercer avance. Recuerden que yo ya les mostré que en la red principal ya hago, lo paso a Binance y todo, o sea, el flujo completo, porque, bueno, Jason me dijo que iba a salir el 15 de diciembre, ¿no?
+
+39:42 - Administracion Eco Plaza
+Y yo aceleré por eso. Claro, es plataforma web completa, integraciones y sin integral. Ah, es el que habías hecho con tu billetera, ¿no?
+
+39:50 - Alonso
+Correcto, con mi billetera, ajá. Sí, porque, ¿qué hice? Como te digo, me asustó diciéndome que para el 15. Yo le dije, ya, vamos a ver, ¿no? Y por eso ya lo lancé en la web también.
+
+40:01 - Administracion Eco Plaza
+Lo que pasa es que nos fuimos atrasados por el registro de la tokenización. O sea, si bien tenemos la licencia, pero el registro de lo que nos refieres del código, eso es lo que está tardando. Ah, OK, OK, OK. Ya, entonces eso, ya. Pero, ¿tú crees que podrías enviar un informe de cómo va el segundo? Porque eso me lo van a pedir por el monto.
+
+40:25 - Alonso
+Ya, OK, OK.
+
+40:26 - Administracion Eco Plaza
+Para avanzar con eso. Ahora déjame ver el otro. Ah, el repulse. ¿Hablaste con Jason sobre eso? Porque el tema del repulse, él me dice, Víctor, necesito que Alonso se concentre en terminar lo que tiene pendiente. Él no estaba muy de acuerdo. ¿Qué te dijo a ti? Ah, pero Repulse ya está.
+
+40:45 - Alonso
+Lo que pasa es que solamente yo le dije Repulse, lo que falta es hablar con Twilio. Pero Twilio yo no me voy a poner a hablar porque le mando un correo y me responde tres días. Otro correo y tres días. Entonces me dijo dáselo a alguien de TI de Eco Plaza, ¿no? Entonces se lo voy a pasar a alguien de Eco Plaza para que esté jodiendo a Twilio hasta que nos den el permiso.
+
+41:10 - Administracion Eco Plaza
+¿El permiso para ir ahí?
+
+41:12 - Alonso
+Con Twilio tenemos que decirle de que no somos una empresa de spams y que somos una empresa inmobiliaria y que vamos a usarlo bajo sus términos de contrato y que necesitamos por lo menos unos mil interacciones, o sea, mil mensajes de WhatsApp diario, por ejemplo, ¿no? Y no nos van a permitir o nos pueden banear la cuenta de Facebook. Y ahora Eduardo me ha dado una idea, ¿no? Podríamos verificar la cuenta en Facebook si demostramos que la marca es nuestra a pesar que la empresa tenga otro nombre, no sé, por ahí también quizás.
+
+41:48 - Administracion Eco Plaza
+Pero es que es normal que las empresas como Razón Social tengan otro nombre y como nombre comercial sea distinto.
+
+41:55 - Alonso
+Para mí también es normal eso, hay que demostrárselo a Facebook nada más, yo supongo que requiere de alguien que tenga tiempo para estar conversando con los pongo yo.
+
+42:10 - Administracion Eco Plaza
+Ya, a ver, entonces, ya. Y me falta uno. Servicio de automatización de ventas, entrega fílmica. Por acá está.
+
+42:37 - Administracion Eco Plaza
+Bueno, ahí estamos en el Smart, ¿no? ¿Perdón? En el de WhatsApp. ¿Cuál WhatsApp?
+
+43:11 - Alonso
+Ah, ¿el de ventas? Ya, ahí están en el de $12,000 dólares. ¿Para sanar interruptivos? Sí, correcto.
+
+43:23 - Administracion Eco Plaza
+Dice, ¿todavía tenemos la visión LEDNI?
+
+43:27 - Alonso
+No, pero recuerda que le hemos cambiado varias cosas Sobre eso de ahí, Shang nos ha pedido tantas cosas que por eso me renunció Leo, se me fue. Ya por eso yo le dije a Shang que ya me lo está transformando a un CRM, ya no es solamente un dashboard donde yo iba a mostrar conversaciones, entonces ya un CRM era otra cosa, pero ahora ya por eso le digo, ya no vamos a hablar de que si es un CRM, ahora ya yo trabajo para ir Lo hago todo lo que tenga que hacer, ¿no?
+
+44:07 - Unidentified Speaker
+Ya.
+
+44:07 - Administracion Eco Plaza
+Igual, Tessa, hazme un pequeño informe, por fa. OK. Yo lo hago.
+
+44:13 - Alonso
+Cuéntame para ver.
+
+44:15 - Administracion Eco Plaza
+Deisberg Analytics, análisis de conversaciones, cinco días de capacitación. Y os pongo que la entrega formal y esto, priorízalo para cargarlo en nuestro servidor. Ah, ya, sí. ¿Cómo vas con eso con Félix?
+
+44:31 - Unidentified Speaker
+Ya.
+
+44:31 - Alonso
+Eso, como ahorita también nos quieren abrir campañas, no sé si es que la migración, como son varios servicios, va a ser fuerte. Entonces, probablemente yo dé de baja un día el servicio. Entonces, estoy viendo estratégicamente qué día hacerlo, ¿no? ¿O de madrugada? Y no sé si hay se puede quedar. Realmente no, yo lo puedo hacer mientras que me den accesos. Ya sabes lo que piensas.
+
+45:06 - Administracion Eco Plaza
+Aunque ahora trabajas para nosotros. Primero te hago firmar contrato. Sí, eso es lo que yo no entendía. Vas a firmar un contrato de confidencialidad y no de competencia. Sí, correcto.
+
+45:17 - Alonso
+Siempre me hacen eso, o sea, es normal. Sí, sí, claro, es que se tienen que cuidar.
+
+45:23 - Administracion Eco Plaza
+Él ya me pasó todo los datos, los montos y todo. Lo que no me respondió fue dos cosas. Uno, ¿va a ser factura, recibo?
+
+45:33 - Unidentified Speaker
+Factura.
+
+45:33 - Alonso
+Entonces, el precio más IGB.
+
+45:35 - Administracion Eco Plaza
+O incluir IGB. Precio más IGB.
+
+45:37 - Alonso
+Precio más IGB, factura.
+
+45:39 - Administracion Eco Plaza
+Correcto, correcto, factura. Y dos, le dice, ¿cómo van a ser los horarios? ¿Llegará en algún momento a trabajar oficina? ¿Va a ser todo el día desde su casa?
+
+45:50 - Alonso
+Otra de las ideas que hemos quedado es que ustedes deben ser totalmente remotos. Él tiene esa idea que supuestamente le íbamos a hacer en noviembre. Pero es poco a poco, ya le he dicho. O sea, yo voy a ir una vez, seguro, por ejemplo, lunes, viernes quizás, y voy a estar ahí con ustedes. ¿Por qué? Yo le he dicho, ¿has visto cómo yo puedo hacer? Tú me das más trabajo, yo intento ver cómo lo hago porque se lo digo a la IA. No hay problema. Pero si tú me llevas físicamente a estar en un lugar, me mataste. Porque ya mi concentración se va en ti y si me ves tecleando por otras cosas probablemente crees que no te estoy haciendo caso, entonces hay que tratar de economizar eso, aparte del hecho de que voy a manejar un lado u otro lado también me hace perder más tiempo, entonces por eso le he dicho vamos a ver, reunirnos un día a la semana, dos días máximo y el resto avanzar, avanzar y cualquier cosa prendemos cámara y avanzamos, porque poco a poco a establecer, como les dije una vez, cómo hacen las empresas grandotas cuando trabajan con gente en otros países, desarrolladores de todo el mundo. Pues, cada uno tiene que tener su laptop, cada uno tiene que tener su micrófono y su audífono, cada uno tiene que pedirla o levantar la mano para hablar, etcétera. O sea, tenemos que grabar nuestras reuniones. Por eso es que todos tienen que tener en sus contratos, sus acuerdos de confidencialidad, etcétera. OK. Grabarlas. No solamente, en video, sino también audio y texto. Como yo te he puesto, por ejemplo, ahora no te estoy grabando todo completo, pero solo el Read AI, no sé si lo ves por ahí, me va a dar toda la conversación. Porque es importante. Yo estoy apuntando igual, pero lo otro me soporta, porque por acá algo me he olvidado. Todo eso nos va a permitir trabajar remoto mejor. Y lo otro, para dar seguimiento, en cualquier momento yo les voy a implantar un software el cual de alguna forma voy a estar ahí jode, jode, jode. No digas implantar porque ahí va a pensar que es un chico.
+
+47:52 - Administracion Eco Plaza
+No, no, todavía no se puede.
+
+47:53 - Alonso
+Pero es algo así. Poco a poco, ¿no? Por eso es que le he dicho, él quiere ya de noche a la mañana, pero eso no se puede. Entonces, vamos a ir viendo. Porque la idea es que sí trabajen remoto, que solo si deseas, si te gusta ir ahí o no quieres estar en tu casa, vas a ir a oficina. Esa sería la idea, ¿no?
+
+48:12 - Administracion Eco Plaza
+Ya, pero ahí no podemos hablar bien con él porque en teoría nosotros trabajamos presenciales solo lunes, miércoles y viernes. Ok. Ya. Martes, jueves y sábado es remoto. Ah, ok. De ventas que normalmente ya ellos tienen. Pero el tema es de que a veces dicen, no, necesito que todos estén acá. Entonces, ¿en quién nos tienen? Ah, bien. Bien, eso.
+
+48:35 - Alonso
+Pero para tu contrato te pongo entonces que dos días a las Sí, o sea, voy por reuniones porque yo igual le he dicho a Heise, o sea, mi empresa sigo yo funcionando normal. Lo que yo le voy a dar a él es mayor enfoque, ¿no? Y aparte que estamos trabajando también por un resultado que sí o sí va a salir y que de hecho seguro te ha dicho cuánto me va a caer aparte, ¿no? Entonces, hay que trabajar por ese resultado. Más aún, más que eso todavía yo le he dicho, es porque lo quiero demostrar. Imagínate, si me sale esto, Claro, el nuevo ya lo tengo, entonces imagínate pues si salgo por ahí en la tele o lo que sea, o haciendo mis tiktoks que siempre hago, que logre algo parecido, no lo voy a contar igual, o sea todo el mundo me va a contratar, entonces es chévere, entonces para mí me conviene un montón, o sea estamos alineados en esa parte.
+
+49:31 - Administracion Eco Plaza
+Es que me sorprenden estos tiktoks que le doy. Esa es la idea. Ya está bien, entonces estamos conversando. Ya he pedido legalidad a todo el contrato. Ya, ok. Es la misma que estás manejando, ¿no?
+
+49:45 - Alonso
+Perdón, interruptivo, sí. Bueno, Palacios Castillo Corporation es la... El nombre de la empresa real. Ya, ok, listo.
+
+49:53 - Administracion Eco Plaza
+Estamos hablando. Chao.
+
+49:54 - Alonso
+Ok, Victoria, listo.
+
+49:55 - Administracion Eco Plaza
+¿Estás viendo los informes? Sí, sí, sí, ahora los hago.
+
+49:59 - Unidentified Speaker
+Ok, chao, chao. Chao, chao.

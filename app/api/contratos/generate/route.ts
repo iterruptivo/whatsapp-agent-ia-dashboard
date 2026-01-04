@@ -2,8 +2,9 @@
 // API ROUTE: Generate Contract Word Document
 // ============================================================================
 // POST /api/contratos/generate
-// Body: { controlPagoId: string, tipoCambio?: number }
+// Body: { controlPagoId: string, tipoCambio?: number, templatePersonalizadoBase64?: string, templatePersonalizadoNombre?: string }
 // Returns: Word document file download
+// Fase: 7 - Contratos Flexibles
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -12,7 +13,12 @@ import { generateContrato } from '@/lib/actions-contratos';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { controlPagoId, tipoCambio = 3.80 } = body;
+    const {
+      controlPagoId,
+      tipoCambio = 3.80,
+      templatePersonalizadoBase64,
+      templatePersonalizadoNombre,
+    } = body;
 
     if (!controlPagoId) {
       return NextResponse.json(
@@ -21,7 +27,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await generateContrato(controlPagoId, tipoCambio);
+    const result = await generateContrato(
+      controlPagoId,
+      tipoCambio,
+      templatePersonalizadoBase64,
+      templatePersonalizadoNombre
+    );
 
     if (!result.success || !result.data) {
       return NextResponse.json(

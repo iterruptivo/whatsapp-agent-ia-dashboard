@@ -535,8 +535,8 @@ export default function OperativoClient({
           <KanbanViewToggle view={viewMode} onViewChange={setViewMode} />
         </div>
         <div className="flex items-center gap-2">
-          {/* Import Dropdown (Admin + Vendedor + Vendedor Caseta + Coordinador) */}
-          {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && (
+          {/* Import Dropdown (Admin + Jefe Ventas + Vendedor + Vendedor Caseta + Coordinador) */}
+          {(user?.rol === 'admin' || user?.rol === 'jefe_ventas' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && (
             <div className="relative">
               <button
                 onClick={() => setIsImportDropdownOpen(!isImportDropdownOpen)}
@@ -661,8 +661,8 @@ export default function OperativoClient({
         }}
       />
 
-      {/* Manual Lead Panel (Admin + Vendedor + Vendedor Caseta + Coordinador) */}
-      {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && selectedProyecto && (
+      {/* Manual Lead Panel (Admin + Jefe Ventas + Vendedor + Vendedor Caseta + Coordinador) */}
+      {(user?.rol === 'admin' || user?.rol === 'jefe_ventas' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && selectedProyecto && (
         <ManualLeadPanel
           isOpen={isManualPanelOpen}
           onClose={() => setIsManualPanelOpen(false)}
@@ -693,8 +693,8 @@ export default function OperativoClient({
         showCancel={config.showCancel}
       />
 
-      {/* Import Modal (Admin + Vendedor + Vendedor Caseta + Coordinador) */}
-      {(user?.rol === 'admin' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && selectedProyecto && (
+      {/* Import Modal (Admin + Jefe Ventas + Vendedor + Vendedor Caseta + Coordinador) */}
+      {(user?.rol === 'admin' || user?.rol === 'jefe_ventas' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && selectedProyecto && (
         <LeadImportModal
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}

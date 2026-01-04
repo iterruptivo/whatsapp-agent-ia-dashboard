@@ -81,6 +81,18 @@
 
 ## docx-templates (Contratos Word)
 
+### Sintaxis FOR loops (CRITICO)
+- Usar `IN` no `OF`: `{FOR item IN items}` (NO `{FOR item OF items}`)
+- Acceder elementos con `$`: `{$item.campo}` (NO `{item.campo}`)
+- Cerrar con nombre: `{END-FOR item}`
+- Ejemplo completo:
+  ```
+  {FOR deposito IN depositos}
+  {$deposito.fecha} - {$deposito.monto}
+  {END-FOR deposito}
+  ```
+- NUNCA usar sintaxis Handlebars `{#array}...{/array}` (causa error JS private field)
+
 ### Comandos en parrafos separados (CRITICO)
 - `{IF}`, `{END-IF}`, `{FOR}`, `{END-FOR}` SOLOS en su parrafo
 - Usar ENTER (no Shift+Enter) para crear nuevo parrafo

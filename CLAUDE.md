@@ -128,6 +128,39 @@ Todo el contexto esta en `context/`
 
 ---
 
+## TEST ASSETS (Imagenes de Prueba)
+
+> Para pruebas con Playwright MCP y validacion de componentes
+
+**Ubicacion:** `docs/test-assets/`
+
+| Carpeta | Contenido |
+|---------|-----------|
+| `dni/` | DNI peruano frente/reverso |
+| `vouchers/` | Comprobantes BCP, Interbank, BBVA |
+| `contratos/` | PDFs de ejemplo |
+| `otros/` | Documentos varios |
+
+### Nombres de Archivo
+```
+dni-frente-01.jpg      # DNI anverso
+dni-reverso-01.jpg     # DNI reverso
+voucher-bcp-01.jpg     # Voucher BCP
+voucher-interbank-01.jpg
+```
+
+### Uso en Playwright
+```javascript
+// Subir DNI en prueba
+await page.setInputFiles('input[type="file"]',
+  'docs/test-assets/dni/dni-frente-01.jpg'
+);
+```
+
+Ver detalles completos en: `docs/test-assets/README.md`
+
+---
+
 ## EMERGENCIAS
 
 ### Si login falla
@@ -141,5 +174,5 @@ Todo el contexto esta en `context/`
 
 ---
 
-**Ultima Actualizacion:** 23 Diciembre 2025
-**Sesion:** 74+
+**Ultima Actualizacion:** 2 Enero 2026
+**Sesion:** 75+

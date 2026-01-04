@@ -1,17 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X, Save, Loader2, Plus, Trash2, Eye, Calendar } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario, getUsuarioById } from '@/lib/actions-clientes-ficha';
 import { getProyectoConfiguracion, getProyectoLegalData } from '@/lib/proyecto-config';
 import { procesarVentaLocal } from '@/lib/actions-control-pagos';
+import { updateMontoVenta } from '@/lib/actions-locales';
 import { useAuth } from '@/lib/auth-context';
 import PhoneInputCustom from '@/components/shared/PhoneInputCustom';
 import AlertModal from '@/components/shared/AlertModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import DocumentUploader from '@/components/shared/DocumentUploader';
+import DocumentoOCRUploader, { DNIOCRData, VoucherOCRData } from '@/components/shared/DocumentoOCRUploader';
+import DNIPairUploader, { DNIPair, DNIOCRData as DNIFrenteOCRData, DNIReversoOCRData } from '@/components/shared/DNIPairUploader';
+import VoucherCardUploader, { VoucherItem } from '@/components/shared/VoucherCardUploader';
 
 interface FichaInscripcionModalProps {
   isOpen: boolean;
@@ -54,6 +58,264 @@ const EMPTY_COPROPIETARIO: Copropietario = {
   parentesco: '',
 };
 
+// =============================================================================
+// HELPERS: Reconstruir DNIPairs y Vouchers desde URLs guardadas
+// =============================================================================
+
+/**
+ * Parsea las URLs de dni_fotos y reconstruye los objetos DNIPair
+ * Las URLs siguen el patrón: {localId}/dni/{persona}-{lado}-{timestamp}.jpg
+ * Ejemplo: abc123/dni/titular-frente-1735789200000.jpg
+ *
+ * @param urls - Array de URLs de las imágenes de DNI
+ * @param fichaData - Datos de la ficha para reconstruir ocrData (opcional)
+ */
+function reconstruirDniPairsDesdeUrls(
+  urls: string[],
+  fichaData?: {
+    // Titular
+    titular_nombres?: string | null;
+    titular_apellido_paterno?: string | null;
+    titular_apellido_materno?: string | null;
+    titular_numero_documento?: string | null;
+    titular_fecha_nacimiento?: string | null;
+    titular_sexo?: string | null;
+    titular_direccion?: string | null;
+    titular_distrito?: string | null;
+    titular_provincia?: string | null;
+    titular_departamento?: string | null;
+    // Cónyuge
+    conyuge_nombres?: string | null;
+    conyuge_apellido_paterno?: string | null;
+    conyuge_apellido_materno?: string | null;
+    conyuge_numero_documento?: string | null;
+    conyuge_fecha_nacimiento?: string | null;
+    conyuge_sexo?: string | null;
+    conyuge_direccion?: string | null;
+    conyuge_distrito?: string | null;
+    conyuge_provincia?: string | null;
+    conyuge_departamento?: string | null;
+    // Copropietarios
+    copropietarios?: Array<{
+      nombres?: string | null;
+      apellido_paterno?: string | null;
+      apellido_materno?: string | null;
+      numero_documento?: string | null;
+      fecha_nacimiento?: string | null;
+      sexo?: string | null;
+      direccion?: string | null;
+      distrito?: string | null;
+      provincia?: string | null;
+      departamento?: string | null;
+    }> | null;
+  }
+): DNIPair[] {
+  if (!urls || urls.length === 0) return [];
+
+  // Helper para construir ocrData del frente
+  const buildFrenteOcrData = (prefix: 'titular' | 'conyuge', data?: typeof fichaData) => {
+    if (!data) return null;
+    const nombres = data[`${prefix}_nombres`];
+    const apellidoPaterno = data[`${prefix}_apellido_paterno`];
+    if (!nombres && !apellidoPaterno) return null;
+
+    return {
+      numero_dni: data[`${prefix}_numero_documento`] || '',
+      nombres: nombres || '',
+      apellido_paterno: apellidoPaterno || '',
+      apellido_materno: data[`${prefix}_apellido_materno`] || '',
+      fecha_nacimiento: data[`${prefix}_fecha_nacimiento`] || '',
+      sexo: (data[`${prefix}_sexo`] === 'Masculino' ? 'M' : data[`${prefix}_sexo`] === 'Femenino' ? 'F' : 'M') as 'M' | 'F',
+      confianza: 95, // Valor por defecto ya que fue validado previamente
+    };
+  };
+
+  // Helper para construir ocrData del reverso
+  const buildReversoOcrData = (prefix: 'titular' | 'conyuge', data?: typeof fichaData) => {
+    if (!data) return null;
+    const direccion = data[`${prefix}_direccion`];
+    const distrito = data[`${prefix}_distrito`];
+    if (!direccion && !distrito) return null;
+
+    return {
+      departamento: data[`${prefix}_departamento`] || null,
+      provincia: data[`${prefix}_provincia`] || null,
+      distrito: distrito || null,
+      direccion: direccion || null,
+      ubigeo: null,
+      confianza: 95,
+    };
+  };
+
+  // Tipo para copropietario
+  type CopropietarioData = {
+    nombres?: string | null;
+    apellido_paterno?: string | null;
+    apellido_materno?: string | null;
+    numero_documento?: string | null;
+    fecha_nacimiento?: string | null;
+    sexo?: string | null;
+    direccion?: string | null;
+    distrito?: string | null;
+    provincia?: string | null;
+    departamento?: string | null;
+  };
+
+  // Helper para copropietarios
+  const buildCopropietarioFrenteOcrData = (coprop: CopropietarioData | undefined) => {
+    if (!coprop || (!coprop.nombres && !coprop.apellido_paterno)) return null;
+    return {
+      numero_dni: coprop.numero_documento || '',
+      nombres: coprop.nombres || '',
+      apellido_paterno: coprop.apellido_paterno || '',
+      apellido_materno: coprop.apellido_materno || '',
+      fecha_nacimiento: coprop.fecha_nacimiento || '',
+      sexo: (coprop.sexo === 'Masculino' ? 'M' : coprop.sexo === 'Femenino' ? 'F' : 'M') as 'M' | 'F',
+      confianza: 95,
+    };
+  };
+
+  const buildCopropietarioReversoOcrData = (coprop: CopropietarioData | undefined) => {
+    if (!coprop || (!coprop.direccion && !coprop.distrito)) return null;
+    return {
+      departamento: coprop.departamento || null,
+      provincia: coprop.provincia || null,
+      distrito: coprop.distrito || null,
+      direccion: coprop.direccion || null,
+      ubigeo: null,
+      confianza: 95,
+    };
+  };
+
+  // Mapa para agrupar las URLs por persona
+  const pairMap = new Map<string, { frente?: string; reverso?: string }>();
+
+  urls.forEach(url => {
+    // Extraer la parte del filename: titular-frente-xxx.jpg o conyuge-reverso-xxx.jpg
+    const match = url.match(/\/dni\/(titular|conyuge|copropietario\d*)-?(frente|reverso)-/i);
+    if (match) {
+      const persona = match[1].toLowerCase();
+      const lado = match[2].toLowerCase();
+
+      if (!pairMap.has(persona)) {
+        pairMap.set(persona, {});
+      }
+      const pair = pairMap.get(persona)!;
+      if (lado === 'frente') {
+        pair.frente = url;
+      } else {
+        pair.reverso = url;
+      }
+    }
+  });
+
+  // Convertir el mapa a array de DNIPair
+  const pairs: DNIPair[] = [];
+
+  // Primero el titular (siempre primero)
+  if (pairMap.has('titular')) {
+    const data = pairMap.get('titular')!;
+    pairs.push({
+      id: 'titular-pair',
+      persona: 'titular',
+      frente: data.frente ? {
+        url: data.frente,
+        previewUrl: data.frente,
+        ocrData: buildFrenteOcrData('titular', fichaData),
+        estado: 'listo' as const,
+      } : null,
+      reverso: data.reverso ? {
+        url: data.reverso,
+        previewUrl: data.reverso,
+        ocrData: buildReversoOcrData('titular', fichaData),
+        estado: 'listo' as const,
+      } : null,
+    });
+  }
+
+  // Luego cónyuge
+  if (pairMap.has('conyuge')) {
+    const data = pairMap.get('conyuge')!;
+    pairs.push({
+      id: 'conyuge-pair',
+      persona: 'conyuge',
+      frente: data.frente ? {
+        url: data.frente,
+        previewUrl: data.frente,
+        ocrData: buildFrenteOcrData('conyuge', fichaData),
+        estado: 'listo' as const,
+      } : null,
+      reverso: data.reverso ? {
+        url: data.reverso,
+        previewUrl: data.reverso,
+        ocrData: buildReversoOcrData('conyuge', fichaData),
+        estado: 'listo' as const,
+      } : null,
+    });
+  }
+
+  // Finalmente copropietarios
+  pairMap.forEach((data, persona) => {
+    if (persona.startsWith('copropietario')) {
+      const indexMatch = persona.match(/copropietario(\d+)/);
+      const index = indexMatch ? parseInt(indexMatch[1]) : 1;
+      const copropData = fichaData?.copropietarios?.[index - 1];
+
+      pairs.push({
+        id: `copropietario-${index}-pair`,
+        persona: 'copropietario',
+        personaIndex: index,
+        frente: data.frente ? {
+          url: data.frente,
+          previewUrl: data.frente,
+          ocrData: copropData ? buildCopropietarioFrenteOcrData(copropData) : null,
+          estado: 'listo' as const,
+        } : null,
+        reverso: data.reverso ? {
+          url: data.reverso,
+          previewUrl: data.reverso,
+          ocrData: copropData ? buildCopropietarioReversoOcrData(copropData) : null,
+          estado: 'listo' as const,
+        } : null,
+      });
+    }
+  });
+
+  return pairs;
+}
+
+/**
+ * Parsea las URLs de comprobante_deposito_fotos y reconstruye los objetos VoucherItem
+ * @param urls - Array de URLs de las imágenes de comprobantes
+ * @param ocrDataArray - Array de datos OCR correspondientes a cada URL (opcional)
+ */
+function reconstruirVouchersDesdeUrls(
+  urls: string[],
+  ocrDataArray?: Array<{
+    monto: number | null;
+    moneda: 'PEN' | 'USD' | null;
+    fecha: string | null;
+    banco: string | null;
+    numero_operacion: string | null;
+    depositante: string | null;
+    confianza: number;
+  }> | null
+): VoucherItem[] {
+  if (!urls || urls.length === 0) return [];
+
+  return urls.map((url, index) => {
+    const ocrData = ocrDataArray?.[index] || null;
+    return {
+      id: `voucher-${index}-${Date.now()}`,
+      file: null,
+      url: url,
+      previewUrl: url,
+      ocrData: ocrData,
+      estado: 'valido' as const,
+    };
+  });
+}
+
 export default function FichaInscripcionModal({
   isOpen,
   onClose,
@@ -90,6 +352,22 @@ export default function FichaInscripcionModal({
   // Monto separación - Currency selection
   const [monedaSeparacion, setMonedaSeparacion] = useState<'usd' | 'pen'>('usd');
   const [montoSeparacionInput, setMontoSeparacionInput] = useState<number | null>(null);
+
+  // Precio local editable (para corregir errores)
+  const [precioLocalEdit, setPrecioLocalEdit] = useState<string>('');
+  const [isEditingPrecio, setIsEditingPrecio] = useState(false);
+  const [savingPrecio, setSavingPrecio] = useState(false);
+
+  // Estado para almacenar los pares de DNI completos (para validación)
+  const [dniPairs, setDniPairs] = useState<DNIPair[]>([]);
+
+  // Estados para datos iniciales de documentos (para persistencia al reabrir)
+  const [initialDniPairs, setInitialDniPairs] = useState<DNIPair[]>([]);
+  const [initialVouchers, setInitialVouchers] = useState<VoucherItem[]>([]);
+
+  // Estados para documentos OCR - YA NO SE USAN, los datos van directo a formData
+  // const [dniDocumento, setDniDocumento] = useState<DocumentoResult | null>(null);
+  // const [comprobanteDocumento, setComprobanteDocumento] = useState<DocumentoResult | null>(null);
 
   // Datos legales del proyecto (para header/footer)
   const [proyectoLegalData, setProyectoLegalData] = useState<{
@@ -180,6 +458,7 @@ export default function FichaInscripcionModal({
     // Documentos adjuntos
     dni_fotos: [],
     comprobante_deposito_fotos: [],
+    comprobante_deposito_ocr: null,
     vendedor_id: null,
   });
 
@@ -264,6 +543,7 @@ export default function FichaInscripcionModal({
         observaciones: '',
         dni_fotos: [],
         comprobante_deposito_fotos: [],
+        comprobante_deposito_ocr: null,
         vendedor_id: null,
       });
 
@@ -384,6 +664,7 @@ export default function FichaInscripcionModal({
           // Documentos adjuntos
           dni_fotos: existingFicha.dni_fotos || [],
           comprobante_deposito_fotos: existingFicha.comprobante_deposito_fotos || [],
+          comprobante_deposito_ocr: existingFicha.comprobante_deposito_ocr || null,
           vendedor_id: existingFicha.vendedor_id,
         });
         // Si la ficha tiene TEA guardada, usarla en vez del default del proyecto
@@ -394,6 +675,22 @@ export default function FichaInscripcionModal({
         if (existingFicha.monto_separacion_usd) {
           setMonedaSeparacion('usd');
           setMontoSeparacionInput(existingFicha.monto_separacion_usd);
+        }
+
+        // Reconstruir pares de DNI desde URLs guardadas (para persistencia de imágenes Y datos OCR)
+        if (existingFicha.dni_fotos && existingFicha.dni_fotos.length > 0) {
+          const reconstructedPairs = reconstruirDniPairsDesdeUrls(existingFicha.dni_fotos, existingFicha);
+          setInitialDniPairs(reconstructedPairs);
+          setDniPairs(reconstructedPairs); // También para validación
+        }
+
+        // Reconstruir vouchers desde URLs guardadas (con datos OCR si existen)
+        if (existingFicha.comprobante_deposito_fotos && existingFicha.comprobante_deposito_fotos.length > 0) {
+          const reconstructedVouchers = reconstruirVouchersDesdeUrls(
+            existingFicha.comprobante_deposito_fotos,
+            existingFicha.comprobante_deposito_ocr
+          );
+          setInitialVouchers(reconstructedVouchers);
         }
       } else {
         // Pre-llenar con datos del lead vinculado
@@ -522,6 +819,213 @@ export default function FichaInscripcionModal({
     }
   };
 
+  // ========================================
+  // HANDLER PRECIO LOCAL - Editar precio si hubo error
+  // ========================================
+
+  const handleSavePrecioLocal = async () => {
+    if (!local || !user) return;
+
+    // Sanitizar y parsear el valor
+    const sanitizedValue = precioLocalEdit.replace(/[^0-9.]/g, '');
+    const newPrecio = parseFloat(sanitizedValue);
+
+    if (isNaN(newPrecio) || newPrecio <= 0) {
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'El precio debe ser un número mayor a 0',
+        variant: 'danger',
+      });
+      return;
+    }
+
+    setSavingPrecio(true);
+    try {
+      const result = await updateMontoVenta(local.id, newPrecio, user.id);
+
+      if (result.success) {
+        setAlertModal({
+          isOpen: true,
+          title: 'Éxito',
+          message: `Precio actualizado a $${newPrecio.toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+          variant: 'success',
+        });
+        // Actualizar el local en el estado local para reflejar cambio
+        if (local) {
+          local.monto_venta = newPrecio;
+        }
+        setIsEditingPrecio(false);
+      } else {
+        setAlertModal({
+          isOpen: true,
+          title: 'Error',
+          message: result.message || 'No se pudo actualizar el precio',
+          variant: 'danger',
+        });
+      }
+    } catch (error) {
+      console.error('Error guardando precio:', error);
+      setAlertModal({
+        isOpen: true,
+        title: 'Error',
+        message: 'Error inesperado al guardar el precio',
+        variant: 'danger',
+      });
+    } finally {
+      setSavingPrecio(false);
+    }
+  };
+
+  // ========================================
+  // HANDLERS OCR - Auto-llenar campos con datos extraídos
+  // ========================================
+
+  const handleDniDocumentoChange = useCallback((urls: string[]) => {
+    // Actualizar directamente el array de URLs
+    // Usamos el updater function para evitar dependencia de formData
+    setFormData(prev => ({ ...prev, dni_fotos: urls }));
+  }, []);
+
+  // Handler para DNIPairUploader - Auto-llenar campos según persona
+  const handleDNIPairDatosExtraidos = useCallback((datos: {
+    frente: DNIFrenteOCRData;
+    reverso: DNIReversoOCRData;
+    persona: string;
+  }) => {
+    const { frente, reverso, persona } = datos;
+
+    // Determinar prefijo según tipo de persona
+    let prefix = '';
+    if (persona === 'titular') {
+      prefix = 'titular_';
+    } else if (persona === 'conyuge') {
+      prefix = 'conyuge_';
+    } else if (persona.startsWith('copropietario-')) {
+      // Para copropietarios, manejar de forma especial
+      const copropIndex = parseInt(persona.split('-')[1]) - 1;
+      const currentCopropietarios = formData.copropietarios || [];
+
+      if (currentCopropietarios[copropIndex]) {
+        const updatedCoprop = { ...currentCopropietarios[copropIndex] };
+
+        if (frente.numero_dni && frente.numero_dni !== 'N/A') {
+          updatedCoprop.numero_documento = frente.numero_dni;
+        }
+        if (frente.nombres && frente.nombres !== 'N/A') {
+          updatedCoprop.nombres = frente.nombres;
+        }
+        if (frente.apellido_paterno && frente.apellido_paterno !== 'N/A') {
+          updatedCoprop.apellido_paterno = frente.apellido_paterno;
+        }
+        if (frente.apellido_materno && frente.apellido_materno !== 'N/A') {
+          updatedCoprop.apellido_materno = frente.apellido_materno;
+        }
+
+        const newCopropietarios = [...currentCopropietarios];
+        newCopropietarios[copropIndex] = updatedCoprop;
+        handleChange('copropietarios', newCopropietarios);
+      }
+
+      setAlertModal({
+        isOpen: true,
+        title: 'Datos extraídos del DNI',
+        message: `Copropietario ${copropIndex + 1}: Datos llenados automáticamente.\n\nConfianza Frente: ${frente.confianza}%\nConfianza Reverso: ${reverso.confianza}%`,
+        variant: 'success',
+      });
+      return;
+    }
+
+    // Auto-llenar datos de FRENTE
+    if (frente.numero_dni && frente.numero_dni !== 'N/A') {
+      handleChange(`${prefix}numero_documento` as keyof ClienteFichaInput, frente.numero_dni);
+    }
+    if (frente.nombres && frente.nombres !== 'N/A') {
+      handleChange(`${prefix}nombres` as keyof ClienteFichaInput, frente.nombres);
+    }
+    if (frente.apellido_paterno && frente.apellido_paterno !== 'N/A') {
+      handleChange(`${prefix}apellido_paterno` as keyof ClienteFichaInput, frente.apellido_paterno);
+    }
+    if (frente.apellido_materno && frente.apellido_materno !== 'N/A') {
+      handleChange(`${prefix}apellido_materno` as keyof ClienteFichaInput, frente.apellido_materno);
+    }
+    if (frente.fecha_nacimiento && frente.fecha_nacimiento !== 'N/A') {
+      handleChange(`${prefix}fecha_nacimiento` as keyof ClienteFichaInput, frente.fecha_nacimiento);
+    }
+    if (frente.sexo && (frente.sexo === 'M' || frente.sexo === 'F')) {
+      const genero = frente.sexo === 'M' ? 'Masculino' : 'Femenino';
+      handleChange(`${prefix}genero` as keyof ClienteFichaInput, genero);
+    }
+
+    // Auto-llenar datos de REVERSO
+    if (reverso.departamento && reverso.departamento !== 'N/A') {
+      handleChange(`${prefix}departamento` as keyof ClienteFichaInput, reverso.departamento);
+    }
+    if (reverso.provincia && reverso.provincia !== 'N/A') {
+      handleChange(`${prefix}provincia` as keyof ClienteFichaInput, reverso.provincia);
+    }
+    if (reverso.distrito && reverso.distrito !== 'N/A') {
+      handleChange(`${prefix}distrito` as keyof ClienteFichaInput, reverso.distrito);
+    }
+    if (reverso.direccion && reverso.direccion !== 'N/A') {
+      handleChange(`${prefix}direccion` as keyof ClienteFichaInput, reverso.direccion);
+    }
+
+    setAlertModal({
+      isOpen: true,
+      title: 'Datos extraídos del DNI',
+      message: `${persona === 'titular' ? 'Titular' : 'Cónyuge'}: Datos llenados automáticamente.\n\nConfianza Frente: ${frente.confianza}%\nConfianza Reverso: ${reverso.confianza}%`,
+      variant: 'success',
+    });
+  }, [formData.copropietarios]);
+
+  const handleDniDatosExtraidos = (data: DNIOCRData) => {
+    // Auto-llenar campos del titular con datos del DNI
+    if (data.numero_dni && data.numero_dni !== 'N/A') {
+      handleChange('titular_numero_documento', data.numero_dni);
+    }
+    if (data.nombres && data.nombres !== 'N/A') {
+      handleChange('titular_nombres', data.nombres);
+    }
+    if (data.apellido_paterno && data.apellido_paterno !== 'N/A') {
+      handleChange('titular_apellido_paterno', data.apellido_paterno);
+    }
+    if (data.apellido_materno && data.apellido_materno !== 'N/A') {
+      handleChange('titular_apellido_materno', data.apellido_materno);
+    }
+    if (data.fecha_nacimiento && data.fecha_nacimiento !== 'N/A') {
+      handleChange('titular_fecha_nacimiento', data.fecha_nacimiento);
+    }
+    if (data.sexo && (data.sexo === 'M' || data.sexo === 'F')) {
+      const genero = data.sexo === 'M' ? 'Masculino' : 'Femenino';
+      handleChange('titular_genero', genero);
+    }
+
+    // Mostrar alerta de éxito
+    setAlertModal({
+      isOpen: true,
+      title: 'Datos extraídos del DNI',
+      message: `Se han llenado automáticamente los datos del titular. Por favor, verifica que sean correctos.\n\nConfianza: ${data.confianza}%`,
+      variant: 'success',
+    });
+  };
+
+  const handleComprobanteDocumentoChange = useCallback((urls: string[]) => {
+    // Actualizar directamente el array de URLs
+    // Usamos el updater function para evitar dependencia de formData
+    setFormData(prev => ({ ...prev, comprobante_deposito_fotos: urls }));
+  }, []);
+
+  const handleComprobanteDatosExtraidos = (data: VoucherOCRData) => {
+    // El comprobante es opcional, pero si se sube mostramos la info extraída
+    setAlertModal({
+      isOpen: true,
+      title: 'Datos extraídos del comprobante',
+      message: `Monto: ${data.moneda} ${data.monto?.toFixed(2) || 'N/A'}\nBanco: ${data.banco || 'N/A'}\nFecha: ${data.fecha || 'N/A'}\nOperación: ${data.numero_operacion || 'N/A'}\n\nConfianza: ${data.confianza}%`,
+      variant: 'info',
+    });
+  };
+
   const addCopropietario = () => {
     const currentCopropietarios = formData.copropietarios || [];
     handleChange('copropietarios', [...currentCopropietarios, { ...EMPTY_COPROPIETARIO }]);
@@ -542,29 +1046,45 @@ export default function FichaInscripcionModal({
   };
 
   // Helper para validar documentos requeridos
-  // Regla: al menos 1 foto de DNI Y al menos 1 comprobante (ambos obligatorios)
+  // Regla: El DNI del TITULAR debe estar completo y procesado correctamente (estado='listo')
   const validateDocuments = (): { isValid: boolean; message: string } => {
-    const dniFotos = formData.dni_fotos || [];
-    const comprobanteFotos = formData.comprobante_deposito_fotos || [];
+    // Buscar el par del titular
+    const titularPair = dniPairs.find(p => p.persona === 'titular');
 
-    if (dniFotos.length === 0 && comprobanteFotos.length === 0) {
+    // Verificar que exista el par del titular
+    if (!titularPair) {
       return {
         isValid: false,
-        message: 'Debe subir al menos 1 foto del DNI y 1 comprobante de depósito.',
+        message: 'Debe subir el DNI del titular para continuar.',
       };
     }
-    if (dniFotos.length === 0) {
+
+    // Verificar que ambos lados del DNI del titular estén subidos
+    if (!titularPair.frente || !titularPair.reverso) {
       return {
         isValid: false,
-        message: 'Debe subir al menos 1 foto del DNI (anverso y reverso).',
+        message: 'Debe subir ambos lados del DNI del titular (frente y reverso).',
       };
     }
-    if (comprobanteFotos.length === 0) {
+
+    // Verificar que ambos lados tengan estado='listo' (OCR procesado correctamente)
+    if (titularPair.frente.estado !== 'listo') {
+      const errorMsg = titularPair.frente.error || 'El frente del DNI del titular tiene errores.';
       return {
         isValid: false,
-        message: 'Debe subir al menos 1 imagen del comprobante de depósito.',
+        message: `Problema con el frente del DNI: ${errorMsg}`,
       };
     }
+
+    if (titularPair.reverso.estado !== 'listo') {
+      const errorMsg = titularPair.reverso.error || 'El reverso del DNI del titular tiene errores.';
+      return {
+        isValid: false,
+        message: `Problema con el reverso del DNI: ${errorMsg}`,
+      };
+    }
+
+    // Comprobante ahora es opcional - se pedira en pasos siguientes
     return { isValid: true, message: '' };
   };
 
@@ -1730,12 +2250,81 @@ export default function FichaInscripcionModal({
               <div className={sectionClass}>
                 <h3 className={sectionTitleClass}>UIN - Unidad de Inscripción</h3>
 
-                {/* Info básica del local (solo lectura) */}
+                {/* Info básica del local */}
                 <div className="grid grid-cols-4 gap-3 text-sm mb-4 pb-3 border-b border-gray-200">
                   <div><span className="text-gray-500">Código:</span> <strong>{local.codigo}</strong></div>
                   <div><span className="text-gray-500">Proyecto:</span> <strong>{local.proyecto_nombre}</strong></div>
                   <div><span className="text-gray-500">Metraje:</span> <strong>{local.metraje} m²</strong></div>
-                  <div><span className="text-gray-500">Precio local (USD):</span> <strong className="text-green-700">${local.monto_venta?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || 'N/A'}</strong></div>
+
+                  {/* Precio local - EDITABLE si hubo error */}
+                  <div className="col-span-1">
+                    <span className="text-gray-500">Precio local (USD):</span>
+                    {!isEditingPrecio ? (
+                      <span className="inline-flex items-center gap-1">
+                        <strong className="text-green-700 ml-1">
+                          ${local.monto_venta?.toLocaleString('en-US', { minimumFractionDigits: 2 }) || 'N/A'}
+                        </strong>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPrecioLocalEdit(local.monto_venta?.toString() || '');
+                            setIsEditingPrecio(true);
+                          }}
+                          className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                          title="Editar precio (si hubo error)"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    ) : (
+                      <div className="mt-1 space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-gray-500">$</span>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            value={precioLocalEdit}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^0-9.]/g, '');
+                              const parts = value.split('.');
+                              const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                              setPrecioLocalEdit(sanitized);
+                            }}
+                            className="w-24 px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="15000"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={handleSavePrecioLocal}
+                            disabled={savingPrecio || !precioLocalEdit}
+                            className="p-1 text-green-600 hover:bg-green-50 rounded disabled:opacity-50"
+                            title="Guardar nuevo precio"
+                          >
+                            {savingPrecio ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Check className="w-4 h-4" />
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsEditingPrecio(false)}
+                            className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"
+                            title="Cancelar"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        {/* Preview del monto */}
+                        {precioLocalEdit && parseFloat(precioLocalEdit) > 0 && (
+                          <div className="text-xs text-green-700 bg-green-50 px-2 py-1 rounded inline-block">
+                            Se guardará: ${parseFloat(precioLocalEdit).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Modalidad de Pago */}
@@ -2400,36 +2989,64 @@ export default function FichaInscripcionModal({
                 )}
               </div>
 
-              {/* DOCUMENTOS ADJUNTOS (REQUERIDOS) */}
+              {/* DOCUMENTOS ADJUNTOS */}
               <div className={sectionClass}>
-                <h3 className={`${sectionTitleClass} text-red-600`}>
-                  DOCUMENTOS ADJUNTOS (REQUERIDOS)
+                <h3 className={`${sectionTitleClass} text-[#1b967a]`}>
+                  DOCUMENTOS CON VALIDACION INTELIGENTE (IA)
                 </h3>
                 <p className="text-xs text-gray-500 mb-4">
-                  Suba al menos 1 imagen de cada tipo para poder guardar o ver la vista previa.
+                  Sube los documentos y la IA extraera automaticamente los datos. El DNI es obligatorio.
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <DocumentUploader
-                    title="Foto de DNI"
-                    description="Anverso, reverso y adicionales (máx. 10 imágenes)"
-                    maxImages={10}
-                    images={formData.dni_fotos || []}
-                    onImagesChange={(imgs) => handleChange('dni_fotos', imgs)}
+
+                {/* DNI EN PARES (FRENTE + REVERSO) - OBLIGATORIO */}
+                <div className="mb-6">
+                  <DNIPairUploader
                     localId={local?.id || ''}
-                    folder="dni"
+                    initialPairs={initialDniPairs}
+                    onPairsChange={(pairs) => {
+                      // Guardar pares completos para validación
+                      setDniPairs(pairs);
+                      // Guardar URLs de las imágenes en formData.dni_fotos
+                      const urls = pairs.flatMap(p => [
+                        p.frente?.url,
+                        p.reverso?.url
+                      ].filter(Boolean) as string[]);
+                      setFormData(prev => ({ ...prev, dni_fotos: urls }));
+                    }}
+                    onDatosExtraidos={handleDNIPairDatosExtraidos}
+                    tieneConyuge={formData.tiene_conyuge || formData.titular_estado_civil === 'Casado(a)'}
+                    numeroCopropietarios={(formData.copropietarios || []).length}
                     disabled={loading}
-                    required={true}
                   />
-                  <DocumentUploader
-                    title="Comprobante de Depósito"
-                    description="Foto/imagen del voucher (máx. 5 imágenes)"
-                    maxImages={5}
-                    images={formData.comprobante_deposito_fotos || []}
-                    onImagesChange={(imgs) => handleChange('comprobante_deposito_fotos', imgs)}
+                </div>
+
+                {/* VOUCHERS CON OCR - OPCIONAL */}
+                <div>
+                  <VoucherCardUploader
                     localId={local?.id || ''}
-                    folder="comprobante"
+                    initialVouchers={initialVouchers}
+                    onVouchersChange={(vouchers) => {
+                      const urls = vouchers.map(v => v.url).filter(Boolean);
+                      // Extraer datos del OCR para persistencia
+                      const ocrDataArray = vouchers
+                        .filter(v => v.url && v.ocrData)
+                        .map(v => ({
+                          monto: v.ocrData?.monto ?? null,
+                          moneda: v.ocrData?.moneda ?? null,
+                          fecha: v.ocrData?.fecha ?? null,
+                          banco: v.ocrData?.banco ?? null,
+                          numero_operacion: v.ocrData?.numero_operacion ?? null,
+                          depositante: v.ocrData?.depositante ?? null,
+                          confianza: v.ocrData?.confianza ?? 0,
+                        }));
+                      setFormData(prev => ({
+                        ...prev,
+                        comprobante_deposito_fotos: urls,
+                        comprobante_deposito_ocr: ocrDataArray.length > 0 ? ocrDataArray : null,
+                      }));
+                    }}
                     disabled={loading}
-                    required={true}
+                    maxVouchers={10}
                   />
                 </div>
               </div>
@@ -2527,8 +3144,10 @@ export default function FichaInscripcionModal({
         isOpen={alertModal.isOpen}
         onOk={() => {
           setAlertModal(prev => ({ ...prev, isOpen: false }));
-          // Si fue éxito, cerrar también el modal principal
-          if (alertModal.variant === 'success') {
+          // Solo cerrar modal principal en operaciones finales (guardar/procesar)
+          // NO cerrar en alertas informativas como OCR extraído
+          const titulosQueCierran = ['Ficha guardada', 'Venta procesada exitosamente'];
+          if (alertModal.variant === 'success' && titulosQueCierran.includes(alertModal.title)) {
             onClose();
           }
         }}

@@ -10,16 +10,20 @@
 
 import { useState } from 'react';
 import type { ControlPago } from '@/lib/actions-control-pagos';
-import { FileText, Calendar, Eye, Download, Loader2, AlertCircle, X } from 'lucide-react';
+import { FileText, Calendar, Eye, Download, Loader2, AlertCircle, X, DollarSign, Users } from 'lucide-react';
 import PagosPanel from './PagosPanel';
 import PrecioComparativoModal from './PrecioComparativoModal';
+import PagoConsolidadoModal from './PagoConsolidadoModal';
+import GenerarContratoModal from './GenerarContratoModal';
 import Tooltip from '@/components/shared/Tooltip';
+import { useAuth } from '@/lib/auth-context';
 
 interface ControlPagosClientProps {
   initialData: ControlPago[];
 }
 
 export default function ControlPagosClient({ initialData }: ControlPagosClientProps) {
+  const { selectedProyecto } = useAuth();
   const [controlPagos] = useState<ControlPago[]>(initialData);
   const [pagosPanel, setPagosPanel] = useState<{
     isOpen: boolean;
@@ -35,20 +39,46 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
     isOpen: false,
     controlPago: null,
   });
+  const [pagoConsolidadoModal, setPagoConsolidadoModal] = useState(false);
+  const [contratoModal, setContratoModal] = useState<{
+    isOpen: boolean;
+    controlPago: ControlPago | null;
+  }>({
+    isOpen: false,
+    controlPago: null,
+  });
   const [generatingContrato, setGeneratingContrato] = useState<string | null>(null);
   const [errorModal, setErrorModal] = useState<{ isOpen: boolean; message: string }>({
     isOpen: false,
     message: '',
   });
 
-  // Handler para generar contrato Word
-  const handleGenerarContrato = async (cp: ControlPago) => {
+  // Handler para abrir modal de contrato
+  const handleOpenContratoModal = (cp: ControlPago) => {
+    setContratoModal({ isOpen: true, controlPago: cp });
+  };
+
+  // Handler para generar contrato Word (llamado desde el modal)
+  const handleGenerarContrato = async (
+    tipoCambio: number,
+    templateBase64?: string,
+    templateNombre?: string
+  ) => {
+    if (!contratoModal.controlPago) return;
+
+    const cp = contratoModal.controlPago;
     setGeneratingContrato(cp.id);
+
     try {
       const response = await fetch('/api/contratos/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ controlPagoId: cp.id, tipoCambio: 3.80 }),
+        body: JSON.stringify({
+          controlPagoId: cp.id,
+          tipoCambio,
+          templatePersonalizadoBase64: templateBase64,
+          templatePersonalizadoNombre: templateNombre,
+        }),
       });
 
       if (!response.ok) {
@@ -72,6 +102,7 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
         isOpen: true,
         message: error instanceof Error ? error.message : 'Error al generar contrato',
       });
+      throw error; // Re-throw para que el modal lo maneje
     } finally {
       setGeneratingContrato(null);
     }
@@ -93,13 +124,24 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       {/* Header */}
       <div className="bg-[#1b967a] text-white px-6 py-4">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <FileText className="w-6 h-6" />
-          Locales en Control de Pagos
-        </h2>
-        <p className="text-sm text-green-100 mt-1">
-          Total de locales procesados: {controlPagos.length}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <FileText className="w-6 h-6" />
+              Locales en Control de Pagos
+            </h2>
+            <p className="text-sm text-green-100 mt-1">
+              Total de locales procesados: {controlPagos.length}
+            </p>
+          </div>
+          <button
+            onClick={() => setPagoConsolidadoModal(true)}
+            className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg flex items-center gap-2 transition-colors"
+          >
+            <Users className="w-4 h-4" />
+            Pago Consolidado
+          </button>
+        </div>
       </div>
 
       {/* Tabla */}
@@ -258,7 +300,7 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
                       </button>
                       <Tooltip text="Generar Contrato Word">
                         <button
-                          onClick={() => handleGenerarContrato(cp)}
+                          onClick={() => handleOpenContratoModal(cp)}
                           disabled={generatingContrato === cp.id}
                           className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -333,6 +375,30 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Pago Consolidado */}
+      {selectedProyecto?.id && (
+        <PagoConsolidadoModal
+          isOpen={pagoConsolidadoModal}
+          proyectoId={selectedProyecto.id}
+          onClose={() => setPagoConsolidadoModal(false)}
+          onSuccess={() => {
+            setPagoConsolidadoModal(false);
+            // Recargar la página para ver cambios
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {/* Modal Generar Contrato */}
+      {contratoModal.isOpen && contratoModal.controlPago && selectedProyecto?.id && (
+        <GenerarContratoModal
+          controlPago={contratoModal.controlPago}
+          proyectoId={selectedProyecto.id}
+          onClose={() => setContratoModal({ isOpen: false, controlPago: null })}
+          onGenerate={handleGenerarContrato}
+        />
       )}
     </div>
   );

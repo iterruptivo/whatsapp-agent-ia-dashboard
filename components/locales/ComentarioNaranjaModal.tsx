@@ -303,7 +303,7 @@ export default function ComentarioNaranjaModal({
             <div className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-orange-500" />
               <label className="text-sm font-medium text-gray-700">
-                Monto de Separación <span className="text-red-500">*</span>
+                Monto de Separación (USD) <span className="text-red-500">*</span>
               </label>
             </div>
 
@@ -312,17 +312,20 @@ export default function ComentarioNaranjaModal({
                 $
               </span>
               <input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="numeric"
                 value={montoSeparacion}
                 onChange={(e) => {
-                  setMontoSeparacion(e.target.value);
+                  // Solo permitir números y un punto decimal
+                  const value = e.target.value.replace(/[^0-9.]/g, '');
+                  // Evitar múltiples puntos
+                  const parts = value.split('.');
+                  const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                  setMontoSeparacion(sanitized);
                   setError('');
                 }}
-                onWheel={(e) => e.currentTarget.blur()}
-                placeholder="Ej: 5000.00"
-                className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${
+                placeholder="5000"
+                className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-lg font-semibold ${
                   error && (!montoSeparacion.trim() || parseFloat(montoSeparacion) <= 0)
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-gray-300 focus:ring-orange-500'
@@ -331,8 +334,18 @@ export default function ComentarioNaranjaModal({
               />
             </div>
 
+            {/* Preview del monto interpretado */}
+            {montoSeparacion && parseFloat(montoSeparacion) > 0 && (
+              <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-green-800">
+                  Se guardará como: <strong>${parseFloat(montoSeparacion).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                </span>
+              </div>
+            )}
+
             <p className="text-xs text-gray-500">
-              Monto de separación en dólares (USD). Ej: 5000 o 5000.50
+              Ingresa el número completo sin comas. Ej: <strong>5000</strong> = $5,000.00
             </p>
           </div>
 
@@ -341,7 +354,7 @@ export default function ComentarioNaranjaModal({
             <div className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-orange-500" />
               <label className="text-sm font-medium text-gray-700">
-                Monto de Venta <span className="text-red-500">*</span>
+                Monto de Venta (USD) <span className="text-red-500">*</span>
               </label>
             </div>
 
@@ -350,17 +363,20 @@ export default function ComentarioNaranjaModal({
                 $
               </span>
               <input
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="numeric"
                 value={montoVenta}
                 onChange={(e) => {
-                  setMontoVenta(e.target.value);
+                  // Solo permitir números y un punto decimal
+                  const value = e.target.value.replace(/[^0-9.]/g, '');
+                  // Evitar múltiples puntos
+                  const parts = value.split('.');
+                  const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : value;
+                  setMontoVenta(sanitized);
                   setError('');
                 }}
-                onWheel={(e) => e.currentTarget.blur()}
-                placeholder="Ej: 150000.00"
-                className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all ${
+                placeholder="15000"
+                className={`w-full pl-8 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all text-lg font-semibold ${
                   error && (!montoVenta.trim() || parseFloat(montoVenta) <= 0)
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-gray-300 focus:ring-orange-500'
@@ -369,8 +385,18 @@ export default function ComentarioNaranjaModal({
               />
             </div>
 
+            {/* Preview del monto interpretado */}
+            {montoVenta && parseFloat(montoVenta) > 0 && (
+              <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-green-800">
+                  Se guardará como: <strong>${parseFloat(montoVenta).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+                </span>
+              </div>
+            )}
+
             <p className="text-xs text-gray-500">
-              Monto en dólares (USD). Ej: 150000 o 150000.50
+              Ingresa el número completo sin comas. Ej: <strong>15000</strong> = $15,000.00
             </p>
           </div>
 

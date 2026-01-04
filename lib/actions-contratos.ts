@@ -299,10 +299,19 @@ function formatMonto(num: number): string {
 // MAIN FUNCTION: Generate Contract
 // ============================================================================
 
+interface GenerateContratoOptions {
+  controlPagoId: string;
+  tipoCambio?: number;
+  templatePersonalizadoBase64?: string; // Template personalizado en base64
+  templatePersonalizadoNombre?: string; // Nombre del archivo personalizado
+}
+
 export async function generateContrato(
   controlPagoId: string,
-  tipoCambio: number = 3.80
-): Promise<{ success: boolean; data?: Buffer; fileName?: string; error?: string }> {
+  tipoCambio: number = 3.80,
+  templatePersonalizadoBase64?: string,
+  templatePersonalizadoNombre?: string
+): Promise<{ success: boolean; data?: Buffer; fileName?: string; error?: string; templateUsado?: string }> {
   try {
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -362,29 +371,42 @@ export async function generateContrato(
       return { success: false, error: 'Ficha del cliente no encontrada. Complete la ficha de inscripción primero.' };
     }
 
-    // 4. Obtener template Word desde Supabase Storage (bucket privado)
-    // contrato_template_url ahora contiene solo el nombre del archivo
-    if (!proyecto.contrato_template_url) {
-      return { success: false, error: 'No hay template de contrato configurado para este proyecto. Configure uno en Configuración de Proyectos.' };
-    }
-
+    // 4. Obtener template Word - Personalizado o del Proyecto
     let templateBuffer: Buffer;
-    try {
-      // Descargar archivo directamente desde Storage (bucket privado, usuario autenticado)
-      const { data: fileData, error: downloadError } = await supabase.storage
-        .from('contratos-templates')
-        .download(proyecto.contrato_template_url);
+    let templateUsado: string;
 
-      if (downloadError || !fileData) {
-        console.error('Error downloading template:', downloadError);
-        throw new Error(downloadError?.message || 'Error al descargar template');
+    if (templatePersonalizadoBase64) {
+      // Usar template personalizado subido por el usuario
+      try {
+        templateBuffer = Buffer.from(templatePersonalizadoBase64, 'base64');
+        templateUsado = templatePersonalizadoNombre || 'template_personalizado.docx';
+      } catch (err) {
+        console.error('Error parsing custom template:', err);
+        return { success: false, error: 'Error al procesar template personalizado' };
+      }
+    } else {
+      // Usar template del proyecto desde Supabase Storage
+      if (!proyecto.contrato_template_url) {
+        return { success: false, error: 'No hay template de contrato configurado para este proyecto. Configure uno en Configuracion de Proyectos.' };
       }
 
-      const arrayBuffer = await fileData.arrayBuffer();
-      templateBuffer = Buffer.from(arrayBuffer);
-    } catch (err) {
-      console.error('Error fetching template:', err);
-      return { success: false, error: 'Error al descargar template de contrato. Verifique que el archivo existe.' };
+      try {
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from('contratos-templates')
+          .download(proyecto.contrato_template_url);
+
+        if (downloadError || !fileData) {
+          console.error('Error downloading template:', downloadError);
+          throw new Error(downloadError?.message || 'Error al descargar template');
+        }
+
+        const arrayBuffer = await fileData.arrayBuffer();
+        templateBuffer = Buffer.from(arrayBuffer);
+        templateUsado = proyecto.contrato_template_url;
+      } catch (err) {
+        console.error('Error fetching template:', err);
+        return { success: false, error: 'Error al descargar template de contrato. Verifique que el archivo existe.' };
+      }
     }
 
     // 5. Preparar datos para el template
@@ -586,10 +608,27 @@ export async function generateContrato(
     // 8. Generar nombre de archivo
     const fileName = `CONTRATO_${controlPago.codigo_local}_${fechaHoy.toISOString().split('T')[0]}.docx`;
 
+    // 9. Registrar template usado en control_pagos
+    const updateData: Record<string, unknown> = {
+      contrato_template_usado: templateUsado,
+      contrato_generado_at: new Date().toISOString(),
+    };
+
+    // Si es template personalizado, guardarlo
+    if (templatePersonalizadoBase64) {
+      updateData.contrato_template_personalizado_url = templatePersonalizadoNombre || 'template_personalizado.docx';
+    }
+
+    await supabase
+      .from('control_pagos')
+      .update(updateData)
+      .eq('id', controlPagoId);
+
     return {
       success: true,
       data: cleanedReport,
       fileName,
+      templateUsado,
     };
   } catch (error) {
     console.error('Error generating contrato:', error);
@@ -606,9 +645,11 @@ export async function generateContrato(
 
 export async function getContratoDataForDownload(
   controlPagoId: string,
-  tipoCambio: number = 3.80
-): Promise<{ success: boolean; base64?: string; fileName?: string; error?: string }> {
-  const result = await generateContrato(controlPagoId, tipoCambio);
+  tipoCambio: number = 3.80,
+  templatePersonalizadoBase64?: string,
+  templatePersonalizadoNombre?: string
+): Promise<{ success: boolean; base64?: string; fileName?: string; error?: string; templateUsado?: string }> {
+  const result = await generateContrato(controlPagoId, tipoCambio, templatePersonalizadoBase64, templatePersonalizadoNombre);
 
   if (!result.success || !result.data) {
     return { success: false, error: result.error };
@@ -618,5 +659,123 @@ export async function getContratoDataForDownload(
     success: true,
     base64: result.data.toString('base64'),
     fileName: result.fileName,
+    templateUsado: result.templateUsado,
   };
+}
+
+// ============================================================================
+// HELPER: Descargar Template del Proyecto
+// ============================================================================
+
+export async function downloadProyectoTemplate(
+  proyectoId: string
+): Promise<{ success: boolean; base64?: string; fileName?: string; error?: string }> {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    // Obtener proyecto
+    const { data: proyecto, error: proyError } = await supabase
+      .from('proyectos')
+      .select('contrato_template_url')
+      .eq('id', proyectoId)
+      .single();
+
+    if (proyError || !proyecto) {
+      return { success: false, error: 'Proyecto no encontrado' };
+    }
+
+    if (!proyecto.contrato_template_url) {
+      return { success: false, error: 'No hay template configurado para este proyecto' };
+    }
+
+    // Descargar template
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from('contratos-templates')
+      .download(proyecto.contrato_template_url);
+
+    if (downloadError || !fileData) {
+      return { success: false, error: 'Error al descargar template' };
+    }
+
+    const arrayBuffer = await fileData.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
+
+    return {
+      success: true,
+      base64,
+      fileName: proyecto.contrato_template_url,
+    };
+  } catch (error) {
+    console.error('Error downloading template:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al descargar template',
+    };
+  }
+}
+
+// ============================================================================
+// HELPER: Obtener Info del Template del Proyecto
+// ============================================================================
+
+export async function getProyectoTemplateInfo(
+  proyectoId: string
+): Promise<{ success: boolean; hasTemplate: boolean; templateName?: string; error?: string }> {
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    const { data: proyecto, error } = await supabase
+      .from('proyectos')
+      .select('contrato_template_url')
+      .eq('id', proyectoId)
+      .single();
+
+    if (error || !proyecto) {
+      return { success: false, hasTemplate: false, error: 'Proyecto no encontrado' };
+    }
+
+    return {
+      success: true,
+      hasTemplate: !!proyecto.contrato_template_url,
+      templateName: proyecto.contrato_template_url || undefined,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      hasTemplate: false,
+      error: error instanceof Error ? error.message : 'Error al obtener info del template',
+    };
+  }
 }

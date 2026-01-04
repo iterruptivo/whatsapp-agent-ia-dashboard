@@ -1,0 +1,562 @@
+// ============================================================================
+// EJEMPLO DE INTEGRACION: VoucherCardUploader.tsx
+// ============================================================================
+// Este archivo muestra como integrar el VoucherCardUploader en diferentes
+// contextos del dashboard EcoPlaza.
+// ============================================================================
+
+import { useState } from 'react';
+import VoucherCardUploader, { VoucherItem } from '@/components/shared/VoucherCardUploader';
+
+// ============================================================================
+// EJEMPLO 1: Integracion en Modal de Inscripcion
+// ============================================================================
+
+interface FichaInscripcionModalProps {
+  local: {
+    id: string;
+    nombre: string;
+  };
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export function FichaInscripcionModalExample({
+  local,
+  onClose,
+  onSuccess,
+}: FichaInscripcionModalProps) {
+  const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
+
+  // Otros estados del formulario
+  const [nombre, setNombre] = useState('');
+  const [dni, setDni] = useState('');
+  const [telefono, setTelefono] = useState('');
+
+  const handleSubmit = async () => {
+    // 1. Extraer URLs de vouchers
+    const voucherUrls = vouchers
+      .filter((v) => v.url && v.url.length > 0)
+      .map((v) => v.url);
+
+    // 2. Preparar datos para Supabase
+    const fichaData = {
+      local_id: local.id,
+      nombre,
+      dni,
+      telefono,
+      voucher_urls: voucherUrls, // Array de URLs
+      created_at: new Date().toISOString(),
+    };
+
+    // 3. Guardar en Supabase
+    const { error } = await supabase.from('fichas_inscripcion').insert(fichaData);
+
+    if (error) {
+      console.error('Error guardando ficha:', error);
+      alert('Error al guardar la ficha');
+      return;
+    }
+
+    // 4. Exito
+    onSuccess();
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6">
+          <h2 className="text-2xl font-bold text-[#192c4d] mb-6">
+            Ficha de Inscripcion - {local.nombre}
+          </h2>
+
+          {/* Campos del formulario */}
+          <div className="space-y-4 mb-6">
+            <input
+              type="text"
+              placeholder="Nombre completo"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg"
+            />
+            <input
+              type="text"
+              placeholder="DNI"
+              value={dni}
+              onChange={(e) => setDni(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg"
+            />
+            <input
+              type="tel"
+              placeholder="Telefono"
+              value={telefono}
+              onChange={(e) => setTelefono(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg"
+            />
+          </div>
+
+          {/* COMPONENTE VOUCHER CARD UPLOADER */}
+          <VoucherCardUploader
+            localId={local.id}
+            onVouchersChange={setVouchers}
+            initialVouchers={[]}
+            disabled={false}
+            maxVouchers={10}
+          />
+
+          {/* Botones */}
+          <div className="flex gap-3 mt-6">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="flex-1 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#156b5a]"
+            >
+              Guardar Ficha
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// EJEMPLO 2: Edicion de Ficha Existente
+// ============================================================================
+
+interface EditarFichaModalProps {
+  ficha: {
+    id: string;
+    local_id: string;
+    nombre: string;
+    dni: string;
+    telefono: string;
+    voucher_urls: string[]; // URLs existentes en BD
+  };
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export function EditarFichaModalExample({
+  ficha,
+  onClose,
+  onSuccess,
+}: EditarFichaModalProps) {
+  // Convertir URLs existentes a VoucherItems
+  const initialVouchers: VoucherItem[] = ficha.voucher_urls.map((url, index) => ({
+    id: `existing-${index}`,
+    file: null,
+    url: url,
+    previewUrl: url,
+    ocrData: null, // No tenemos datos OCR de vouchers antiguos
+    estado: 'valido' as const,
+  }));
+
+  const [vouchers, setVouchers] = useState<VoucherItem[]>(initialVouchers);
+
+  const handleUpdate = async () => {
+    const voucherUrls = vouchers.map((v) => v.url);
+
+    const { error } = await supabase
+      .from('fichas_inscripcion')
+      .update({ voucher_urls: voucherUrls })
+      .eq('id', ficha.id);
+
+    if (!error) {
+      onSuccess();
+      onClose();
+    }
+  };
+
+  return (
+    <div className="p-6">
+      <h2 className="text-xl font-bold mb-4">Editar Vouchers</h2>
+
+      <VoucherCardUploader
+        localId={ficha.local_id}
+        onVouchersChange={setVouchers}
+        initialVouchers={initialVouchers} // Vouchers existentes
+        disabled={false}
+        maxVouchers={10}
+      />
+
+      <button
+        onClick={handleUpdate}
+        className="mt-4 px-4 py-2 bg-[#1b967a] text-white rounded-lg"
+      >
+        Actualizar Vouchers
+      </button>
+    </div>
+  );
+}
+
+// ============================================================================
+// EJEMPLO 3: Formulario de Pago con Validacion
+// ============================================================================
+
+export function FormularioPagoExample() {
+  const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
+  const [montoCuota, setMontoCuota] = useState(0);
+
+  // Calcular total de vouchers
+  const totalVouchers = vouchers.reduce((sum, v) => {
+    if (v.ocrData?.monto && v.ocrData.moneda === 'PEN') {
+      return sum + v.ocrData.monto;
+    }
+    return sum;
+  }, 0);
+
+  // Validar que monto coincida
+  const montoCoincide = totalVouchers >= montoCuota;
+
+  const handleSubmit = async () => {
+    if (!montoCoincide) {
+      alert('El monto de los vouchers no coincide con la cuota');
+      return;
+    }
+
+    // Procesar pago...
+    console.log('Pago validado:', {
+      cuota: montoCuota,
+      vouchers: totalVouchers,
+      archivos: vouchers.map((v) => v.url),
+    });
+  };
+
+  return (
+    <div className="p-6 max-w-2xl">
+      <h2 className="text-2xl font-bold text-[#192c4d] mb-6">Registrar Pago</h2>
+
+      {/* Monto de Cuota */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Monto de Cuota
+        </label>
+        <input
+          type="number"
+          value={montoCuota}
+          onChange={(e) => setMontoCuota(Number(e.target.value))}
+          onWheel={(e) => e.currentTarget.blur()} // MANDATORIO
+          className="w-full px-4 py-2 border rounded-lg"
+          placeholder="5000.00"
+        />
+      </div>
+
+      {/* Voucher Uploader */}
+      <VoucherCardUploader
+        localId="LOC-001"
+        onVouchersChange={setVouchers}
+        initialVouchers={[]}
+        disabled={false}
+        maxVouchers={5}
+      />
+
+      {/* Validacion Visual */}
+      {vouchers.length > 0 && (
+        <div
+          className={`mt-4 p-4 rounded-lg border ${
+            montoCoincide
+              ? 'bg-green-50 border-green-200'
+              : 'bg-red-50 border-red-200'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-800">Monto Cuota:</p>
+              <p className="text-2xl font-bold text-gray-900">
+                S/ {montoCuota.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              <p className="font-medium text-gray-800">Total Vouchers:</p>
+              <p className="text-2xl font-bold text-gray-900">
+                S/ {totalVouchers.toFixed(2)}
+              </p>
+            </div>
+            <div>
+              {montoCoincide ? (
+                <div className="text-green-600 font-bold">✓ Valido</div>
+              ) : (
+                <div className="text-red-600 font-bold">✗ No coincide</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Boton Submit */}
+      <button
+        onClick={handleSubmit}
+        disabled={!montoCoincide || vouchers.length === 0}
+        className="mt-6 w-full px-4 py-3 bg-[#1b967a] text-white rounded-lg hover:bg-[#156b5a] disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Registrar Pago
+      </button>
+    </div>
+  );
+}
+
+// ============================================================================
+// EJEMPLO 4: Vista de Solo Lectura
+// ============================================================================
+
+interface VerVouchersProps {
+  voucherUrls: string[];
+}
+
+export function VerVouchersExample({ voucherUrls }: VerVouchersProps) {
+  // Convertir URLs a VoucherItems para visualizacion
+  const vouchers: VoucherItem[] = voucherUrls.map((url, index) => ({
+    id: `readonly-${index}`,
+    file: null,
+    url: url,
+    previewUrl: url,
+    ocrData: null,
+    estado: 'valido' as const,
+  }));
+
+  return (
+    <div className="p-6">
+      <h3 className="text-lg font-bold mb-4">Vouchers Adjuntos</h3>
+
+      {/* COMPONENTE EN MODO DISABLED (solo lectura) */}
+      <VoucherCardUploader
+        localId="readonly"
+        onVouchersChange={() => {}} // No-op
+        initialVouchers={vouchers}
+        disabled={true} // DISABLED = Solo lectura
+        maxVouchers={10}
+      />
+    </div>
+  );
+}
+
+// ============================================================================
+// EJEMPLO 5: Con Limite Dinamico
+// ============================================================================
+
+export function LimiteDinamicoExample() {
+  const [isPremium, setIsPremium] = useState(false);
+  const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
+
+  const maxVouchers = isPremium ? 20 : 5;
+
+  return (
+    <div className="p-6">
+      <div className="mb-4">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={isPremium}
+            onChange={(e) => setIsPremium(e.target.checked)}
+          />
+          <span>Usuario Premium (limite 20 vouchers)</span>
+        </label>
+      </div>
+
+      <VoucherCardUploader
+        localId="LOC-PREMIUM"
+        onVouchersChange={setVouchers}
+        initialVouchers={[]}
+        disabled={false}
+        maxVouchers={maxVouchers} // Limite dinamico
+      />
+
+      <p className="mt-2 text-sm text-gray-500">
+        Vouchers subidos: {vouchers.length}/{maxVouchers}
+      </p>
+    </div>
+  );
+}
+
+// ============================================================================
+// EJEMPLO 6: Con Validacion de Datos OCR
+// ============================================================================
+
+export function ValidacionOCRExample() {
+  const [vouchers, setVouchers] = useState<VoucherItem[]>([]);
+
+  // Filtrar solo vouchers con datos OCR validos
+  const vouchersValidos = vouchers.filter(
+    (v) =>
+      v.ocrData &&
+      v.ocrData.monto &&
+      v.ocrData.monto > 0 &&
+      v.ocrData.banco &&
+      v.ocrData.numero_operacion
+  );
+
+  const todosValidados = vouchers.length > 0 && vouchers.length === vouchersValidos.length;
+
+  return (
+    <div className="p-6">
+      <VoucherCardUploader
+        localId="LOC-VALIDACION"
+        onVouchersChange={setVouchers}
+        initialVouchers={[]}
+        disabled={false}
+        maxVouchers={10}
+      />
+
+      {/* Indicador de Validacion */}
+      {vouchers.length > 0 && (
+        <div className="mt-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
+          <p className="font-medium text-blue-900">Estado de Validacion:</p>
+          <p className="text-sm text-blue-700">
+            {vouchersValidos.length} de {vouchers.length} vouchers con datos completos
+          </p>
+
+          {todosValidados ? (
+            <div className="mt-2 text-green-600 font-bold">
+              ✓ Todos los vouchers validados
+            </div>
+          ) : (
+            <div className="mt-2 text-yellow-600 font-bold">
+              ⚠ Algunos vouchers requieren revision
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// EJEMPLO 7: Integracion con React Hook Form
+// ============================================================================
+
+import { useForm, Controller } from 'react-hook-form';
+
+interface FormData {
+  nombre: string;
+  dni: string;
+  vouchers: VoucherItem[];
+}
+
+export function ReactHookFormExample() {
+  const { control, handleSubmit, watch } = useForm<FormData>({
+    defaultValues: {
+      nombre: '',
+      dni: '',
+      vouchers: [],
+    },
+  });
+
+  const vouchers = watch('vouchers');
+
+  const onSubmit = (data: FormData) => {
+    console.log('Form data:', {
+      ...data,
+      voucher_urls: data.vouchers.map((v) => v.url),
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="p-6">
+      <Controller
+        name="nombre"
+        control={control}
+        render={({ field }) => (
+          <input {...field} placeholder="Nombre" className="w-full px-4 py-2 border rounded-lg mb-4" />
+        )}
+      />
+
+      <Controller
+        name="dni"
+        control={control}
+        render={({ field }) => (
+          <input {...field} placeholder="DNI" className="w-full px-4 py-2 border rounded-lg mb-4" />
+        )}
+      />
+
+      {/* INTEGRACION CON REACT HOOK FORM */}
+      <Controller
+        name="vouchers"
+        control={control}
+        render={({ field }) => (
+          <VoucherCardUploader
+            localId="LOC-FORM"
+            onVouchersChange={field.onChange}
+            initialVouchers={field.value}
+            disabled={false}
+            maxVouchers={10}
+          />
+        )}
+      />
+
+      <button
+        type="submit"
+        className="mt-4 px-4 py-2 bg-[#1b967a] text-white rounded-lg"
+      >
+        Enviar Formulario
+      </button>
+
+      {/* Debug */}
+      <pre className="mt-4 p-4 bg-gray-100 rounded-lg text-xs overflow-auto">
+        {JSON.stringify(vouchers, null, 2)}
+      </pre>
+    </form>
+  );
+}
+
+// ============================================================================
+// NOTAS IMPORTANTES
+// ============================================================================
+
+/*
+1. CADA VOUCHER SE PROCESA CON OCR
+   - No solo el primero
+   - Proceso automatico al subir
+   - Datos visibles en cada card
+
+2. FLUJO DE DATOS
+   VoucherItem[] → onVouchersChange(vouchers) → Padre actualiza estado
+
+3. ESTADOS
+   - 'pendiente': Inicial
+   - 'subiendo': Upload a Storage
+   - 'procesando': OCR en proceso
+   - 'valido': OCR exitoso (confianza >= 80%)
+   - 'revision': OCR exitoso (confianza < 80%)
+   - 'error': Fallo en upload o OCR
+
+4. STORAGE
+   - Ruta: documentos-ficha/{localId}/voucher/{timestamp}.jpg
+   - Compresion automatica
+   - URLs publicas
+
+5. OCR
+   - API: /api/ocr/extract
+   - Type: 'voucher'
+   - GPT-4 Vision
+
+6. TOTALES
+   - Calculados automaticamente
+   - Por moneda (PEN/USD)
+   - Actualizado en tiempo real
+
+7. VALIDACION
+   - Tipo de archivo (JPG, PNG, WEBP)
+   - Tamano max 10MB
+   - Max vouchers configurable
+
+8. RESPONSIVE
+   - Mobile-first
+   - Cards adaptables
+   - Preview optimizado
+
+9. COLORES CORPORATIVOS
+   - Verde: #1b967a
+   - Azul: #192c4d
+   - Amarillo: #fbde17
+
+10. INPUT NUMBER
+    - SIEMPRE usar onWheel={(e) => e.currentTarget.blur()}
+    - Evita scroll accidental
+*/
