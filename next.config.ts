@@ -9,6 +9,15 @@ const nextConfig: NextConfig = {
   },
 
   // ============================================================================
+  // BODY SIZE LIMIT: Para subida de archivos grandes (reuniones hasta 2GB)
+  // ============================================================================
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2gb',
+    },
+  },
+
+  // ============================================================================
   // CACHE BUSTING: Generate unique BUILD_ID based on Git commit
   // ============================================================================
   generateBuildId: async () => {

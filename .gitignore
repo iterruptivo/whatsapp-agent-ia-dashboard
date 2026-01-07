@@ -58,4 +58,8 @@ Victoria*.json
 # Playwright MCP screenshots
 .playwright-mcp/
 
+# Test assets - archivos grandes (audio, video)
+docs/test-assets/audio/
+docs/test-assets/video/
+
 nul

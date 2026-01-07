@@ -30,13 +30,18 @@ Ubicacion: `.claude/agents/`
 
 | Agente | Cuando Usar |
 |--------|-------------|
+| **architect** | Diseño de arquitectura, patrones, planificacion de modulos |
 | **backend-dev** | API routes, server actions, business logic |
 | **frontend-dev** | UI components, Tailwind, responsive design |
 | **database-architect** | Schema, queries, RLS, Supabase |
 | **security-auth** | Auth, middleware, RBAC, validacion sesiones |
 | **integration-specialist** | n8n, webhooks, APIs externas |
-| **qa-tester** | Testing funcional, E2E, verificacion bugs |
+| **qa-specialist** | Testing funcional, E2E, verificacion bugs |
 | **docs-specialist** | PDFs, contratos Word, templates |
+| **strategic-researcher** | Investigar tecnologias, mercados, competencia, tendencias |
+| **devops-infrastructure** | Deployment, CI/CD, Docker, Vercel |
+| **python-data-science** | FastAPI, ML, pandas, analytics |
+| **code-quality-reviewer** | Code review, best practices, QA de codigo |
 
 ### Invocacion
 ```
@@ -95,6 +100,13 @@ Todo el contexto esta en `context/`
 ---
 
 ## REGLAS OBLIGATORIAS
+
+### Restriccion de Proyecto
+- **RAIZ DEL PROYECTO:** `E:\Projects\ECOPLAZA_PROJECTS\whatsapp-agent-ia-dashboard`
+- **NUNCA** salir de este directorio a menos que el usuario lo indique explicitamente
+- **NUNCA** escribir o leer en `E:\Projects\ECOPLAZA_PROJECTS\docs\` (otro proyecto)
+- **NUNCA** usar agentes definidos fuera de este proyecto
+- Los archivos de contexto estan en `context/` DENTRO de este proyecto
 
 ### Investigacion Web
 - **AÑO ACTUAL: 2025** - SIEMPRE buscar con "2025" en queries
@@ -174,5 +186,5 @@ Ver detalles completos en: `docs/test-assets/README.md`
 
 ---
 
-**Ultima Actualizacion:** 2 Enero 2026
-**Sesion:** 75+
+**Ultima Actualizacion:** 6 Enero 2026
+**Sesion:** 82+

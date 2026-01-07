@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3, Building, Building2, Columns3, Layers, Activity, PieChart, TrendingUp, ShieldCheck } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3, Building, Building2, Columns3, Layers, Activity, PieChart, TrendingUp, ShieldCheck, Video, CheckSquare } from 'lucide-react';
 import VersionBadge from '@/components/shared/VersionBadge';
 
 interface SidebarProps {
@@ -130,9 +130,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         directItems: [
           { href: '/', label: 'Insights', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+          { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
         ],
         categories: [finanzasCategory, reporteriaCategory, configuracionesCategory],
         bottomItems: [
+          { href: '/reuniones', label: 'Reuniones', icon: Video },
           { href: '/repulse', label: 'Repulse', icon: Zap },
           { href: '/admin/usuarios', label: 'Adm. de Usuarios', icon: UserCog },
         ],
@@ -141,7 +143,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
     if (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') {
       return {
-        directItems: [{ href: '/operativo', label: 'Dashboard Operativo', icon: Users }],
+        directItems: [
+          { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+          { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
+        ],
         categories: [finanzasCategory],
         bottomItems: [] as MenuItem[],
       };
@@ -164,9 +169,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         directItems: [
           { href: '/', label: 'Insights', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+          { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
         ],
         categories: [finanzasCategory, reporteriaCategory],
         bottomItems: [
+          { href: '/reuniones', label: 'Reuniones', icon: Video },
           { href: '/repulse', label: 'Repulse', icon: Zap },
         ],
       };
@@ -177,6 +184,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       return {
         directItems: [
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+          { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
         ],
         categories: [finanzasCategory],
         bottomItems: [] as MenuItem[],
@@ -189,6 +197,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         directItems: [
           { href: '/control-pagos', label: 'Control de Pagos', icon: FileText },
           { href: '/validacion-bancaria', label: 'Validación Bancaria', icon: Building2 },
+          { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
         ],
         categories: [],
         bottomItems: [] as MenuItem[],
@@ -201,6 +210,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         directItems: [
           { href: '/', label: 'Insights', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
+          { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
         ],
         categories: [],
         bottomItems: [

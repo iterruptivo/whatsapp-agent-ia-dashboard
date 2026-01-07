@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check } from 'lucide-react';
+import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check, AlertCircle, CheckCircle, User } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario, getUsuarioById } from '@/lib/actions-clientes-ficha';
+import { analizarCicloVenta, obtenerDatosClienteAnterior } from '@/lib/actions-clientes-ficha-logic';
 import { getProyectoConfiguracion, getProyectoLegalData } from '@/lib/proyecto-config';
 import { procesarVentaLocal } from '@/lib/actions-control-pagos';
 import { updateMontoVenta } from '@/lib/actions-locales';
@@ -16,6 +17,8 @@ import DocumentUploader from '@/components/shared/DocumentUploader';
 import DocumentoOCRUploader, { DNIOCRData, VoucherOCRData } from '@/components/shared/DocumentoOCRUploader';
 import DNIPairUploader, { DNIPair, DNIOCRData as DNIFrenteOCRData, DNIReversoOCRData } from '@/components/shared/DNIPairUploader';
 import VoucherCardUploader, { VoucherItem } from '@/components/shared/VoucherCardUploader';
+import OCRValidationAlert, { PersonDiscrepancies } from '@/components/shared/OCRValidationAlert';
+import { useOCRValidation } from '@/hooks/useOCRValidation';
 
 interface FichaInscripcionModalProps {
   isOpen: boolean;
@@ -345,6 +348,11 @@ export default function FichaInscripcionModal({
     variant: 'info',
   });
 
+  // Estado para detectar ficha anterior cuando local vuelve a disponible
+  const [showClienteConfirmModal, setShowClienteConfirmModal] = useState(false);
+  const [fichaAnteriorData, setFichaAnteriorData] = useState<Awaited<ReturnType<typeof getClienteFichaByLocalId>> | null>(null);
+  const [clienteAnteriorNombre, setClienteAnteriorNombre] = useState('');
+
   // UIN States
   const [teaProyecto, setTeaProyecto] = useState<number>(0);
   const [porcentajeInicialDefault, setPorcentajeInicialDefault] = useState<number>(30); // Default 30%
@@ -364,6 +372,9 @@ export default function FichaInscripcionModal({
   // Estados para datos iniciales de documentos (para persistencia al reabrir)
   const [initialDniPairs, setInitialDniPairs] = useState<DNIPair[]>([]);
   const [initialVouchers, setInitialVouchers] = useState<VoucherItem[]>([]);
+
+  // Estado para controlar visibilidad de alerta de validación OCR
+  const [showOCRValidation, setShowOCRValidation] = useState(true);
 
   // Estados para documentos OCR - YA NO SE USAN, los datos van directo a formData
   // const [dniDocumento, setDniDocumento] = useState<DocumentoResult | null>(null);
@@ -461,6 +472,9 @@ export default function FichaInscripcionModal({
     comprobante_deposito_ocr: null,
     vendedor_id: null,
   });
+
+  // Hook de validación inteligente: compara formData vs dniPairs
+  const ocrDiscrepancies = useOCRValidation(dniPairs, formData);
 
   useEffect(() => {
     if (!isOpen || !local) return;
@@ -586,6 +600,28 @@ export default function FichaInscripcionModal({
 
       // Obtener ficha existente o crear nueva
       const existingFicha = await getClienteFichaByLocalId(local!.id);
+
+      // =============================================================================
+      // LÓGICA INTELIGENTE: DETECTAR CICLO DE VENTA CAÍDA
+      // =============================================================================
+      // Analizar si debemos preguntar "¿Es el mismo cliente?" basado en:
+      // 1. Historial del local (detectar NARANJA → VERDE)
+      // 2. Timestamp de la ficha vs último reset
+      // 3. Estado actual del local
+      const analisis = await analizarCicloVenta(local!.id, local!.estado);
+
+      console.log('[FichaModal] Análisis de ciclo:', analisis);
+
+      if (analisis.debePreguntar) {
+        // Hay un ciclo de venta caída → mostrar modal de confirmación
+        const datosAnterior = await obtenerDatosClienteAnterior(local!.id);
+
+        setFichaAnteriorData(existingFicha);
+        setClienteAnteriorNombre(datosAnterior?.nombre || 'Cliente anterior');
+        setShowClienteConfirmModal(true);
+        setLoading(false);
+        return; // Esperar respuesta del usuario
+      }
 
       if (existingFicha) {
         setFormData({
@@ -779,6 +815,167 @@ export default function FichaInscripcionModal({
 
   const handleChange = (field: keyof ClienteFichaInput, value: string | boolean | null | Copropietario[] | number | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Handler: Aplicar datos OCR al formulario desde la alerta de validación
+  const handleApplyOCRData = (persona: string, fieldKey: string, ocrValue: string) => {
+    // Si el fieldKey es de copropietario (ej: "copropietarios.0.nombres")
+    if (fieldKey.startsWith('copropietarios.')) {
+      const match = fieldKey.match(/copropietarios\.(\d+)\.(.+)/);
+      if (match) {
+        const index = parseInt(match[1], 10);
+        const field = match[2];
+
+        setFormData(prev => {
+          const newCopropietarios = [...(prev.copropietarios || [])];
+          if (newCopropietarios[index]) {
+            newCopropietarios[index] = {
+              ...newCopropietarios[index],
+              [field]: ocrValue,
+            };
+          }
+          return { ...prev, copropietarios: newCopropietarios };
+        });
+      }
+    } else {
+      // Campo directo (titular_nombres, conyuge_apellido_paterno, etc.)
+      setFormData(prev => ({ ...prev, [fieldKey]: ocrValue }));
+    }
+  };
+
+  // Handler: Usuario confirma que es el MISMO cliente - cargar datos anteriores
+  const handleConfirmMismoCliente = () => {
+    if (!fichaAnteriorData || !local) return;
+
+    const existingFicha = fichaAnteriorData;
+
+    setFormData({
+      local_id: local.id,
+      lead_id: existingFicha.lead_id,
+      titular_nombres: existingFicha.titular_nombres || '',
+      titular_apellido_paterno: existingFicha.titular_apellido_paterno || '',
+      titular_apellido_materno: existingFicha.titular_apellido_materno || '',
+      titular_tipo_documento: existingFicha.titular_tipo_documento || 'DNI',
+      titular_numero_documento: existingFicha.titular_numero_documento || '',
+      titular_fecha_nacimiento: existingFicha.titular_fecha_nacimiento || '',
+      titular_lugar_nacimiento: existingFicha.titular_lugar_nacimiento || '',
+      titular_estado_civil: existingFicha.titular_estado_civil || 'Soltero(a)',
+      titular_nacionalidad: existingFicha.titular_nacionalidad || 'Peruana',
+      titular_direccion: existingFicha.titular_direccion || '',
+      titular_distrito: existingFicha.titular_distrito || '',
+      titular_provincia: existingFicha.titular_provincia || '',
+      titular_departamento: existingFicha.titular_departamento || 'Lima',
+      titular_referencia: existingFicha.titular_referencia || '',
+      titular_celular: existingFicha.titular_celular || '',
+      titular_telefono_fijo: existingFicha.titular_telefono_fijo || '',
+      titular_email: existingFicha.titular_email || leadData.email || '',
+      titular_ocupacion: existingFicha.titular_ocupacion || '',
+      titular_centro_trabajo: existingFicha.titular_centro_trabajo || '',
+      titular_ruc: existingFicha.titular_ruc || '',
+      titular_genero: existingFicha.titular_genero || '',
+      titular_edad: existingFicha.titular_edad || '',
+      titular_ingresos_salariales: existingFicha.titular_ingresos_salariales || '',
+      titular_nivel_estudios: existingFicha.titular_nivel_estudios || '',
+      titular_tipo_trabajador: existingFicha.titular_tipo_trabajador || '',
+      titular_puesto_trabajo: existingFicha.titular_puesto_trabajo || '',
+      titular_cantidad_hijos: existingFicha.titular_cantidad_hijos || '',
+      titular_cuenta_propiedades: existingFicha.titular_cuenta_propiedades || '',
+      titular_cuenta_tarjeta_credito: existingFicha.titular_cuenta_tarjeta_credito || '',
+      titular_motivo_compra: existingFicha.titular_motivo_compra || '',
+      tiene_conyuge: existingFicha.tiene_conyuge || false,
+      conyuge_nombres: existingFicha.conyuge_nombres || '',
+      conyuge_apellido_paterno: existingFicha.conyuge_apellido_paterno || '',
+      conyuge_apellido_materno: existingFicha.conyuge_apellido_materno || '',
+      conyuge_tipo_documento: existingFicha.conyuge_tipo_documento || 'DNI',
+      conyuge_numero_documento: existingFicha.conyuge_numero_documento || '',
+      conyuge_fecha_nacimiento: existingFicha.conyuge_fecha_nacimiento || '',
+      conyuge_lugar_nacimiento: existingFicha.conyuge_lugar_nacimiento || '',
+      conyuge_nacionalidad: existingFicha.conyuge_nacionalidad || 'Peruana',
+      conyuge_ocupacion: existingFicha.conyuge_ocupacion || '',
+      conyuge_celular: existingFicha.conyuge_celular || '',
+      conyuge_email: existingFicha.conyuge_email || '',
+      conyuge_genero: existingFicha.conyuge_genero || '',
+      conyuge_direccion: existingFicha.conyuge_direccion || '',
+      conyuge_distrito: existingFicha.conyuge_distrito || '',
+      conyuge_provincia: existingFicha.conyuge_provincia || '',
+      conyuge_departamento: existingFicha.conyuge_departamento || 'Lima',
+      conyuge_referencia: existingFicha.conyuge_referencia || '',
+      copropietarios: existingFicha.copropietarios || [],
+      rubro: existingFicha.rubro || leadData.rubro || '',
+      modalidad_pago: existingFicha.modalidad_pago || 'financiado',
+      tipo_cambio: existingFicha.tipo_cambio,
+      monto_separacion_usd: existingFicha.monto_separacion_usd,
+      fecha_separacion: existingFicha.fecha_separacion || '',
+      porcentaje_inicial: existingFicha.porcentaje_inicial,
+      cuota_inicial_usd: existingFicha.cuota_inicial_usd,
+      inicial_restante_usd: existingFicha.inicial_restante_usd,
+      saldo_financiar_usd: existingFicha.saldo_financiar_usd,
+      numero_cuotas: existingFicha.numero_cuotas,
+      cuota_mensual_usd: existingFicha.cuota_mensual_usd,
+      tea: existingFicha.tea,
+      entidad_bancaria: existingFicha.entidad_bancaria || '',
+      fecha_inicio_pago: existingFicha.fecha_inicio_pago || '',
+      compromiso_pago: existingFicha.compromiso_pago || '',
+      utm_source: existingFicha.utm_source || '',
+      utm_detalle: existingFicha.utm_detalle || '',
+      observaciones: existingFicha.observaciones || '',
+      dni_fotos: existingFicha.dni_fotos || [],
+      comprobante_deposito_fotos: existingFicha.comprobante_deposito_fotos || [],
+      comprobante_deposito_ocr: existingFicha.comprobante_deposito_ocr || null,
+      vendedor_id: existingFicha.vendedor_id,
+    });
+
+    // Reconstruir pares de DNI
+    if (existingFicha.dni_fotos && existingFicha.dni_fotos.length > 0) {
+      const reconstructedPairs = reconstruirDniPairsDesdeUrls(existingFicha.dni_fotos, existingFicha);
+      setInitialDniPairs(reconstructedPairs);
+      setDniPairs(reconstructedPairs);
+    }
+
+    // Reconstruir vouchers
+    if (existingFicha.comprobante_deposito_fotos && existingFicha.comprobante_deposito_fotos.length > 0) {
+      const reconstructedVouchers = reconstruirVouchersDesdeUrls(
+        existingFicha.comprobante_deposito_fotos,
+        existingFicha.comprobante_deposito_ocr
+      );
+      setInitialVouchers(reconstructedVouchers);
+    }
+
+    // TEA del proyecto
+    if (existingFicha.tea !== null && existingFicha.tea !== undefined) {
+      setTeaProyecto(existingFicha.tea);
+    }
+
+    // Monto separación
+    if (existingFicha.monto_separacion_usd) {
+      setMonedaSeparacion('usd');
+      setMontoSeparacionInput(existingFicha.monto_separacion_usd);
+    }
+
+    setShowClienteConfirmModal(false);
+    setFichaAnteriorData(null);
+  };
+
+  // Handler: Usuario confirma que es un NUEVO cliente - empezar de cero
+  const handleConfirmClienteNuevo = () => {
+    // No cargar datos de la ficha anterior, mantener formData vacío
+    // Solo establecer el local_id y datos del lead
+    setFormData(prev => ({
+      ...prev,
+      local_id: local?.id || '',
+      lead_id: leadData.lead_id,
+      titular_celular: leadData.telefono || '',
+      titular_email: leadData.email || '',
+      rubro: leadData.rubro || '',
+    }));
+
+    // Limpiar documentos anteriores
+    setInitialDniPairs([]);
+    setDniPairs([]);
+    setInitialVouchers([]);
+
+    setShowClienteConfirmModal(false);
+    setFichaAnteriorData(null);
   };
 
   // Handler para monto de separación con conversión de moneda
@@ -2652,6 +2849,17 @@ export default function FichaInscripcionModal({
               {/* Datos del Titular */}
               <div className={sectionClass}>
                 <h3 className={sectionTitleClass}>Datos del Titular</h3>
+
+                {/* Alerta de validación OCR */}
+                {showOCRValidation && ocrDiscrepancies.length > 0 && (
+                  <OCRValidationAlert
+                    personDiscrepancies={ocrDiscrepancies}
+                    onApplyOCRData={handleApplyOCRData}
+                    onDismiss={() => setShowOCRValidation(false)}
+                    defaultExpanded={true}
+                  />
+                )}
+
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className={labelClass}>Nombres</label>
@@ -3167,6 +3375,67 @@ export default function FichaInscripcionModal({
         cancelText="Cancelar"
         variant="warning"
       />
+
+      {/* Modal: Detectar si es el mismo cliente o uno nuevo */}
+      {showClienteConfirmModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Cliente anterior detectado</h3>
+                <p className="text-sm text-gray-500">Local {local?.codigo}</p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="mb-6">
+              <p className="text-gray-700 mb-3">
+                Este local tiene una ficha de inscripción anterior de:
+              </p>
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                <p className="font-semibold text-gray-900 text-lg">{clienteAnteriorNombre}</p>
+                {fichaAnteriorData?.titular_numero_documento && (
+                  <p className="text-sm text-gray-600">DNI: {fichaAnteriorData.titular_numero_documento}</p>
+                )}
+              </div>
+              <p className="text-gray-600 mt-4 text-sm">
+                ¿Es el mismo cliente que quiere continuar con la compra?
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleConfirmMismoCliente}
+                className="w-full px-4 py-3 bg-[#1b967a] text-white rounded-lg font-medium hover:bg-[#157a64] transition-colors flex items-center justify-center gap-2"
+              >
+                <CheckCircle className="w-5 h-5" />
+                Sí, es el mismo cliente
+              </button>
+              <button
+                onClick={handleConfirmClienteNuevo}
+                className="w-full px-4 py-3 bg-white text-gray-700 rounded-lg font-medium border border-gray-300 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+              >
+                <User className="w-5 h-5" />
+                No, es un cliente nuevo
+              </button>
+              <button
+                onClick={() => {
+                  setShowClienteConfirmModal(false);
+                  onClose();
+                }}
+                className="w-full px-4 py-2 text-gray-500 text-sm hover:text-gray-700 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
