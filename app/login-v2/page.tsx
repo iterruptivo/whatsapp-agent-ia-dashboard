@@ -11,7 +11,7 @@ import VersionBadge from '@/components/shared/VersionBadge';
 // State machine for login flow
 type LoginState = 'idle' | 'validating' | 'credentials_valid' | 'logging_in' | 'error';
 
-export default function LoginPage() {
+export default function LoginV2Page() {
   const { signIn, loading } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -215,7 +215,7 @@ export default function LoginPage() {
               <Lock className="w-10 h-10 text-primary" />
             </div>
             <h1 className="text-3xl font-bold text-white mb-2">EcoPlaza</h1>
-            <p className="text-gray-200 text-sm">Command Center</p>
+            <p className="text-gray-200 text-sm">Dashboard de Gestión de Leads</p>
           </div>
 
           {/* Form */}
@@ -374,7 +374,10 @@ export default function LoginPage() {
 
             {/* Footer */}
             <div className="mt-8 pt-6 border-t border-gray-200">
-              <p className="text-xs text-gray-400 text-center">
+              <p className="text-xs text-gray-500 text-center">
+                Proyecto Trapiche - Sistema de Gestión de Leads
+              </p>
+              <p className="text-xs text-gray-400 text-center mt-2">
                 Powered by: iterruptivo
               </p>
               <div className="text-center mt-2">

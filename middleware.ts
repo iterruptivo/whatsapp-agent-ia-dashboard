@@ -124,15 +124,16 @@ export async function middleware(req: NextRequest) {
   // ============================================================================
   // PUBLIC API ROUTES - Allow without authentication
   // ============================================================================
-  if (pathname.startsWith('/api/public')) {
+  if (pathname.startsWith('/api/public') || pathname === '/api/auth/validate-credentials') {
     // Las rutas públicas de API no requieren autenticación
+    // /api/auth/validate-credentials es público para permitir login de 2 pasos
     return res;
   }
 
   // ============================================================================
   // PUBLIC ROUTES - Allow without authentication
   // ============================================================================
-  if (pathname === '/login' || pathname === '/showcase-components') {
+  if (pathname === '/login' || pathname === '/login-v2' || pathname === '/showcase-components') {
     // Showcase page is public for component testing
     if (pathname === '/showcase-components') {
       return res;
