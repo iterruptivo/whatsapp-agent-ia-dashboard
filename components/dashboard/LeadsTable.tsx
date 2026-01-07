@@ -14,7 +14,7 @@ interface LeadsTableProps {
   vendedores?: VendedorActivo[]; // Incluye coordinadores (Sesión 74)
   currentUserId?: string | null; // ID del usuario logueado (usuarios.id)
   onAssignLead?: (leadId: string, vendedorId: string) => Promise<void>;
-  userRole?: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | null;
+  userRole?: 'admin' | 'gerencia' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | null;
   // Repulse multi-select
   showRepulseSelection?: boolean;
   selectedLeadIds?: string[];

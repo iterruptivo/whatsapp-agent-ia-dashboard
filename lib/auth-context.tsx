@@ -14,7 +14,7 @@ interface Usuario {
   id: string;
   email: string;
   nombre: string;
-  rol: 'admin' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing';
+  rol: 'admin' | 'gerencia' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing';
   vendedor_id: string | null;
   activo: boolean;
 }

@@ -68,7 +68,7 @@ export interface Usuario {
   id: string;
   nombre: string;
   email: string;
-  rol: 'admin' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta' | 'finanzas';
+  rol: 'admin' | 'gerencia' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing';
   activo: boolean;
   vendedor_id: string | null;
   created_at: string;
@@ -611,7 +611,7 @@ export interface BulkCreateResult {
 interface BulkUsuarioData {
   nombre: string;
   email: string;
-  rol: 'admin' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta' | 'finanzas';
+  rol: 'admin' | 'gerencia' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing';
   telefono: string;
   email_alternativo?: string;
 }
