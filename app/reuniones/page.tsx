@@ -4,6 +4,7 @@
 // Descripcion: Lista de reuniones y transcripciones
 // Features: Tabla, filtros, nueva reunion modal
 // Acceso: admin, gerencia, jefe_ventas
+// NOTA: Reuniones son GLOBALES - no dependen del proyecto seleccionado
 // ============================================================================
 
 'use client';
@@ -17,7 +18,7 @@ import ReunionesTable from '@/components/reuniones/ReunionesTable';
 import NuevaReunionModal from '@/components/reuniones/NuevaReunionModal';
 
 export default function ReunionesPage() {
-  const { user, selectedProyecto, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
 
@@ -51,17 +52,7 @@ export default function ReunionesPage() {
     );
   }
 
-  if (!selectedProyecto) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-800">Selecciona un Proyecto</h2>
-          <p className="text-gray-500 mt-2">Debes seleccionar un proyecto para continuar</p>
-        </div>
-      </div>
-    );
-  }
+  // NO requerimos selectedProyecto - reuniones son globales
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -94,14 +85,13 @@ export default function ReunionesPage() {
           </div>
         </div>
 
-        {/* Tabla de reuniones */}
-        <ReunionesTable proyectoId={selectedProyecto.id} />
+        {/* Tabla de reuniones - sin proyectoId, son globales */}
+        <ReunionesTable />
       </main>
 
-      {/* Modal Nueva Reunion */}
+      {/* Modal Nueva Reunion - sin proyectoId */}
       <NuevaReunionModal
         isOpen={showModal}
-        proyectoId={selectedProyecto.id}
         onClose={() => setShowModal(false)}
         onSuccess={() => {
           setShowModal(false);

@@ -12,9 +12,10 @@ import { validateReunionFile } from '@/lib/utils/reunion-file-validator';
 // 4. Genera presigned URL para upload directo a Supabase Storage
 // ============================================================================
 
+// Reuniones son GLOBALES - proyectoId es opcional (legacy)
 interface PresignedUrlRequest {
   titulo: string;
-  proyectoId: string;
+  proyectoId?: string; // OPCIONAL - reuniones son globales
   fileName: string;
   fileSize: number;
   fileType: string;
@@ -68,10 +69,10 @@ export async function POST(request: NextRequest) {
     const body: PresignedUrlRequest = await request.json();
     const { titulo, proyectoId, fileName, fileSize, fileType, fechaReunion } = body;
 
-    // Validaciones básicas
-    if (!titulo || !proyectoId || !fileName || !fileSize || !fileType) {
+    // Validaciones básicas - proyectoId ya NO es requerido (reuniones globales)
+    if (!titulo || !fileName || !fileSize || !fileType) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos: titulo, proyectoId, fileName, fileSize, fileType' },
+        { error: 'Faltan campos requeridos: titulo, fileName, fileSize, fileType' },
         { status: 400 }
       );
     }
@@ -86,16 +87,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    // Generar path único para el archivo
+    // Generar path único para el archivo - reuniones son globales
     const timestamp = Date.now();
     const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `reuniones/${proyectoId}/${timestamp}_${sanitizedFileName}`;
+    // Usar "global" en lugar de proyectoId ya que reuniones no pertenecen a un proyecto
+    const storagePath = `reuniones/global/${timestamp}_${sanitizedFileName}`;
 
-    // Crear registro en DB con estado 'subiendo'
+    // Crear registro en DB con estado 'subiendo' - SIN proyecto_id (reuniones globales)
     const { data: reunion, error: dbError } = await supabase
       .from('reuniones')
       .insert({
-        proyecto_id: proyectoId,
+        proyecto_id: null, // Reuniones son globales, no pertenecen a un proyecto
         created_by: user.id,
         titulo,
         fecha_reunion: fechaReunion || null,

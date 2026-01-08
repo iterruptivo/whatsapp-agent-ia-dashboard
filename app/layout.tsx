@@ -20,6 +20,16 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "EcoPlaza Dashboard - Gestión de Leads",
   description: "Dashboard de gestión de leads para EcoPlaza Proyecto Trapiche",
+  // Bloquear indexación por motores de búsqueda - sistema privado
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
 };
 
 export default function RootLayout({

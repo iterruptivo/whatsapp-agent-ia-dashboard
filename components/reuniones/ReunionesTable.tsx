@@ -23,11 +23,8 @@ import { getReuniones } from '@/lib/actions-reuniones';
 import { Reunion, ReunionEstado } from '@/types/reuniones';
 import ReunionEstadoBadge from './ReunionEstadoBadge';
 
-interface ReunionesTableProps {
-  proyectoId: string;
-}
-
-export default function ReunionesTable({ proyectoId }: ReunionesTableProps) {
+// Reuniones son GLOBALES - no dependen del proyecto seleccionado
+export default function ReunionesTable() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [reuniones, setReuniones] = useState<Reunion[]>([]);
@@ -35,13 +32,13 @@ export default function ReunionesTable({ proyectoId }: ReunionesTableProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState<ReunionEstado | 'todos'>('todos');
 
-  // Cargar datos
+  // Cargar datos - SIN filtro de proyecto (reuniones globales)
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
 
       const params = {
-        proyecto_id: proyectoId,
+        // NO pasamos proyecto_id - reuniones son globales
         estado: estadoFiltro !== 'todos' ? estadoFiltro : undefined,
         limit: 50,
       };
@@ -66,7 +63,7 @@ export default function ReunionesTable({ proyectoId }: ReunionesTableProps) {
     };
 
     loadData();
-  }, [proyectoId, estadoFiltro, searchTerm]);
+  }, [estadoFiltro, searchTerm]);
 
   // Formatear duración
   const formatDuracion = (segundos: number | null) => {

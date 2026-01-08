@@ -12,9 +12,9 @@ import { X, Upload, FileVideo, AlertCircle, CheckCircle } from 'lucide-react';
 import { useReunionUpload } from '@/hooks/useReunionUpload';
 import UploadProgress from './UploadProgress';
 
+// Reuniones son GLOBALES - no requieren proyectoId
 interface NuevaReunionModalProps {
   isOpen: boolean;
-  proyectoId: string;
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -25,7 +25,6 @@ const MAX_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
 
 export default function NuevaReunionModal({
   isOpen,
-  proyectoId,
   onClose,
   onSuccess,
 }: NuevaReunionModalProps) {
@@ -90,7 +89,7 @@ export default function NuevaReunionModal({
     }
   };
 
-  // Manejar submit
+  // Manejar submit - sin proyectoId (reuniones globales)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -99,7 +98,7 @@ export default function NuevaReunionModal({
       return;
     }
 
-    await upload(selectedFile, titulo.trim(), proyectoId, fechaReunion || undefined);
+    await upload(selectedFile, titulo.trim(), fechaReunion || undefined);
   };
 
   // Limpiar y cerrar

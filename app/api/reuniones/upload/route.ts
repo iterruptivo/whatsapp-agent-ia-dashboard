@@ -56,17 +56,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Obtener FormData
+    // Obtener FormData - proyectoId ya NO es requerido (reuniones globales)
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const titulo = formData.get('titulo') as string;
-    const proyectoId = formData.get('proyecto_id') as string;
     const fechaReunion = formData.get('fecha_reunion') as string | null;
 
-    // Validaciones
-    if (!file || !titulo || !proyectoId) {
+    // Validaciones - proyecto_id ya NO es requerido
+    if (!file || !titulo) {
       return NextResponse.json(
-        { error: 'Faltan campos requeridos: file, titulo, proyecto_id' },
+        { error: 'Faltan campos requeridos: file, titulo' },
         { status: 400 }
       );
     }
@@ -77,10 +76,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    // Generar path único para el archivo
+    // Generar path único para el archivo - reuniones son globales
     const timestamp = Date.now();
     const fileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `reuniones/${proyectoId}/${timestamp}_${fileName}`;
+    // Usar "global" ya que reuniones no pertenecen a un proyecto específico
+    const storagePath = `reuniones/global/${timestamp}_${fileName}`;
 
     // Upload a Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -98,11 +98,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Crear registro en DB
+    // Crear registro en DB - SIN proyecto_id (reuniones globales)
     const { data: reunion, error: dbError } = await supabase
       .from('reuniones')
       .insert({
-        proyecto_id: proyectoId,
+        proyecto_id: null, // Reuniones son globales
         created_by: user.id,
         titulo,
         fecha_reunion: fechaReunion || null,

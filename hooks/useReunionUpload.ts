@@ -10,12 +10,13 @@ import { createBrowserClient } from '@supabase/ssr';
 
 export type UploadStatus = 'idle' | 'uploading' | 'processing' | 'done' | 'error';
 
+// Reuniones son GLOBALES - no requieren proyectoId
 interface UseReunionUploadResult {
   status: UploadStatus;
   progress: number;
   error: string | null;
   reunionId: string | null;
-  upload: (file: File, titulo: string, proyectoId: string, fechaReunion?: string) => Promise<void>;
+  upload: (file: File, titulo: string, fechaReunion?: string) => Promise<void>;
   cancel: () => void;
   reset: () => void;
 }
@@ -27,10 +28,10 @@ export function useReunionUpload(): UseReunionUploadResult {
   const [reunionId, setReunionId] = useState<string | null>(null);
   const xhrRef = useRef<XMLHttpRequest | null>(null);
 
+  // Reuniones son GLOBALES - no requieren proyectoId
   const upload = async (
     file: File,
     titulo: string,
-    proyectoId: string,
     fechaReunion?: string
   ) => {
     try {
@@ -50,7 +51,7 @@ export function useReunionUpload(): UseReunionUploadResult {
         throw new Error('No hay sesión activa. Por favor, inicia sesión nuevamente.');
       }
 
-      // PASO 1: Obtener presigned URL
+      // PASO 1: Obtener presigned URL (sin proyectoId - reuniones globales)
       console.log('[useReunionUpload] Solicitando presigned URL...');
       const presignedResponse = await fetch('/api/reuniones/presigned-url', {
         method: 'POST',
@@ -60,7 +61,7 @@ export function useReunionUpload(): UseReunionUploadResult {
         },
         body: JSON.stringify({
           titulo,
-          proyectoId,
+          // NO enviamos proyectoId - reuniones son globales
           fileName: file.name,
           fileSize: file.size,
           fileType: file.type,
