@@ -1037,28 +1037,28 @@ export async function getLeadsCandidatosRepulse(
 }
 
 // ============================================================================
-// QUOTA WHATSAPP
+// QUOTA REPULSE (Mensajes salientes iniciados por nosotros)
 // ============================================================================
 
 export interface QuotaInfo {
-  leadsHoy: number;
+  enviadosHoy: number;
   limite: number;
   disponible: number;
   porcentajeUsado: number;
 }
 
 /**
- * Obtener información de quota de WhatsApp del día
- * Cuenta leads de campaña (estado != 'lead_manual') creados hoy
- * Estos son los que consumieron mensajes de Victoria
+ * Obtener información de quota de Repulse del día
+ * Cuenta los REPULSES ENVIADOS hoy (mensajes salientes que nosotros iniciamos)
+ * Las conversaciones iniciadas por usuarios (Victoria responde) NO cuentan
  *
+ * Límite: 200 mensajes salientes por día (plantilla aprobada Meta, cuenta no verificada)
  * IMPORTANTE: Usa timezone Perú (UTC-5) para el cálculo del día
  */
-export async function getQuotaWhatsApp(limite: number = 250): Promise<QuotaInfo> {
+export async function getQuotaWhatsApp(limite: number = 200): Promise<QuotaInfo> {
   const supabase = await createClient();
 
   // Obtener fecha de inicio del día en hora Perú (UTC-5)
-  // Creamos la fecha en timezone Perú
   const nowPeru = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Lima' }));
   const startOfDayPeru = new Date(nowPeru.getFullYear(), nowPeru.getMonth(), nowPeru.getDate());
 
@@ -1066,29 +1066,28 @@ export async function getQuotaWhatsApp(limite: number = 250): Promise<QuotaInfo>
   const startOfDayUTC = new Date(startOfDayPeru.getTime() + (5 * 60 * 60 * 1000));
   const startOfDayISO = startOfDayUTC.toISOString();
 
-  // Contar leads de campaña creados hoy en hora Perú (NO manuales = consumieron quota)
+  // Contar repulses ENVIADOS hoy (mensajes salientes que nosotros iniciamos)
   const { count, error } = await supabase
-    .from('leads')
+    .from('repulse_historial')
     .select('*', { count: 'exact', head: true })
-    .gte('created_at', startOfDayISO)
-    .neq('estado', 'lead_manual');
+    .gte('enviado_at', startOfDayISO);
 
   if (error) {
     console.error('Error fetching quota info:', error);
     return {
-      leadsHoy: 0,
+      enviadosHoy: 0,
       limite,
       disponible: limite,
       porcentajeUsado: 0,
     };
   }
 
-  const leadsHoy = count || 0;
-  const disponible = Math.max(0, limite - leadsHoy);
-  const porcentajeUsado = Math.round((leadsHoy / limite) * 100);
+  const enviadosHoy = count || 0;
+  const disponible = Math.max(0, limite - enviadosHoy);
+  const porcentajeUsado = Math.round((enviadosHoy / limite) * 100);
 
   return {
-    leadsHoy,
+    enviadosHoy,
     limite,
     disponible,
     porcentajeUsado,

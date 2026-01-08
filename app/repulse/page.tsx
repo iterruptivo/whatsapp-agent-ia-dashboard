@@ -40,9 +40,9 @@ export default function RepulsePage() {
     excluidos: 0,
   });
   const [quota, setQuota] = useState<QuotaInfo>({
-    leadsHoy: 0,
-    limite: 250,
-    disponible: 250,
+    enviadosHoy: 0,
+    limite: 200,
+    disponible: 200,
     porcentajeUsado: 0,
   });
   const [loadingData, setLoadingData] = useState(true);
