@@ -679,7 +679,8 @@ export async function prepararEnvioRepulseBatch(
       proyecto_id,
       lead:lead_id (
         nombre,
-        telefono
+        telefono,
+        horario_visita
       )
     `)
     .in('id', repulseLeadIds);
@@ -696,12 +697,29 @@ export async function prepararEnvioRepulseBatch(
     const leadData = rl.lead as unknown;
     const lead = Array.isArray(leadData) ? leadData[0] : leadData;
     if (!lead || typeof lead !== 'object') continue;
-    const leadTyped = lead as { nombre: string | null; telefono: string };
+    const leadTyped = lead as { nombre: string | null; telefono: string; horario_visita: string | null };
+
+    // Formatear fecha de visita para mostrar (ej: "15 de enero" o el texto original)
+    let fechaVisitaFormateada = leadTyped.horario_visita || 'fecha no especificada';
+    // Si parece ser un timestamp ISO, formatearlo
+    if (leadTyped.horario_visita && leadTyped.horario_visita.includes('T')) {
+      try {
+        const fecha = new Date(leadTyped.horario_visita);
+        fechaVisitaFormateada = fecha.toLocaleDateString('es-PE', {
+          day: 'numeric',
+          month: 'long',
+          timeZone: 'America/Lima'
+        });
+      } catch {
+        // Si falla el parse, usar el valor original
+      }
+    }
 
     // Personalizar mensaje con variables
     const mensajePersonalizado = mensaje
       .replace(/\{\{nombre\}\}/g, leadTyped.nombre || 'Cliente')
-      .replace(/\{\{telefono\}\}/g, leadTyped.telefono);
+      .replace(/\{\{telefono\}\}/g, leadTyped.telefono)
+      .replace(/\{\{fecha_visita\}\}/g, fechaVisitaFormateada);
 
     // Registrar el envío
     await registrarEnvioRepulse(

@@ -68,9 +68,18 @@ export async function getReuniones(params: GetReunionesParams = {}) {
       query = query.eq('created_by', params.created_by);
     }
 
+    if (params.fecha_desde) {
+      query = query.gte('fecha_reunion', params.fecha_desde);
+    }
+
+    if (params.fecha_hasta) {
+      query = query.lte('fecha_reunion', params.fecha_hasta);
+    }
+
     // Paginación
+    const page = params.page || 1;
     const limit = params.limit || 20;
-    const offset = params.offset || 0;
+    const offset = (page - 1) * limit;
     query = query.range(offset, offset + limit - 1);
 
     const { data, error, count } = await query;

@@ -21,6 +21,7 @@ export default function ReunionesPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Verificar acceso
   useEffect(() => {
@@ -86,7 +87,7 @@ export default function ReunionesPage() {
         </div>
 
         {/* Tabla de reuniones - sin proyectoId, son globales */}
-        <ReunionesTable />
+        <ReunionesTable key={refreshKey} />
       </main>
 
       {/* Modal Nueva Reunion - sin proyectoId */}
@@ -95,7 +96,7 @@ export default function ReunionesPage() {
         onClose={() => setShowModal(false)}
         onSuccess={() => {
           setShowModal(false);
-          // La tabla se recargará automáticamente
+          setRefreshKey((k) => k + 1); // Forzar recarga de tabla
         }}
       />
     </div>

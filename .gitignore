@@ -58,6 +58,13 @@ Victoria*.json
 # Playwright MCP screenshots
 .playwright-mcp/
 
+# Scripts locales (migraciones, utilidades con credenciales)
+/scripts/
+
+# Archivos Excel temporales
+docs/*.xlsx
+docs/~$*
+
 # Test assets - archivos grandes (audio, video)
 docs/test-assets/audio/
 docs/test-assets/video/

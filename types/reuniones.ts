@@ -89,14 +89,52 @@ export interface GetReunionesParams {
   proyecto_id?: string;
   estado?: ReunionEstado;
   created_by?: string;
+  page?: number;
   limit?: number;
-  offset?: number;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+}
+
+// Tipo ligero para lista (sin campos pesados como transcripcion)
+export interface ReunionListItem {
+  id: string;
+  titulo: string;
+  fecha_reunion: string | null;
+  estado: ReunionEstado;
+  duracion_segundos: number | null;
+  created_at: string;
+  action_items_count: number;
+  participantes_count: number;
+}
+
+// Metadata de paginación
+export interface PaginationMetadata {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
 export interface GetReunionesResponse {
-  reuniones: Reunion[];
-  total: number;
-  hasMore: boolean;
+  success: boolean;
+  reuniones: ReunionListItem[];
+  pagination: PaginationMetadata;
+  error?: string;
+}
+
+// Request para editar reunión
+export interface UpdateReunionRequest {
+  titulo?: string;
+  fecha_reunion?: string;
+}
+
+// Response para editar reunión
+export interface UpdateReunionResponse {
+  success: boolean;
+  reunion?: Reunion;
+  error?: string;
 }
 
 export interface GetReunionDetalleResponse {
@@ -124,10 +162,10 @@ export interface GPTResumenResult {
 export interface GPTActionItemsResult {
   action_items: {
     descripcion: string;
-    asignado_nombre: string;
+    asignado_nombre: string | null;
     deadline: string | null;
     prioridad: Prioridad;
-    contexto_quote: string;
+    contexto_quote: string | null;
   }[];
 }
 

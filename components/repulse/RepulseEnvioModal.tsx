@@ -330,9 +330,53 @@ export default function RepulseEnvioModal({
                       </div>
                     )}
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Variables disponibles: {"{{nombre}}"} - Nombre del lead
-                  </p>
+                  <div className="mt-2 p-2 bg-blue-50 border border-blue-100 rounded-lg">
+                    <p className="text-xs font-medium text-blue-700 mb-1">Variables disponibles (clic para insertar):</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const textarea = textareaRef.current;
+                          if (textarea) {
+                            const start = textarea.selectionStart;
+                            const end = textarea.selectionEnd;
+                            const newText = customMessage.slice(0, start) + '{{nombre}}' + customMessage.slice(end);
+                            setCustomMessage(newText);
+                            setTimeout(() => {
+                              textarea.focus();
+                              textarea.setSelectionRange(start + 10, start + 10);
+                            }, 0);
+                          } else {
+                            setCustomMessage(prev => prev + '{{nombre}}');
+                          }
+                        }}
+                        className="px-2 py-0.5 text-xs bg-white border border-blue-200 rounded hover:bg-blue-100 text-blue-700"
+                      >
+                        {'{{nombre}}'} <span className="text-blue-400">- Nombre</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const textarea = textareaRef.current;
+                          if (textarea) {
+                            const start = textarea.selectionStart;
+                            const end = textarea.selectionEnd;
+                            const newText = customMessage.slice(0, start) + '{{fecha_visita}}' + customMessage.slice(end);
+                            setCustomMessage(newText);
+                            setTimeout(() => {
+                              textarea.focus();
+                              textarea.setSelectionRange(start + 16, start + 16);
+                            }, 0);
+                          } else {
+                            setCustomMessage(prev => prev + '{{fecha_visita}}');
+                          }
+                        }}
+                        className="px-2 py-0.5 text-xs bg-white border border-blue-200 rounded hover:bg-blue-100 text-blue-700"
+                      >
+                        {'{{fecha_visita}}'} <span className="text-blue-400">- Fecha visita</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

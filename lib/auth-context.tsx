@@ -26,6 +26,7 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string, proyectoId: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
+  changeProyecto: (proyectoId: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 // ============================================================================
@@ -647,6 +648,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ============================================================================
+  // CHANGE PROYECTO (sin cerrar sesión)
+  // ============================================================================
+  const changeProyecto = async (proyectoId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      console.log('[AUTH] Changing proyecto to:', proyectoId);
+
+      // Validar que el proyecto existe y está activo
+      const proyectoData = await fetchProyectoData(proyectoId);
+
+      if (!proyectoData) {
+        console.error('[AUTH] Proyecto not found or inactive:', proyectoId);
+        return { success: false, error: 'Proyecto no disponible o inactivo' };
+      }
+
+      // Actualizar estado
+      setSelectedProyecto(proyectoData);
+
+      // Guardar en localStorage (compartido entre tabs)
+      localStorage.setItem('selected_proyecto_id', proyectoId);
+
+      // Guardar en cookie para Server Components
+      document.cookie = `selected_proyecto_id=${proyectoId}; path=/; max-age=${60 * 60 * 24 * 30}`; // 30 días
+
+      console.log('[AUTH] Proyecto changed successfully to:', proyectoData.nombre);
+
+      // Refrescar datos del dashboard
+      router.refresh();
+
+      return { success: true };
+    } catch (error) {
+      console.error('[AUTH ERROR] Error changing proyecto:', error);
+      return { success: false, error: 'Error al cambiar de proyecto' };
+    }
+  };
+
+  // ============================================================================
   // CONTEXT VALUE
   // ============================================================================
   const value: AuthContextType = {
@@ -656,6 +693,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signIn,
     signOut,
+    changeProyecto,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

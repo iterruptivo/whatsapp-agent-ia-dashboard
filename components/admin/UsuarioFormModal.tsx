@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, User, Mail, Lock, Shield, Loader2, RefreshCw, Copy, Check } from 'lucide-react';
+import { X, User, Mail, Lock, Shield, Loader2, RefreshCw, Copy, Check, ArrowRightLeft } from 'lucide-react';
 import {
   type UsuarioConDatos,
   createUsuario,
@@ -209,6 +209,30 @@ export default function UsuarioFormModal({
             {error && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
                 {error}
+              </div>
+            )}
+
+            {/* Info de reemplazo - solo en modo edición */}
+            {isEditing && (usuario?.reemplazaANombre || usuario?.reemplazadoPorNombre) && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <ArrowRightLeft className="w-4 h-4 text-amber-600" />
+                  <span className="text-sm font-medium text-amber-800">Historial de Reemplazo</span>
+                </div>
+                <div className="space-y-1 text-sm">
+                  {usuario?.reemplazaANombre && (
+                    <p className="text-amber-700">
+                      <span className="font-medium">Reemplaza a:</span>{' '}
+                      <span className="text-amber-900">{usuario.reemplazaANombre}</span>
+                    </p>
+                  )}
+                  {usuario?.reemplazadoPorNombre && (
+                    <p className="text-red-700">
+                      <span className="font-medium">Fue reemplazado por:</span>{' '}
+                      <span className="text-red-900">{usuario.reemplazadoPorNombre}</span>
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 

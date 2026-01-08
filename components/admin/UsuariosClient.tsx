@@ -16,6 +16,8 @@ import {
   CheckCircle,
   XCircle,
   Upload,
+  UserCog,
+  ArrowRightLeft,
 } from 'lucide-react';
 import {
   type UsuarioConDatos,
@@ -24,6 +26,7 @@ import {
 import UsuarioFormModal from './UsuarioFormModal';
 import ResetPasswordModal from './ResetPasswordModal';
 import UsuarioImportModal from './UsuarioImportModal';
+import ReemplazarUsuarioModal from './ReemplazarUsuarioModal';
 
 interface UsuariosClientProps {
   initialUsuarios: UsuarioConDatos[];
@@ -72,8 +75,10 @@ export default function UsuariosClient({
   const [showFormModal, setShowFormModal] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showReemplazarModal, setShowReemplazarModal] = useState(false);
   const [usuarioEditing, setUsuarioEditing] = useState<UsuarioConDatos | null>(null);
   const [usuarioReset, setUsuarioReset] = useState<UsuarioConDatos | null>(null);
+  const [usuarioReemplazar, setUsuarioReemplazar] = useState<UsuarioConDatos | null>(null);
 
   // Loading states for toggle
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -121,6 +126,11 @@ export default function UsuariosClient({
   const handleResetClick = (usuario: UsuarioConDatos) => {
     setUsuarioReset(usuario);
     setShowResetModal(true);
+  };
+
+  const handleReemplazarClick = (usuario: UsuarioConDatos) => {
+    setUsuarioReemplazar(usuario);
+    setShowReemplazarModal(true);
   };
 
   const handleToggleActivo = async (usuario: UsuarioConDatos) => {
@@ -313,7 +323,28 @@ export default function UsuariosClient({
                 <tr key={usuario.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div>
-                      <p className="font-medium text-gray-900">{usuario.nombre}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-gray-900">{usuario.nombre}</p>
+                        {/* Ícono de reemplazo */}
+                        {(usuario.reemplazaANombre || usuario.reemplazadoPorNombre) && (
+                          <span
+                            className="inline-flex items-center"
+                            title={
+                              usuario.reemplazadoPorNombre
+                                ? `Fue reemplazado por: ${usuario.reemplazadoPorNombre}`
+                                : `Reemplaza a: ${usuario.reemplazaANombre}`
+                            }
+                          >
+                            <ArrowRightLeft
+                              className={`w-3.5 h-3.5 ${
+                                usuario.reemplazadoPorNombre
+                                  ? 'text-red-500'    // Fue reemplazado (inactivo)
+                                  : 'text-amber-500'  // Reemplaza a otro
+                              }`}
+                            />
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-500">{usuario.email}</p>
                     </div>
                   </td>
@@ -372,6 +403,16 @@ export default function UsuariosClient({
                       >
                         <Key className="w-4 h-4" />
                       </button>
+                      {/* Botón Reemplazar: solo para usuarios activos con teléfono */}
+                      {usuario.activo && usuario.telefono && (
+                        <button
+                          onClick={() => handleReemplazarClick(usuario)}
+                          className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                          title="Reemplazar Usuario"
+                        >
+                          <UserCog className="w-4 h-4" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleToggleActivo(usuario)}
                         disabled={togglingId === usuario.id}
@@ -404,7 +445,24 @@ export default function UsuariosClient({
             <div key={usuario.id} className="p-4 space-y-3">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">{usuario.nombre}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-medium text-gray-900">{usuario.nombre}</p>
+                    {/* Ícono de reemplazo - Mobile */}
+                    {(usuario.reemplazaANombre || usuario.reemplazadoPorNombre) && (
+                      <ArrowRightLeft
+                        className={`w-3.5 h-3.5 ${
+                          usuario.reemplazadoPorNombre
+                            ? 'text-red-500'
+                            : 'text-amber-500'
+                        }`}
+                        title={
+                          usuario.reemplazadoPorNombre
+                            ? `Fue reemplazado por: ${usuario.reemplazadoPorNombre}`
+                            : `Reemplaza a: ${usuario.reemplazaANombre}`
+                        }
+                      />
+                    )}
+                  </div>
                   <p className="text-sm text-gray-500">{usuario.email}</p>
                 </div>
                 <span
@@ -434,7 +492,7 @@ export default function UsuariosClient({
                 )}
               </div>
 
-              <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-2 pt-2 border-t border-gray-100 flex-wrap">
                 <button
                   onClick={() => handleEditClick(usuario)}
                   className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
@@ -449,6 +507,16 @@ export default function UsuariosClient({
                   <Key className="w-4 h-4" />
                   Reset
                 </button>
+                {/* Botón Reemplazar Mobile */}
+                {usuario.activo && usuario.telefono && (
+                  <button
+                    onClick={() => handleReemplazarClick(usuario)}
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm text-amber-600 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors"
+                  >
+                    <UserCog className="w-4 h-4" />
+                    Reemplazar
+                  </button>
+                )}
                 <button
                   onClick={() => handleToggleActivo(usuario)}
                   disabled={togglingId === usuario.id}
@@ -517,6 +585,21 @@ export default function UsuariosClient({
           onClose={() => setShowImportModal(false)}
           onSuccess={async () => {
             setShowImportModal(false);
+            await onRefresh();
+          }}
+        />
+      )}
+
+      {showReemplazarModal && usuarioReemplazar && (
+        <ReemplazarUsuarioModal
+          usuario={usuarioReemplazar}
+          onClose={() => {
+            setShowReemplazarModal(false);
+            setUsuarioReemplazar(null);
+          }}
+          onSuccess={async () => {
+            setShowReemplazarModal(false);
+            setUsuarioReemplazar(null);
             await onRefresh();
           }}
         />

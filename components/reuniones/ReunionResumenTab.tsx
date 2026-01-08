@@ -119,35 +119,35 @@ export default function ReunionResumenTab({ reunion, onReprocesar }: ReunionResu
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {/* Resumen general */}
       <section>
-        <div className="flex items-center gap-2 mb-3">
-          <FileText className="w-5 h-5 text-[#1b967a]" />
-          <h3 className="text-lg font-semibold text-gray-800">Resumen General</h3>
+        <div className="flex items-center gap-2 mb-2 sm:mb-3">
+          <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-[#1b967a]" />
+          <h3 className="text-base sm:text-lg font-semibold text-gray-800">Resumen General</h3>
         </div>
-        <div className="p-4 bg-gray-50 rounded-lg">
-          <p className="text-gray-700 leading-relaxed">{reunion.resumen}</p>
+        <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
+          <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{reunion.resumen}</p>
         </div>
       </section>
 
       {/* Puntos clave */}
       {reunion.puntos_clave && reunion.puntos_clave.length > 0 && (
         <section>
-          <div className="flex items-center gap-2 mb-3">
-            <Key className="w-5 h-5 text-blue-600" />
-            <h3 className="text-lg font-semibold text-gray-800">Puntos Clave</h3>
+          <div className="flex items-center gap-2 mb-2 sm:mb-3">
+            <Key className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800">Puntos Clave</h3>
           </div>
           <ul className="space-y-2">
             {reunion.puntos_clave.map((punto, index) => (
               <li
                 key={index}
-                className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-100 rounded-lg"
+                className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 bg-blue-50 border border-blue-100 rounded-lg"
               >
-                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 mt-0.5">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs sm:text-sm font-medium flex-shrink-0 mt-0.5">
                   {index + 1}
                 </div>
-                <p className="text-gray-700 leading-relaxed">{punto}</p>
+                <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{punto}</p>
               </li>
             ))}
           </ul>
@@ -157,18 +157,18 @@ export default function ReunionResumenTab({ reunion, onReprocesar }: ReunionResu
       {/* Decisiones */}
       {reunion.decisiones && reunion.decisiones.length > 0 && (
         <section>
-          <div className="flex items-center gap-2 mb-3">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <h3 className="text-lg font-semibold text-gray-800">Decisiones Tomadas</h3>
+          <div className="flex items-center gap-2 mb-2 sm:mb-3">
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800">Decisiones Tomadas</h3>
           </div>
           <ul className="space-y-2">
             {reunion.decisiones.map((decision, index) => (
               <li
                 key={index}
-                className="flex items-start gap-3 p-3 bg-green-50 border border-green-100 rounded-lg"
+                className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 bg-green-50 border border-green-100 rounded-lg"
               >
-                <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                <p className="text-gray-700 leading-relaxed">{decision}</p>
+                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{decision}</p>
               </li>
             ))}
           </ul>
@@ -178,18 +178,18 @@ export default function ReunionResumenTab({ reunion, onReprocesar }: ReunionResu
       {/* Preguntas abiertas */}
       {reunion.preguntas_abiertas && reunion.preguntas_abiertas.length > 0 && (
         <section>
-          <div className="flex items-center gap-2 mb-3">
-            <HelpCircle className="w-5 h-5 text-yellow-600" />
-            <h3 className="text-lg font-semibold text-gray-800">Preguntas Abiertas</h3>
+          <div className="flex items-center gap-2 mb-2 sm:mb-3">
+            <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600" />
+            <h3 className="text-base sm:text-lg font-semibold text-gray-800">Preguntas Abiertas</h3>
           </div>
           <ul className="space-y-2">
             {reunion.preguntas_abiertas.map((pregunta, index) => (
               <li
                 key={index}
-                className="flex items-start gap-3 p-3 bg-yellow-50 border border-yellow-100 rounded-lg"
+                className="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 bg-yellow-50 border border-yellow-100 rounded-lg"
               >
-                <HelpCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <p className="text-gray-700 leading-relaxed">{pregunta}</p>
+                <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{pregunta}</p>
               </li>
             ))}
           </ul>

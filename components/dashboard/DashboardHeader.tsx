@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import Sidebar from '@/components/shared/Sidebar';
+import ProyectoSelector from '@/components/dashboard/ProyectoSelector';
 
 interface DashboardHeaderProps {
   title: string;
@@ -68,7 +69,10 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
               </div>
             ) : user ? (
               // User logged in
-              <div className="flex items-center gap-2 sm:gap-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Proyecto Selector - Cambiar proyecto sin logout */}
+                <ProyectoSelector />
+
                 {/* User Info - Hidden on mobile */}
                 <div className="hidden sm:flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
                   <User className="w-5 h-5 text-white" />

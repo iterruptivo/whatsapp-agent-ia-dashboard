@@ -75,11 +75,17 @@ export interface Usuario {
   // Datos adicionales según rol
   telefono?: string | null;
   email_alternativo?: string | null;
+  // Trazabilidad de reemplazos
+  reemplaza_a?: string | null;
 }
 
 export interface UsuarioConDatos extends Usuario {
   telefono: string | null;
   email_alternativo: string | null;
+  // Info de reemplazo para mostrar en UI
+  reemplazaANombre?: string | null;      // Nombre del usuario que este reemplazó
+  reemplazadoPorNombre?: string | null;  // Nombre de quien reemplazó a este usuario
+  reemplazadoPorId?: string | null;      // ID de quien reemplazó a este usuario
 }
 
 export interface CreateUsuarioData {
@@ -183,7 +189,23 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
     }
   }
 
-  // 4. Combinar datos
+  // 4. Crear mapas para info de reemplazos
+  // Mapa de id -> nombre (para lookup rápido)
+  const nombresPorId: Record<string, string> = usuarios.reduce((acc, u) => {
+    acc[u.id] = u.nombre;
+    return acc;
+  }, {} as Record<string, string>);
+
+  // Mapa invertido: quién fue reemplazado por quién
+  // Key = ID del usuario que fue reemplazado, Value = { id, nombre } del que lo reemplazó
+  const reemplazadoPorMap: Record<string, { id: string; nombre: string }> = {};
+  usuarios.forEach(u => {
+    if (u.reemplaza_a) {
+      reemplazadoPorMap[u.reemplaza_a] = { id: u.id, nombre: u.nombre };
+    }
+  });
+
+  // 5. Combinar datos
   const usuariosConDatos: UsuarioConDatos[] = usuarios.map(u => {
     let telefono: string | null = null;
     let email_alternativo: string | null = null;
@@ -196,10 +218,17 @@ export async function getAllUsuarios(): Promise<UsuarioConDatos[]> {
       email_alternativo = noVendedoresMap[u.id].email_alternativo;
     }
 
+    // Info de reemplazos
+    const reemplazaANombre = u.reemplaza_a ? nombresPorId[u.reemplaza_a] || null : null;
+    const reemplazadoPor = reemplazadoPorMap[u.id];
+
     return {
       ...u,
       telefono,
-      email_alternativo
+      email_alternativo,
+      reemplazaANombre,
+      reemplazadoPorNombre: reemplazadoPor?.nombre || null,
+      reemplazadoPorId: reemplazadoPor?.id || null,
     };
   });
 
@@ -283,28 +312,19 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
     return { success: false, message: 'Ya existe un usuario con ese email' };
   }
 
-  // 2. Validar teléfono único (si se proporciona)
+  // 2. Validar teléfono único SOLO contra usuarios ACTIVOS (si se proporciona)
+  // SESIÓN 84: Permitir mismo teléfono si el usuario anterior está inactivo (reemplazo)
   if (data.telefono) {
-    // Buscar en vendedores
+    // Buscar en vendedores que pertenezcan a usuarios ACTIVOS
     const { data: existingVendedor } = await supabaseAdmin
       .from('vendedores')
-      .select('id')
+      .select('id, usuarios!inner(activo)')
       .eq('telefono', data.telefono)
+      .eq('usuarios.activo', true)
       .single();
 
     if (existingVendedor) {
-      return { success: false, message: 'Ya existe un usuario con ese teléfono' };
-    }
-
-    // Buscar en usuarios_datos_no_vendedores
-    const { data: existingNoVendedor } = await supabaseAdmin
-      .from('usuarios_datos_no_vendedores')
-      .select('id')
-      .eq('telefono', data.telefono)
-      .single();
-
-    if (existingNoVendedor) {
-      return { success: false, message: 'Ya existe un usuario con ese teléfono' };
+      return { success: false, message: 'Ya existe un usuario ACTIVO con ese teléfono' };
     }
   }
 
@@ -329,31 +349,26 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
 
   const userId = authData.user.id;
 
-  // 4. Crear registro en tabla usuarios
-  let vendedor_id: string | null = null;
+  // 4. Crear registro en tabla vendedores para TODOS los usuarios
+  // SESIÓN 84: Todos los usuarios pueden vender, por lo tanto todos necesitan vendedor_id
+  // NOTA: La tabla vendedores solo tiene: id, nombre, telefono, activo (NO tiene email)
+  const { data: nuevoVendedor, error: vendedorError } = await supabaseAdmin
+    .from('vendedores')
+    .insert({
+      nombre: data.nombre,
+      telefono: data.telefono || ''
+    })
+    .select('id')
+    .single();
 
-  // Si es vendedor o coordinador, crear en tabla vendedores primero
-  // NOTA: Coordinadores también pueden ser asignados a leads, por eso necesitan vendedor_id
-  if (['vendedor', 'vendedor_caseta', 'coordinador'].includes(data.rol)) {
-    // NOTA: La tabla vendedores solo tiene: id, nombre, telefono, activo (NO tiene email)
-    const { data: nuevoVendedor, error: vendedorError } = await supabaseAdmin
-      .from('vendedores')
-      .insert({
-        nombre: data.nombre,
-        telefono: data.telefono || ''
-      })
-      .select('id')
-      .single();
-
-    if (vendedorError) {
-      console.error('Error creando vendedor:', vendedorError);
-      // Intentar eliminar auth user creado
-      await supabaseAdmin.auth.admin.deleteUser(userId);
-      return { success: false, message: 'Error al crear datos de vendedor' };
-    }
-
-    vendedor_id = nuevoVendedor.id;
+  if (vendedorError) {
+    console.error('Error creando vendedor:', vendedorError);
+    // Intentar eliminar auth user creado
+    await supabaseAdmin.auth.admin.deleteUser(userId);
+    return { success: false, message: 'Error al crear datos de vendedor' };
   }
+
+  const vendedor_id = nuevoVendedor.id;
 
   // Insertar en usuarios
   const { error: usuarioError } = await supabaseAdmin
@@ -374,18 +389,19 @@ export async function createUsuario(data: CreateUsuarioData): Promise<{
     return { success: false, message: 'Error al crear registro de usuario' };
   }
 
-  // 5. Si es NO vendedor, crear en usuarios_datos_no_vendedores
-  if (['admin', 'jefe_ventas', 'finanzas'].includes(data.rol)) {
+  // 5. Si tiene email_alternativo, crear registro en usuarios_datos_no_vendedores
+  // SESIÓN 84: El teléfono ahora está SIEMPRE en vendedores, esta tabla solo para email_alternativo
+  if (data.email_alternativo) {
     const { error: datosError } = await supabaseAdmin
       .from('usuarios_datos_no_vendedores')
       .insert({
         usuario_id: userId,
-        telefono: data.telefono || null,
-        email_alternativo: data.email_alternativo || null
+        telefono: null, // Ya no se usa para teléfono
+        email_alternativo: data.email_alternativo
       });
 
     if (datosError) {
-      console.error('Error insertando datos no vendedor:', datosError);
+      console.error('Error insertando email alternativo:', datosError);
       // No es crítico, el usuario ya está creado
     }
   }
@@ -417,33 +433,19 @@ export async function updateUsuario(data: UpdateUsuarioData): Promise<{
     return { success: false, message: 'Usuario no encontrado' };
   }
 
-  // 2. Validar teléfono único si cambió
-  if (data.telefono) {
-    // Buscar en vendedores (excluyendo el actual si tiene vendedor_id)
-    const vendedorQuery = supabase
+  // 2. Validar teléfono único SOLO contra usuarios ACTIVOS (excluyendo el actual)
+  // SESIÓN 84: Permitir mismo teléfono si el usuario anterior está inactivo
+  if (data.telefono && usuarioActual.vendedor_id) {
+    const { data: existingVendedor } = await supabase
       .from('vendedores')
-      .select('id')
-      .eq('telefono', data.telefono);
-
-    if (usuarioActual.vendedor_id) {
-      vendedorQuery.neq('id', usuarioActual.vendedor_id);
-    }
-
-    const { data: existingVendedor } = await vendedorQuery.single();
-    if (existingVendedor) {
-      return { success: false, message: 'Ya existe otro usuario con ese teléfono' };
-    }
-
-    // Buscar en usuarios_datos_no_vendedores (excluyendo el actual)
-    const { data: existingNoVendedor } = await supabase
-      .from('usuarios_datos_no_vendedores')
-      .select('id')
+      .select('id, usuarios!inner(activo)')
       .eq('telefono', data.telefono)
-      .neq('usuario_id', data.id)
+      .eq('usuarios.activo', true)
+      .neq('id', usuarioActual.vendedor_id)
       .single();
 
-    if (existingNoVendedor) {
-      return { success: false, message: 'Ya existe otro usuario con ese teléfono' };
+    if (existingVendedor) {
+      return { success: false, message: 'Ya existe otro usuario ACTIVO con ese teléfono' };
     }
   }
 
@@ -465,11 +467,8 @@ export async function updateUsuario(data: UpdateUsuarioData): Promise<{
     }
   }
 
-  // 4. Actualizar datos según rol
-  const rolActual = data.rol || usuarioActual.rol;
-
-  if (['vendedor', 'vendedor_caseta'].includes(rolActual) && usuarioActual.vendedor_id) {
-    // Actualizar vendedores (solo tiene: id, nombre, telefono, activo - NO tiene email)
+  // 4. Actualizar vendedores (TODOS los usuarios tienen vendedor_id - SESIÓN 84)
+  if (usuarioActual.vendedor_id) {
     const updateVendedorData: Record<string, unknown> = {};
     if (data.nombre !== undefined) updateVendedorData.nombre = data.nombre;
     if (data.telefono !== undefined) updateVendedorData.telefono = data.telefono;
@@ -480,8 +479,11 @@ export async function updateUsuario(data: UpdateUsuarioData): Promise<{
         .update(updateVendedorData)
         .eq('id', usuarioActual.vendedor_id);
     }
-  } else if (['admin', 'jefe_ventas', 'finanzas'].includes(rolActual)) {
-    // Actualizar o insertar en usuarios_datos_no_vendedores
+  }
+
+  // 5. Actualizar email_alternativo en usuarios_datos_no_vendedores (si aplica)
+  // SESIÓN 84: Esta tabla ahora solo se usa para email_alternativo
+  if (data.email_alternativo !== undefined) {
     const { data: existingDatos } = await supabase
       .from('usuarios_datos_no_vendedores')
       .select('id')
@@ -489,25 +491,18 @@ export async function updateUsuario(data: UpdateUsuarioData): Promise<{
       .single();
 
     if (existingDatos) {
-      // Update
-      const updateDatosData: Record<string, unknown> = {};
-      if (data.telefono !== undefined) updateDatosData.telefono = data.telefono;
-      if (data.email_alternativo !== undefined) updateDatosData.email_alternativo = data.email_alternativo;
-
-      if (Object.keys(updateDatosData).length > 0) {
-        await supabase
-          .from('usuarios_datos_no_vendedores')
-          .update(updateDatosData)
-          .eq('usuario_id', data.id);
-      }
-    } else {
-      // Insert (primer vez que se agregan datos)
+      await supabase
+        .from('usuarios_datos_no_vendedores')
+        .update({ email_alternativo: data.email_alternativo })
+        .eq('usuario_id', data.id);
+    } else if (data.email_alternativo) {
+      // Solo insertar si hay email_alternativo
       await supabase
         .from('usuarios_datos_no_vendedores')
         .insert({
           usuario_id: data.id,
-          telefono: data.telefono || null,
-          email_alternativo: data.email_alternativo || null
+          telefono: null,
+          email_alternativo: data.email_alternativo
         });
     }
   }
@@ -819,6 +814,202 @@ export async function bulkCreateUsuarios(
 
   revalidatePath('/admin/usuarios');
   return result;
+}
+
+// ============================================================================
+// REEMPLAZAR: Reemplazar un usuario por otro (hereda teléfono corporativo)
+// SESIÓN 84: Cuando alguien se va, el teléfono corporativo pasa al nuevo usuario
+// ============================================================================
+
+export interface ReemplazarUsuarioData {
+  usuarioAnteriorId: string;
+  nuevoNombre: string;
+  nuevoEmail: string;
+  nuevoPassword: string;
+}
+
+export async function reemplazarUsuario(data: ReemplazarUsuarioData): Promise<{
+  success: boolean;
+  message: string;
+  nuevoUsuarioId?: string;
+  usuarioAnteriorNombre?: string;
+}> {
+  const supabaseAdmin = createAdminClient();
+
+  // 1. Obtener usuario anterior con sus datos
+  const { data: usuarioAnterior, error: fetchError } = await supabaseAdmin
+    .from('usuarios')
+    .select('id, nombre, email, rol, activo, vendedor_id')
+    .eq('id', data.usuarioAnteriorId)
+    .single();
+
+  if (fetchError || !usuarioAnterior) {
+    return { success: false, message: 'Usuario a reemplazar no encontrado' };
+  }
+
+  // 2. Validar que el usuario anterior está activo
+  if (!usuarioAnterior.activo) {
+    return { success: false, message: 'No se puede reemplazar un usuario inactivo' };
+  }
+
+  // 3. Validar que el usuario anterior tiene vendedor_id (tiene teléfono)
+  if (!usuarioAnterior.vendedor_id) {
+    return { success: false, message: 'El usuario a reemplazar no tiene teléfono corporativo asignado' };
+  }
+
+  // 4. Obtener teléfono del vendedor anterior
+  const { data: vendedorAnterior, error: vendedorError } = await supabaseAdmin
+    .from('vendedores')
+    .select('telefono')
+    .eq('id', usuarioAnterior.vendedor_id)
+    .single();
+
+  if (vendedorError || !vendedorAnterior) {
+    return { success: false, message: 'Error obteniendo datos del vendedor anterior' };
+  }
+
+  const telefonoCorporativo = vendedorAnterior.telefono;
+
+  if (!telefonoCorporativo) {
+    return { success: false, message: 'El usuario a reemplazar no tiene teléfono registrado' };
+  }
+
+  // 5. Validar que nuevo email no existe
+  const { data: existingEmail } = await supabaseAdmin
+    .from('usuarios')
+    .select('id')
+    .eq('email', data.nuevoEmail)
+    .single();
+
+  if (existingEmail) {
+    return { success: false, message: 'Ya existe un usuario con ese email' };
+  }
+
+  // 6. Desactivar usuario anterior
+  const { error: deactivateError } = await supabaseAdmin
+    .from('usuarios')
+    .update({ activo: false })
+    .eq('id', data.usuarioAnteriorId);
+
+  if (deactivateError) {
+    console.error('Error desactivando usuario anterior:', deactivateError);
+    return { success: false, message: 'Error al desactivar usuario anterior' };
+  }
+
+  // 6.5 Liberar teléfono del vendedor anterior (para evitar conflicto de unique constraint)
+  const { error: liberarTelError } = await supabaseAdmin
+    .from('vendedores')
+    .update({ telefono: null })
+    .eq('id', usuarioAnterior.vendedor_id);
+
+  if (liberarTelError) {
+    // Rollback: reactivar usuario
+    await supabaseAdmin
+      .from('usuarios')
+      .update({ activo: true })
+      .eq('id', data.usuarioAnteriorId);
+    console.error('Error liberando teléfono:', liberarTelError);
+    return { success: false, message: 'Error al liberar teléfono corporativo' };
+  }
+
+  // 7. Crear nuevo usuario en auth.users
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    email: data.nuevoEmail,
+    password: data.nuevoPassword,
+    email_confirm: true,
+    user_metadata: {
+      nombre: data.nuevoNombre,
+      rol: usuarioAnterior.rol // Hereda el mismo rol
+    }
+  });
+
+  if (authError || !authData.user) {
+    // Rollback: restaurar teléfono y reactivar usuario anterior
+    await supabaseAdmin
+      .from('vendedores')
+      .update({ telefono: telefonoCorporativo })
+      .eq('id', usuarioAnterior.vendedor_id);
+    await supabaseAdmin
+      .from('usuarios')
+      .update({ activo: true })
+      .eq('id', data.usuarioAnteriorId);
+
+    console.error('Error creando auth user:', authError);
+    return {
+      success: false,
+      message: authError?.message || 'Error al crear usuario en autenticación'
+    };
+  }
+
+  const nuevoUserId = authData.user.id;
+
+  // 8. Crear nuevo vendedor con MISMO teléfono corporativo
+  const { data: nuevoVendedor, error: nuevoVendedorError } = await supabaseAdmin
+    .from('vendedores')
+    .insert({
+      nombre: data.nuevoNombre,
+      telefono: telefonoCorporativo // Hereda el teléfono corporativo
+    })
+    .select('id')
+    .single();
+
+  if (nuevoVendedorError) {
+    // Rollback: eliminar auth user, restaurar teléfono y reactivar anterior
+    await supabaseAdmin.auth.admin.deleteUser(nuevoUserId);
+    await supabaseAdmin
+      .from('vendedores')
+      .update({ telefono: telefonoCorporativo })
+      .eq('id', usuarioAnterior.vendedor_id);
+    await supabaseAdmin
+      .from('usuarios')
+      .update({ activo: true })
+      .eq('id', data.usuarioAnteriorId);
+
+    console.error('Error creando nuevo vendedor:', nuevoVendedorError);
+    return { success: false, message: 'Error al crear datos de vendedor' };
+  }
+
+  // 9. Crear nuevo usuario en tabla usuarios con referencia a quien reemplaza
+  const { error: usuarioError } = await supabaseAdmin
+    .from('usuarios')
+    .insert({
+      id: nuevoUserId,
+      nombre: data.nuevoNombre,
+      email: data.nuevoEmail,
+      rol: usuarioAnterior.rol, // Hereda el mismo rol
+      activo: true,
+      vendedor_id: nuevoVendedor.id,
+      reemplaza_a: data.usuarioAnteriorId // Trazabilidad
+    });
+
+  if (usuarioError) {
+    // Rollback completo
+    await supabaseAdmin.auth.admin.deleteUser(nuevoUserId);
+    await supabaseAdmin
+      .from('vendedores')
+      .delete()
+      .eq('id', nuevoVendedor.id);
+    // Restaurar teléfono al vendedor anterior
+    await supabaseAdmin
+      .from('vendedores')
+      .update({ telefono: telefonoCorporativo })
+      .eq('id', usuarioAnterior.vendedor_id);
+    await supabaseAdmin
+      .from('usuarios')
+      .update({ activo: true })
+      .eq('id', data.usuarioAnteriorId);
+
+    console.error('Error insertando nuevo usuario:', usuarioError);
+    return { success: false, message: 'Error al crear registro de usuario' };
+  }
+
+  revalidatePath('/admin/usuarios');
+  return {
+    success: true,
+    message: `Usuario reemplazado exitosamente. ${data.nuevoNombre} ahora tiene el teléfono ${telefonoCorporativo}`,
+    nuevoUsuarioId: nuevoUserId,
+    usuarioAnteriorNombre: usuarioAnterior.nombre
+  };
 }
 
 // ============================================================================

@@ -123,16 +123,28 @@ export default function ReunionDetallePage() {
         </button>
 
         {/* Header de la reunion */}
-        <ReunionDetalleHeader reunion={reunion} actionItemsCount={actionItems.length} />
+        <ReunionDetalleHeader
+          reunion={reunion}
+          actionItems={actionItems}
+          onReprocess={() => {
+            // Recargar datos
+            getReunionDetalle(reunionId).then((result) => {
+              if (result.success && result.data) {
+                setReunion(result.data.reunion);
+                setActionItems(result.data.actionItems);
+              }
+            });
+          }}
+        />
 
         {/* Tabs */}
         <div className="bg-white rounded-lg shadow-md overflow-hidden mt-6">
-          {/* Tab headers */}
+          {/* Tab headers - scrollable en móvil */}
           <div className="border-b border-gray-200">
-            <div className="flex">
+            <div className="flex overflow-x-auto scrollbar-hide">
               <button
                 onClick={() => setActiveTab('resumen')}
-                className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex-shrink-0 ${
                   activeTab === 'resumen'
                     ? 'text-[#1b967a] border-b-2 border-[#1b967a]'
                     : 'text-gray-500 hover:text-gray-700'
@@ -142,22 +154,23 @@ export default function ReunionDetallePage() {
               </button>
               <button
                 onClick={() => setActiveTab('action-items')}
-                className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex-shrink-0 ${
                   activeTab === 'action-items'
                     ? 'text-[#1b967a] border-b-2 border-[#1b967a]'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                Action Items
+                <span className="hidden sm:inline">Action Items</span>
+                <span className="sm:hidden">Tareas</span>
                 {actionItems.length > 0 && (
-                  <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
+                  <span className="ml-1 px-1.5 sm:px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-semibold">
                     {actionItems.length}
                   </span>
                 )}
               </button>
               <button
                 onClick={() => setActiveTab('transcripcion')}
-                className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-3 font-medium transition-colors whitespace-nowrap text-sm sm:text-base flex-shrink-0 ${
                   activeTab === 'transcripcion'
                     ? 'text-[#1b967a] border-b-2 border-[#1b967a]'
                     : 'text-gray-500 hover:text-gray-700'
@@ -168,12 +181,13 @@ export default function ReunionDetallePage() {
             </div>
           </div>
 
-          {/* Tab content */}
-          <div className="p-6">
+          {/* Tab content - padding responsivo */}
+          <div className="p-4 sm:p-6">
             {activeTab === 'resumen' && <ReunionResumenTab reunion={reunion} />}
             {activeTab === 'action-items' && (
               <ReunionActionItemsTab
                 actionItems={actionItems}
+                reunionId={reunionId}
                 onUpdate={() => {
                   // Recargar action items
                   getReunionDetalle(reunionId).then((result) => {

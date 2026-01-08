@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import {
-  generateSummaryPrompt,
-  extractActionItemsPrompt,
-} from '@/lib/utils/prompts-reuniones';
+import { generateSummaryPrompt } from '@/lib/utils/prompts-reuniones';
 import {
   GPTResumenResult,
   GPTActionItemsResult,
@@ -164,7 +161,11 @@ async function processReunionInBackground(
     fs.writeFileSync(inputFilePath, Buffer.from(arrayBuffer));
     console.log(`[Background] Archivo guardado en: ${inputFilePath}`);
 
-    // 2. Transcribir con Whisper (con segmentación automática si es necesario)
+    // 2. Obtener duración del audio
+    const duracionSegundos = await getAudioDuration(inputFilePath);
+    console.log(`[Background] Duración del audio: ${Math.round(duracionSegundos / 60)} minutos`);
+
+    // 3. Transcribir con Whisper (con segmentación automática si es necesario)
     const transcription = await transcribeAudioWithChunking(
       inputFilePath,
       fileData.size,
@@ -175,12 +176,13 @@ async function processReunionInBackground(
       `[Background] Transcripción completada, longitud: ${transcription.length} caracteres`
     );
 
-    // 3. Generar resumen con GPT-4
-    const resumen = await generateSummary(transcription, openai);
+    // 3. Generar resumen y extraer action items EN PARALELO (más rápido)
+    console.log('[Background] Iniciando extracción de resumen y action items en paralelo...');
+    const [resumen, actionItems] = await Promise.all([
+      generateSummary(transcription, openai),
+      extractActionItems(transcription, openai),
+    ]);
     console.log('[Background] Resumen generado');
-
-    // 4. Extraer action items con GPT-4
-    const actionItems = await extractActionItems(transcription, openai);
     console.log(`[Background] Action items extraídos: ${actionItems.action_items.length}`);
 
     // 5. Guardar en base de datos
@@ -193,6 +195,7 @@ async function processReunionInBackground(
         decisiones: resumen.decisiones,
         preguntas_abiertas: resumen.preguntas_abiertas,
         participantes: resumen.participantes,
+        duracion_segundos: Math.round(duracionSegundos),
         estado: 'completado',
         processed_at: new Date().toISOString(),
       })
@@ -203,10 +206,11 @@ async function processReunionInBackground(
       const actionItemsToInsert = actionItems.action_items.map((item) => ({
         reunion_id: reunionId,
         descripcion: item.descripcion,
-        asignado_nombre: item.asignado_nombre,
-        deadline: item.deadline,
-        prioridad: item.prioridad,
-        contexto_quote: item.contexto_quote,
+        asignado_nombre: item.asignado_nombre || 'No especificado',
+        // GPT-4 a veces retorna "null" como string en lugar de null
+        deadline: (item.deadline && item.deadline !== 'null') ? item.deadline : null,
+        prioridad: item.prioridad || 'media',
+        contexto_quote: item.contexto_quote || null,
       }));
 
       await supabase
@@ -461,39 +465,181 @@ async function generateSummary(
 }
 
 // ============================================================================
-// FUNCIÓN: Extraer action items con GPT-4
+// FUNCIÓN: Limpiar transcripción de repeticiones (bug de Whisper)
+// ============================================================================
+
+function cleanTranscriptionText(text: string): string {
+  // Dividir en frases y eliminar duplicados
+  const phrases = text.split(/[.!?]+/).filter(p => p.trim().length > 10);
+  const uniquePhrases: string[] = [];
+  const seen = new Set<string>();
+
+  for (const phrase of phrases) {
+    const normalized = phrase.trim().toLowerCase();
+    if (!seen.has(normalized)) {
+      seen.add(normalized);
+      uniquePhrases.push(phrase.trim());
+    }
+  }
+
+  return uniquePhrases.join('. ');
+}
+
+// ============================================================================
+// FUNCIÓN: Extraer action items con GPT-4 (COMPLETO - sin truncar)
+// ============================================================================
+// Procesa TODA la transcripción, dividiendo en chunks si es necesario
+// para no perder ningún action item
 // ============================================================================
 
 async function extractActionItems(
   transcription: string,
   openai: OpenAI
 ): Promise<GPTActionItemsResult> {
+  // GPT-4-turbo tiene 128k tokens. ~4 chars = 1 token
+  // Usamos chunks de 80k chars (~20k tokens) para dejar espacio al prompt y respuesta
+  const MAX_CHUNK_SIZE = 80000;
+  const OVERLAP_SIZE = 2000; // Overlap para no perder contexto en los bordes
+
+  console.log(`[extractActionItems] Transcripción total: ${transcription.length} caracteres`);
+
+  // Si cabe en un solo chunk, procesar directamente
+  if (transcription.length <= MAX_CHUNK_SIZE) {
+    console.log('[extractActionItems] Procesando en un solo chunk...');
+    return await extractActionItemsFromChunk(transcription, openai, 1, 1);
+  }
+
+  // Dividir en chunks con overlap
+  const chunks: string[] = [];
+  let startIndex = 0;
+
+  while (startIndex < transcription.length) {
+    const endIndex = Math.min(startIndex + MAX_CHUNK_SIZE, transcription.length);
+    chunks.push(transcription.substring(startIndex, endIndex));
+    startIndex = endIndex - OVERLAP_SIZE; // Overlap para no perder contexto
+
+    // Evitar loop infinito si el overlap es mayor que lo que queda
+    if (startIndex >= transcription.length - OVERLAP_SIZE) {
+      break;
+    }
+  }
+
+  console.log(`[extractActionItems] Transcripción dividida en ${chunks.length} chunks`);
+
+  // Procesar todos los chunks en paralelo para velocidad
+  const chunkPromises = chunks.map((chunk, index) =>
+    extractActionItemsFromChunk(chunk, openai, index + 1, chunks.length)
+  );
+
+  const results = await Promise.all(chunkPromises);
+
+  // Combinar todos los action items
+  const allActionItems: any[] = [];
+  const seenDescriptions = new Set<string>();
+
+  for (const result of results) {
+    for (const item of result.action_items) {
+      // Evitar duplicados por descripción similar (del overlap)
+      const normalizedDesc = item.descripcion.toLowerCase().trim();
+      if (!seenDescriptions.has(normalizedDesc)) {
+        seenDescriptions.add(normalizedDesc);
+        allActionItems.push(item);
+      }
+    }
+  }
+
+  console.log(`[extractActionItems] ✅ Total: ${allActionItems.length} action items únicos de ${chunks.length} chunks`);
+  return { action_items: allActionItems };
+}
+
+// ============================================================================
+// FUNCIÓN: Extraer action items de un chunk individual
+// ============================================================================
+
+async function extractActionItemsFromChunk(
+  chunk: string,
+  openai: OpenAI,
+  chunkNum: number,
+  totalChunks: number
+): Promise<GPTActionItemsResult> {
+  const chunkInfo = totalChunks > 1 ? ` (Parte ${chunkNum}/${totalChunks})` : '';
+
+  const prompt = `Eres un asistente experto en identificar tareas y compromisos en reuniones de trabajo.
+
+Analiza cuidadosamente la siguiente transcripción${chunkInfo} e identifica TODOS los action items, tareas, compromisos o pendientes mencionados.
+
+IMPORTANTE: Sé MUY exhaustivo. Busca cualquier mención de:
+- Algo que alguien va a hacer ("voy a...", "me encargo de...", "yo hago...")
+- Algo que alguien debe hacer ("tienes que...", "necesitas...", "hay que...")
+- Compromisos ("queda pendiente...", "se compromete a...")
+- Envíos o entregas ("te mando...", "te envío...", "enviar...")
+- Revisiones ("revisar...", "evaluar...", "analizar...")
+- Seguimientos ("dar seguimiento...", "verificar...", "confirmar...")
+- Coordinaciones ("coordinar con...", "hablar con...", "reunirse con...")
+
+Para cada action item extrae:
+- descripcion: Qué se debe hacer (claro y específico)
+- asignado_nombre: A quién se asignó (si no está claro, pon "Por asignar")
+- deadline: Fecha límite si se mencionó (formato YYYY-MM-DD), o null si no hay fecha
+- prioridad: "alta", "media" o "baja"
+- contexto_quote: Fragmento de donde se mencionó
+
+Responde SOLO en JSON válido:
+{
+  "action_items": [
+    {
+      "descripcion": "...",
+      "asignado_nombre": "...",
+      "deadline": null,
+      "prioridad": "media",
+      "contexto_quote": "..."
+    }
+  ]
+}
+
+TRANSCRIPCIÓN${chunkInfo}:
+${chunk}`;
+
   try {
+    console.log(`[extractActionItems] Chunk ${chunkNum}/${totalChunks}: Llamando a GPT-4...`);
+
     const completion = await openai.chat.completions.create({
       model: 'gpt-4-turbo-preview',
       messages: [
         {
           role: 'system',
-          content: 'Eres un asistente que solo responde en JSON válido.',
+          content: 'Eres un asistente que solo responde en JSON válido. Eres muy exhaustivo identificando tareas y compromisos.',
         },
         {
           role: 'user',
-          content: extractActionItemsPrompt(transcription),
+          content: prompt,
         },
       ],
-      temperature: 0.3,
+      temperature: 0.2,
       response_format: { type: 'json_object' },
     });
 
-    const result = JSON.parse(
-      completion.choices[0].message.content || '{"action_items": []}'
-    ) as GPTActionItemsResult;
+    const rawContent = completion.choices[0].message.content || '{"action_items": []}';
+    const result = JSON.parse(rawContent);
 
-    return result;
+    // Validar y limpiar cada action item
+    if (result.action_items && Array.isArray(result.action_items)) {
+      const validatedItems = result.action_items.map((item: any) => ({
+        descripcion: item.descripcion || 'Sin descripción',
+        asignado_nombre: item.asignado_nombre || 'No especificado',
+        deadline: (item.deadline && item.deadline !== 'null' && item.deadline !== '') ? item.deadline : null,
+        prioridad: ['alta', 'media', 'baja'].includes(item.prioridad) ? item.prioridad : 'media',
+        contexto_quote: item.contexto_quote || null,
+      }));
+
+      console.log(`[extractActionItems] Chunk ${chunkNum}/${totalChunks}: ✅ ${validatedItems.length} items`);
+      return { action_items: validatedItems };
+    }
+
+    console.warn(`[extractActionItems] Chunk ${chunkNum}/${totalChunks}: Sin action_items válidos`);
+    return { action_items: [] };
   } catch (error: any) {
-    console.error('[extractActionItems] Error:', error);
-
-    // Fallback: retornar array vacío
+    console.error(`[extractActionItems] Chunk ${chunkNum}/${totalChunks}: ❌ Error:`, error.message);
     return { action_items: [] };
   }
 }

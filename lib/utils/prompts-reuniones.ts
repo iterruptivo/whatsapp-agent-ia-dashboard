@@ -29,38 +29,51 @@ ${transcripcion}`;
 }
 
 export function extractActionItemsPrompt(transcripcion: string): string {
-  return `Eres un asistente experto en identificar tareas y compromisos en reuniones.
+  return `Eres un asistente experto en identificar tareas y compromisos en reuniones de trabajo.
 
-Dada la siguiente transcripción, identifica TODOS los action items (tareas, compromisos, pendientes).
+Analiza la siguiente transcripción e identifica TODOS los action items, tareas, compromisos o pendientes mencionados.
+
+IMPORTANTE - Sé MUY exhaustivo. Busca cualquier mención de:
+- Algo que alguien VA A HACER: "voy a...", "me encargo...", "yo hago...", "te mando...", "te envío..."
+- Algo que alguien DEBE HACER: "tienes que...", "necesitas...", "hay que...", "deberías..."
+- COMPROMISOS: "queda pendiente...", "se compromete a...", "quedamos en..."
+- REVISIONES: "revisar...", "evaluar...", "analizar...", "verificar..."
+- ENTREGAS: "para el [fecha]...", "antes del...", "entregar..."
+- SEGUIMIENTOS: "dar seguimiento...", "confirmar...", "coordinar..."
 
 Para cada action item extrae:
-- descripcion: Qué se debe hacer (máximo 200 caracteres)
-- asignado_nombre: A quién se asignó (nombre mencionado, o "No especificado")
-- deadline: Fecha límite si se mencionó (formato YYYY-MM-DD, o null)
-- prioridad: "alta" si es urgente, "media" si es normal, "baja" si no es urgente
-- contexto_quote: Cita textual de donde se mencionó (máximo 300 caracteres)
+- descripcion: Qué se debe hacer (claro y específico, máximo 200 caracteres)
+- asignado_nombre: A quién se asignó. Si no está claro, usa "Por asignar"
+- deadline: Fecha límite en formato YYYY-MM-DD. IMPORTANTE: Si no hay fecha, usa null (NO uses la palabra "null" como texto)
+- prioridad: "alta" si es urgente/importante, "media" si es normal, "baja" si puede esperar
+- contexto_quote: Fragmento textual de donde se mencionó (máximo 300 caracteres)
+
+REGLAS DE FORMATO JSON:
+1. deadline DEBE ser null (sin comillas) si no hay fecha, NO "null" como string
+2. Todos los campos son obligatorios
+3. prioridad solo puede ser: "alta", "media" o "baja"
 
 Responde SOLO en formato JSON válido:
 {
   "action_items": [
     {
-      "descripcion": "...",
-      "asignado_nombre": "...",
-      "deadline": "YYYY-MM-DD o null",
-      "prioridad": "alta|media|baja",
-      "contexto_quote": "..."
+      "descripcion": "Preparar presentación de ventas",
+      "asignado_nombre": "Juan Pérez",
+      "deadline": "2026-01-15",
+      "prioridad": "alta",
+      "contexto_quote": "Juan, necesito que prepares la presentación para el 15"
+    },
+    {
+      "descripcion": "Revisar propuesta del cliente",
+      "asignado_nombre": "Por asignar",
+      "deadline": null,
+      "prioridad": "media",
+      "contexto_quote": "Hay que revisar la propuesta que nos enviaron"
     }
   ]
 }
 
-Keywords para detectar action items:
-- "voy a", "me encargo", "yo hago", "yo me ocupo"
-- "tienes que", "necesitas", "deberías", "hay que"
-- "para el [fecha]", "antes del [fecha]", "hasta el [fecha]"
-- "pendiente", "tarea", "compromiso", "acción"
-- "queda en", "se compromete a"
-
-Si NO hay action items, retorna array vacío: {"action_items": []}
+Si NO hay action items, retorna: {"action_items": []}
 
 TRANSCRIPCIÓN:
 ${transcripcion}`;
