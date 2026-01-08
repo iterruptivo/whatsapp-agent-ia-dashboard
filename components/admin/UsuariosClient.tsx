@@ -449,18 +449,21 @@ export default function UsuariosClient({
                     <p className="font-medium text-gray-900">{usuario.nombre}</p>
                     {/* Ícono de reemplazo - Mobile */}
                     {(usuario.reemplazaANombre || usuario.reemplazadoPorNombre) && (
-                      <ArrowRightLeft
-                        className={`w-3.5 h-3.5 ${
-                          usuario.reemplazadoPorNombre
-                            ? 'text-red-500'
-                            : 'text-amber-500'
-                        }`}
+                      <span
                         title={
                           usuario.reemplazadoPorNombre
                             ? `Fue reemplazado por: ${usuario.reemplazadoPorNombre}`
                             : `Reemplaza a: ${usuario.reemplazaANombre}`
                         }
-                      />
+                      >
+                        <ArrowRightLeft
+                          className={`w-3.5 h-3.5 ${
+                            usuario.reemplazadoPorNombre
+                              ? 'text-red-500'
+                              : 'text-amber-500'
+                          }`}
+                        />
+                      </span>
                     )}
                   </div>
                   <p className="text-sm text-gray-500">{usuario.email}</p>
