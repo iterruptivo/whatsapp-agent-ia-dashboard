@@ -649,7 +649,8 @@ export async function registrarEnvioRepulse(
 
 /**
  * Enviar repulse a múltiples leads (batch)
- * Retorna los datos para enviar a n8n
+ * Prepara los datos y registra en historial con estado 'pendiente'
+ * El envío real se hace via API Route /api/repulse/send-batch
  */
 export async function prepararEnvioRepulseBatch(
   repulseLeadIds: string[],
@@ -658,7 +659,9 @@ export async function prepararEnvioRepulseBatch(
   enviadoPor: string
 ): Promise<{
   success: boolean;
+  batchId: string;
   leadsParaN8n: Array<{
+    historial_id: string;
     repulse_lead_id: string;
     lead_id: string;
     proyecto_id: string;
@@ -670,6 +673,9 @@ export async function prepararEnvioRepulseBatch(
 }> {
   const supabase = await createClient();
 
+  // Generar batch ID único
+  const batchId = crypto.randomUUID();
+
   // Obtener datos de los leads
   const { data: repulseLeads, error } = await supabase
     .from('repulse_leads')
@@ -680,14 +686,15 @@ export async function prepararEnvioRepulseBatch(
       lead:lead_id (
         nombre,
         telefono,
-        horario_visita
+        horario_visita,
+        horario_visita_timestamp
       )
     `)
     .in('id', repulseLeadIds);
 
   if (error || !repulseLeads) {
     console.error('Error fetching repulse leads for batch:', error);
-    return { success: false, leadsParaN8n: [], error: error?.message };
+    return { success: false, batchId, leadsParaN8n: [], error: error?.message };
   }
 
   const leadsParaN8n = [];
@@ -697,22 +704,39 @@ export async function prepararEnvioRepulseBatch(
     const leadData = rl.lead as unknown;
     const lead = Array.isArray(leadData) ? leadData[0] : leadData;
     if (!lead || typeof lead !== 'object') continue;
-    const leadTyped = lead as { nombre: string | null; telefono: string; horario_visita: string | null };
+    const leadTyped = lead as {
+      nombre: string | null;
+      telefono: string;
+      horario_visita: string | null;
+      horario_visita_timestamp: string | null;
+    };
 
-    // Formatear fecha de visita para mostrar (ej: "15 de enero" o el texto original)
-    let fechaVisitaFormateada = leadTyped.horario_visita || 'fecha no especificada';
-    // Si parece ser un timestamp ISO, formatearlo
-    if (leadTyped.horario_visita && leadTyped.horario_visita.includes('T')) {
+    // Formatear fecha de visita de forma inteligente:
+    // 1. Si tiene horario_visita_timestamp → formatear bonito con fecha y hora
+    // 2. Si no, usar horario_visita (texto del usuario) como fallback
+    // 3. Si no hay ninguno → "fecha no especificada"
+    let fechaVisitaFormateada = 'fecha no especificada';
+
+    if (leadTyped.horario_visita_timestamp) {
+      // Usar el timestamp parseado - formatear bonito
       try {
-        const fecha = new Date(leadTyped.horario_visita);
+        const fecha = new Date(leadTyped.horario_visita_timestamp);
         fechaVisitaFormateada = fecha.toLocaleDateString('es-PE', {
+          weekday: 'long',
           day: 'numeric',
           month: 'long',
+          hour: 'numeric',
+          minute: '2-digit',
+          hour12: true,
           timeZone: 'America/Lima'
         });
       } catch {
-        // Si falla el parse, usar el valor original
+        // Si falla el parse, intentar con el texto original
+        fechaVisitaFormateada = leadTyped.horario_visita || 'fecha no especificada';
       }
+    } else if (leadTyped.horario_visita) {
+      // Usar el texto original del usuario como fallback
+      fechaVisitaFormateada = leadTyped.horario_visita;
     }
 
     // Personalizar mensaje con variables
@@ -721,17 +745,29 @@ export async function prepararEnvioRepulseBatch(
       .replace(/\{\{telefono\}\}/g, leadTyped.telefono)
       .replace(/\{\{fecha_visita\}\}/g, fechaVisitaFormateada);
 
-    // Registrar el envío
-    await registrarEnvioRepulse(
-      rl.id,
-      rl.lead_id,
-      rl.proyecto_id,
-      mensajePersonalizado,
-      templateId,
-      enviadoPor
-    );
+    // Insertar en historial con estado 'pendiente' y batch_id
+    const { data: historialData, error: historialError } = await supabase
+      .from('repulse_historial')
+      .insert({
+        repulse_lead_id: rl.id,
+        lead_id: rl.lead_id,
+        proyecto_id: rl.proyecto_id,
+        template_id: templateId,
+        mensaje_enviado: mensajePersonalizado,
+        enviado_por: enviadoPor,
+        batch_id: batchId,
+        envio_estado: 'pendiente',
+      })
+      .select('id')
+      .single();
+
+    if (historialError) {
+      console.error('Error inserting historial:', historialError);
+      continue;
+    }
 
     leadsParaN8n.push({
+      historial_id: historialData.id,
       repulse_lead_id: rl.id,
       lead_id: rl.lead_id,
       proyecto_id: rl.proyecto_id,
@@ -741,7 +777,7 @@ export async function prepararEnvioRepulseBatch(
     });
   }
 
-  return { success: true, leadsParaN8n };
+  return { success: true, batchId, leadsParaN8n };
 }
 
 // ============================================================================

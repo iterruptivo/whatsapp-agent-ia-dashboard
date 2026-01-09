@@ -43,6 +43,8 @@ import Tooltip from '@/components/shared/Tooltip';
 import RepulseTemplateModal from './RepulseTemplateModal';
 import RepulseEnvioModal from './RepulseEnvioModal';
 import ConfirmModal from '@/components/shared/ConfirmModal';
+import RepulseProgressModal from './RepulseProgressModal';
+import RepulseProgressIndicator from './RepulseProgressIndicator';
 
 interface RepulseClientProps {
   initialLeads: RepulseLead[];
@@ -101,6 +103,13 @@ export default function RepulseClient({
 
   // State para modal informativo
   const [showInfoModal, setShowInfoModal] = useState(false);
+
+  // State para batch activo (indicador flotante cuando modal está minimizado)
+  const [activeBatch, setActiveBatch] = useState<{
+    batchId: string;
+    totalLeads: number;
+  } | null>(null);
+  const [showProgressModal, setShowProgressModal] = useState(false);
 
   // Filtrar leads
   const filteredLeads = useMemo(() => {
@@ -661,9 +670,36 @@ export default function RepulseClient({
             setShowEnvioModal(false);
             setSelectedLeads(new Set());
           }}
-          onSuccess={() => {
+          onBatchStarted={(batchId, totalLeads) => {
+            // El envío comenzó - guardar batch para indicador flotante
+            setActiveBatch({ batchId, totalLeads });
             setShowEnvioModal(false);
             setSelectedLeads(new Set());
+            setShowProgressModal(true);
+          }}
+        />
+      )}
+
+      {/* Modal de progreso (cuando se reabre desde indicador flotante) */}
+      {showProgressModal && activeBatch && (
+        <RepulseProgressModal
+          batchId={activeBatch.batchId}
+          totalLeads={activeBatch.totalLeads}
+          onClose={() => {
+            setShowProgressModal(false);
+            // El indicador flotante sigue visible mientras haya batch activo
+          }}
+        />
+      )}
+
+      {/* Indicador flotante de progreso (cuando modal está minimizado) */}
+      {activeBatch && !showProgressModal && (
+        <RepulseProgressIndicator
+          batchId={activeBatch.batchId}
+          totalLeads={activeBatch.totalLeads}
+          onExpand={() => setShowProgressModal(true)}
+          onComplete={() => {
+            setActiveBatch(null);
             onRefresh();
           }}
         />

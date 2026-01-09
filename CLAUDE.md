@@ -42,7 +42,7 @@ Uptime:    99.9%
 
 ---
 
-## MIS SUBAGENTES (14 total)
+## MIS SUBAGENTES (15 total)
 
 **Ubicacion EXACTA:** `E:\Projects\ECOPLAZA_PROJECTS\whatsapp-agent-ia-dashboard\.claude\agents\`
 
@@ -62,6 +62,7 @@ Uptime:    99.9%
 | 12 | **python-data-science** | FastAPI, ML, pandas, analytics |
 | 13 | **code-quality-reviewer** | Code review, best practices, QA de codigo |
 | 14 | **secdev-auth-specialist** | Seguridad avanzada, pentest, vulnerabilidades |
+| 15 | **meta-ads-specialist** | Meta Lead Ads, Graph API, webhooks FB/IG, Conversions API |
 
 ### Invocacion
 ```
@@ -211,5 +212,5 @@ Ver detalles completos en: `docs/test-assets/README.md`
 
 ---
 
-**Ultima Actualizacion:** 8 Enero 2026
-**Sesion:** 83+
+**Ultima Actualizacion:** 9 Enero 2026
+**Sesion:** 84+

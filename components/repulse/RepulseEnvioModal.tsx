@@ -12,7 +12,7 @@ import dynamic from 'next/dynamic';
 
 // Dynamic import para evitar SSR issues con emoji-picker-react
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false });
-import { type RepulseTemplate, prepararEnvioRepulseBatch, enviarRepulseViaWebhook } from '@/lib/actions-repulse';
+import { type RepulseTemplate, prepararEnvioRepulseBatch } from '@/lib/actions-repulse';
 
 interface RepulseEnvioModalProps {
   selectedLeadIds: string[];
@@ -20,7 +20,7 @@ interface RepulseEnvioModalProps {
   proyectoId: string;
   userId: string;
   onClose: () => void;
-  onSuccess: () => void;
+  onBatchStarted: (batchId: string, totalLeads: number) => void;
 }
 
 export default function RepulseEnvioModal({
@@ -29,7 +29,7 @@ export default function RepulseEnvioModal({
   proyectoId,
   userId,
   onClose,
-  onSuccess,
+  onBatchStarted,
 }: RepulseEnvioModalProps) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(
     templates.length > 0 ? templates[0].id : ''
@@ -38,12 +38,6 @@ export default function RepulseEnvioModal({
   const [useCustomMessage, setUseCustomMessage] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<{
-    success: boolean;
-    enviados: number;
-    errores: number;
-    detalles: Array<{ telefono: string; status: 'ok' | 'error'; error?: string }>;
-  } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -91,7 +85,7 @@ export default function RepulseEnvioModal({
     setError('');
 
     try {
-      // 1. Preparar datos y registrar en historial
+      // 1. Preparar datos y registrar en historial con batch_id
       const prepResponse = await prepararEnvioRepulseBatch(
         selectedLeadIds,
         mensaje,
@@ -105,103 +99,31 @@ export default function RepulseEnvioModal({
         return;
       }
 
-      // 2. Enviar via webhook de n8n
-      const envioResponse = await enviarRepulseViaWebhook(prepResponse.leadsParaN8n);
-
-      setResult({
-        success: envioResponse.success,
-        enviados: envioResponse.enviados,
-        errores: envioResponse.errores,
-        detalles: envioResponse.detalles,
+      // 2. Iniciar procesamiento en background via API Route
+      const batchResponse = await fetch('/api/repulse/send-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leads: prepResponse.leadsParaN8n,
+          batchId: prepResponse.batchId,
+        }),
       });
+
+      if (!batchResponse.ok) {
+        const errorData = await batchResponse.json();
+        setError(errorData.error || 'Error al iniciar envío');
+        setIsLoading(false);
+        return;
+      }
+
+      // 3. Notificar al padre que el batch comenzó
+      onBatchStarted(prepResponse.batchId, prepResponse.leadsParaN8n.length);
     } catch (err) {
       setError('Error inesperado al enviar');
     } finally {
       setIsLoading(false);
     }
   };
-
-  // Vista de resultado
-  if (result) {
-    const hasErrors = result.errores > 0;
-    const allFailed = result.enviados === 0 && result.errores > 0;
-
-    return (
-      <div className="fixed inset-0 z-50 overflow-y-auto">
-        <div className="fixed inset-0 bg-black bg-opacity-50" onClick={onSuccess} />
-        <div className="relative min-h-screen flex items-center justify-center p-4">
-          <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg">
-            <div className="p-6 text-center">
-              <div className={`w-16 h-16 ${allFailed ? 'bg-red-100' : hasErrors ? 'bg-yellow-100' : 'bg-green-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
-                <Zap className={`w-8 h-8 ${allFailed ? 'text-red-600' : hasErrors ? 'text-yellow-600' : 'text-green-600'}`} />
-              </div>
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">
-                {allFailed ? 'Error en el envío' : hasErrors ? 'Envío parcial completado' : 'Repulse enviado'}
-              </h2>
-              <p className="text-gray-600 mb-4">
-                {allFailed
-                  ? 'No se pudo enviar ningún mensaje. Verifica la configuración del webhook.'
-                  : `Se enviaron ${result.enviados} mensajes${result.errores > 0 ? ` (${result.errores} fallidos)` : ''}.`
-                }
-              </p>
-
-              {allFailed && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-left">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                    <div className="text-sm text-red-800">
-                      <p className="font-medium">Webhook n8n no configurado</p>
-                      <p className="mt-1">
-                        Configura la variable de entorno <code className="bg-red-100 px-1 rounded">N8N_REPULSE_WEBHOOK_URL</code> con
-                        la URL de tu webhook de n8n.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Resumen de resultados */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-green-50 rounded-lg p-3 text-center">
-                  <p className="text-2xl font-bold text-green-700">{result.enviados}</p>
-                  <p className="text-sm text-green-600">Enviados</p>
-                </div>
-                <div className={`${result.errores > 0 ? 'bg-red-50' : 'bg-gray-50'} rounded-lg p-3 text-center`}>
-                  <p className={`text-2xl font-bold ${result.errores > 0 ? 'text-red-700' : 'text-gray-500'}`}>{result.errores}</p>
-                  <p className={`text-sm ${result.errores > 0 ? 'text-red-600' : 'text-gray-500'}`}>Fallidos</p>
-                </div>
-              </div>
-
-              {/* Detalle de envíos (primeros 5) */}
-              <div className="bg-gray-50 rounded-lg p-3 text-left text-sm max-h-40 overflow-y-auto">
-                <p className="font-medium text-gray-700 mb-2">Detalle:</p>
-                <ul className="space-y-1 text-gray-600">
-                  {result.detalles.slice(0, 5).map((d, idx) => (
-                    <li key={idx} className="flex items-center gap-2">
-                      <span className={`w-2 h-2 ${d.status === 'ok' ? 'bg-green-500' : 'bg-red-500'} rounded-full`} />
-                      {d.telefono} {d.status === 'error' && d.error && <span className="text-red-500 text-xs">({d.error})</span>}
-                    </li>
-                  ))}
-                  {result.detalles.length > 5 && (
-                    <li className="text-gray-400">
-                      y {result.detalles.length - 5} más...
-                    </li>
-                  )}
-                </ul>
-              </div>
-
-              <button
-                onClick={onSuccess}
-                className="mt-6 w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
-              >
-                Entendido
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
