@@ -83,7 +83,7 @@ export default function RepulseClient({
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 50;
+  const [pageSize, setPageSize] = useState(50);
 
   // Sort state (asc = oldest first, desc = newest first)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -137,17 +137,17 @@ export default function RepulseClient({
 
   // Paginated leads
   const paginatedLeads = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    const end = start + itemsPerPage;
+    const start = (currentPage - 1) * pageSize;
+    const end = start + pageSize;
     return sortedLeads.slice(start, end);
-  }, [sortedLeads, currentPage, itemsPerPage]);
+  }, [sortedLeads, currentPage, pageSize]);
 
-  const totalPages = Math.ceil(sortedLeads.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedLeads.length / pageSize);
 
-  // Reset page when filters or sort change
+  // Reset page when filters, sort, or pageSize change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, estadoFilter, sortOrder]);
+  }, [searchTerm, estadoFilter, sortOrder, pageSize]);
 
   // Leads seleccionables (solo pendientes de la página actual)
   const selectableLeads = paginatedLeads.filter((l) => l.estado === 'pendiente');
@@ -440,7 +440,7 @@ export default function RepulseClient({
         {totalPages > 1 && (
           <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
             <div className="text-sm text-gray-600">
-              Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, sortedLeads.length)} de {sortedLeads.length} leads
+              Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, sortedLeads.length)} de {sortedLeads.length} leads
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -598,11 +598,25 @@ export default function RepulseClient({
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+        <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <div className="text-sm text-gray-600">
-              Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, sortedLeads.length)} de {sortedLeads.length} leads
+              Mostrando {sortedLeads.length > 0 ? ((currentPage - 1) * pageSize) + 1 : 0} - {Math.min(currentPage * pageSize, sortedLeads.length)} de {sortedLeads.length} leads
             </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-500">Por página:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="px-2 py-1 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={500}>500</option>
+              </select>
+            </div>
+          </div>
+          {totalPages > 1 && (
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setCurrentPage(currentPage - 1)}
@@ -622,8 +636,8 @@ export default function RepulseClient({
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Modals */}

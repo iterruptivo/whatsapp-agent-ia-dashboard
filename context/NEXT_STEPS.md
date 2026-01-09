@@ -100,6 +100,40 @@
 
 ---
 
+## NUEVO: INVESTIGACIÓN IA CONVERSACIONAL PARA DATOS ✅ COMPLETADO
+
+**Objetivo:** Investigar mejores soluciones para módulo de IA que permita queries en lenguaje natural sobre PostgreSQL/Supabase.
+
+**Investigación completada:**
+- [x] Investigar plataformas SaaS (ThoughtSpot, Databricks, Vanna AI, Power BI, Looker)
+- [x] Investigar frameworks open source (LangChain, LlamaIndex, Supabase AI)
+- [x] Investigar tutoriales y guías 2026
+- [x] Identificar tendencias (Agentic BI, Multi-modal, Auto-chart generation)
+- [x] Casos de éxito relevantes
+
+**Reporte generado:**
+- 📄 `docs/research/IA_Conversacional_Datos_2026.md` (reporte completo de 600+ líneas)
+
+**Hallazgos clave:**
+1. **Supabase AI Assistant** - Gratis, ya integrado, disponible NOW (quick win)
+2. **LangChain SQL Agent** - Recomendación principal para implementación custom
+3. **Costo-efectivo:** $60-120/mes vs $15K/año de enterprise tools
+4. **Casos de éxito:** 70% reducción de codebase con LangChain + FastAPI
+5. **Tendencia 2026:** Agentic BI (agentes autónomos) + Multi-modal (charts automáticos)
+
+**Recomendación:**
+- **FASE 1 (Quick Win):** Usar Supabase AI Assistant para equipo interno - Gratis, 4-6 horas
+- **FASE 2 (MVP):** LangChain SQL Agent + FastAPI + Next.js - $30/mes, 20-30 horas
+- **FASE 3 (Production):** Multi-modal (charts, narrativas, reports) - $60-120/mes, 40-60 horas
+
+**Próximos pasos:**
+- [ ] Validar con stakeholders (Heyse/Dr. Luis) - Mostrar reporte, confirmar casos de uso
+- [ ] Aprobar budget (~$60-120/mes recurring)
+- [ ] Implementar FASE 1 (Supabase AI) - Training session con gerencia/finanzas
+- [ ] Prototipar FASE 2 (LangChain MVP) - FastAPI + Next.js chat interface
+
+---
+
 ## Otras Tareas Pendientes (Prioridad Baja)
 
 ### Swagger UI
@@ -122,5 +156,5 @@
 
 ---
 
-**Ultima Actualizacion:** 01 Enero 2026
-**Sesion:** 79 - FASE 7 completada (Contratos Flexibles). Solo queda FASE 8 (Facturacion) para el futuro.
+**Ultima Actualizacion:** 8 Enero 2026
+**Sesion:** 84 - Investigación IA Conversacional completada. Reporte en docs/research/IA_Conversacional_Datos_2026.md
