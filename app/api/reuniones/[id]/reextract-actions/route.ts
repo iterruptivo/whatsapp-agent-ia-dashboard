@@ -222,14 +222,14 @@ TRANSCRIPCIÓN${chunkInfo}:
 ${chunk}`;
 
   try {
-    console.log(`[ReExtract] Chunk ${chunkNum}/${totalChunks}: Llamando a GPT-4...`);
+    console.log(`[ReExtract] Chunk ${chunkNum}/${totalChunks}: Llamando a GPT-4o-mini...`);
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
-          content: 'Eres un asistente que solo responde en JSON válido. Eres muy exhaustivo identificando tareas y compromisos.',
+          content: 'Eres un asistente especializado en extracción de tareas y compromisos de reuniones. Solo respondes en JSON válido con el esquema exacto proporcionado. Eres muy exhaustivo.',
         },
         {
           role: 'user',
