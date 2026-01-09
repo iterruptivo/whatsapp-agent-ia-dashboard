@@ -1052,10 +1052,10 @@ export interface QuotaInfo {
  * Cuenta los REPULSES ENVIADOS hoy (mensajes salientes que nosotros iniciamos)
  * Las conversaciones iniciadas por usuarios (Victoria responde) NO cuentan
  *
- * Límite: 200 mensajes salientes por día (plantilla aprobada Meta, cuenta no verificada)
+ * Límite: 1000 mensajes salientes por día (plantilla aprobada Meta, cuenta VERIFICADA)
  * IMPORTANTE: Usa timezone Perú (UTC-5) para el cálculo del día
  */
-export async function getQuotaWhatsApp(limite: number = 200): Promise<QuotaInfo> {
+export async function getQuotaWhatsApp(limite: number = 1000): Promise<QuotaInfo> {
   const supabase = await createClient();
 
   // Obtener fecha de inicio del día en hora Perú (UTC-5)

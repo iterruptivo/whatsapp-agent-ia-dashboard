@@ -41,8 +41,8 @@ export default function RepulsePage() {
   });
   const [quota, setQuota] = useState<QuotaInfo>({
     enviadosHoy: 0,
-    limite: 200,
-    disponible: 200,
+    limite: 1000,
+    disponible: 1000,
     porcentajeUsado: 0,
   });
   const [loadingData, setLoadingData] = useState(true);
