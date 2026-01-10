@@ -9,7 +9,7 @@ import { Lead, Usuario, getAllUsuarios } from '@/lib/db';
 import { getAllVendedoresActivos, VendedorActivo } from '@/lib/locales';
 import { assignLeadToVendedor } from '@/lib/actions';
 import { useAuth } from '@/lib/auth-context';
-import { Download, Upload, Plus, ChevronDown, Zap } from 'lucide-react';
+import { Download, Upload, Plus, ChevronDown, Zap, Filter, X } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { exportLeadsToExcel } from '@/lib/exportToExcel';
@@ -18,6 +18,7 @@ import ManualLeadPanel from '@/components/leads/ManualLeadPanel';
 import { addMultipleLeadsToRepulse, excluirLeadDeRepulse, reincluirLeadEnRepulse } from '@/lib/actions-repulse';
 // Kanban imports
 import { KanbanBoard, KanbanViewToggle, type ViewMode, type LeadCard, type KanbanColumnConfig } from '@/components/operativo/kanban';
+import ComboboxFilter from '@/components/ui/ComboboxFilter';
 import { getKanbanColumns, getKanbanMappings, calculateKanbanColumn, type KanbanMapping } from '@/lib/kanban-config';
 import { moveLeadToColumn } from '@/lib/actions-kanban';
 
@@ -54,6 +55,9 @@ export default function OperativoClient({
 
   // Estado filter (for both admin and vendedor)
   const [estadoFilter, setEstadoFilter] = useState<string>(''); // Filter by lead estado
+
+  // UTM filter (for both admin and vendedor)
+  const [utmFilter, setUtmFilter] = useState<string>(''); // Filter by UTM source
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
@@ -115,6 +119,46 @@ export default function OperativoClient({
   // Get current vendedor ID from auth context
   const currentVendedorId = user?.vendedor_id || null;
 
+  // Calculate unique UTM values dynamically from leads (normalized to lowercase for grouping)
+  const uniqueUtmValues = useMemo(() => {
+    const utmMap = new Map<string, string>(); // normalized -> original display value
+
+    initialLeads.forEach((lead) => {
+      if (lead.utm) {
+        const normalized = lead.utm.toLowerCase().trim();
+        // Keep the first occurrence's original casing for display
+        if (!utmMap.has(normalized)) {
+          // Capitalize first letter for nice display
+          const displayValue = lead.utm.charAt(0).toUpperCase() + lead.utm.slice(1).toLowerCase();
+          utmMap.set(normalized, displayValue);
+        }
+      }
+    });
+
+    // Sort alphabetically and return as array of {value, label}
+    return Array.from(utmMap.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [initialLeads]);
+
+  // Create vendedor options for ComboboxFilter (only active vendedores)
+  const vendedorOptions = useMemo(() => {
+    return vendedores
+      .filter((v) => v.activo)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+      .map((v) => ({ value: v.id, label: v.nombre }));
+  }, [vendedores]);
+
+  // Count active filters for badge indicator
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (assignmentFilter !== 'todos') count++;
+    if (selectedVendedorFilter) count++;
+    if (estadoFilter) count++;
+    if (utmFilter) count++;
+    return count;
+  }, [assignmentFilter, selectedVendedorFilter, estadoFilter, utmFilter]);
+
   // Filter leads by date range AND assignment filter
   const filteredLeads = useMemo(() => {
     let filtered = initialLeads;
@@ -160,8 +204,16 @@ export default function OperativoClient({
       filtered = filtered.filter((lead) => lead.estado === estadoFilter);
     }
 
+    // NEW: Filter by UTM source (normalized comparison)
+    if (utmFilter) {
+      filtered = filtered.filter((lead) => {
+        if (!lead.utm) return false;
+        return lead.utm.toLowerCase().trim() === utmFilter;
+      });
+    }
+
     return filtered;
-  }, [initialLeads, dateFrom, dateTo, assignmentFilter, currentVendedorId, selectedVendedorFilter, estadoFilter, user?.rol]);
+  }, [initialLeads, dateFrom, dateTo, assignmentFilter, currentVendedorId, selectedVendedorFilter, estadoFilter, utmFilter, user?.rol]);
 
   // Convert filtered leads to Kanban cards with calculated column
   const kanbanLeads = useMemo((): LeadCard[] => {
@@ -453,165 +505,189 @@ export default function OperativoClient({
       />
 
 
-      {/* Assignment Filter Tabs + Admin Vendedor Dropdown */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        {/* Filter Tabs */}
-        <div className="flex gap-2">
-          <button
-            onClick={() => setAssignmentFilter('todos')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              assignmentFilter === 'todos'
-                ? 'bg-primary text-white shadow-md'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Todos
-          </button>
-          <button
-            onClick={() => setAssignmentFilter('sin_asignar')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              assignmentFilter === 'sin_asignar'
-                ? 'bg-primary text-white shadow-md'
-                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            Sin Asignar
-          </button>
-          {/* Only show "Mis Leads" for vendedor, vendedor_caseta and coordinador roles */}
-          {/* SESIÓN 74: Agregar 'coordinador' */}
-          {(user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && (
-            <button
-              onClick={() => setAssignmentFilter('mis_leads')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                assignmentFilter === 'mis_leads'
-                  ? 'bg-primary text-white shadow-md'
-                  : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-              }`}
-              disabled={!currentVendedorId}
-            >
-              Mis Leads
-            </button>
-          )}
-        </div>
+      {/* ============================================================ */}
+      {/* FILTER BAR - World-Class UX 2026 (Linear/Notion/Figma style) */}
+      {/* ============================================================ */}
+      <div className="mb-4">
+        {/* Unified Filter Bar Container */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
 
-        {/* Admin-only: Vendedor Filter Dropdown */}
-        {user?.rol === 'admin' && (
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedVendedorFilter}
-              onChange={(e) => setSelectedVendedorFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors hover:bg-gray-50"
-            >
-              <option value="">Todos los vendedores</option>
-              {vendedores
-                .filter((v) => v.activo)
-                .map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.nombre}
-                  </option>
-                ))}
-            </select>
-          </div>
-        )}
+          {/* MOBILE/TABLET: Stack vertical | DESKTOP (1280px+): Horizontal */}
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:gap-3">
 
-        {/* Estado Filter Dropdown (for both admin and vendedor) */}
-        <div className="flex items-center gap-2">
-          <select
-            value={estadoFilter}
-            onChange={(e) => setEstadoFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 font-medium focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors hover:bg-gray-50"
-          >
-            <option value="">Todos los estados</option>
-            <option value="lead_completo">Lead Completo</option>
-            <option value="lead_incompleto">Lead Incompleto</option>
-            <option value="en_conversacion">En Conversación</option>
-            <option value="conversacion_abandonada">Conversación Abandonada</option>
-          </select>
-        </div>
-
-        {/* View Toggle + Export & Import Buttons */}
-        <div className="flex items-center gap-2 ml-auto">
-          {/* View Mode Toggle */}
-          <KanbanViewToggle view={viewMode} onViewChange={setViewMode} />
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Import Dropdown (Admin + Jefe Ventas + Vendedor + Vendedor Caseta + Coordinador) */}
-          {(user?.rol === 'admin' || user?.rol === 'jefe_ventas' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && (
-            <div className="relative">
+            {/* ROW 1: Quick Filter Pills */}
+            <div className="flex items-center gap-1 p-1.5 bg-gray-100 rounded-lg w-fit">
               <button
-                onClick={() => setIsImportDropdownOpen(!isImportDropdownOpen)}
-                className="flex items-center gap-2 px-4 py-2 bg-secondary text-white rounded-lg hover:bg-secondary/90 hover:shadow-md active:scale-95 font-medium transition-all duration-200"
-                title="Opciones para importar leads manuales"
+                onClick={() => setAssignmentFilter('todos')}
+                className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  assignmentFilter === 'todos'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-200'
+                }`}
               >
-                <Upload className="w-5 h-5" />
-                <span className="hidden sm:inline">Importar Leads Manuales</span>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isImportDropdownOpen ? 'rotate-180' : ''}`} />
+                Todos
               </button>
-
-              {/* Dropdown Menu */}
-              {isImportDropdownOpen && (
-                <>
-                  {/* Backdrop to close dropdown */}
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => setIsImportDropdownOpen(false)}
-                  />
-
-                  {/* Dropdown Content */}
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-20 overflow-hidden">
-                    <button
-                      onClick={() => {
-                        setIsManualPanelOpen(true);
-                        setIsImportDropdownOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors group"
-                    >
-                      <Plus className="w-5 h-5 text-accent group-hover:scale-110 transition-transform" />
-                      <div>
-                        <p className="font-medium text-gray-900">Agregar Lead</p>
-                        <p className="text-xs text-gray-500">Formulario visual paso a paso</p>
-                      </div>
-                    </button>
-
-                    <div className="border-t border-gray-100" />
-
-                    <button
-                      onClick={() => {
-                        setIsImportModalOpen(true);
-                        setIsImportDropdownOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors group"
-                    >
-                      <Upload className="w-5 h-5 text-secondary group-hover:scale-110 transition-transform" />
-                      <div>
-                        <p className="font-medium text-gray-900">Importar CSV/Excel</p>
-                        <p className="text-xs text-gray-500">Subir archivo con múltiples leads</p>
-                      </div>
-                    </button>
-                  </div>
-                </>
+              <button
+                onClick={() => setAssignmentFilter('sin_asignar')}
+                className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                  assignmentFilter === 'sin_asignar'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Sin Asignar
+              </button>
+              {/* Mis Leads - only for vendedor roles */}
+              {(user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && (
+                <button
+                  onClick={() => setAssignmentFilter('mis_leads')}
+                  className={`px-4 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                    assignmentFilter === 'mis_leads'
+                      ? 'bg-white text-primary shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-200'
+                  }`}
+                  disabled={!currentVendedorId}
+                >
+                  Mis Leads
+                </button>
               )}
             </div>
-          )}
 
-          {/* Export Button - Solo admin y jefe_ventas */}
-          {(user?.rol === 'admin' || user?.rol === 'jefe_ventas') && (
-            <button
-              onClick={handleExportToExcel}
-              disabled={isExporting || filteredLeads.length === 0}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                isExporting || filteredLeads.length === 0
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-primary text-white hover:bg-primary/90 hover:shadow-md active:scale-95'
-              }`}
-              title={filteredLeads.length === 0 ? 'No hay leads para exportar' : 'Exportar leads filtrados a Excel'}
-            >
-              <Download className={`w-5 h-5 ${isExporting ? 'animate-bounce' : ''}`} />
-              <span className="hidden sm:inline">
-                {isExporting ? 'Exportando...' : 'Exportar a Excel'}
-              </span>
-            </button>
-          )}
+            {/* ROW 2: Vendedor Filter - Admin only (full width on mobile) */}
+            {user?.rol === 'admin' && (
+              <ComboboxFilter
+                options={vendedorOptions}
+                value={selectedVendedorFilter}
+                onChange={setSelectedVendedorFilter}
+                placeholder="Vendedor"
+                searchPlaceholder="Buscar vendedor..."
+                emptyMessage="No se encontró vendedor"
+                className="w-full xl:w-auto"
+              />
+            )}
+
+            {/* ROW 3: Estado Filter (full width on mobile) */}
+            <ComboboxFilter
+              options={[
+                { value: 'lead_completo', label: 'Lead Completo' },
+                { value: 'lead_incompleto', label: 'Lead Incompleto' },
+                { value: 'en_conversacion', label: 'En Conversación' },
+                { value: 'conversacion_abandonada', label: 'Abandonada' },
+              ]}
+              value={estadoFilter}
+              onChange={setEstadoFilter}
+              placeholder="Estado"
+              searchPlaceholder="Buscar estado..."
+              emptyMessage="No se encontró estado"
+              className="w-full xl:w-auto"
+            />
+
+            {/* ROW 4: UTM/Origen Filter (full width on mobile) */}
+            <ComboboxFilter
+              options={uniqueUtmValues}
+              value={utmFilter}
+              onChange={setUtmFilter}
+              placeholder="Origen"
+              searchPlaceholder="Buscar origen..."
+              emptyMessage="No se encontró el origen"
+              className="w-full xl:w-auto"
+            />
+
+            {/* Active Filters Badge + Clear */}
+            {activeFilterCount > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-2 bg-primary/10 text-primary rounded-full text-sm font-semibold">
+                  <Filter className="w-4 h-4" />
+                  <span>{activeFilterCount} filtro{activeFilterCount > 1 ? 's' : ''}</span>
+                </div>
+                <button
+                  onClick={() => {
+                    setAssignmentFilter('todos');
+                    setSelectedVendedorFilter('');
+                    setEstadoFilter('');
+                    setUtmFilter('');
+                  }}
+                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Limpiar filtros"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
+            {/* Divider - Only on desktop (1280px+) */}
+            <div className="hidden xl:block w-px h-8 bg-gray-200 shrink-0" />
+
+            {/* ROW 5: Actions Section */}
+            <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-100 xl:pt-0 xl:border-t-0 shrink-0">
+              {/* View Toggle */}
+              <KanbanViewToggle view={viewMode} onViewChange={setViewMode} />
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3">
+                {/* Import Dropdown */}
+                {(user?.rol === 'admin' || user?.rol === 'jefe_ventas' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta' || user?.rol === 'coordinador') && (
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsImportDropdownOpen(!isImportDropdownOpen)}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-white rounded-lg hover:bg-secondary/90 text-sm font-semibold transition-all"
+                      title="Importar leads"
+                    >
+                      <Upload className="w-5 h-5" />
+                      <span className="hidden sm:inline">Importar</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${isImportDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isImportDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsImportDropdownOpen(false)} />
+                        <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-gray-200 z-20 overflow-hidden">
+                          <button
+                            onClick={() => { setIsManualPanelOpen(true); setIsImportDropdownOpen(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                          >
+                            <Plus className="w-5 h-5 text-accent" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Agregar Lead</p>
+                              <p className="text-xs text-gray-500">Formulario visual</p>
+                            </div>
+                          </button>
+                          <div className="border-t border-gray-100" />
+                          <button
+                            onClick={() => { setIsImportModalOpen(true); setIsImportDropdownOpen(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                          >
+                            <Upload className="w-5 h-5 text-secondary" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">Importar CSV/Excel</p>
+                              <p className="text-xs text-gray-500">Múltiples leads</p>
+                            </div>
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Export Button */}
+                {(user?.rol === 'admin' || user?.rol === 'jefe_ventas') && (
+                  <button
+                    onClick={handleExportToExcel}
+                    disabled={isExporting || filteredLeads.length === 0}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                      isExporting || filteredLeads.length === 0
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-primary text-white hover:bg-primary/90'
+                    }`}
+                    title={filteredLeads.length === 0 ? 'No hay leads' : 'Exportar a Excel'}
+                  >
+                    <Download className={`w-5 h-5 ${isExporting ? 'animate-bounce' : ''}`} />
+                    <span className="hidden sm:inline">{isExporting ? 'Exportando...' : 'Exportar'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

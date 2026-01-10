@@ -4,6 +4,34 @@
 
 ---
 
+## Sesion 85 (10 Ene 2026)
+**Tipo:** Investigacion - Combobox/Autocomplete Filtros
+**Trabajo realizado:**
+- Investigacion completa de mejores practicas UX para filtros con 23+ opciones
+- Analisis de librerias React 2026: shadcn/ui, React Aria, Headless UI, cmdk
+- Patrones UX de dashboards clase mundial (Linear, Stripe, Notion, Vercel)
+- Estudio de chips/tags para multi-select
+- Accesibilidad ARIA patterns y WCAG 2.1
+- Performance con virtualizacion para 1000+ items
+- Integracion con Next.js 15 Server Components
+**Reporte generado:** `docs/research/COMBOBOX_AUTOCOMPLETE_FILTROS_2026.md` (800+ lineas)
+**Recomendacion:** shadcn/ui Combobox + chips/tags, implementacion estimada 2.5 horas
+
+---
+
+## Sesion 84 (8 Ene 2026)
+**Tipo:** Investigacion - IA Conversacional para Datos
+**Trabajo realizado:**
+- Investigacion completa de soluciones IA para queries en lenguaje natural
+- Analisis de plataformas SaaS vs frameworks open source
+- Casos de exito y tendencias 2026 (Agentic BI, Multi-modal)
+- Comparativa de costos: $60-120/mes vs $15K/año enterprise
+- Roadmap de implementacion en 3 fases
+**Reporte generado:** `docs/research/IA_Conversacional_Datos_2026.md` (600+ lineas)
+**Recomendacion:** LangChain SQL Agent + FastAPI + Next.js
+
+---
+
 ## Sesion 74 (23 Dic 2025)
 **Tipo:** Reestructuracion + Cache Busting
 **Trabajo realizado:**
@@ -84,25 +112,4 @@
 
 ---
 
-## Sesion 66 (7-9 Dic 2025)
-**Tipo:** Feature Completo - Documentos
-**Estado:** DEPLOYED TO STAGING
-**Trabajo realizado:**
-- Logo dinamico por proyecto
-- Documentos adjuntos (DNI, comprobante)
-- Descarga PDF con nombre unico
-- Sistema contratos Word (docx-templates)
-
----
-
-## Sesion 65 (5 Dic 2025)
-**Tipo:** Feature + RBAC + Database
-**Estado:** DEPLOYED TO MAIN
-**Trabajo realizado:**
-- Rol finanzas (acceso solo /control-pagos)
-- Nueva tabla clientes_ficha
-- Modal Ficha Inscripcion editable
-
----
-
-**Politica de Rotacion:** Cuando este archivo exceda 10 sesiones, mover las mas antiguas a context/archive/sessions/
+**Ultima Actualizacion:** 10 Enero 2026

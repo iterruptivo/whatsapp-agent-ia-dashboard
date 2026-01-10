@@ -100,7 +100,7 @@
 
 ---
 
-## NUEVO: INVESTIGACIÓN IA CONVERSACIONAL PARA DATOS ✅ COMPLETADO
+## INVESTIGACIÓN: IA CONVERSACIONAL PARA DATOS ✅ COMPLETADO
 
 **Objetivo:** Investigar mejores soluciones para módulo de IA que permita queries en lenguaje natural sobre PostgreSQL/Supabase.
 
@@ -134,6 +134,45 @@
 
 ---
 
+## INVESTIGACIÓN: COMBOBOX/AUTOCOMPLETE FILTROS 2026 ✅ COMPLETADO
+
+**Objetivo:** Investigar mejores prácticas para filtros con autocomplete/combobox en dashboard, especialmente para filtro UTM/Origen con 23+ opciones.
+
+**Investigación completada:**
+- [x] Mejores librerías React 2026 (shadcn/ui, React Aria, Headless UI, cmdk)
+- [x] Patrones UX de dashboards clase mundial (Linear, Stripe, Notion, Vercel)
+- [x] Chips/tags para multi-select y visual feedback
+- [x] Accesibilidad (ARIA patterns, keyboard navigation, WCAG 2.1)
+- [x] Performance con 1000+ opciones (virtualización)
+- [x] Integración con Next.js 15 Server Components
+
+**Reporte generado:**
+- 📄 `docs/research/COMBOBOX_AUTOCOMPLETE_FILTROS_2026.md` (reporte completo de 800+ líneas)
+
+**Hallazgos clave:**
+1. **shadcn/ui Combobox** - Recomendación principal (composición de Popover + cmdk)
+2. **cmdk** - Motor de command palette usado por Vercel, 11.7k stars, ultra-rápido
+3. **Chips/tags** - Patrón UX 2026 para mostrar filtros activos visualmente
+4. **Accesibilidad built-in** - shadcn/ui cumple WCAG 2.1 AA automáticamente
+5. **Performance** - cmdk maneja hasta 2,000 items sin virtualización
+
+**Recomendación:**
+- **Implementar:** shadcn/ui Combobox para filtro UTM/Origen
+- **Agregar:** Chips/tags para mostrar filtros activos
+- **Mejoras UX:** Count badge "3 filtros activos" + "Clear all" button
+- **Tiempo estimado:** 2.5 horas total (instalación + componente + integración + testing)
+
+**Próximos pasos:**
+- [ ] Instalar shadcn/ui components (popover, command) - 10 min
+- [ ] Crear `UtmFilterCombobox` component - 30 min
+- [ ] Integrar en `LeadsClient`/`OperativoClient` - 20 min
+- [ ] Agregar chips para filtros activos - 20 min
+- [ ] Testing funcional (keyboard, screen reader) - 30 min
+- [ ] Ajustes de estilo y UX - 20 min
+- [ ] Deploy y verificación - 10 min
+
+---
+
 ## Otras Tareas Pendientes (Prioridad Baja)
 
 ### Swagger UI
@@ -156,5 +195,5 @@
 
 ---
 
-**Ultima Actualizacion:** 8 Enero 2026
-**Sesion:** 84 - Investigación IA Conversacional completada. Reporte en docs/research/IA_Conversacional_Datos_2026.md
+**Ultima Actualizacion:** 10 Enero 2026
+**Sesion:** 85 - Investigación Combobox/Autocomplete Filtros 2026 completada. Reporte en docs/research/COMBOBOX_AUTOCOMPLETE_FILTROS_2026.md
