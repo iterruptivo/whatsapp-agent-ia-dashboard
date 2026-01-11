@@ -24,6 +24,7 @@ interface LeadParaEnvio {
   telefono: string;
   nombre: string | null;
   mensaje: string;
+  fecha_visita?: string;  // Para template de Meta
 }
 
 interface BatchRequest {
@@ -56,7 +57,8 @@ async function procesarLeadIndividual(lead: LeadParaEnvio, batchId: string): Pro
       body: JSON.stringify({
         telefono: lead.telefono,
         mensaje: lead.mensaje,
-        nombre: lead.nombre,
+        nombre: lead.nombre || 'Cliente',
+        fecha_visita: lead.fecha_visita || 'fecha por confirmar',
         proyectoId: lead.proyecto_id,
         lead_id: lead.lead_id,
         repulse_lead_id: lead.repulse_lead_id,
@@ -68,10 +70,13 @@ async function procesarLeadIndividual(lead: LeadParaEnvio, batchId: string): Pro
 
     // 4. Actualizar estado según resultado
     if (response.ok) {
-      // Actualizar historial
+      // Actualizar historial - IMPORTANTE: enviado_at para la cuota diaria
       await supabase
         .from('repulse_historial')
-        .update({ envio_estado: 'enviado' })
+        .update({
+          envio_estado: 'enviado',
+          enviado_at: new Date().toISOString()  // Para que cuente en la cuota
+        })
         .eq('id', lead.historial_id);
 
       // Actualizar repulse_leads: incrementar contador y estado

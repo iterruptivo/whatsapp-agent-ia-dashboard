@@ -590,7 +590,7 @@ export async function registrarEnvioRepulse(
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient();
 
-  // 1. Registrar en historial
+  // 1. Registrar en historial - IMPORTANTE: enviado_at para la cuota diaria
   const { error: errorHistorial } = await supabase
     .from('repulse_historial')
     .insert({
@@ -600,6 +600,7 @@ export async function registrarEnvioRepulse(
       template_id: templateId,
       mensaje_enviado: mensaje,
       enviado_por: enviadoPor,
+      enviado_at: new Date().toISOString(),  // Para que cuente en la cuota
     });
 
   if (errorHistorial) {
@@ -668,6 +669,7 @@ export async function prepararEnvioRepulseBatch(
     telefono: string;
     nombre: string | null;
     mensaje: string;
+    fecha_visita: string;  // Para template de Meta
   }>;
   error?: string;
 }> {
@@ -774,6 +776,7 @@ export async function prepararEnvioRepulseBatch(
       telefono: leadTyped.telefono,
       nombre: leadTyped.nombre,
       mensaje: mensajePersonalizado,
+      fecha_visita: fechaVisitaFormateada,  // Para template de Meta
     });
   }
 
@@ -938,6 +941,7 @@ export async function enviarRepulseViaWebhook(
     telefono: string;
     nombre: string | null;
     mensaje: string;
+    fecha_visita?: string;  // Para template de Meta
   }>
 ): Promise<{
   success: boolean;
@@ -978,7 +982,8 @@ export async function enviarRepulseViaWebhook(
         body: JSON.stringify({
           telefono: lead.telefono,
           mensaje: lead.mensaje,
-          nombre: lead.nombre,
+          nombre: lead.nombre || 'Cliente',
+          fecha_visita: lead.fecha_visita || 'fecha por confirmar',
           proyectoId: lead.proyecto_id,
           lead_id: lead.lead_id,
           repulse_lead_id: lead.repulse_lead_id,
