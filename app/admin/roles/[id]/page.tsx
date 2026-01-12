@@ -24,9 +24,9 @@ import RoleEditClient from './RoleEditClient';
 export default async function RoleDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id: roleId } = params;
+  const { id: roleId } = await params;
 
   // Verificar autenticación
   const cookieStore = await cookies();
