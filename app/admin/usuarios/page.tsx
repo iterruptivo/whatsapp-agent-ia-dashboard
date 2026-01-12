@@ -31,12 +31,12 @@ export default function AdminUsuariosPage() {
   });
   const [loadingData, setLoadingData] = useState(true);
 
-  // Redirect if not authenticated or not admin
+  // Redirect if not authenticated or not admin/superadmin
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push('/login');
-      } else if (user.rol !== 'admin') {
+      } else if (user.rol !== 'superadmin' && user.rol !== 'admin') {
         // Redirect según rol
         if (user.rol === 'vendedor') {
           router.push('/operativo');
@@ -49,7 +49,7 @@ export default function AdminUsuariosPage() {
 
   // Fetch data
   useEffect(() => {
-    if (user && user.rol === 'admin') {
+    if (user && (user.rol === 'superadmin' || user.rol === 'admin')) {
       fetchData();
     }
   }, [user]);
@@ -82,8 +82,8 @@ export default function AdminUsuariosPage() {
     );
   }
 
-  // Only render for admin
-  if (user.rol !== 'admin') {
+  // Only render for admin/superadmin
+  if (user.rol !== 'superadmin' && user.rol !== 'admin') {
     return null;
   }
 

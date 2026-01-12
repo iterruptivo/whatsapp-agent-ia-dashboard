@@ -10,7 +10,7 @@ async function runMigration() {
   const supabase = createClient(supabaseUrl, serviceRoleKey);
 
   // Leer el archivo de migración
-  const migrationPath = path.join(__dirname, '..', 'migrations', '20260106_create_reuniones_tables.sql');
+  const migrationPath = path.join(__dirname, '..', 'migrations', '20260111_repulse_rls_superadmin.sql');
   const sql = fs.readFileSync(migrationPath, 'utf8');
 
   console.log('📦 Ejecutando migración...');

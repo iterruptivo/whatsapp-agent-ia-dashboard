@@ -24,6 +24,9 @@ export default function KanbanBoard({
   onLeadMove,
   onLeadClick,
   isLoading = false,
+  vendedores,
+  onAssignLead,
+  canAssign = false,
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
@@ -164,6 +167,9 @@ export default function KanbanBoard({
               totalCount={columnLeads.length}
               onLeadClick={onLeadClick}
               isOver={overId === column.columna_codigo}
+              vendedores={vendedores}
+              onAssignLead={onAssignLead}
+              canAssign={canAssign}
             />
           );
         })}

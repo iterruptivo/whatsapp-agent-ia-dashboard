@@ -31,12 +31,22 @@ export interface LeadCard {
   columna_kanban: string;
 }
 
+// Vendedor para asignación en Kanban
+export interface VendedorOption {
+  id: string;
+  nombre: string;
+}
+
 export interface KanbanBoardProps {
   columns: KanbanColumnConfig[];
   leads: LeadCard[];
   onLeadMove: (leadId: string, targetColumn: string) => Promise<void>;
   onLeadClick: (lead: LeadCard) => void;
   isLoading?: boolean;
+  // Props para asignación de vendedores
+  vendedores?: VendedorOption[];
+  onAssignLead?: (leadId: string, vendedorId: string) => Promise<void>;
+  canAssign?: boolean; // Control de permisos para asignar
 }
 
 export interface KanbanColumnProps {
@@ -45,6 +55,10 @@ export interface KanbanColumnProps {
   totalCount: number;
   onLeadClick: (lead: LeadCard) => void;
   isOver?: boolean;
+  // Props para asignación de vendedores
+  vendedores?: VendedorOption[];
+  onAssignLead?: (leadId: string, vendedorId: string) => Promise<void>;
+  canAssign?: boolean;
 }
 
 // Configuración de paginación del Kanban
@@ -57,6 +71,10 @@ export interface KanbanCardProps {
   lead: LeadCard;
   onClick: () => void;
   isDragging?: boolean;
+  // Props para asignación de vendedores
+  vendedores?: VendedorOption[];
+  onAssignLead?: (leadId: string, vendedorId: string) => Promise<void>;
+  canAssign?: boolean;
 }
 
 export type ViewMode = 'table' | 'kanban';

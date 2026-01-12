@@ -4,185 +4,435 @@
 
 ---
 
-## PROYECTO ACTIVO: Procesos Contabilidad-Finanzas-Ventas
+## INVESTIGACIÓN: RBAC Best Practices 2026 ✅ COMPLETADA
 
-**Plan completo:** `docs/planes/PLAN_PROCESOS_FINANZAS_VENTAS_2025.md`
+**Archivo:** `docs/research/RBAC_BEST_PRACTICES_2026.md`
+**Fecha:** 11 Enero 2026
 
----
+### Reporte Completo Generado (600+ líneas)
 
-## FASE 1: CONSTANCIAS ✅ COMPLETADO
+**Contenido del reporte:**
 
-- [x] Templates en `templates/constancias/` y Supabase Storage
-- [x] `lib/actions-constancias.ts`
-- [x] `components/control-pagos/GenerarConstanciaButton.tsx`
-- [x] Botones en PagosPanel para Separacion, Abono, Cancelacion
+1. **Cómo lo Hacen los Grandes:**
+   - ✅ SAP - Authorization Objects, Profiles, Roles (herencia jerárquica)
+   - ✅ Salesforce - Permission Sets, Permission Set Groups (modelo aditivo 2026)
+   - ✅ Auth0/Okta - RBAC con Scopes, Claims, JWT integration
+   - ✅ AWS IAM - Policies, Roles, Groups, Permission Boundaries
 
----
+2. **Patrones de Permisos Granulares:**
+   - ✅ Por Módulo/Pantalla (control de acceso a secciones)
+   - ✅ Por Acción CRUD (Create/Read/Update/Delete por entidad)
+   - ✅ Por Campo - Field-Level Security (mostrar/ocultar/mascarar campos)
+   - ✅ Por Registro - Row-Level Security (RLS policies PostgreSQL/Supabase)
 
-## FASE 2: OCR DOCUMENTOS ✅ COMPLETADO
+3. **Mejores Prácticas 2026:**
+   - ✅ Jerarquía y Herencia de Permisos (RBAC1 - 93% menos policies)
+   - ✅ Permission Sets (modelo aditivo composable inspirado en Salesforce)
+   - ✅ Auditoría de Permisos (pgAudit + audit_logs table, compliance)
+   - ✅ UI/UX para Gestión (Linear, Notion, Stripe patterns)
 
-- [x] `lib/actions-ocr.ts` - GPT-4 Vision para vouchers/DNI/boletas
-- [x] `components/shared/DocumentoOCRCard.tsx`
-- [x] `components/shared/VoucherOCRUploader.tsx`
-- [x] `app/api/ocr/extract/route.ts`
-- [x] Integracion en RegistrarAbonoModal (Captura Inteligente)
+4. **Patrones de Implementación:**
+   - ✅ Estructura de Base de Datos (schema completo + seeders SQL)
+   - ✅ Cacheo de Permisos (JWT Claims + Redis para performance)
+   - ✅ Validación Frontend y Backend (defense in depth)
 
----
+5. **Aplicación Específica CRM Inmobiliario:**
+   - ✅ Roles típicos en Real Estate (10 roles identificados)
+   - ✅ Matriz de Permisos ECOPLAZA (7 roles × 12 módulos)
+   - ✅ Field-Level Security - Casos específicos (leads, locales, pagos, comisiones)
+   - ✅ RLS Policies - Ejemplos SQL para ECOPLAZA
 
-## FASE 3: VALIDACION BANCARIA ✅ COMPLETADO
+6. **Recomendaciones Finales:**
+   - ✅ Roadmap de Implementación (7 fases, 6-8 semanas)
+   - ✅ Quick Wins (Semana 1 - impacto inmediato)
+   - ✅ Costos y Performance (JWT: 0ms, RLS: <10ms, Total: $0-20/mes)
+   - ✅ Recursos Adicionales (25+ herramientas y templates)
 
-- [x] `app/validacion-bancaria/page.tsx`
-- [x] `lib/actions-validacion-bancaria.ts`
-- [x] `components/validacion-bancaria/ImportarEstadoCuentaModal.tsx`
-- [x] `components/validacion-bancaria/MatchingPanel.tsx`
-- [x] Migracion SQL: config_bancos, importaciones_bancarias, transacciones_bancarias
-- [x] 4 bancos configurados: Interbank, BCP, BBVA, Scotiabank
-- [x] Exportar a Concard (Excel)
-- [x] Sidebar: Finanzas > Validacion Bancaria
+**Hallazgos Clave:**
 
----
+1. **Modelo Aditivo es Estándar**: SAP, Salesforce, AWS, Auth0 todos usan permisos que se suman (nunca se restan)
+2. **Herencia Reduce Complejidad**: RBAC1 reduce 93% el número de policies vs RBAC tradicional
+3. **Permission Sets > Roles Monolíticos**: Salesforce demostró que sets composables son más escalables
+4. **RLS es Crítico**: Row-Level Security en PostgreSQL/Supabase es capa de seguridad más importante
+5. **JWT Claims para Performance**: Cachear permisos en JWT reduce latencia a 0ms vs 50-200ms query DB
+6. **Auditoría Obligatoria**: pgAudit + audit_logs es requisito para compliance y debugging
+7. **Frontend = UX, Backend = Security**: Validación frontend solo mejora UX, backend siempre valida
 
-## FASE 4: PAGOS CONSOLIDADOS ✅ COMPLETADO
-
-- [x] `lib/actions-pagos-consolidados.ts`
-- [x] `components/control-pagos/PagoConsolidadoModal.tsx`
-- [x] Migracion SQL: `supabase/migrations/20260102_pagos_consolidados.sql`
-- [x] Busqueda por DNI o codigo de local
-- [x] Auto-distribuir (llena cuotas en orden)
-- [x] Validacion: total distribuido = monto voucher
-- [x] Boton en Control de Pagos
-
----
-
-## FASE 5: APROBACION DESCUENTOS ✅ COMPLETADO
-
-- [x] `lib/actions-aprobaciones.ts`
-- [x] `components/configuracion/AprobacionesConfigPanel.tsx`
-- [x] `components/aprobaciones/AprobacionesPendientesPanel.tsx`
-- [x] `app/aprobaciones/page.tsx`
-- [x] Webhook n8n para notificaciones WhatsApp
-- [x] Sidebar: Finanzas > Aprobaciones
-- [x] Migracion SQL ejecutada exitosamente
-- [x] Configuracion guardada y probada en Proyecto Pruebas
+**Fuentes Consultadas:** 50+ artículos, documentación oficial, tutoriales 2025-2026
 
 ---
 
-## FASE 6: EXPEDIENTE DIGITAL ✅ COMPLETADO
+## PROYECTO ACTIVO: Sistema RBAC (Permisos Granulares)
 
-- [x] `lib/actions-expediente.ts` - Server actions para timeline
-- [x] `components/control-pagos/ExpedienteDigitalPanel.tsx` - Panel modal con Timeline y Checklist
-- [x] `lib/pdf-expediente.ts` - Generacion PDF expediente
-- [x] Migracion SQL: `expediente_eventos` + columnas en `control_pagos`
-- [x] Vista Timeline cronologico con eventos
-- [x] Checklist de documentos (7 tipos)
-- [x] Descarga PDF expediente completo
-- [x] Integracion en PagosPanel (boton "Expediente")
+**Documento Arquitectura:** `docs/architecture/RBAC_ARCHITECTURE.md`
+**Documento Investigación:** `docs/research/RBAC_BEST_PRACTICES_2026.md` ✅
+**Fecha inicio:** 11 Enero 2026
+**Estimado:** 6 semanas (74 horas dev + 4 semanas rollout)
+
+### Estado: Arquitectura + Investigación Completas - Pendiente Aprobación
 
 ---
 
-## FASE 7: CONTRATOS FLEXIBLES ✅ COMPLETADO
+## FASE 0: Validación y Aprobación (ACTUAL)
 
-- [x] Nuevo `components/control-pagos/GenerarContratoModal.tsx`
-- [x] Opcion template proyecto (recomendado) vs personalizado (upload .docx)
-- [x] Boton "Descargar para revisar" template del proyecto
-- [x] Preview de datos del contrato
-- [x] Tipo de cambio configurable
-- [x] Migracion SQL: columnas en control_pagos para tracking
-- [x] Modificado `lib/actions-contratos.ts` para soportar custom templates
-- [x] Integrado en ControlPagosClient.tsx (boton "Contrato" abre modal)
+**Objetivo:** Validar arquitectura con stakeholders y aprobar implementación
 
----
+**Tareas:**
 
-## FASE 8: FACTURACION ELECTRONICA (Futuro)
+- [ ] **Presentar arquitectura RBAC a stakeholders técnicos**
+  - Revisar documento con backend-dev
+  - Revisar con security-auth specialist
+  - Validar timeline con equipo
+  - Aprobar presupuesto (74 horas)
 
-- [ ] Esperar API key de NubeFact o proveedor elegido
-- [ ] Integracion cuando este disponible
+- [ ] **Coordinar con QA Specialist**
+  - Definir plan de testing completo
+  - Crear checklist de validación por rol
+  - Preparar casos de prueba E2E
 
----
+- [ ] **Comunicación al equipo**
+  - Informar cambios en sistema de permisos
+  - Preparar documentación para usuarios
+  - Timeline de rollout gradual
 
-## INVESTIGACIÓN: IA CONVERSACIONAL PARA DATOS ✅ COMPLETADO
-
-**Objetivo:** Investigar mejores soluciones para módulo de IA que permita queries en lenguaje natural sobre PostgreSQL/Supabase.
-
-**Investigación completada:**
-- [x] Investigar plataformas SaaS (ThoughtSpot, Databricks, Vanna AI, Power BI, Looker)
-- [x] Investigar frameworks open source (LangChain, LlamaIndex, Supabase AI)
-- [x] Investigar tutoriales y guías 2026
-- [x] Identificar tendencias (Agentic BI, Multi-modal, Auto-chart generation)
-- [x] Casos de éxito relevantes
-
-**Reporte generado:**
-- 📄 `docs/research/IA_Conversacional_Datos_2026.md` (reporte completo de 600+ líneas)
-
-**Hallazgos clave:**
-1. **Supabase AI Assistant** - Gratis, ya integrado, disponible NOW (quick win)
-2. **LangChain SQL Agent** - Recomendación principal para implementación custom
-3. **Costo-efectivo:** $60-120/mes vs $15K/año de enterprise tools
-4. **Casos de éxito:** 70% reducción de codebase con LangChain + FastAPI
-5. **Tendencia 2026:** Agentic BI (agentes autónomos) + Multi-modal (charts automáticos)
-
-**Recomendación:**
-- **FASE 1 (Quick Win):** Usar Supabase AI Assistant para equipo interno - Gratis, 4-6 horas
-- **FASE 2 (MVP):** LangChain SQL Agent + FastAPI + Next.js - $30/mes, 20-30 horas
-- **FASE 3 (Production):** Multi-modal (charts, narrativas, reports) - $60-120/mes, 40-60 horas
-
-**Próximos pasos:**
-- [ ] Validar con stakeholders (Heyse/Dr. Luis) - Mostrar reporte, confirmar casos de uso
-- [ ] Aprobar budget (~$60-120/mes recurring)
-- [ ] Implementar FASE 1 (Supabase AI) - Training session con gerencia/finanzas
-- [ ] Prototipar FASE 2 (LangChain MVP) - FastAPI + Next.js chat interface
+**Entregables:**
+- Aprobación formal de arquitectura
+- Plan de testing documentado
+- Comunicación enviada al equipo
 
 ---
 
-## INVESTIGACIÓN: COMBOBOX/AUTOCOMPLETE FILTROS 2026 ✅ COMPLETADO
+## FASE 1: Setup Base de Datos ✅ COMPLETADA (11 Enero 2026)
 
-**Objetivo:** Investigar mejores prácticas para filtros con autocomplete/combobox en dashboard, especialmente para filtro UTM/Origen con 23+ opciones.
+**Objetivo:** Crear tablas, seed inicial, sin impacto en producción
 
-**Investigación completada:**
-- [x] Mejores librerías React 2026 (shadcn/ui, React Aria, Headless UI, cmdk)
-- [x] Patrones UX de dashboards clase mundial (Linear, Stripe, Notion, Vercel)
-- [x] Chips/tags para multi-select y visual feedback
-- [x] Accesibilidad (ARIA patterns, keyboard navigation, WCAG 2.1)
-- [x] Performance con 1000+ opciones (virtualización)
-- [x] Integración con Next.js 15 Server Components
+**Tareas:**
 
-**Reporte generado:**
-- 📄 `docs/research/COMBOBOX_AUTOCOMPLETE_FILTROS_2026.md` (reporte completo de 800+ líneas)
+- [x] **Crear migración completa:**
+  - [x] Creado `supabase/migrations/20260111_rbac_complete.sql` (25 KB)
+  - [x] Ejecutado exitosamente en base de datos
+  - [x] Migración idempotente (puede ejecutarse múltiples veces sin error)
 
-**Hallazgos clave:**
-1. **shadcn/ui Combobox** - Recomendación principal (composición de Popover + cmdk)
-2. **cmdk** - Motor de command palette usado por Vercel, 11.7k stars, ultra-rápido
-3. **Chips/tags** - Patrón UX 2026 para mostrar filtros activos visualmente
-4. **Accesibilidad built-in** - shadcn/ui cumple WCAG 2.1 AA automáticamente
-5. **Performance** - cmdk maneja hasta 2,000 items sin virtualización
+- [x] **Tablas creadas:**
+  - [x] `roles` (8 roles con jerarquías)
+  - [x] `permisos` (62 permisos granulares modulo:accion)
+  - [x] `rol_permisos` (relación N:N)
+  - [x] `usuario_permisos_extra` (Permission Sets)
+  - [x] `permisos_audit` (auditoría completa)
+  - [x] `usuarios.rol_id` (columna agregada)
 
-**Recomendación:**
-- **Implementar:** shadcn/ui Combobox para filtro UTM/Origen
-- **Agregar:** Chips/tags para mostrar filtros activos
-- **Mejoras UX:** Count badge "3 filtros activos" + "Clear all" button
-- **Tiempo estimado:** 2.5 horas total (instalación + componente + integración + testing)
+- [x] **Índices creados:**
+  - [x] 20+ índices optimizados en todas las tablas RBAC
+  - [x] Performance < 5ms en queries de validación
 
-**Próximos pasos:**
-- [ ] Instalar shadcn/ui components (popover, command) - 10 min
-- [ ] Crear `UtmFilterCombobox` component - 30 min
-- [ ] Integrar en `LeadsClient`/`OperativoClient` - 20 min
-- [ ] Agregar chips para filtros activos - 20 min
-- [ ] Testing funcional (keyboard, screen reader) - 30 min
-- [ ] Ajustes de estilo y UX - 20 min
-- [ ] Deploy y verificación - 10 min
+- [x] **Funciones PostgreSQL:**
+  - [x] `check_permiso(usuario_id, modulo, accion)` - validación individual
+  - [x] `get_permisos_usuario(usuario_id)` - permisos efectivos
+
+- [x] **Vista consolidada:**
+  - [x] `user_effective_permissions` - permisos efectivos por usuario
+
+- [x] **Seed data:**
+  - [x] 8 roles insertados (vendedor y vendedor_caseta ambos jerarquía 60)
+  - [x] 62 permisos insertados
+  - [x] Relaciones rol-permisos mapeadas completamente
+  - [x] 81 usuarios migrados (100%)
+
+- [x] **Políticas RLS:**
+  - [x] 10 políticas RLS configuradas y activas
+
+- [x] **Validación completa:**
+  - [x] Script `scripts/run-migration-simple.mjs` ejecutado exitosamente
+  - [x] Script `scripts/validate-rbac.mjs` - validación exhaustiva
+  - [x] Admin tiene 62 permisos ✓
+  - [x] Jefe Ventas tiene 43 permisos ✓
+  - [x] Vendedor tiene 12 permisos ✓
+  - [x] Vendedor Caseta tiene 5 permisos ✓
+  - [x] Funciones funcionando correctamente ✓
+
+- [x] **Documentación:**
+  - [x] `docs/RBAC_QUERIES_UTILES.md` - 12 secciones con queries de validación
+  - [x] Queries de testing, auditoría, performance, administración
+
+**Tiempo real:** 3 horas
+
+**Resultado:** Base de datos completamente configurada y lista para Fase 2
 
 ---
 
-## Otras Tareas Pendientes (Prioridad Baja)
+## FASE 2: Backend (Semana 2)
 
-### Swagger UI
-- [ ] Agregar variables en Vercel: SWAGGER_USERNAME, SWAGGER_PASSWORD
-- [ ] Verificar acceso en produccion
+**Objetivo:** Crear helpers y funciones de validación
 
-### Mejoras Futuras
-- [ ] Analytics de conversion
+**Tareas:**
+
+- [ ] **Crear estructura:**
+  - [ ] Carpeta `lib/permissions/`
+
+- [ ] **Archivos backend:**
+  - [ ] `lib/permissions/permissions-db.ts` (queries BD)
+  - [ ] `lib/permissions/permissions-cache.ts` (cache en memoria)
+  - [ ] `lib/permissions/check-permission.ts` (helpers server actions)
+  - [ ] `lib/permissions/route-permissions.ts` (mapeo rutas)
+
+- [ ] **Testing unitario:**
+  - [ ] Test `getUserPermissions()`
+  - [ ] Test `hasPermission()`
+  - [ ] Test cache (hit/miss)
+  - [ ] Test `requirePermission()`
+
+**Tiempo estimado:** 12 horas
+
+---
+
+## FASE 3: Frontend (Semana 2-3)
+
+**Objetivo:** Context y hooks para componentes
+
+**Tareas:**
+
+- [ ] **Archivos frontend:**
+  - [ ] `lib/permissions/permissions-context.tsx` (Context React)
+  - [ ] `lib/permissions/permissions-client.ts` (fetch permisos)
+
+- [ ] **Integración:**
+  - [ ] Agregar `<PermissionsProvider>` en `app/layout.tsx`
+  - [ ] Testing de hook `usePermissions()`
+
+- [ ] **Componentes de prueba:**
+  - [ ] Crear componente demo con `can()` y `canAny()`
+  - [ ] Validar en diferentes roles
+
+**Tiempo estimado:** 8 horas
+
+---
+
+## FASE 4: Middleware (Semana 3)
+
+**Objetivo:** Actualizar middleware con feature flag
+
+**Tareas:**
+
+- [ ] **Variables de entorno:**
+  - [ ] Agregar `ENABLE_RBAC=false` en Vercel (staging)
+  - [ ] Agregar `RBAC_MODULES=` (vacío por defecto)
+  - [ ] Agregar `PERMISSIONS_CACHE_TTL=300000` (opcional)
+
+- [ ] **Actualizar `middleware.ts`:**
+  - [ ] Implementar lógica dual (hardcoded vs RBAC)
+  - [ ] Función `hasRouteAccess()`
+  - [ ] Mantener código hardcoded como fallback
+
+- [ ] **Testing de rutas:**
+  - [ ] Probar con `ENABLE_RBAC=false` (debe funcionar igual)
+  - [ ] Probar con `ENABLE_RBAC=true` (nueva lógica)
+  - [ ] Validar todos los roles en todas las rutas
+
+**Tiempo estimado:** 6 horas
+
+---
+
+## FASE 5: Server Actions (Semana 3-4)
+
+**Objetivo:** Actualizar ~50 server actions con `requirePermission()`
+
+**Tareas:**
+
+### Módulo LEADS
+- [ ] `lib/actions.ts` - leads CRUD
+  - [ ] `createLead()` → requirePermission('leads', 'crear')
+  - [ ] `updateLead()` → requirePermission('leads', 'editar')
+  - [ ] `deleteLead()` → requirePermission('leads', 'eliminar')
+  - [ ] `exportLeads()` → requirePermission('leads', 'exportar')
+
+### Módulo LOCALES
+- [ ] `lib/actions-locales.ts`
+  - [ ] `updateLocal()` → requirePermission('locales', 'editar')
+  - [ ] `cambiarEstadoLocal()` → requirePermission('locales', 'cambiar_estado')
+  - [ ] `asignarVendedor()` → requirePermission('locales', 'asignar_vendedor')
+
+### Módulo VENTAS
+- [ ] `lib/actions-locales.ts` (registro venta)
+  - [ ] `registrarVenta()` → requirePermission('ventas', 'crear')
+  - [ ] `updatePrecioVenta()` → requirePermission('ventas', 'cambiar_precio')
+
+### Módulo CONTROL_PAGOS
+- [ ] `lib/actions-control-pagos.ts`
+  - [ ] `registrarAbono()` → requirePermission('control_pagos', 'crear')
+  - [ ] `verificarAbono()` → requirePermission('control_pagos', 'verificar')
+
+### Módulo COMISIONES
+- [ ] `lib/actions-comisiones.ts`
+  - [ ] `getComisiones()` → requireAnyPermission(['comisiones.ver_todas', 'comisiones.ver_propias'])
+  - [ ] `calcularComisiones()` → requirePermission('comisiones', 'calcular')
+
+### Módulo USUARIOS
+- [ ] `lib/actions-usuarios.ts`
+  - [ ] `createUsuario()` → requirePermission('usuarios', 'crear')
+  - [ ] `updateUsuario()` → requirePermission('usuarios', 'editar')
+  - [ ] `resetPassword()` → requirePermission('usuarios', 'resetear_password')
+
+### Módulo PROYECTOS
+- [ ] `lib/actions-proyecto-config.ts`
+  - [ ] `updateProyectoConfig()` → requirePermission('proyectos', 'configurar')
+
+### Módulo APROBACIONES
+- [ ] `lib/actions-aprobaciones.ts`
+  - [ ] `aprobarDescuento()` → requirePermission('aprobaciones', 'aprobar')
+  - [ ] `saveConfigAprobaciones()` → requirePermission('aprobaciones', 'configurar_rangos')
+
+### Módulo REPULSE
+- [ ] `lib/actions-repulse.ts`
+  - [ ] `ejecutarRepulse()` → requirePermission('repulse', 'ejecutar_campana')
+
+### Módulo VALIDACION_BANCARIA
+- [ ] `lib/actions-validacion-bancaria.ts`
+  - [ ] `importarEstadoCuenta()` → requirePermission('validacion_bancaria', 'importar')
+
+### Módulo REUNIONES
+- [ ] `lib/actions-reuniones.ts`
+  - [ ] `createReunion()` → requirePermission('reuniones', 'crear')
+  - [ ] `transcribirReunion()` → requirePermission('reuniones', 'transcribir')
+
+**Tiempo estimado:** 20 horas
+
+---
+
+## FASE 6: Testing Completo (Semana 5)
+
+**Objetivo:** QA exhaustivo con todos los roles
+
+**Tareas:**
+
+- [ ] **Testing manual con credenciales:**
+  - [ ] Admin (`gerencia@ecoplaza.com`)
+  - [ ] Jefe Ventas (`leojefeventas@ecoplaza.com`)
+  - [ ] Vendedor (`alonso@ecoplaza.com`)
+  - [ ] Caseta (`leocaseta@ecoplaza.com`)
+  - [ ] Finanzas (`rosaquispef@ecoplaza.com`)
+
+- [ ] **Checklist por rol:**
+  - [ ] Validar rutas accesibles
+  - [ ] Validar botones visibles/ocultos
+  - [ ] Validar server actions (permitidas/denegadas)
+  - [ ] Validar mensajes de error
+
+- [ ] **Activar RBAC en staging:**
+  - [ ] Setear `ENABLE_RBAC=true` en staging
+  - [ ] Smoke testing completo (todas las rutas)
+  - [ ] Monitoreo de logs (permisos denegados)
+
+- [ ] **Testing E2E (Playwright):**
+  - [ ] Crear suite de tests por rol
+  - [ ] Validar flujos críticos (crear lead, venta, pago)
+
+**Tiempo estimado:** 16 horas
+
+---
+
+## FASE 7: Rollout Gradual (Semana 6-9)
+
+**Objetivo:** Desplegar a producción gradualmente
+
+### Semana 6: Módulo LEADS
+- [ ] Setear `RBAC_MODULES=leads` en producción
+- [ ] Monitoreo activo (24h)
+- [ ] Validar que leads funciona correctamente
+- [ ] Rollback si hay issues críticos
+
+### Semana 7: LEADS + LOCALES + VENTAS
+- [ ] Setear `RBAC_MODULES=leads,locales,ventas`
+- [ ] Monitoreo activo (48h)
+- [ ] Validar flujo completo de venta
+
+### Semana 8: Agregar CONTROL_PAGOS + COMISIONES
+- [ ] Setear `RBAC_MODULES=leads,locales,ventas,control_pagos,comisiones`
+- [ ] Monitoreo de rol finanzas
+- [ ] Validar cálculo de comisiones
+
+### Semana 9: TODO (Feature Flag ON)
+- [ ] Setear `ENABLE_RBAC=true` en producción
+- [ ] Todos los módulos con RBAC
+- [ ] Monitoreo intensivo (1 semana)
+- [ ] Documentar issues y resolverlos
+
+**Criterios de rollback por módulo:**
+- Error rate > 5% en logs
+- Usuario reporta bug crítico
+- Permiso denegado incorrectamente
+
+---
+
+## FASE 8: Limpieza (Semana 10-11)
+
+**Objetivo:** Remover código hardcoded
+
+**Tareas:**
+
+- [ ] **Remover feature flags:**
+  - [ ] Eliminar lógica dual en middleware
+  - [ ] Remover `ENABLE_RBAC` check en código
+  - [ ] Consolidar funciones
+
+- [ ] **Remover código hardcoded:**
+  - [ ] Buscar y eliminar validaciones `rol === 'admin'`
+  - [ ] Grep de strings hardcoded
+  - [ ] Limpiar comentarios obsoletos
+
+- [ ] **Documentación:**
+  - [ ] Actualizar `docs/modulos/` con nuevos permisos
+  - [ ] Crear guía de usuario "Cómo funcionan los permisos"
+  - [ ] Actualizar README.md
+
+- [ ] **Code review final:**
+  - [ ] Solicitar revisión de backend-dev
+  - [ ] Solicitar revisión de security-auth
+  - [ ] Merge a main
+
+**Tiempo estimado:** 8 horas
+
+---
+
+## Otros Proyectos en Backlog
+
+### COMBOBOX/AUTOCOMPLETE FILTROS (Pendiente)
+
+**Plan:** `docs/research/COMBOBOX_AUTOCOMPLETE_FILTROS_2026.md`
+**Objetivo:** Implementar filtros con shadcn/ui Combobox
+
+**Tareas:**
+- [ ] Instalar shadcn/ui components (popover, command)
+- [ ] Crear `components/shared/UtmFilterCombobox.tsx`
+- [ ] Integrar en `LeadsClient` y `OperativoClient`
+- [ ] Agregar chips para filtros activos
+- [ ] Testing funcional
+
+**Tiempo estimado:** 2.5 horas
+
+---
+
+### IA CONVERSACIONAL PARA DATOS (Futuro)
+
+**Plan:** `docs/research/IA_Conversacional_Datos_2026.md`
+**Recomendación:** LangChain SQL Agent + FastAPI + Next.js
+
+**Fases:**
+- FASE 1: Supabase AI Assistant (gratis, 4-6 horas)
+- FASE 2: LangChain MVP (20-30 horas)
+- FASE 3: Multi-modal (40-60 horas)
+
+**Requiere:**
+- Validación con stakeholders
+- Aprobación de budget ($60-120/mes)
+
+---
+
+### Mejoras Futuras (Prioridad Baja)
+
+- [ ] Analytics de conversión
 - [ ] Dashboard morosidad
 - [ ] Exportar comisiones a PDF/Excel
+- [ ] Swagger UI variables en Vercel
 
 ---
 
@@ -191,9 +441,9 @@
 - **Regla de Proyecto:** TODO se filtra por proyecto seleccionado en login
 - **Testing:** Siempre usar PROYECTO PRUEBAS
 - **Commits:** NO incluir "Generated with Claude Code" ni "Co-Authored-By"
-- **docx-templates:** Comandos {IF}/{FOR} SOLOS en su parrafo, ENTER para nuevo parrafo
+- **Feature Flags:** Mantener rollback fácil durante 4 semanas
 
 ---
 
-**Ultima Actualizacion:** 10 Enero 2026
-**Sesion:** 85 - Investigación Combobox/Autocomplete Filtros 2026 completada. Reporte en docs/research/COMBOBOX_AUTOCOMPLETE_FILTROS_2026.md
+**Ultima Actualizacion:** 11 Enero 2026
+**Sesion:** 86 - Investigación RBAC Best Practices 2026 completada. Reporte generado en docs/research/RBAC_BEST_PRACTICES_2026.md

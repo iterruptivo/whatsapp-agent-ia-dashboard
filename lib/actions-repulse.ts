@@ -71,6 +71,34 @@ export interface RepulseHistorial {
   notas: string | null;
 }
 
+// Interfaz para paginación server-side
+export interface RepulseLeadsPaginatedParams {
+  proyectoId: string;
+  page: number;
+  pageSize: number;
+  searchTerm?: string;
+  estadoFilter?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface RepulseLeadsPaginatedResult {
+  leads: RepulseLead[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+}
+
+// Interfaz para historial de conversación del lead
+export interface LeadConversationHistorial {
+  leadId: string;
+  nombre: string | null;
+  telefono: string;
+  historial_conversacion: string | null;
+  historial_reciente: string | null;
+  ultimo_mensaje: string | null;
+  resumen_historial: string | null;
+}
+
 // ============================================================================
 // HELPER: Crear cliente Supabase
 // ============================================================================
@@ -242,6 +270,152 @@ export async function getRepulseLeads(proyectoId: string): Promise<RepulseLead[]
   }
 
   return data || [];
+}
+
+/**
+ * Obtener leads de repulse con paginación server-side
+ * Más eficiente para grandes volúmenes de datos
+ */
+export async function getRepulseLeadsPaginated(
+  params: RepulseLeadsPaginatedParams
+): Promise<RepulseLeadsPaginatedResult> {
+  const supabase = await createClient();
+  const { proyectoId, page, pageSize, searchTerm, estadoFilter, sortOrder = 'asc' } = params;
+
+  // Calcular offset para paginación
+  const offset = (page - 1) * pageSize;
+
+  // Base query para conteo total (sin paginación)
+  let countQuery = supabase
+    .from('repulse_leads')
+    .select('id', { count: 'exact', head: true })
+    .eq('proyecto_id', proyectoId);
+
+  // Base query para datos con paginación
+  let dataQuery = supabase
+    .from('repulse_leads')
+    .select(`
+      *,
+      lead:lead_id (
+        id,
+        nombre,
+        telefono,
+        email,
+        rubro,
+        estado,
+        utm,
+        created_at,
+        vendedor_asignado_id
+      ),
+      agregado_por_usuario:agregado_por (
+        nombre
+      )
+    `)
+    .eq('proyecto_id', proyectoId);
+
+  // Aplicar filtro de estado si no es 'todos'
+  if (estadoFilter && estadoFilter !== 'todos') {
+    countQuery = countQuery.eq('estado', estadoFilter);
+    dataQuery = dataQuery.eq('estado', estadoFilter);
+  }
+
+  // Aplicar búsqueda si hay término
+  // Nota: La búsqueda por campos del lead relacionado requiere filtrado post-query
+  // o usar una función RPC en Supabase. Por simplicidad, filtramos en el servidor.
+
+  // Ordenar por fecha del lead (created_at del lead relacionado)
+  // Nota: Supabase no permite ordenar por campos de relaciones directamente,
+  // así que ordenamos por fecha_agregado del repulse_lead
+  dataQuery = dataQuery.order('fecha_agregado', { ascending: sortOrder === 'asc' });
+
+  // Aplicar paginación
+  dataQuery = dataQuery.range(offset, offset + pageSize - 1);
+
+  // Ejecutar queries en paralelo
+  const [countResult, dataResult] = await Promise.all([
+    countQuery,
+    dataQuery,
+  ]);
+
+  if (countResult.error) {
+    console.error('Error counting repulse leads:', countResult.error);
+    return { leads: [], totalCount: 0, totalPages: 0, currentPage: page };
+  }
+
+  if (dataResult.error) {
+    console.error('Error fetching paginated repulse leads:', dataResult.error);
+    return { leads: [], totalCount: 0, totalPages: 0, currentPage: page };
+  }
+
+  let leads = dataResult.data || [];
+
+  // Filtrar por búsqueda en el servidor (post-query)
+  // Esto es necesario porque Supabase no permite filtrar por campos de relaciones
+  if (searchTerm && searchTerm.trim()) {
+    const search = searchTerm.toLowerCase().trim();
+    leads = leads.filter((lead) => {
+      const nombre = lead.lead?.nombre?.toLowerCase() || '';
+      const telefono = lead.lead?.telefono?.toLowerCase() || '';
+      const rubro = lead.lead?.rubro?.toLowerCase() || '';
+      return nombre.includes(search) || telefono.includes(search) || rubro.includes(search);
+    });
+  }
+
+  const totalCount = countResult.count || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+
+  return {
+    leads,
+    totalCount,
+    totalPages,
+    currentPage: page,
+  };
+}
+
+/**
+ * Obtener historial de conversación de un lead
+ * Se llama lazy (solo cuando el usuario hace clic para ver el historial)
+ */
+export async function getLeadConversationHistorial(
+  leadId: string
+): Promise<{ success: boolean; data?: LeadConversationHistorial; error?: string }> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from('leads')
+    .select(`
+      id,
+      nombre,
+      telefono,
+      historial_conversacion,
+      historial_reciente,
+      ultimo_mensaje,
+      resumen_historial
+    `)
+    .eq('id', leadId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching lead conversation historial:', error);
+    return { success: false, error: 'No se pudo obtener el historial de conversación' };
+  }
+
+  if (!data) {
+    return { success: false, error: 'Lead no encontrado' };
+  }
+
+  return {
+    success: true,
+    data: {
+      leadId: data.id,
+      nombre: data.nombre,
+      telefono: data.telefono,
+      historial_conversacion: data.historial_conversacion,
+      historial_reciente: data.historial_reciente,
+      ultimo_mensaje: data.ultimo_mensaje,
+      resumen_historial: data.resumen_historial,
+    },
+  };
 }
 
 /**
@@ -678,25 +852,47 @@ export async function prepararEnvioRepulseBatch(
   // Generar batch ID único
   const batchId = crypto.randomUUID();
 
-  // Obtener datos de los leads
-  const { data: repulseLeads, error } = await supabase
-    .from('repulse_leads')
-    .select(`
-      id,
-      lead_id,
-      proyecto_id,
-      lead:lead_id (
-        nombre,
-        telefono,
-        horario_visita,
-        horario_visita_timestamp
-      )
-    `)
-    .in('id', repulseLeadIds);
+  // Obtener datos de los leads EN CHUNKS para evitar Headers Overflow
+  // Supabase tiene límite en la longitud de query params (~100 UUIDs)
+  const CHUNK_SIZE = 50;
+  const repulseLeads: Array<{
+    id: string;
+    lead_id: string;
+    proyecto_id: string;
+    lead: unknown;
+  }> = [];
 
-  if (error || !repulseLeads) {
-    console.error('Error fetching repulse leads for batch:', error);
-    return { success: false, batchId, leadsParaN8n: [], error: error?.message };
+  for (let i = 0; i < repulseLeadIds.length; i += CHUNK_SIZE) {
+    const chunk = repulseLeadIds.slice(i, i + CHUNK_SIZE);
+
+    const { data: chunkData, error: chunkError } = await supabase
+      .from('repulse_leads')
+      .select(`
+        id,
+        lead_id,
+        proyecto_id,
+        lead:lead_id (
+          nombre,
+          telefono,
+          horario_visita,
+          horario_visita_timestamp
+        )
+      `)
+      .in('id', chunk);
+
+    if (chunkError) {
+      console.error('Error fetching repulse leads chunk:', chunkError);
+      continue;
+    }
+
+    if (chunkData) {
+      repulseLeads.push(...chunkData);
+    }
+  }
+
+  if (repulseLeads.length === 0) {
+    console.error('Error fetching repulse leads for batch: No leads found');
+    return { success: false, batchId, leadsParaN8n: [], error: 'No se encontraron leads' };
   }
 
   const leadsParaN8n = [];

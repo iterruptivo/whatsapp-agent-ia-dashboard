@@ -79,7 +79,9 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
                   <div className="text-white">
                     <p className="text-sm font-medium">{user.nombre}</p>
                     <p className="text-xs text-gray-300">
-                      {user.rol === 'admin'
+                      {user.rol === 'superadmin'
+                        ? 'Super Admin'
+                        : user.rol === 'admin'
                         ? 'Administrador'
                         : user.rol === 'vendedor'
                         ? 'Vendedor'

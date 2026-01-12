@@ -135,7 +135,21 @@ function parseMessages(historial: string | null): ChatMessage[] {
       continue;
     }
 
-    // Check for REPULSE messages (formato: [REPULSE DD/MM/YYYY, HH:MM]: mensaje)
+    // Check for NEW REPULSE format (formato: --- REPULSE [DD/MM/YYYY, HH:MM] ---)
+    const newRepulseMatch = trimmedLine.match(/^---\s*REPULSE\s*\[[^\]]+\]\s*---$/i);
+    if (newRepulseMatch) {
+      if (currentMessage) messages.push(currentMessage);
+      // Start a new repulse message (content will come in following lines)
+      currentMessage = { sender: 'bot', text: '', tipo: 'repulse' };
+      continue;
+    }
+
+    // Skip "[Mensaje enviado por sistema]" line (part of new repulse format)
+    if (trimmedLine.match(/^\[Mensaje enviado por sistema\]$/i)) {
+      continue;
+    }
+
+    // Check for OLD REPULSE messages (formato: [REPULSE DD/MM/YYYY, HH:MM]: mensaje)
     const repulseMatch = trimmedLine.match(/^\[REPULSE[^\]]*\]:\s*(.+)/i);
     if (repulseMatch) {
       if (currentMessage) messages.push(currentMessage);
@@ -157,7 +171,8 @@ function parseMessages(historial: string | null): ChatMessage[] {
       currentMessage = { sender: 'bot', text: botMatch[2] };
     } else if (currentMessage) {
       // Continue previous message (multi-line)
-      currentMessage.text += '\n' + trimmedLine;
+      // Si el texto está vacío (nuevo formato repulse), no agregar '\n' al inicio
+      currentMessage.text += currentMessage.text ? '\n' + trimmedLine : trimmedLine;
     } else {
       // No prefix detected, assume it's a continuation or standalone text
       // Default to user message if no context

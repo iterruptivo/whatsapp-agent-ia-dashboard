@@ -14,6 +14,9 @@ export default function KanbanColumn({
   totalCount,
   onLeadClick,
   isOver,
+  vendedores,
+  onAssignLead,
+  canAssign,
 }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({
     id: column.columna_codigo,
@@ -86,6 +89,9 @@ export default function KanbanColumn({
                   key={lead.id}
                   lead={lead}
                   onClick={() => onLeadClick(lead)}
+                  vendedores={vendedores}
+                  onAssignLead={onAssignLead}
+                  canAssign={canAssign}
                 />
               ))}
 

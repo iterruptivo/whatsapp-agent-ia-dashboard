@@ -30,6 +30,8 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  MessageCircle,
+  Loader2,
 } from 'lucide-react';
 import {
   type RepulseLead,
@@ -38,7 +40,9 @@ import {
   removeLeadFromRepulse,
   excluirLeadDeRepulse,
   prepararEnvioRepulseBatch,
+  getRepulseLeadsPaginated,
 } from '@/lib/actions-repulse';
+import ChatHistoryModal from '@/components/shared/ChatHistoryModal';
 import Tooltip from '@/components/shared/Tooltip';
 import RepulseTemplateModal from './RepulseTemplateModal';
 import RepulseEnvioModal from './RepulseEnvioModal';
@@ -111,52 +115,69 @@ export default function RepulseClient({
   } | null>(null);
   const [showProgressModal, setShowProgressModal] = useState(false);
 
-  // Filtrar leads
-  const filteredLeads = useMemo(() => {
-    return leads.filter((lead) => {
-      // Filtro por estado
-      if (estadoFilter !== 'todos' && lead.estado !== estadoFilter) {
-        return false;
-      }
+  // State para modal de historial de conversación
+  const [historialModal, setHistorialModal] = useState<{
+    isOpen: boolean;
+    leadId: string;
+    leadNombre?: string;
+    leadTelefono?: string;
+  }>({
+    isOpen: false,
+    leadId: '',
+  });
 
-      // Filtro por búsqueda
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        const nombre = lead.lead?.nombre?.toLowerCase() || '';
-        const telefono = lead.lead?.telefono?.toLowerCase() || '';
-        const rubro = lead.lead?.rubro?.toLowerCase() || '';
+  // Server-side pagination state
+  const [totalCount, setTotalCount] = useState(initialLeads.length);
+  const [isLoadingTable, setIsLoadingTable] = useState(false);
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
-        if (!nombre.includes(search) && !telefono.includes(search) && !rubro.includes(search)) {
-          return false;
-        }
-      }
+  // Debounce search term (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-      return true;
-    });
-  }, [leads, estadoFilter, searchTerm]);
+  // Fetch leads from server when pagination params change
+  const fetchLeadsFromServer = async () => {
+    setIsLoadingTable(true);
+    try {
+      const result = await getRepulseLeadsPaginated({
+        proyectoId,
+        page: currentPage,
+        pageSize,
+        searchTerm: debouncedSearchTerm,
+        estadoFilter,
+        sortOrder,
+      });
+      setLeads(result.leads);
+      setTotalCount(result.totalCount);
+    } catch (error) {
+      console.error('Error fetching repulse leads:', error);
+    } finally {
+      setIsLoadingTable(false);
+    }
+  };
 
-  // Sorted leads by fecha lead (created_at)
-  const sortedLeads = useMemo(() => {
-    return [...filteredLeads].sort((a, b) => {
-      const dateA = new Date(a.lead?.created_at || 0).getTime();
-      const dateB = new Date(b.lead?.created_at || 0).getTime();
-      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-    });
-  }, [filteredLeads, sortOrder]);
+  // Trigger server fetch when params change
+  useEffect(() => {
+    // Skip initial fetch if we have initialLeads (first render)
+    if (currentPage === 1 && pageSize === 50 && !debouncedSearchTerm && estadoFilter === 'todos' && sortOrder === 'asc') {
+      // Use initial data on first load
+      return;
+    }
+    fetchLeadsFromServer();
+  }, [currentPage, pageSize, debouncedSearchTerm, estadoFilter, sortOrder]);
 
-  // Paginated leads
-  const paginatedLeads = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    const end = start + pageSize;
-    return sortedLeads.slice(start, end);
-  }, [sortedLeads, currentPage, pageSize]);
-
-  const totalPages = Math.ceil(sortedLeads.length / pageSize);
-
-  // Reset page when filters, sort, or pageSize change
+  // Reset page when filters change (except page itself)
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, estadoFilter, sortOrder, pageSize]);
+  }, [debouncedSearchTerm, estadoFilter, sortOrder, pageSize]);
+
+  // Server-side pagination - leads already paginated from server
+  const paginatedLeads = leads;
+  const totalPages = Math.ceil(totalCount / pageSize);
 
   // Leads seleccionables (solo pendientes de la página actual)
   const selectableLeads = paginatedLeads.filter((l) => l.estado === 'pendiente');
@@ -194,6 +215,21 @@ export default function RepulseClient({
   // Cerrar modal de confirmación
   const closeConfirmModal = () => {
     setConfirmModal({ isOpen: false, type: null, targetId: null });
+  };
+
+  // Abrir modal de historial de conversación
+  const openHistorialModal = (leadId: string, leadNombre?: string, leadTelefono?: string) => {
+    setHistorialModal({
+      isOpen: true,
+      leadId,
+      leadNombre: leadNombre || undefined,
+      leadTelefono: leadTelefono || undefined,
+    });
+  };
+
+  // Cerrar modal de historial
+  const closeHistorialModal = () => {
+    setHistorialModal({ isOpen: false, leadId: '' });
   };
 
   // Ejecutar acción confirmada
@@ -448,8 +484,9 @@ export default function RepulseClient({
         {/* Pagination Top */}
         {totalPages > 1 && (
           <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-            <div className="text-sm text-gray-600">
-              Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, sortedLeads.length)} de {sortedLeads.length} leads
+            <div className="text-sm text-gray-600 flex items-center gap-2">
+              {isLoadingTable && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
+              Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} de {totalCount} leads
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -516,7 +553,16 @@ export default function RepulseClient({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {paginatedLeads.length === 0 ? (
+              {isLoadingTable ? (
+                <tr>
+                  <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
+                    <div className="flex flex-col items-center gap-2">
+                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                      <p>Cargando leads...</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedLeads.length === 0 ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center gap-2">
@@ -581,6 +627,18 @@ export default function RepulseClient({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        {/* Botón Ver Historial de Conversación */}
+                        <button
+                          onClick={() => openHistorialModal(
+                            repulseLead.lead_id,
+                            repulseLead.lead?.nombre || undefined,
+                            repulseLead.lead?.telefono || undefined
+                          )}
+                          title="Ver historial de conversación"
+                          className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </button>
                         {repulseLead.estado !== 'excluido' && (
                           <button
                             onClick={() => openExcluirConfirm(repulseLead.lead_id)}
@@ -610,7 +668,7 @@ export default function RepulseClient({
         <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-600">
-              Mostrando {sortedLeads.length > 0 ? ((currentPage - 1) * pageSize) + 1 : 0} - {Math.min(currentPage * pageSize, sortedLeads.length)} de {sortedLeads.length} leads
+              Mostrando {totalCount > 0 ? ((currentPage - 1) * pageSize) + 1 : 0} - {Math.min(currentPage * pageSize, totalCount)} de {totalCount} leads
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-500">Por página:</span>
@@ -723,6 +781,15 @@ export default function RepulseClient({
         cancelText="Cancelar"
         onConfirm={handleConfirmAction}
         onCancel={closeConfirmModal}
+      />
+
+      {/* Modal de historial de conversación */}
+      <ChatHistoryModal
+        isOpen={historialModal.isOpen}
+        leadId={historialModal.leadId}
+        leadNombre={historialModal.leadNombre}
+        leadTelefono={historialModal.leadTelefono}
+        onClose={closeHistorialModal}
       />
 
       {/* Modal informativo - ¿Cómo funciona Repulse? */}

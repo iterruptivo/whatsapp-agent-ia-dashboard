@@ -32,11 +32,106 @@ interface BatchRequest {
   batchId: string;
 }
 
+// Respuesta esperada de n8n (después de enviar a Meta)
+interface N8nResponse {
+  success: boolean;
+  whatsapp_message_id: string | null;
+  status: 'accepted' | 'error';
+  error: string | null;
+  contacts: Array<{ input: string; wa_id: string }> | null;
+}
+
 // Sleep helper
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
+ * Inyectar mensaje de Repulse en el historial de conversación del lead
+ * Solo se llama cuando Meta confirma que el mensaje fue aceptado
+ */
+async function inyectarMensajeEnHistorial(leadId: string, mensaje: string): Promise<void> {
+  try {
+    // 1. Obtener el historial actual del lead
+    const { data: lead, error: errorFetch } = await supabase
+      .from('leads')
+      .select('historial_reciente, historial_conversacion')
+      .eq('id', leadId)
+      .single();
+
+    if (errorFetch || !lead) {
+      console.error('[Repulse] Error fetching lead for historial injection:', errorFetch);
+      return;
+    }
+
+    // 2. Crear el mensaje en formato texto plano
+    const timestamp = new Date().toLocaleString('es-PE', {
+      timeZone: 'America/Lima',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const mensajeTextoRepulse = `\n\n--- REPULSE [${timestamp}] ---\n[Mensaje enviado por sistema]\n${mensaje}\n---`;
+
+    // 3. APPEND al historial_reciente
+    let nuevoHistorialReciente = lead.historial_reciente || '';
+    try {
+      const parsed = JSON.parse(nuevoHistorialReciente);
+      if (Array.isArray(parsed)) {
+        parsed.push({
+          sender: 'Repulse',
+          text: mensaje,
+          tipo: 'repulse',
+          timestamp: new Date().toISOString(),
+        });
+        nuevoHistorialReciente = JSON.stringify(parsed);
+      } else {
+        nuevoHistorialReciente = nuevoHistorialReciente + mensajeTextoRepulse;
+      }
+    } catch {
+      nuevoHistorialReciente = nuevoHistorialReciente + mensajeTextoRepulse;
+    }
+
+    // 4. APPEND al historial_conversacion
+    let nuevoHistorialCompleto = lead.historial_conversacion || '';
+    try {
+      const parsed = JSON.parse(nuevoHistorialCompleto);
+      if (Array.isArray(parsed)) {
+        parsed.push({
+          sender: 'Repulse',
+          text: mensaje,
+          tipo: 'repulse',
+          timestamp: new Date().toISOString(),
+        });
+        nuevoHistorialCompleto = JSON.stringify(parsed);
+      } else {
+        nuevoHistorialCompleto = nuevoHistorialCompleto + mensajeTextoRepulse;
+      }
+    } catch {
+      nuevoHistorialCompleto = nuevoHistorialCompleto + mensajeTextoRepulse;
+    }
+
+    // 5. UPDATE en tabla leads
+    const { error: errorUpdate } = await supabase
+      .from('leads')
+      .update({
+        historial_reciente: nuevoHistorialReciente,
+        historial_conversacion: nuevoHistorialCompleto,
+        ultimo_mensaje: `[REPULSE]: ${mensaje.substring(0, 100)}...`,
+      })
+      .eq('id', leadId);
+
+    if (errorUpdate) {
+      console.error('[Repulse] Error updating historial:', errorUpdate);
+    }
+  } catch (error) {
+    console.error('[Repulse] Error in inyectarMensajeEnHistorial:', error);
+  }
+}
+
+/**
  * Procesa un lead individual: envía a n8n y actualiza estado
+ * Solo inyecta en historial_conversacion si Meta confirma éxito
  */
 async function procesarLeadIndividual(lead: LeadParaEnvio, batchId: string): Promise<boolean> {
   try {
@@ -68,14 +163,37 @@ async function procesarLeadIndividual(lead: LeadParaEnvio, batchId: string): Pro
     // 3. Rate limit (500ms entre envíos)
     await sleep(500);
 
-    // 4. Actualizar estado según resultado
-    if (response.ok) {
-      // Actualizar historial - IMPORTANTE: enviado_at para la cuota diaria
+    // 4. Parsear respuesta de n8n (que incluye resultado de Meta)
+    if (!response.ok) {
+      const errorText = await response.text();
+      await supabase
+        .from('repulse_historial')
+        .update({
+          envio_estado: 'error',
+          envio_error: `HTTP ${response.status}: ${errorText.substring(0, 200)}`,
+        })
+        .eq('id', lead.historial_id);
+      return false;
+    }
+
+    // 5. Parsear JSON de n8n con resultado de Meta
+    let n8nResult: N8nResponse;
+    try {
+      n8nResult = await response.json();
+    } catch {
+      // Si no es JSON válido, asumir éxito (backward compatibility)
+      n8nResult = { success: true, whatsapp_message_id: null, status: 'accepted', error: null, contacts: null };
+    }
+
+    // 6. Verificar si Meta aceptó el mensaje
+    if (n8nResult.success && n8nResult.status === 'accepted') {
+      // ✅ Meta confirmó - actualizar historial con whatsapp_message_id
       await supabase
         .from('repulse_historial')
         .update({
           envio_estado: 'enviado',
-          enviado_at: new Date().toISOString()  // Para que cuente en la cuota
+          enviado_at: new Date().toISOString(),
+          whatsapp_message_id: n8nResult.whatsapp_message_id,  // Guardar para trazabilidad
         })
         .eq('id', lead.historial_id);
 
@@ -96,20 +214,27 @@ async function procesarLeadIndividual(lead: LeadParaEnvio, batchId: string): Pro
         })
         .eq('id', lead.repulse_lead_id);
 
+      // ✅ INYECTAR EN HISTORIAL DE CONVERSACIÓN (solo si Meta confirmó)
+      await inyectarMensajeEnHistorial(lead.lead_id, lead.mensaje);
+
+      console.log(`[Repulse] ✅ Enviado a ${lead.telefono} - wamid: ${n8nResult.whatsapp_message_id}`);
       return true;
     } else {
-      const errorText = await response.text();
+      // ❌ Meta rechazó el mensaje
+      const errorMsg = n8nResult.error || 'Meta rechazó el mensaje';
       await supabase
         .from('repulse_historial')
         .update({
           envio_estado: 'error',
-          envio_error: `HTTP ${response.status}: ${errorText.substring(0, 200)}`,
+          envio_error: `Meta: ${errorMsg}`,
         })
         .eq('id', lead.historial_id);
+
+      console.log(`[Repulse] ❌ Error en ${lead.telefono}: ${errorMsg}`);
       return false;
     }
   } catch (error) {
-    // 5. Registrar error
+    // Error de red o excepción
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
     await supabase
       .from('repulse_historial')
@@ -118,6 +243,7 @@ async function procesarLeadIndividual(lead: LeadParaEnvio, batchId: string): Pro
         envio_error: errorMessage,
       })
       .eq('id', lead.historial_id);
+    console.log(`[Repulse] ❌ Excepción en ${lead.telefono}: ${errorMessage}`);
     return false;
   }
 }

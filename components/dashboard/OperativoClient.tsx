@@ -9,7 +9,7 @@ import { Lead, Usuario, getAllUsuarios } from '@/lib/db';
 import { getAllVendedoresActivos, VendedorActivo } from '@/lib/locales';
 import { assignLeadToVendedor } from '@/lib/actions';
 import { useAuth } from '@/lib/auth-context';
-import { Download, Upload, Plus, ChevronDown, Zap, Filter, X } from 'lucide-react';
+import { Download, Upload, Plus, ChevronDown, Zap, Filter, X, SlidersHorizontal, ChevronUp } from 'lucide-react';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import { exportLeadsToExcel } from '@/lib/exportToExcel';
@@ -58,6 +58,15 @@ export default function OperativoClient({
 
   // UTM filter (for both admin and vendedor)
   const [utmFilter, setUtmFilter] = useState<string>(''); // Filter by UTM source
+
+  // Advanced Filters state
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [rubroFilter, setRubroFilter] = useState<string>('');
+  const [asistioFilter, setAsistioFilter] = useState<string>(''); // '', 'si', 'no'
+  const [tipificacionN1Filter, setTipificacionN1Filter] = useState<string>('');
+  const [tipificacionN2Filter, setTipificacionN2Filter] = useState<string>('');
+  const [tipificacionN3Filter, setTipificacionN3Filter] = useState<string>('');
+  const [excluRepulseFilter, setExcluRepulseFilter] = useState<string>(''); // '', 'si', 'no'
 
   // Export state
   const [isExporting, setIsExporting] = useState(false);
@@ -149,6 +158,76 @@ export default function OperativoClient({
       .map((v) => ({ value: v.id, label: v.nombre }));
   }, [vendedores]);
 
+  // Calculate unique RUBRO values dynamically from leads
+  const uniqueRubroValues = useMemo(() => {
+    const rubroMap = new Map<string, string>();
+    initialLeads.forEach((lead) => {
+      if (lead.rubro) {
+        const normalized = lead.rubro.toLowerCase().trim();
+        if (!rubroMap.has(normalized)) {
+          const displayValue = lead.rubro.charAt(0).toUpperCase() + lead.rubro.slice(1).toLowerCase();
+          rubroMap.set(normalized, displayValue);
+        }
+      }
+    });
+    return Array.from(rubroMap.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [initialLeads]);
+
+  // Calculate unique TIPIFICACION_NIVEL_1 values
+  const uniqueTipN1Values = useMemo(() => {
+    const tipMap = new Map<string, string>();
+    initialLeads.forEach((lead) => {
+      if (lead.tipificacion_nivel_1) {
+        const normalized = lead.tipificacion_nivel_1.toLowerCase().trim();
+        if (!tipMap.has(normalized)) {
+          tipMap.set(normalized, lead.tipificacion_nivel_1);
+        }
+      }
+    });
+    return Array.from(tipMap.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [initialLeads]);
+
+  // Calculate unique TIPIFICACION_NIVEL_2 values (filtered by N1 if selected)
+  const uniqueTipN2Values = useMemo(() => {
+    const tipMap = new Map<string, string>();
+    initialLeads
+      .filter((lead) => !tipificacionN1Filter || lead.tipificacion_nivel_1?.toLowerCase().trim() === tipificacionN1Filter)
+      .forEach((lead) => {
+        if (lead.tipificacion_nivel_2) {
+          const normalized = lead.tipificacion_nivel_2.toLowerCase().trim();
+          if (!tipMap.has(normalized)) {
+            tipMap.set(normalized, lead.tipificacion_nivel_2);
+          }
+        }
+      });
+    return Array.from(tipMap.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [initialLeads, tipificacionN1Filter]);
+
+  // Calculate unique TIPIFICACION_NIVEL_3 values (filtered by N1 and N2 if selected)
+  const uniqueTipN3Values = useMemo(() => {
+    const tipMap = new Map<string, string>();
+    initialLeads
+      .filter((lead) => !tipificacionN1Filter || lead.tipificacion_nivel_1?.toLowerCase().trim() === tipificacionN1Filter)
+      .filter((lead) => !tipificacionN2Filter || lead.tipificacion_nivel_2?.toLowerCase().trim() === tipificacionN2Filter)
+      .forEach((lead) => {
+        if (lead.tipificacion_nivel_3) {
+          const normalized = lead.tipificacion_nivel_3.toLowerCase().trim();
+          if (!tipMap.has(normalized)) {
+            tipMap.set(normalized, lead.tipificacion_nivel_3);
+          }
+        }
+      });
+    return Array.from(tipMap.entries())
+      .sort((a, b) => a[1].localeCompare(b[1]))
+      .map(([value, label]) => ({ value, label }));
+  }, [initialLeads, tipificacionN1Filter, tipificacionN2Filter]);
+
   // Count active filters for badge indicator
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -156,8 +235,28 @@ export default function OperativoClient({
     if (selectedVendedorFilter) count++;
     if (estadoFilter) count++;
     if (utmFilter) count++;
+    // Advanced filters
+    if (rubroFilter) count++;
+    if (asistioFilter) count++;
+    if (tipificacionN1Filter) count++;
+    if (tipificacionN2Filter) count++;
+    if (tipificacionN3Filter) count++;
+    if (excluRepulseFilter) count++;
     return count;
-  }, [assignmentFilter, selectedVendedorFilter, estadoFilter, utmFilter]);
+  }, [assignmentFilter, selectedVendedorFilter, estadoFilter, utmFilter, rubroFilter, asistioFilter, tipificacionN1Filter, tipificacionN2Filter, tipificacionN3Filter, excluRepulseFilter]);
+
+  // Count advanced filters only (for badge in advanced button)
+  const advancedFilterCount = useMemo(() => {
+    let count = 0;
+    if (utmFilter) count++;
+    if (rubroFilter) count++;
+    if (asistioFilter) count++;
+    if (tipificacionN1Filter) count++;
+    if (tipificacionN2Filter) count++;
+    if (tipificacionN3Filter) count++;
+    if (excluRepulseFilter) count++;
+    return count;
+  }, [utmFilter, rubroFilter, asistioFilter, tipificacionN1Filter, tipificacionN2Filter, tipificacionN3Filter, excluRepulseFilter]);
 
   // Filter leads by date range AND assignment filter
   const filteredLeads = useMemo(() => {
@@ -194,8 +293,8 @@ export default function OperativoClient({
     }
     // 'todos' shows all leads (no additional filtering)
 
-    // Admin-only: Filter by specific vendedor (dropdown)
-    if (selectedVendedorFilter && user?.rol === 'admin') {
+    // Admin/Jefe Ventas/Superadmin: Filter by specific vendedor (dropdown)
+    if (selectedVendedorFilter && (user?.rol === 'admin' || user?.rol === 'superadmin' || user?.rol === 'jefe_ventas')) {
       filtered = filtered.filter((lead) => lead.vendedor_asignado_id === selectedVendedorFilter);
     }
 
@@ -212,8 +311,59 @@ export default function OperativoClient({
       });
     }
 
+    // ADVANCED FILTERS
+    // Filter by rubro (normalized comparison)
+    if (rubroFilter) {
+      filtered = filtered.filter((lead) => {
+        if (!lead.rubro) return false;
+        return lead.rubro.toLowerCase().trim() === rubroFilter;
+      });
+    }
+
+    // Filter by asistio_cita
+    if (asistioFilter) {
+      filtered = filtered.filter((lead) => {
+        if (asistioFilter === 'si') return lead.asistio === true;
+        if (asistioFilter === 'no') return lead.asistio === false;
+        return true;
+      });
+    }
+
+    // Filter by tipificacion nivel 1 (normalized)
+    if (tipificacionN1Filter) {
+      filtered = filtered.filter((lead) => {
+        if (!lead.tipificacion_nivel_1) return false;
+        return lead.tipificacion_nivel_1.toLowerCase().trim() === tipificacionN1Filter;
+      });
+    }
+
+    // Filter by tipificacion nivel 2 (normalized)
+    if (tipificacionN2Filter) {
+      filtered = filtered.filter((lead) => {
+        if (!lead.tipificacion_nivel_2) return false;
+        return lead.tipificacion_nivel_2.toLowerCase().trim() === tipificacionN2Filter;
+      });
+    }
+
+    // Filter by tipificacion nivel 3 (normalized)
+    if (tipificacionN3Filter) {
+      filtered = filtered.filter((lead) => {
+        if (!lead.tipificacion_nivel_3) return false;
+        return lead.tipificacion_nivel_3.toLowerCase().trim() === tipificacionN3Filter;
+      });
+    }
+
+    // Filter by excluido_repulse
+    if (excluRepulseFilter) {
+      filtered = filtered.filter((lead) => {
+        if (excluRepulseFilter === 'si') return lead.excluido_repulse === true;
+        if (excluRepulseFilter === 'no') return lead.excluido_repulse !== true;
+        return true;
+      });
+    }
+
     return filtered;
-  }, [initialLeads, dateFrom, dateTo, assignmentFilter, currentVendedorId, selectedVendedorFilter, estadoFilter, utmFilter, user?.rol]);
+  }, [initialLeads, dateFrom, dateTo, assignmentFilter, currentVendedorId, selectedVendedorFilter, estadoFilter, utmFilter, rubroFilter, asistioFilter, tipificacionN1Filter, tipificacionN2Filter, tipificacionN3Filter, excluRepulseFilter, user?.rol]);
 
   // Convert filtered leads to Kanban cards with calculated column
   const kanbanLeads = useMemo((): LeadCard[] => {
@@ -553,8 +703,8 @@ export default function OperativoClient({
               )}
             </div>
 
-            {/* ROW 2: Vendedor Filter - Admin only (full width on mobile) */}
-            {user?.rol === 'admin' && (
+            {/* ROW 2: Vendedor Filter - Admin/Jefe Ventas/Superadmin (full width on mobile) */}
+            {(user?.rol === 'admin' || user?.rol === 'superadmin' || user?.rol === 'jefe_ventas') && (
               <ComboboxFilter
                 options={vendedorOptions}
                 value={selectedVendedorFilter}
@@ -582,17 +732,6 @@ export default function OperativoClient({
               className="w-full xl:w-auto"
             />
 
-            {/* ROW 4: UTM/Origen Filter (full width on mobile) */}
-            <ComboboxFilter
-              options={uniqueUtmValues}
-              value={utmFilter}
-              onChange={setUtmFilter}
-              placeholder="Origen"
-              searchPlaceholder="Buscar origen..."
-              emptyMessage="No se encontró el origen"
-              className="w-full xl:w-auto"
-            />
-
             {/* Active Filters Badge + Clear */}
             {activeFilterCount > 0 && (
               <div className="flex items-center gap-2">
@@ -606,6 +745,14 @@ export default function OperativoClient({
                     setSelectedVendedorFilter('');
                     setEstadoFilter('');
                     setUtmFilter('');
+                    // Clear advanced filters
+                    setRubroFilter('');
+                    setAsistioFilter('');
+                    setTipificacionN1Filter('');
+                    setTipificacionN2Filter('');
+                    setTipificacionN3Filter('');
+                    setExcluRepulseFilter('');
+                    setShowAdvancedFilters(false);
                   }}
                   className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                   title="Limpiar filtros"
@@ -685,10 +832,187 @@ export default function OperativoClient({
                     <span className="hidden sm:inline">{isExporting ? 'Exportando...' : 'Exportar'}</span>
                   </button>
                 )}
+
+                {/* Advanced Filters Button */}
+                <button
+                  onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                  className={`relative flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                    showAdvancedFilters || advancedFilterCount > 0
+                      ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                  title="Filtros Avanzados"
+                >
+                  <SlidersHorizontal className="w-5 h-5" />
+                  <span className="hidden sm:inline">Avanzado</span>
+                  {advancedFilterCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 bg-purple-600 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
+                      {advancedFilterCount}
+                    </span>
+                  )}
+                  {showAdvancedFilters ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </button>
               </div>
             </div>
           </div>
         </div>
+
+        {/* ============================================================ */}
+        {/* ADVANCED FILTERS PANEL - Collapsible (Mobile First) */}
+        {/* ============================================================ */}
+        {showAdvancedFilters && (
+          <div className="mt-3 bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden animate-in fade-in-0 slide-in-from-top-2 duration-200">
+            {/* Header */}
+            <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-purple-600" />
+                <span className="text-sm font-semibold text-gray-700">Filtros Avanzados</span>
+                {advancedFilterCount > 0 && (
+                  <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+                    {advancedFilterCount} activo{advancedFilterCount > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setUtmFilter('');
+                  setRubroFilter('');
+                  setAsistioFilter('');
+                  setTipificacionN1Filter('');
+                  setTipificacionN2Filter('');
+                  setTipificacionN3Filter('');
+                  setExcluRepulseFilter('');
+                }}
+                className={`text-xs font-medium transition-colors ${
+                  advancedFilterCount > 0 ? 'text-red-500 hover:text-red-700' : 'text-gray-400 cursor-not-allowed'
+                }`}
+                disabled={advancedFilterCount === 0}
+              >
+                Limpiar avanzados
+              </button>
+            </div>
+
+            {/* Filters Grid - Mobile: 1 col | Tablet: 2 cols | Desktop: 4 cols */}
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {/* Origen (UTM) */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Origen</label>
+                <ComboboxFilter
+                  options={uniqueUtmValues}
+                  value={utmFilter}
+                  onChange={setUtmFilter}
+                  placeholder="Todos los orígenes"
+                  searchPlaceholder="Buscar origen..."
+                  emptyMessage="No se encontró"
+                  className="w-full"
+                />
+              </div>
+
+              {/* Rubro */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Rubro</label>
+                <ComboboxFilter
+                  options={uniqueRubroValues}
+                  value={rubroFilter}
+                  onChange={setRubroFilter}
+                  placeholder="Todos los rubros"
+                  searchPlaceholder="Buscar rubro..."
+                  emptyMessage="No se encontró"
+                  className="w-full"
+                />
+              </div>
+
+              {/* Asistió a Cita */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Asistió a Cita</label>
+                <ComboboxFilter
+                  options={[
+                    { value: 'si', label: 'Sí asistió' },
+                    { value: 'no', label: 'No asistió' },
+                  ]}
+                  value={asistioFilter}
+                  onChange={setAsistioFilter}
+                  placeholder="Todos"
+                  searchPlaceholder="Buscar..."
+                  emptyMessage="No se encontró"
+                  className="w-full"
+                />
+              </div>
+
+              {/* Excluido de Repulse */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Repulse</label>
+                <ComboboxFilter
+                  options={[
+                    { value: 'si', label: 'Excluido' },
+                    { value: 'no', label: 'No excluido' },
+                  ]}
+                  value={excluRepulseFilter}
+                  onChange={setExcluRepulseFilter}
+                  placeholder="Todos"
+                  searchPlaceholder="Buscar..."
+                  emptyMessage="No se encontró"
+                  className="w-full"
+                />
+              </div>
+
+              {/* Tipificación Nivel 1 */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Tipificación N1</label>
+                <ComboboxFilter
+                  options={uniqueTipN1Values}
+                  value={tipificacionN1Filter}
+                  onChange={(value) => {
+                    setTipificacionN1Filter(value);
+                    // Reset dependent filters when N1 changes
+                    setTipificacionN2Filter('');
+                    setTipificacionN3Filter('');
+                  }}
+                  placeholder="Todas"
+                  searchPlaceholder="Buscar..."
+                  emptyMessage="No se encontró"
+                  className="w-full"
+                />
+              </div>
+
+              {/* Tipificación Nivel 2 */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Tipificación N2</label>
+                <ComboboxFilter
+                  options={uniqueTipN2Values}
+                  value={tipificacionN2Filter}
+                  onChange={(value) => {
+                    setTipificacionN2Filter(value);
+                    // Reset dependent filter when N2 changes
+                    setTipificacionN3Filter('');
+                  }}
+                  placeholder="Todas"
+                  searchPlaceholder="Buscar..."
+                  emptyMessage={tipificacionN1Filter ? 'No hay opciones' : 'Selecciona N1 primero'}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Tipificación Nivel 3 */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Tipificación N3</label>
+                <ComboboxFilter
+                  options={uniqueTipN3Values}
+                  value={tipificacionN3Filter}
+                  onChange={setTipificacionN3Filter}
+                  placeholder="Todas"
+                  searchPlaceholder="Buscar..."
+                  emptyMessage={tipificacionN2Filter ? 'No hay opciones' : 'Selecciona N2 primero'}
+                  className="w-full"
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Leads View - Table or Kanban */}
@@ -715,6 +1039,14 @@ export default function OperativoClient({
           onLeadMove={handleKanbanLeadMove}
           onLeadClick={handleKanbanLeadClick}
           isLoading={isKanbanLoading}
+          vendedores={
+            // Vendedores solo pueden asignarse a sí mismos, admins/jefes ven todos
+            (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta')
+              ? vendedores.filter(v => v.vendedor_id === currentVendedorId).map(v => ({ id: v.vendedor_id!, nombre: v.nombre }))
+              : vendedores.filter(v => v.vendedor_id).map(v => ({ id: v.vendedor_id!, nombre: v.nombre }))
+          }
+          onAssignLead={handleAssignLead}
+          canAssign={user?.rol === 'admin' || user?.rol === 'superadmin' || user?.rol === 'jefe_ventas' || user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta'}
         />
       )}
 

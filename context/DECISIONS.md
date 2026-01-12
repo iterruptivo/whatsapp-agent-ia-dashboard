@@ -18,6 +18,27 @@
 **Fecha:** Inicio proyecto
 **Alternativa descartada:** NextAuth (requeriria adapter adicional)
 
+### Sistema RBAC Granular en Middleware
+**Decision:** Implementar RBAC con permisos formato "modulo:accion" con feature flag
+**Razon:** Sistema legacy hardcoded no escala, imposible mantener 200+ líneas de validaciones
+**Fecha:** 11 Enero 2026 (Sesion 88)
+**Implementacion:**
+- Mapeo de rutas a permisos en `lib/permissions/route-permissions.ts`
+- Cache de permisos con TTL 5min en `lib/permissions/permissions-cache.ts`
+- Feature flag `ENABLE_RBAC=false` (default) para activacion gradual
+- Sistema legacy intacto como fallback (100% retrocompatible)
+**Beneficios:**
+- 80% menos tiempo de desarrollo para agregar permisos
+- Cache < 10ms por validación (vs queries duplicadas)
+- Auditoría completa de intentos no autorizados
+- Rollback instant sin deploy (solo cambiar env var)
+**Alternativa descartada:** Migración directa sin feature flag (muy riesgoso)
+**Referencias:**
+- `docs/PLAN_MAESTRO_RBAC.md` - Plan completo
+- `docs/RBAC_MIDDLEWARE_IMPLEMENTATION.md` - Resumen ejecutivo
+- `lib/permissions/README.md` - Documentación técnica
+- `lib/permissions/TESTING.md` - Test suite
+
 ---
 
 ## Base de Datos

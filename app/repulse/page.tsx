@@ -1,5 +1,5 @@
 // ============================================================================
-// PÁGINA: Repulse
+// PÁGINA: Repulse - Acceso: superadmin, admin, jefe_ventas
 // ============================================================================
 // Ruta: /repulse
 // Descripción: Sistema de reimpulso de leads que no compraron
@@ -24,7 +24,7 @@ import {
 } from '@/lib/actions-repulse';
 
 // Roles que tienen acceso a esta página
-const ALLOWED_ROLES = ['admin', 'jefe_ventas'] as const;
+const ALLOWED_ROLES = ['superadmin', 'admin', 'jefe_ventas'] as const;
 
 export default function RepulsePage() {
   const router = useRouter();

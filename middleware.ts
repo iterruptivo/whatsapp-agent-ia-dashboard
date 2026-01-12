@@ -92,7 +92,7 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  const { pathname } = req.nextUrl;
+  const { pathname} = req.nextUrl;
 
   // ============================================================================
   // EXTENSION API ROUTES - Allow without middleware auth (API handles its own auth)
@@ -147,7 +147,7 @@ export async function middleware(req: NextRequest) {
         .eq('id', validatedUser.id)
         .single();
 
-      if (userData?.rol === 'admin' || userData?.rol === 'marketing' || userData?.rol === 'jefe_ventas') {
+      if (userData?.rol === 'superadmin' || userData?.rol === 'admin' || userData?.rol === 'marketing' || userData?.rol === 'jefe_ventas') {
         return NextResponse.redirect(new URL('/', req.url));
       } else if (userData?.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
@@ -243,7 +243,7 @@ export async function middleware(req: NextRequest) {
 
   // ADMIN ROUTES (/) - Admin, Marketing and Jefe Ventas can access
   if (isAdminRoute) {
-    if (userData.rol === 'admin' || userData.rol === 'marketing' || userData.rol === 'jefe_ventas') {
+    if (userData.rol === 'superadmin' || userData.rol === 'admin' || userData.rol === 'marketing' || userData.rol === 'jefe_ventas') {
       // Admin, Marketing and Jefe Ventas can access Insights
       return res;
     } else if (userData.rol === 'vendedor') {
@@ -261,7 +261,7 @@ export async function middleware(req: NextRequest) {
 
   // CONFIGURACION ROUTES (/configuracion-proyectos) - Admin only
   if (isConfiguracionRoute) {
-    if (userData.rol !== 'admin') {
+    if (userData.rol !== 'superadmin' && userData.rol !== 'admin') {
       // Non-admin trying to access configuracion - redirect based on role
       if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
@@ -280,7 +280,7 @@ export async function middleware(req: NextRequest) {
   // OPERATIVO ROUTES (/operativo)
   if (isOperativoRoute) {
     // Admin, jefe_ventas, vendedor, vendedor_caseta, marketing and coordinador can access operativo
-    if (userData.rol === 'admin' || userData.rol === 'jefe_ventas' || userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta' || userData.rol === 'marketing' || userData.rol === 'coordinador') {
+    if (userData.rol === 'superadmin' || userData.rol === 'admin' || userData.rol === 'jefe_ventas' || userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta' || userData.rol === 'marketing' || userData.rol === 'coordinador') {
       return res;
     }
     // Finanzas SOLO puede acceder a /control-pagos
@@ -307,7 +307,7 @@ export async function middleware(req: NextRequest) {
   // CONTROL DE PAGOS ROUTES (/control-pagos) - Admin, jefe_ventas and finanzas
   if (isControlPagosRoute) {
     // Admin, jefe_ventas and finanzas can access
-    if (userData.rol === 'admin' || userData.rol === 'jefe_ventas' || userData.rol === 'finanzas') {
+    if (userData.rol === 'superadmin' || userData.rol === 'admin' || userData.rol === 'jefe_ventas' || userData.rol === 'finanzas') {
       return res;
     }
     // Non-authorized user trying to access control-pagos - redirect based on role
@@ -338,7 +338,7 @@ export async function middleware(req: NextRequest) {
   // REPULSE ROUTES (/repulse) - Admin and jefe_ventas only
   // Nota: Preparado para incluir vendedor en el futuro
   if (isRepulseRoute) {
-    if (userData.rol !== 'admin' && userData.rol !== 'jefe_ventas') {
+    if (userData.rol !== 'superadmin' && userData.rol !== 'admin' && userData.rol !== 'jefe_ventas') {
       // Non-authorized user trying to access repulse - redirect based on role
       if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
@@ -357,7 +357,7 @@ export async function middleware(req: NextRequest) {
   // REPORTERIA ROUTES (/reporteria) - Admin, jefe_ventas and marketing only
   // Página especial sin sidebar, accesible desde dropdown de login
   if (isReporteriaRoute) {
-    if (userData.rol !== 'admin' && userData.rol !== 'jefe_ventas' && userData.rol !== 'marketing') {
+    if (userData.rol !== 'superadmin' && userData.rol !== 'admin' && userData.rol !== 'jefe_ventas' && userData.rol !== 'marketing') {
       // Non-authorized user trying to access reporteria - redirect based on role
       if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));

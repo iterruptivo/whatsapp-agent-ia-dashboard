@@ -3,6 +3,7 @@
 // ============================================================================
 // Descripción: Menú lateral responsive con navegación role-based
 // Features: Overlay, animación slide-in, ESC key, click outside, submenús
+// Supported roles: superadmin, admin, jefe_ventas, vendedor, etc.
 // ============================================================================
 
 'use client';
@@ -87,8 +88,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       { href: '/locales', label: 'Gestión de Locales', icon: Home }
     ];
 
-    // Control de Pagos: Solo admin y jefe_ventas
-    if (user?.rol === 'admin' || user?.rol === 'jefe_ventas') {
+    // Control de Pagos: Solo superadmin, admin y jefe_ventas
+    if (user?.rol === 'superadmin' || user?.rol === 'admin' || user?.rol === 'jefe_ventas') {
       finanzasItems.push({ href: '/control-pagos', label: 'Control de Pagos', icon: FileText });
       finanzasItems.push({ href: '/validacion-bancaria', label: 'Validación Bancaria', icon: Building2 });
       finanzasItems.push({ href: '/aprobaciones', label: 'Aprobaciones', icon: ShieldCheck });
@@ -103,8 +104,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       items: finanzasItems,
     };
 
-    if (user?.rol === 'admin') {
-      // Categoría de Reportería (admin y jefe_ventas)
+    if (user?.rol === 'superadmin' || user?.rol === 'admin') {
+      // Categoría de Reportería (superadmin, admin)
       const reporteriaCategory: MenuCategory = {
         label: 'Reportería',
         icon: BarChart3,
@@ -286,7 +287,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           <p className="text-sm font-medium text-gray-900">{user?.nombre}</p>
           <p className="text-xs text-gray-500 mt-1">{user?.email}</p>
           <span className="inline-block mt-2 px-2 py-1 text-xs font-medium rounded-full bg-primary text-white">
-            {user?.rol === 'admin'
+            {user?.rol === 'superadmin'
+              ? 'Super Admin'
+              : user?.rol === 'admin'
               ? 'Administrador'
               : user?.rol === 'vendedor'
               ? 'Vendedor'

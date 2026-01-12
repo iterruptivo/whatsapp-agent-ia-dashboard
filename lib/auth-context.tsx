@@ -14,7 +14,7 @@ interface Usuario {
   id: string;
   email: string;
   nombre: string;
-  rol: 'admin' | 'gerencia' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing';
+  rol: 'superadmin' | 'admin' | 'gerencia' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing';
   vendedor_id: string | null;
   activo: boolean;
 }
@@ -608,7 +608,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       document.cookie = `selected_proyecto_id=${proyectoId}; path=/; max-age=${60 * 60 * 24 * 30}`; // 30 días
 
       // Redirect based on role
-      if (userData.rol === 'admin' || userData.rol === 'marketing' || userData.rol === 'jefe_ventas') {
+      if (userData.rol === 'superadmin' || userData.rol === 'admin' || userData.rol === 'marketing' || userData.rol === 'jefe_ventas') {
         router.push('/');
       } else if (userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta') {
         router.push('/operativo');

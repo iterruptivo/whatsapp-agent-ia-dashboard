@@ -1,8 +1,10 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Phone, User, Clock, Building2, MessageCircle, Tag } from 'lucide-react';
+import { Phone, User, Clock, Building2, MessageCircle, Tag, UserPlus, Search, Check, Loader2 } from 'lucide-react';
 import type { KanbanCardProps } from './types';
 
 // Ícono de Facebook (SVG inline porque lucide no lo tiene)
@@ -79,7 +81,22 @@ function getRelativeTime(dateString: string): string {
   }
 }
 
-export default function KanbanCard({ lead, onClick, isDragging }: KanbanCardProps) {
+export default function KanbanCard({
+  lead,
+  onClick,
+  isDragging,
+  vendedores,
+  onAssignLead,
+  canAssign,
+}: KanbanCardProps) {
+  const [isAssignOpen, setIsAssignOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const {
     attributes,
     listeners,
@@ -103,6 +120,60 @@ export default function KanbanCard({ lead, onClick, isDragging }: KanbanCardProp
   const displayPhone = lead.telefono || 'Sin teléfono';
   const timeAgo = getRelativeTime(lead.updated_at);
   const utmDisplay = getUtmDisplay(lead.utm_source);
+
+  // Filtrar vendedores por término de búsqueda
+  const filteredVendedores = vendedores?.filter((v) =>
+    v.nombre.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
+
+  // Calcular posición y cerrar dropdown cuando se hace click fuera
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setIsAssignOpen(false);
+        setSearchTerm('');
+      }
+    }
+
+    if (isAssignOpen && buttonRef.current) {
+      // Calcular posición del dropdown basándose en el botón (fixed position)
+      const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownHeight = 300; // Altura aproximada del dropdown
+      const spaceBelow = window.innerHeight - rect.bottom;
+
+      // Si no hay espacio abajo, mostrar arriba
+      const showAbove = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+
+      setDropdownPosition({
+        top: showAbove ? rect.top - dropdownHeight - 4 : rect.bottom + 4,
+        left: Math.min(rect.left, window.innerWidth - 260), // Evitar que se salga de la pantalla
+      });
+
+      document.addEventListener('mousedown', handleClickOutside);
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isAssignOpen]);
+
+  // Handler para asignar vendedor
+  const handleAssign = async (vendedorId: string) => {
+    if (!onAssignLead || isAssigning) return;
+    setIsAssigning(true);
+    try {
+      await onAssignLead(lead.id, vendedorId);
+      setIsAssignOpen(false);
+      setSearchTerm('');
+    } catch (error) {
+      console.error('Error asignando vendedor:', error);
+    } finally {
+      setIsAssigning(false);
+    }
+  };
 
   return (
     <div
@@ -172,16 +243,120 @@ export default function KanbanCard({ lead, onClick, isDragging }: KanbanCardProp
         </div>
       )}
 
-      {/* Info adicional */}
+      {/* Info adicional: Vendedor + Rubro */}
       <div className="flex items-center justify-between text-xs text-gray-500">
-        {lead.vendedor_nombre && (
-          <span className="flex items-center gap-1 truncate max-w-[50%]">
-            <User className="w-3 h-3 flex-shrink-0" />
-            <span className="truncate">{lead.vendedor_nombre}</span>
-          </span>
-        )}
+        {/* Sección Vendedor con asignación */}
+        <div className="flex items-center gap-1 truncate max-w-[60%]">
+          {lead.vendedor_nombre ? (
+            // Lead ya tiene vendedor asignado
+            <span className="flex items-center gap-1 truncate">
+              <User className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">{lead.vendedor_nombre}</span>
+              {/* Botón para reasignar (solo si puede asignar) */}
+              {canAssign && vendedores && vendedores.length > 0 && (
+                <button
+                  ref={buttonRef}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsAssignOpen(!isAssignOpen);
+                  }}
+                  className="ml-1 p-0.5 hover:bg-gray-200 rounded transition-colors"
+                  title="Reasignar vendedor"
+                >
+                  <UserPlus className="w-3 h-3 text-gray-400 hover:text-blue-500" />
+                </button>
+              )}
+            </span>
+          ) : (
+            // Lead sin vendedor - mostrar botón de asignar
+            canAssign && vendedores && vendedores.length > 0 ? (
+              <button
+                ref={buttonRef}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsAssignOpen(!isAssignOpen);
+                }}
+                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors"
+                title="Asignar vendedor"
+              >
+                <UserPlus className="w-3 h-3" />
+                <span className="text-xs">Asignar</span>
+              </button>
+            ) : (
+              <span className="flex items-center gap-1 text-gray-400">
+                <User className="w-3 h-3" />
+                <span className="text-xs italic">Sin asignar</span>
+              </span>
+            )
+          )}
+
+          {/* Dropdown de asignación - usando Portal para escapar del overflow */}
+          {isAssignOpen && typeof document !== 'undefined' && createPortal(
+            <div
+              ref={dropdownRef}
+              style={{
+                position: 'fixed',
+                top: dropdownPosition.top,
+                left: dropdownPosition.left,
+                zIndex: 9999,
+              }}
+              className="w-64 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Buscador */}
+              <div className="p-2 border-b border-gray-100 bg-gray-50">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    placeholder="Buscar vendedor..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Lista de vendedores */}
+              <div className="max-h-60 overflow-y-auto">
+                {filteredVendedores.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-gray-400">
+                    No se encontraron vendedores
+                  </div>
+                ) : (
+                  filteredVendedores.map((vendedor) => (
+                    <button
+                      key={vendedor.id}
+                      onClick={() => handleAssign(vendedor.id)}
+                      disabled={isAssigning}
+                      className={`
+                        w-full px-3 py-2.5 text-left text-sm flex items-center gap-3
+                        hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-b-0
+                        ${lead.vendedor_asignado_id === vendedor.id ? 'bg-blue-50 text-blue-700' : 'text-gray-700'}
+                        ${isAssigning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                      `}
+                    >
+                      {isAssigning ? (
+                        <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                      ) : lead.vendedor_asignado_id === vendedor.id ? (
+                        <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      ) : (
+                        <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      )}
+                      <span className="truncate">{vendedor.nombre}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>,
+            document.body
+          )}
+        </div>
+
+        {/* Rubro */}
         {lead.rubro && (
-          <span className="flex items-center gap-1 truncate max-w-[50%]">
+          <span className="flex items-center gap-1 truncate max-w-[40%]">
             <Building2 className="w-3 h-3 flex-shrink-0" />
             <span className="truncate">{lead.rubro}</span>
           </span>
