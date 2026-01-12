@@ -39,6 +39,25 @@
 - `lib/permissions/README.md` - Documentación técnica
 - `lib/permissions/TESTING.md` - Test suite
 
+### Restricción UI Roles/Permisos a Superadmin
+**Decision:** Solo `superadmin` puede acceder a `/admin/roles`
+**Razon:** Gestión de roles/permisos es operación crítica de seguridad, requiere máximo nivel de privilegios
+**Fecha:** 12 Enero 2026 (Sesion 89)
+**Implementacion:**
+- Middleware valida `rol === 'superadmin'` para rutas `/admin/roles/*`
+- Server Components verifican rol en `page.tsx` y `[id]/page.tsx`
+- Server Actions verifican rol en `deleteRoleAction`, `updateRolePermissionsAction`, `createRoleAction`
+**Archivos modificados:**
+- `middleware.ts` - Agregada validación para `isRolesRoute`
+- `app/admin/roles/page.tsx` - Cambio de `admin` a `superadmin`
+- `app/admin/roles/[id]/page.tsx` - Cambio de `admin` a `superadmin`
+- `app/admin/roles/actions.ts` - Cambio de `admin` a `superadmin` en 3 funciones
+**Comportamiento:**
+- `superadmin`: Acceso completo a UI de roles/permisos
+- `admin`: Redirect a `/` (dashboard principal)
+- Otros roles: Redirect según rol (operativo, locales, control-pagos)
+**Alternativa descartada:** Permitir `admin` - Demasiado riesgo de escalación de privilegios
+
 ---
 
 ## Base de Datos

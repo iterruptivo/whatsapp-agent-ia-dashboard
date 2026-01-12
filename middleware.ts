@@ -240,6 +240,7 @@ export async function middleware(req: NextRequest) {
   const isComisionesRoute = pathname.startsWith('/comisiones');
   const isRepulseRoute = pathname.startsWith('/repulse');
   const isReporteriaRoute = pathname.startsWith('/reporteria');
+  const isRolesRoute = pathname.startsWith('/admin/roles');
 
   // ADMIN ROUTES (/) - Admin, Marketing and Jefe Ventas can access
   if (isAdminRoute) {
@@ -368,6 +369,24 @@ export async function middleware(req: NextRequest) {
       }
     }
     // Admin, jefe_ventas and marketing can access
+    return res;
+  }
+
+  // ROLES MANAGEMENT ROUTES (/admin/roles) - Superadmin only
+  if (isRolesRoute) {
+    if (userData.rol !== 'superadmin') {
+      // Non-superadmin trying to access roles - redirect based on role
+      if (userData.rol === 'admin' || userData.rol === 'jefe_ventas' || userData.rol === 'marketing') {
+        return NextResponse.redirect(new URL('/', req.url));
+      } else if (userData.rol === 'vendedor') {
+        return NextResponse.redirect(new URL('/operativo', req.url));
+      } else if (userData.rol === 'finanzas') {
+        return NextResponse.redirect(new URL('/control-pagos', req.url));
+      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+        return NextResponse.redirect(new URL('/locales', req.url));
+      }
+    }
+    // Superadmin can access
     return res;
   }
 

@@ -50,14 +50,14 @@ export default async function RoleDetailPage({
     redirect('/login');
   }
 
-  // Verificar que sea admin
+  // Verificar que sea superadmin
   const { data: userData } = await supabase
     .from('usuarios')
     .select('rol')
     .eq('id', user.id)
     .single();
 
-  if (userData?.rol !== 'admin') {
+  if (userData?.rol !== 'superadmin') {
     redirect('/');
   }
 

@@ -45,14 +45,14 @@ export async function deleteRoleAction(roleId: string): Promise<void> {
       throw new Error('No autenticado');
     }
 
-    // Verificar que sea admin
+    // Verificar que sea superadmin
     const { data: userData } = await supabase
       .from('usuarios')
       .select('rol')
       .eq('id', user.id)
       .single();
 
-    if (userData?.rol !== 'admin') {
+    if (userData?.rol !== 'superadmin') {
       throw new Error('No autorizado');
     }
 
@@ -130,14 +130,14 @@ export async function updateRolePermissionsAction(
       return { success: false, error: 'No autenticado' };
     }
 
-    // Verificar que sea admin
+    // Verificar que sea superadmin
     const { data: userData } = await supabase
       .from('usuarios')
       .select('rol')
       .eq('id', user.id)
       .single();
 
-    if (userData?.rol !== 'admin') {
+    if (userData?.rol !== 'superadmin') {
       return { success: false, error: 'No autorizado' };
     }
 
@@ -229,14 +229,14 @@ export async function createRoleAction(
       return { success: false, error: 'No autenticado' };
     }
 
-    // Verificar que sea admin
+    // Verificar que sea superadmin
     const { data: userData } = await supabase
       .from('usuarios')
       .select('rol')
       .eq('id', user.id)
       .single();
 
-    if (userData?.rol !== 'admin') {
+    if (userData?.rol !== 'superadmin') {
       return { success: false, error: 'No autorizado' };
     }
 
