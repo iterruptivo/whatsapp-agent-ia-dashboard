@@ -631,16 +631,17 @@ if (isReunionesRoute) {
 
 ### Resultado Final
 
-| Rol | Sidebar | Middleware | Acceso |
-|-----|---------|-----------|--------|
-| **superadmin** | ✅ Ve "Reuniones" | ✅ Permite `/reuniones` | ✅ PERMITIDO |
-| **admin** | ✅ Ve "Reuniones" | ✅ Permite `/reuniones` | ✅ PERMITIDO |
-| **jefe_ventas** | ✅ Ve "Reuniones" | ❌ Redirect a `/` | ❌ BLOQUEADO |
-| **vendedor** | ❌ No ve | ❌ Redirect a `/operativo` | ❌ BLOQUEADO |
-| **finanzas** | ❌ No ve | ❌ Redirect a `/control-pagos` | ❌ BLOQUEADO |
-| **otros** | ❌ No ve | ❌ Redirect según rol | ❌ BLOQUEADO |
+| Rol | Sidebar | Middleware | Acceso | Nota |
+|-----|---------|-----------|--------|------|
+| **superadmin** | ✅ Ve "Reuniones" | ✅ Permite `/reuniones` | ✅ PERMITIDO | - |
+| **admin** | ✅ Ve "Reuniones" | ✅ Permite `/reuniones` | ✅ PERMITIDO | - |
+| **jefe_ventas** | ✅ Ve "Reuniones" | ✅ Permite `/reuniones` | ✅ PERMITIDO | Agregado por requerimiento |
+| **vendedor** | ❌ No ve | ❌ Redirect a `/operativo` | ❌ BLOQUEADO | - |
+| **finanzas** | ❌ No ve | ❌ Redirect a `/control-pagos` | ❌ BLOQUEADO | - |
+| **marketing** | ❌ No ve | ❌ Redirect a `/` | ❌ BLOQUEADO | - |
+| **otros** | ❌ No ve | ❌ Redirect según rol | ❌ BLOQUEADO | - |
 
-**Nota:** Jefe Ventas tiene acceso a "Reuniones" en el sidebar (línea 189) pero el middleware lo redirige a `/`. Si necesitas que jefe_ventas tenga acceso, hay que actualizar la línea 386 en middleware para permitir ese rol.
+**Actualización:** Incluí `jefe_ventas` en el acceso al middleware (línea 378) porque la página `/reuniones` ya lo permite (línea 35) y está en el sidebar (línea 189).
 
 ### Doble Validación Implementada
 1. **Sidebar (Client):** No muestra "Reuniones" a roles no autorizados

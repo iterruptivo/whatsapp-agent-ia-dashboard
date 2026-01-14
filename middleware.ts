@@ -373,17 +373,15 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  // REUNIONES ROUTES (/reuniones) - Admin and superadmin only
+  // REUNIONES ROUTES (/reuniones) - Admin, superadmin, and jefe_ventas
   if (isReunionesRoute) {
-    if (userData.rol !== 'superadmin' && userData.rol !== 'admin') {
+    if (userData.rol !== 'superadmin' && userData.rol !== 'admin' && userData.rol !== 'jefe_ventas') {
       // Non-authorized user trying to access reuniones - redirect based on role
       if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
       } else if (userData.rol === 'finanzas') {
         return NextResponse.redirect(new URL('/control-pagos', req.url));
       } else if (userData.rol === 'marketing') {
-        return NextResponse.redirect(new URL('/', req.url));
-      } else if (userData.rol === 'jefe_ventas') {
         return NextResponse.redirect(new URL('/', req.url));
       } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
         return NextResponse.redirect(new URL('/locales', req.url));
@@ -393,7 +391,7 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/expansion/inbox', req.url));
       }
     }
-    // Admin and superadmin can access
+    // Admin, superadmin, and jefe_ventas can access
     return res;
   }
 
