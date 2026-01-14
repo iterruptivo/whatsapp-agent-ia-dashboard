@@ -322,6 +322,7 @@ export default function DashboardClient({
         <VendedoresMiniTable
           data={vendedoresLeadsData}
           title="Leads por Vendedor"
+          userRole={user?.rol}
         />
       </div>
 

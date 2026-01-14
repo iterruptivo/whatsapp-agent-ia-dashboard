@@ -4,6 +4,62 @@
 
 ---
 
+## RESTRICCIÓN URGENTE: leads:export SOLO para Superadmin (14 Enero 2026)
+
+**Problema:** Exportación de leads a Excel estaba disponible para admin y jefe_ventas
+**Requerimiento:** Solo superadmin puede exportar leads a Excel
+**Severidad:** CRÍTICA - Seguridad de datos para demo
+
+### Solución Implementada (COMPLETA)
+
+**Modificaciones en Sistema de Permisos:**
+- [x] `lib/permissions/check.ts` - función `checkPermissionInMemory()` (líneas 313-317)
+- [x] `lib/permissions/check.ts` - función `checkPermissionLegacy()` (líneas 369-372)
+
+**Modificaciones en UI (Frontend):**
+- [x] `components/dashboard/OperativoClient.tsx` (línea 820) - Botón export solo para superadmin
+- [x] `components/reporteria/ReporteriaClient.tsx` (línea 390) - Botón export solo para superadmin
+- [x] `components/dashboard/VendedoresMiniTable.tsx` (línea 114) - Botón export solo para superadmin
+- [x] `components/dashboard/DashboardClient.tsx` (línea 325) - Pasar userRole al componente
+
+**Lógica de la RESTRICCIÓN:**
+```typescript
+// Backend - checkPermissionInMemory() y checkPermissionLegacy()
+if (modulo === 'leads' && accion === 'export') {
+  return permissions.rol === 'superadmin';
+}
+
+// Frontend - Condicional en todos los botones
+{user?.rol === 'superadmin' && (
+  <button onClick={handleExportToExcel}>...</button>
+)}
+```
+
+**Impacto por Rol:**
+- ✅ superadmin: TIENE permiso (único con acceso)
+- ❌ admin: BLOQUEADO (antes: tenía)
+- ❌ jefe_ventas: BLOQUEADO (antes: tenía)
+- ❌ vendedor: BLOQUEADO (nunca tuvo)
+- ❌ otros roles: BLOQUEADOS (nunca tuvieron)
+
+**Componentes afectados:**
+- Página /operativo (exportar leads filtrados)
+- Página /reporteria (exportar reportes)
+- Dashboard principal (exportar tabla de vendedores)
+
+**Estado:** IMPLEMENTADO Y LISTO PARA TESTING ✅
+
+**Próximos pasos:**
+1. Testing con admin (verificar botón NO aparece)
+2. Testing con jefe_ventas (verificar botón NO aparece)
+3. Testing con superadmin (verificar botón SÍ aparece y funciona)
+
+**Documentación:**
+- [x] Decisión registrada en `context/DECISIONS.md`
+- [x] Estado actualizado en `context/CURRENT_STATE.md`
+
+---
+
 ## HOTFIX URGENTE: Permiso leads:assign para Todos los Roles (14 Enero 2026)
 
 **Problema:** Solo coordinador tenía permiso `leads:assign`, bloqueando demo HOY

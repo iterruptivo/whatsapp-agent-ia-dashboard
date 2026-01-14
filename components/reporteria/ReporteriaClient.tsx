@@ -386,15 +386,17 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
               </div>
             </div>
 
-            {/* Botón exportar a la derecha */}
-            <button
-              onClick={handleExportExcel}
-              disabled={isExporting || filteredData.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Download className="w-4 h-4" />
-              {isExporting ? 'Exportando...' : 'Exportar Excel'}
-            </button>
+            {/* Botón exportar a la derecha - SOLO SUPERADMIN */}
+            {user.rol === 'superadmin' && (
+              <button
+                onClick={handleExportExcel}
+                disabled={isExporting || filteredData.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download className="w-4 h-4" />
+                {isExporting ? 'Exportando...' : 'Exportar Excel'}
+              </button>
+            )}
           </div>
         </div>
 

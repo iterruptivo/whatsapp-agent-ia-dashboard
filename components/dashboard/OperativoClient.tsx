@@ -816,8 +816,8 @@ export default function OperativoClient({
                   </div>
                 )}
 
-                {/* Export Button */}
-                {(user?.rol === 'admin' || user?.rol === 'jefe_ventas') && (
+                {/* Export Button - SOLO SUPERADMIN */}
+                {user?.rol === 'superadmin' && (
                   <button
                     onClick={handleExportToExcel}
                     disabled={isExporting || filteredLeads.length === 0}

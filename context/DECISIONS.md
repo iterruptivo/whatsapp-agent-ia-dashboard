@@ -4,6 +4,83 @@
 
 ---
 
+## RESTRICCIÓN: leads:export SOLO para Superadmin (14 Enero 2026)
+
+### Contexto
+**Problema:** Exportación de leads a Excel estaba disponible para admin y jefe_ventas
+**Requerimiento del Cliente:** Solo superadmin debe poder exportar leads a Excel
+**Urgencia:** CRÍTICA - Para demo y seguridad de datos
+
+### Decisión: Restricción en Código + UI
+**Implementación de doble capa:**
+1. Validación en sistema de permisos (backend)
+2. Ocultar botones en UI (frontend)
+
+**Razones:**
+1. **Seguridad:** Prevenir exportación no autorizada de datos sensibles
+2. **Control:** Solo superadmin tiene acceso a exportaciones completas
+3. **UX:** Los botones no aparecen para roles sin permiso
+4. **Consistencia:** Aplica a todos los lugares donde se exportan leads
+
+### Implementación
+
+**Backend - Sistema de Permisos:**
+```typescript
+// lib/permissions/check.ts - líneas 313-317, 369-372
+
+// En checkPermissionInMemory():
+if (modulo === 'leads' && accion === 'export') {
+  return permissions.rol === 'superadmin';
+}
+
+// En checkPermissionLegacy():
+if (modulo === 'leads' && accion === 'export') {
+  return rol === 'superadmin';
+}
+```
+
+**Frontend - Componentes UI:**
+```typescript
+// components/dashboard/OperativoClient.tsx - línea 820
+{user?.rol === 'superadmin' && (
+  <button onClick={handleExportToExcel}>...</button>
+)}
+
+// components/reporteria/ReporteriaClient.tsx - línea 390
+{user.rol === 'superadmin' && (
+  <button onClick={handleExportExcel}>...</button>
+)}
+
+// components/dashboard/VendedoresMiniTable.tsx - línea 114
+{sortedData.length > 0 && userRole === 'superadmin' && (
+  <button onClick={handleExportToExcel}>...</button>
+)}
+```
+
+### Impacto
+| Rol | Antes | Ahora |
+|-----|-------|-------|
+| superadmin | ✅ TENÍA | ✅ TIENE (único) |
+| admin | ✅ TENÍA | ❌ BLOQUEADO |
+| jefe_ventas | ✅ TENÍA | ❌ BLOQUEADO |
+| vendedor | ❌ NO TENÍA | ❌ NO TIENE |
+| otros roles | ❌ NO TENÍAN | ❌ NO TIENEN |
+
+**Componentes afectados:**
+- OperativoClient (página /operativo)
+- ReporteriaClient (página /reporteria)
+- VendedoresMiniTable (dashboard principal)
+
+### Verificación
+Para verificar la restricción:
+1. Login como admin o jefe_ventas
+2. Ir a /operativo, /reporteria o dashboard
+3. ✅ El botón "Exportar a Excel" NO debe aparecer
+4. Login como superadmin
+5. ✅ El botón "Exportar a Excel" SÍ debe aparecer
+
+---
+
 ## HOTFIX: leads:assign para Todos los Roles (14 Enero 2026)
 
 ### Contexto

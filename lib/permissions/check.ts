@@ -310,6 +310,12 @@ function checkPermissionInMemory(
     return permissions.rol !== 'corredor';
   }
 
+  // RESTRICCIÓN: leads:export solo está habilitado para superadmin
+  // Esto es crítico para la demo - solo superadmin puede exportar leads
+  if (modulo === 'leads' && accion === 'export') {
+    return permissions.rol === 'superadmin';
+  }
+
   // Verificar en permisos del rol
   const hasInRole = permissions.permisos.some(
     (p) => p.modulo === modulo && p.accion === accion
@@ -358,6 +364,11 @@ async function checkPermissionLegacy(
     // HOTFIX: leads:assign está habilitado para TODOS los roles EXCEPTO corredor
     if (modulo === 'leads' && accion === 'assign' && rol !== 'corredor') {
       return true;
+    }
+
+    // RESTRICCIÓN: leads:export solo está habilitado para superadmin
+    if (modulo === 'leads' && accion === 'export') {
+      return rol === 'superadmin';
     }
 
     // Superadmin y Admin tienen todos los permisos

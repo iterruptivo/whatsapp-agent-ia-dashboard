@@ -27,12 +27,14 @@ interface VendedoresMiniTableProps {
   data: VendedorLeadsData[];
   title?: string;
   initialShowCount?: number;
+  userRole?: string; // Rol del usuario actual para controlar permisos de exportación
 }
 
 export default function VendedoresMiniTable({
   data,
   title = 'Leads por Vendedor',
   initialShowCount = 5,
+  userRole,
 }: VendedoresMiniTableProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -108,7 +110,8 @@ export default function VendedoresMiniTable({
           <span className="text-sm text-gray-500">
             {data.length} vendedores • {totalLeads} leads
           </span>
-          {sortedData.length > 0 && (
+          {/* Botón exportar - SOLO SUPERADMIN */}
+          {sortedData.length > 0 && userRole === 'superadmin' && (
             <button
               onClick={handleExportToExcel}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-[#1b967a] bg-[#1b967a]/10 hover:bg-[#1b967a]/20 rounded-lg transition-colors"
