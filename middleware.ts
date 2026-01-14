@@ -124,16 +124,31 @@ export async function middleware(req: NextRequest) {
   // ============================================================================
   // PUBLIC API ROUTES - Allow without authentication
   // ============================================================================
-  if (pathname.startsWith('/api/public') || pathname === '/api/auth/validate-credentials') {
+  if (
+    pathname.startsWith('/api/public') ||
+    pathname === '/api/auth/validate-credentials' ||
+    pathname === '/api/auth/register-corredor'
+  ) {
     // Las rutas públicas de API no requieren autenticación
     // /api/auth/validate-credentials es público para permitir login de 2 pasos
+    // /api/auth/register-corredor es público para auto-registro de corredores
     return res;
   }
 
   // ============================================================================
   // PUBLIC ROUTES - Allow without authentication
   // ============================================================================
-  if (pathname === '/login' || pathname === '/login-v2' || pathname === '/showcase-components') {
+  if (
+    pathname === '/login' ||
+    pathname === '/login-v2' ||
+    pathname === '/registro-corredor' ||
+    pathname === '/showcase-components'
+  ) {
+    // Registro de corredor es público para auto-registro
+    if (pathname === '/registro-corredor') {
+      return res;
+    }
+
     // Showcase page is public for component testing
     if (pathname === '/showcase-components') {
       return res;
@@ -239,8 +254,11 @@ export async function middleware(req: NextRequest) {
   const isControlPagosRoute = pathname.startsWith('/control-pagos');
   const isComisionesRoute = pathname.startsWith('/comisiones');
   const isRepulseRoute = pathname.startsWith('/repulse');
+  const isReunionesRoute = pathname.startsWith('/reuniones');
   const isReporteriaRoute = pathname.startsWith('/reporteria');
   const isRolesRoute = pathname.startsWith('/admin/roles');
+  const isExpansionRoute = pathname.startsWith('/expansion');
+  const isSolicitudesCompraRoute = pathname.startsWith('/solicitudes-compra');
 
   // ADMIN ROUTES (/) - Admin, Marketing and Jefe Ventas can access
   if (isAdminRoute) {
@@ -355,6 +373,30 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
+  // REUNIONES ROUTES (/reuniones) - Admin and superadmin only
+  if (isReunionesRoute) {
+    if (userData.rol !== 'superadmin' && userData.rol !== 'admin') {
+      // Non-authorized user trying to access reuniones - redirect based on role
+      if (userData.rol === 'vendedor') {
+        return NextResponse.redirect(new URL('/operativo', req.url));
+      } else if (userData.rol === 'finanzas') {
+        return NextResponse.redirect(new URL('/control-pagos', req.url));
+      } else if (userData.rol === 'marketing') {
+        return NextResponse.redirect(new URL('/', req.url));
+      } else if (userData.rol === 'jefe_ventas') {
+        return NextResponse.redirect(new URL('/', req.url));
+      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+        return NextResponse.redirect(new URL('/locales', req.url));
+      } else if (userData.rol === 'corredor') {
+        return NextResponse.redirect(new URL('/expansion', req.url));
+      } else if (userData.rol === 'legal') {
+        return NextResponse.redirect(new URL('/expansion/inbox', req.url));
+      }
+    }
+    // Admin and superadmin can access
+    return res;
+  }
+
   // REPORTERIA ROUTES (/reporteria) - Admin, jefe_ventas and marketing only
   // Página especial sin sidebar, accesible desde dropdown de login
   if (isReporteriaRoute) {
@@ -384,9 +426,41 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/control-pagos', req.url));
       } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
         return NextResponse.redirect(new URL('/locales', req.url));
+      } else if (userData.rol === 'corredor') {
+        return NextResponse.redirect(new URL('/expansion', req.url));
+      } else if (userData.rol === 'legal') {
+        return NextResponse.redirect(new URL('/expansion/inbox', req.url));
       }
     }
     // Superadmin can access
+    return res;
+  }
+
+  // EXPANSION ROUTES (/expansion) - Admin, legal, corredor
+  if (isExpansionRoute) {
+    // Permitir acceso a admin, legal y corredor
+    if (['superadmin', 'admin', 'legal', 'corredor'].includes(userData.rol)) {
+      return res;
+    }
+    // Otros roles no tienen acceso - redirect según rol
+    if (userData.rol === 'vendedor') {
+      return NextResponse.redirect(new URL('/operativo', req.url));
+    } else if (userData.rol === 'finanzas') {
+      return NextResponse.redirect(new URL('/control-pagos', req.url));
+    } else if (userData.rol === 'marketing' || userData.rol === 'jefe_ventas') {
+      return NextResponse.redirect(new URL('/', req.url));
+    } else {
+      return NextResponse.redirect(new URL('/locales', req.url));
+    }
+  }
+
+  // SOLICITUDES DE COMPRA ROUTES (/solicitudes-compra) - Todos EXCEPTO corredor
+  if (isSolicitudesCompraRoute) {
+    // Corredor NO tiene acceso - redirect a su módulo
+    if (userData.rol === 'corredor') {
+      return NextResponse.redirect(new URL('/expansion', req.url));
+    }
+    // Otros roles tienen acceso
     return res;
   }
 
