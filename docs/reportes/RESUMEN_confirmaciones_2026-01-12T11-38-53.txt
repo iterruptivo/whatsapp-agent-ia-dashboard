@@ -1,0 +1,270 @@
+
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║                    REPORTE DE CONFIRMACIONES DE ASISTENCIA                 ║
+║                           Proyecto: Trujillo                               ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+Fecha de análisis: 12/1/2026, 6:38:53 a. m.
+
+═══════════════════════════════════════════════════════════════════════════
+
+RESUMEN EJECUTIVO
+
+═══════════════════════════════════════════════════════════════════════════
+
+Total de leads en campaña Repulse:     585
+Leads que confirmaron asistencia:      21
+Tasa de confirmación:                   3.59%
+
+═══════════════════════════════════════════════════════════════════════════
+
+DETALLE DE CONFIRMACIONES (21 leads)
+
+═══════════════════════════════════════════════════════════════════════════
+
+
+1. Jenny Mitchell Urbina Rodríguez Jenny Mitchell Urbina Rodríguez
+   ├─ Teléfono: 51999420835
+   ├─ Lead ID: 53c0f890-5e9a-4a10-9d1c-490da1d49eeb
+   ├─ Tipo: Afirmación después de pregunta sobre visita
+   └─ Fragmento: [Bot pregunta: [REPULSE 09/01/2026; 07:35 a. m.]: Buen día Jenny Mitchell Urbina Rodríguez Jenny Mitchell Urbina Ro...] -> [Usuario: Si]
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+2. Yosimar
+   ├─ Teléfono: 51944280607
+   ├─ Lead ID: 5e2bf87e-dc74-49a1-a7b1-1ddd2deb6a64
+   ├─ Tipo: Afirmación después de pregunta sobre visita
+   └─ Fragmento: [Bot pregunta: [REPULSE 09/01/2026; 09:22 a. m.]: Buen día Yosimar; le saludamos de ECOPlaza. Tenía una visita agen...] -> [Usuario: Si]
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+3. Yolanda Moran
+   ├─ Teléfono: 51983463524
+   ├─ Lead ID: 40c0c860-4a81-43b9-90d5-42275fd04641
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si asisti
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+4. Yober Cruz Vega
+   ├─ Teléfono: 51931357240
+   ├─ Lead ID: 63d8f81e-89f1-4fe2-8571-76882b7f6f68
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si asistí
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+5. Jerson preciado masias
+   ├─ Teléfono: 51980721731
+   ├─ Lead ID: c2e63bfc-a085-4424-a236-0b33246962cc
+   ├─ Tipo: Afirmación después de pregunta sobre visita
+   └─ Fragmento: [Bot pregunta: --- REPULSE [11/01/2026; 08:15 p. m.] --- [Mensaje enviado por sistema] Buen día Jerson preciado mas...] -> [Usuario: Si llegue a ir a la visita]
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+6. Nancy Ganoza
+   ├─ Teléfono: 51942268651
+   ├─ Lead ID: 2abe5a36-a31d-4894-ae72-9e0804c566d3
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si visite
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+7. Robert zavaleta
+   ├─ Teléfono: 51940436407
+   ├─ Lead ID: 1ade900c-ef3b-4aa8-9096-43776988459d
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si asistire
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+8. Consuelo Aguilar Farro
+   ├─ Teléfono: 51966253638
+   ├─ Lead ID: 3bf18732-d7a5-44b4-b06a-8a212a609427
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si fui
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+9. ROXANA CRUZ LUNA
+   ├─ Teléfono: 51979128750
+   ├─ Lead ID: 430edfeb-a9d0-43ec-8a3e-8a0ca03e6b64
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si ya fui
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+10. Alondra Zavaleta Castro y Teresa Castro Guzmán y Manuel Zavaleta Zavaleta
+   ├─ Teléfono: 51969176747
+   ├─ Lead ID: 5ac2e253-e727-425a-a9d4-0d26effa7542
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Buenas noches; si fuimos
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+11. Andres cerna quispe
+   ├─ Teléfono: 51925233397
+   ├─ Lead ID: 95f38727-dc8c-4b7a-8c28-d665b7e9d019
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si asistí  gracias
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+12. Jhonl López Jara
+   ├─ Teléfono: 51986618320
+   ├─ Lead ID: a8bb5fcf-0a55-4bde-913b-45987a71e4c2
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Buenas noches; si fui gracias
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+13. Diana Lucia Rojas Rosales
+   ├─ Teléfono: 51955213295
+   ├─ Lead ID: 3a2a37e6-8490-4605-9650-aebdeecccf23
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si asisti
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+14. Jackson Guizábalo Correa
+   ├─ Teléfono: 51989051416
+   ├─ Lead ID: 6582c24b-5ee4-433c-bafe-8bee1edf5db9
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si asistí
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+15. Luis ramirez cruz
+   ├─ Teléfono: 51934519450
+   ├─ Lead ID: 7f026bab-0967-4fed-923f-dd06e8d6199e
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si asisti
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+16. Cecilia González y Segundo Antonio Romero Lopez
+   ├─ Teléfono: 51949695685
+   ├─ Lead ID: 8544ca46-4690-4945-9e4b-b08b33a08dda
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si asistió mi tio Segundo
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+17. Rocío Haydee Vasquez Ruiz
+   ├─ Teléfono: 51961688044
+   ├─ Lead ID: 2281e4af-8ec3-4bbc-8bc6-870d6d7df776
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Si fui y separé mi puesto también con un anticipo
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+18. Pihar Rpdas Espinoza
+   ├─ Teléfono: 51956565952
+   ├─ Lead ID: 3d9e7018-458a-4f3e-af7b-ec5e8ad47b00
+   ├─ Tipo: Afirmación después de pregunta sobre visita
+   └─ Fragmento: [Bot pregunta: --- REPULSE [11/01/2026; 07:59 p. m.] --- [Mensaje enviado por sistema] Buen día Pihar Rpdas Espinoz...] -> [Usuario: Si ya]
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+19. José Alberto tumay Hidalgo y
+   ├─ Teléfono: 51920909210
+   ├─ Lead ID: 4d6058ea-c9b3-4d3d-bee1-beb3dc7b1250
+   ├─ Tipo: Afirmación después de pregunta sobre visita
+   └─ Fragmento: [Bot pregunta: --- REPULSE [11/01/2026; 07:58 p. m.] --- [Mensaje enviado por sistema] Buen día José Alberto tumay ...] -> [Usuario: Si]
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+20. Sarita Bermudez Maldonado
+   ├─ Teléfono: 51949194842
+   ├─ Lead ID: 82cb80d9-211e-4de5-a3f7-6ae0d5ff4095
+   ├─ Tipo: Afirmación después de pregunta sobre visita
+   └─ Fragmento: [Bot pregunta: --- REPULSE [11/01/2026; 08:11 p. m.] --- [Mensaje enviado por sistema] Buen día Sarita Bermudez Mal...] -> [Usuario: Si]
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+21. Jhonatan Cabanillas Barrantes
+   ├─ Teléfono: 51960197980
+   ├─ Lead ID: b4b8655a-6df1-49a0-8c58-90b6feebaa71
+   ├─ Tipo: Confirmación directa
+   └─ Fragmento: Hola; si asistí ese día. Gracias por la información brindada.
+
+──────────────────────────────────────────────────────────────────────────────
+
+
+═══════════════════════════════════════════════════════════════════════════
+
+ANÁLISIS
+
+═══════════════════════════════════════════════════════════════════════════
+
+Tipos de confirmación detectados:
+
+  • Afirmación después de pregunta sobre visita: 6 (28.6%)
+  • Confirmación directa: 15 (71.4%)
+
+═══════════════════════════════════════════════════════════════════════════
+
+RECOMENDACIONES
+
+═══════════════════════════════════════════════════════════════════════════
+
+1. Actualizar el campo "asistio" en la base de datos para estos 21 leads
+
+2. Estos leads deben recibir seguimiento prioritario:
+   - Ya visitaron el proyecto
+   - Mostraron interés respondiendo al mensaje de Repulse
+   - Son candidatos calientes para cierre de venta
+
+3. Considerar crear una campaña específica de cierre para estos leads
+
+4. Analizar por qué el 96.41% no confirmó:
+   - ¿No vieron el mensaje?
+   - ¿No visitaron el proyecto?
+   - ¿Perdieron interés?
+
+═══════════════════════════════════════════════════════════════════════════
+
+PRÓXIMOS PASOS
+
+═══════════════════════════════════════════════════════════════════════════
+
+[ ] Revisar manualmente algunos casos de confirmación para validar precisión
+
+[ ] Ejecutar script de actualización masiva del campo "asistio"
+
+[ ] Asignar estos leads a vendedores para seguimiento
+
+[ ] Crear campaña de cierre específica para estos leads
+
+[ ] Monitorear conversión de estos leads vs el resto
+
+═══════════════════════════════════════════════════════════════════════════
+
+Archivos generados:
+  • Reporte completo CSV: confirmaciones_asistencia_2026-01-12T11-37-59.csv
+  • Resumen ejecutivo: RESUMEN_confirmaciones_2026-01-12T11-38-53.txt
+
+═══════════════════════════════════════════════════════════════════════════

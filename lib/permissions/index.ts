@@ -73,19 +73,26 @@ export {
 } from './check';
 
 // ============================================================================
-// SERVER WRAPPERS
+// SERVER ACTIONS
 // ============================================================================
 
 export {
-  withPermission,
-  withAnyPermission,
-  withAllPermissions,
   requirePermission,
   checkPermission,
   canCurrentUser,
   getCurrentUserId,
   isCurrentUserAdmin,
 } from './server';
+
+// ============================================================================
+// HOF - Higher-Order Functions (para wrappear server actions)
+// ============================================================================
+
+export {
+  withPermission,
+  withAnyPermission,
+  withAllPermissions,
+} from './hof';
 
 // ============================================================================
 // CLIENT FUNCTIONS

@@ -32,6 +32,7 @@ import {
   Hash,
   BadgeCheck,
   XCircle,
+  Home,
 } from 'lucide-react';
 import imageCompression from 'browser-image-compression';
 
@@ -39,7 +40,7 @@ import imageCompression from 'browser-image-compression';
 // INTERFACES
 // ============================================================================
 
-export type TipoDocumento = 'dni' | 'voucher';
+export type TipoDocumento = 'dni' | 'voucher' | 'recibo_luz' | 'dni_reverso' | 'declaracion_jurada';
 
 export interface DNIOCRData {
   numero_dni: string;
@@ -62,7 +63,34 @@ export interface VoucherOCRData {
   confianza: number;
 }
 
-export type OCRData = DNIOCRData | VoucherOCRData;
+export interface ReciboLuzOCRData {
+  es_documento_valido?: boolean;
+  titular: string;
+  dni_titular: string | null;
+  direccion: string;
+  suministro: string;
+  mes_facturado: string;
+  empresa_electrica: string;
+  confianza: number;
+}
+
+export interface DNIReversoOCRData {
+  departamento: string | null;
+  provincia: string | null;
+  distrito: string | null;
+  direccion: string | null;
+  ubigeo: string | null;
+  confianza: number;
+}
+
+export interface DeclaracionJuradaOCRData {
+  nombre_completo: string;
+  dni: string;
+  direccion: string;
+  confianza: number;
+}
+
+export type OCRData = DNIOCRData | VoucherOCRData | ReciboLuzOCRData | DNIReversoOCRData | DeclaracionJuradaOCRData;
 
 export type EstadoDocumento = 'vacio' | 'subiendo' | 'procesando' | 'valido' | 'revision' | 'error';
 
@@ -73,6 +101,7 @@ export interface DocumentoItem {
   ocrData: OCRData | null;
   estado: EstadoDocumento;
   error?: string;
+  motivoRevision?: string; // Explicacion del por que se marco como "Revisar"
   hasOCR: boolean;
 }
 
@@ -85,8 +114,10 @@ export interface DocumentoOCRUploaderProps {
   required?: boolean;
   disabled?: boolean;
   initialImageUrls?: string[];
+  initialOCRData?: OCRData | null; // NUEVO: Datos OCR guardados previamente
   onDocumentosChange: (urls: string[]) => void;
   onDatosExtraidos?: (data: OCRData) => void;
+  onDocumentoEliminado?: (url: string) => Promise<void>; // Callback para eliminar del servidor
 }
 
 // ============================================================================
@@ -380,6 +411,331 @@ function PanelDatosVoucher({ data, expanded, onToggle }: { data: VoucherOCRData;
 }
 
 // ============================================================================
+// COMPONENTE: PanelDatosOCR (Recibo de Luz/Agua)
+// ============================================================================
+
+function PanelDatosReciboLuz({ data, expanded, onToggle }: { data: ReciboLuzOCRData; expanded: boolean; onToggle: () => void }) {
+  const camposCompletos = [
+    data.titular,
+    data.direccion,
+    data.suministro,
+    data.empresa_electrica,
+  ].filter(v => v && v !== 'N/A').length;
+
+  const totalCampos = 4; // Campos principales (sin contar dni_titular que es opcional)
+
+  return (
+    <div className="mt-3 border-2 border-purple-200 rounded-xl overflow-hidden bg-white shadow-sm">
+      {/* Header clickeable */}
+      <button
+        onClick={onToggle}
+        className="w-full px-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 flex items-center justify-between hover:from-purple-100 hover:to-pink-100 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-purple-500 rounded-lg">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+          <div className="text-left">
+            <p className="font-semibold text-purple-800">Datos extraídos del Recibo</p>
+            <p className="text-xs text-purple-600">{camposCompletos}/{totalCampos} campos detectados</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {data.direccion && (
+            <div className="text-right max-w-xs truncate">
+              <p className="text-xs text-gray-500">Dirección</p>
+              <p className="font-medium text-purple-700 text-sm">{data.direccion}</p>
+            </div>
+          )}
+          {expanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+        </div>
+      </button>
+
+      {/* Contenido expandido */}
+      {expanded && (
+        <div className="p-4 border-t border-purple-100">
+          {/* Barra de confianza */}
+          <div className="mb-4">
+            <p className="text-xs text-gray-500 mb-1">Nivel de confianza en la lectura</p>
+            <BarraConfianza valor={data.confianza} />
+          </div>
+
+          {/* Grid de campos */}
+          <div className="grid grid-cols-1 gap-2">
+            <CampoExtraido
+              icon={User}
+              label="Titular"
+              valor={data.titular}
+            />
+            {data.dni_titular && (
+              <CampoExtraido
+                icon={CreditCard}
+                label="DNI del Titular"
+                valor={data.dni_titular}
+              />
+            )}
+            <CampoExtraido
+              icon={Home}
+              label="Dirección del Suministro"
+              valor={data.direccion}
+              importante
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <CampoExtraido
+                icon={Hash}
+                label="Nro. Suministro"
+                valor={data.suministro}
+              />
+              <CampoExtraido
+                icon={Building2}
+                label="Empresa"
+                valor={data.empresa_electrica}
+              />
+            </div>
+            <CampoExtraido
+              icon={Calendar}
+              label="Mes Facturado"
+              valor={data.mes_facturado}
+            />
+          </div>
+
+          {/* Mensaje de campos faltantes */}
+          {camposCompletos < totalCampos && (
+            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">Datos incompletos</p>
+                <p className="text-xs text-yellow-600">Algunos campos no fueron detectados. Verifica la imagen o completa manualmente.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Mensaje de éxito */}
+          {camposCompletos === totalCampos && data.confianza >= 80 && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
+              <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-green-800">Recibo validado correctamente</p>
+                <p className="text-xs text-green-600">Todos los campos fueron extraídos con alta confianza.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Info sobre la dirección extraída */}
+          {data.direccion && data.direccion !== 'N/A' && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+              <Home className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">Dirección detectada</p>
+                <p className="text-xs text-blue-600">Esta dirección se llenará automáticamente en el formulario.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// COMPONENTE: PanelDatosOCR (DNI Reverso - Solo Dirección)
+// ============================================================================
+
+function PanelDatosDNIReverso({ data, expanded, onToggle }: { data: DNIReversoOCRData; expanded: boolean; onToggle: () => void }) {
+  const direccionCompleta = [
+    data.direccion,
+    data.distrito,
+    data.provincia,
+    data.departamento,
+  ].filter(v => v && v !== 'N/A').join(', ');
+
+  return (
+    <div className="mt-3 border-2 border-teal-200 rounded-xl overflow-hidden bg-white shadow-sm">
+      {/* Header clickeable */}
+      <button
+        onClick={onToggle}
+        className="w-full px-4 py-3 bg-gradient-to-r from-teal-50 to-cyan-50 flex items-center justify-between hover:from-teal-100 hover:to-cyan-100 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-teal-500 rounded-lg">
+            <Home className="w-5 h-5 text-white" />
+          </div>
+          <div className="text-left">
+            <p className="font-semibold text-teal-800">Dirección extraída del DNI</p>
+            <p className="text-xs text-teal-600">Reverso del documento</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {data.direccion && (
+            <div className="text-right max-w-xs truncate">
+              <p className="text-xs text-gray-500">Dirección</p>
+              <p className="font-medium text-teal-700 text-sm truncate max-w-[200px]">{data.direccion}</p>
+            </div>
+          )}
+          {expanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+        </div>
+      </button>
+
+      {/* Contenido expandido */}
+      {expanded && (
+        <div className="p-4 border-t border-teal-100">
+          {/* Barra de confianza */}
+          <div className="mb-4">
+            <p className="text-xs text-gray-500 mb-1">Nivel de confianza en la lectura</p>
+            <BarraConfianza valor={data.confianza} />
+          </div>
+
+          {/* Grid de campos */}
+          <div className="grid grid-cols-1 gap-2">
+            <CampoExtraido
+              icon={Home}
+              label="Dirección"
+              valor={data.direccion || undefined}
+              importante
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <CampoExtraido
+                icon={Building2}
+                label="Distrito"
+                valor={data.distrito || undefined}
+              />
+              <CampoExtraido
+                icon={Building2}
+                label="Provincia"
+                valor={data.provincia || undefined}
+              />
+              <CampoExtraido
+                icon={Building2}
+                label="Departamento"
+                valor={data.departamento || undefined}
+              />
+            </div>
+          </div>
+
+          {/* Info sobre la dirección extraída */}
+          {data.direccion && data.direccion !== 'N/A' && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+              <Home className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">Dirección detectada</p>
+                <p className="text-xs text-blue-600">Esta dirección se llenará automáticamente en el formulario.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// COMPONENTE: PanelDatosOCR (Declaración Jurada)
+// ============================================================================
+
+function PanelDatosDeclaracionJurada({ data, expanded, onToggle }: { data: DeclaracionJuradaOCRData; expanded: boolean; onToggle: () => void }) {
+  const camposCompletos = [
+    data.nombre_completo,
+    data.dni,
+    data.direccion,
+  ].filter(v => v && v !== 'N/A').length;
+
+  const totalCampos = 3;
+
+  return (
+    <div className="mt-3 border-2 border-indigo-200 rounded-xl overflow-hidden bg-white shadow-sm">
+      {/* Header clickeable */}
+      <button
+        onClick={onToggle}
+        className="w-full px-4 py-3 bg-gradient-to-r from-indigo-50 to-blue-50 flex items-center justify-between hover:from-indigo-100 hover:to-blue-100 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-indigo-500 rounded-lg">
+            <FileText className="w-5 h-5 text-white" />
+          </div>
+          <div className="text-left">
+            <p className="font-semibold text-indigo-800">Datos extraídos de la Declaración Jurada</p>
+            <p className="text-xs text-indigo-600">{camposCompletos}/{totalCampos} campos detectados</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {data.direccion && (
+            <div className="text-right max-w-xs truncate">
+              <p className="text-xs text-gray-500">Dirección</p>
+              <p className="font-medium text-indigo-700 text-sm">{data.direccion}</p>
+            </div>
+          )}
+          {expanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+        </div>
+      </button>
+
+      {/* Contenido expandido */}
+      {expanded && (
+        <div className="p-4 border-t border-indigo-100">
+          {/* Barra de confianza */}
+          <div className="mb-4">
+            <p className="text-xs text-gray-500 mb-1">Nivel de confianza en la lectura</p>
+            <BarraConfianza valor={data.confianza} />
+          </div>
+
+          {/* Grid de campos */}
+          <div className="grid grid-cols-1 gap-2">
+            <CampoExtraido
+              icon={User}
+              label="Nombre Completo"
+              valor={data.nombre_completo}
+            />
+            <CampoExtraido
+              icon={CreditCard}
+              label="DNI"
+              valor={data.dni}
+            />
+            <CampoExtraido
+              icon={Home}
+              label="Dirección Declarada"
+              valor={data.direccion}
+              importante
+            />
+          </div>
+
+          {/* Mensaje de campos faltantes */}
+          {camposCompletos < totalCampos && (
+            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800">Datos incompletos</p>
+                <p className="text-xs text-yellow-600">Algunos campos no fueron detectados. Verifica la imagen o completa manualmente.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Mensaje de éxito */}
+          {camposCompletos === totalCampos && data.confianza >= 80 && (
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-2">
+              <CheckCircle className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-green-800">Declaración Jurada validada correctamente</p>
+                <p className="text-xs text-green-600">Todos los campos fueron extraídos con alta confianza.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Info sobre la dirección extraída */}
+          {data.direccion && data.direccion !== 'N/A' && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+              <Home className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-blue-800">Dirección detectada</p>
+                <p className="text-xs text-blue-600">Esta dirección se usará en el formulario.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
 // COMPONENTE PRINCIPAL
 // ============================================================================
 
@@ -392,20 +748,28 @@ export default function DocumentoOCRUploader({
   required = false,
   disabled = false,
   initialImageUrls = [],
+  initialOCRData = null,
   onDocumentosChange,
   onDatosExtraidos,
+  onDocumentoEliminado,
 }: DocumentoOCRUploaderProps) {
   // Estados
   const [documentos, setDocumentos] = useState<DocumentoItem[]>(() => {
-    return initialImageUrls.map((url, index) => ({
-      id: `initial-${index}`,
-      imageUrl: url,
-      previewUrl: url,
-      ocrData: null,
-      estado: 'valido' as EstadoDocumento,
-      error: undefined,
-      hasOCR: false,
-    }));
+    return initialImageUrls.map((url, index) => {
+      // Si es la primera imagen y hay datos OCR, pre-cargarlos
+      const hasOCR = index === 0 && initialOCRData !== null;
+      const ocrData = hasOCR ? initialOCRData : null;
+
+      return {
+        id: `initial-${index}`,
+        imageUrl: url,
+        previewUrl: url,
+        ocrData,
+        estado: 'valido' as EstadoDocumento,
+        error: undefined,
+        hasOCR,
+      };
+    });
   });
   const [isDragging, setIsDragging] = useState(false);
   const [showPreviewIndex, setShowPreviewIndex] = useState<number | null>(null);
@@ -419,6 +783,52 @@ export default function DocumentoOCRUploader({
   useEffect(() => {
     onDocumentosChangeRef.current = onDocumentosChange;
   }, [onDocumentosChange]);
+
+  // ========================================
+  // EFFECT: Sincronizar con initialImageUrls cuando cambie externamente
+  // ========================================
+  // CASOS que maneja:
+  // 1. Mount inicial con initialImageUrls vacío, luego se cargan datos de BD
+  // 2. Eliminación desde servidor (router.refresh) - initialImageUrls tiene menos URLs
+  // 3. Re-render con mismas URLs - no hacer nada
+  // ========================================
+  useEffect(() => {
+    // Comparar URLs actuales con las anteriores para detectar cambios externos
+    const prevUrls = prevUrlsRef.current;
+    const currentInitialUrls = initialImageUrls;
+
+    // Detectar si hubo un cambio externo (desde el servidor)
+    const urlsChanged =
+      currentInitialUrls.length !== prevUrls.length ||
+      currentInitialUrls.some((url, i) => url !== prevUrls[i]);
+
+    if (!urlsChanged) {
+      return; // No hay cambios, no hacer nada
+    }
+
+    // CASO 1: Carga inicial o recarga de datos del servidor
+    // Sincronizar documentos con las URLs del servidor
+    const newDocumentos = currentInitialUrls.map((url, index) => {
+      const hasOCR = index === 0 && initialOCRData !== null;
+      return {
+        id: `initial-${index}`,
+        imageUrl: url,
+        previewUrl: url,
+        ocrData: hasOCR ? initialOCRData : null,
+        estado: 'valido' as EstadoDocumento,
+        error: undefined,
+        hasOCR,
+      };
+    });
+
+    console.log('[DocumentoOCRUploader] Sincronizando con servidor:', {
+      prevUrls: prevUrls.length,
+      newUrls: currentInitialUrls.length,
+    });
+
+    setDocumentos(newDocumentos);
+    prevUrlsRef.current = currentInitialUrls;
+  }, [initialImageUrls, initialOCRData]);
 
   // ========================================
   // EFFECT: Notificar al padre cuando cambian las URLs
@@ -600,13 +1010,19 @@ export default function DocumentoOCRUploader({
       const ocrResult = await runOCR(base64, file.type);
 
       if (!ocrResult.success || !ocrResult.data) {
+        const motivoError = ocrResult.error || 'No se pudieron extraer los datos';
+        const motivoDescriptivo = tipo === 'dni'
+          ? `No se pudo leer el DNI. ${motivoError.includes('No se proporciono') ? 'Asegurate de que la imagen muestre el DNI completo y legible.' : 'Verifica que la imagen sea clara y muestre todos los campos del DNI.'}`
+          : `No se pudo leer el comprobante. ${motivoError.includes('No se proporciono') ? 'Asegurate de que la imagen muestre el voucher completo.' : 'Verifica que la imagen sea clara y muestre monto, banco y fecha.'}`;
+
         setDocumentos(prev => prev.map(doc =>
           doc.id === tempId
             ? {
                 ...doc,
                 imageUrl: uploadedUrl,
                 estado: 'revision',
-                error: ocrResult.error || 'No se pudieron extraer los datos',
+                error: motivoError,
+                motivoRevision: motivoDescriptivo,
                 hasOCR: true,
               }
             : doc
@@ -617,13 +1033,20 @@ export default function DocumentoOCRUploader({
 
       const confianza = ocrResult.data.confianza || 0;
       let nuevoEstado: EstadoDocumento = 'revision';
+      let motivoRevision: string | undefined;
 
       if (confianza >= 80) {
         nuevoEstado = 'valido';
       } else if (confianza >= 50) {
         nuevoEstado = 'revision';
+        motivoRevision = tipo === 'dni'
+          ? `Confianza media (${confianza}%). Algunos campos del DNI pueden tener errores. Verifica los datos extraidos manualmente.`
+          : `Confianza media (${confianza}%). Algunos campos del comprobante pueden tener errores. Verifica monto, fecha y banco.`;
       } else {
         nuevoEstado = 'revision';
+        motivoRevision = tipo === 'dni'
+          ? `Baja confianza en la lectura (${confianza}%). La imagen puede estar borrosa o incompleta. Verifica todos los campos del DNI.`
+          : `Baja confianza en la lectura (${confianza}%). La imagen puede estar borrosa o incompleta. Verifica monto, fecha y numero de operacion.`;
       }
 
       setDocumentos(prev => prev.map(doc =>
@@ -634,6 +1057,7 @@ export default function DocumentoOCRUploader({
               ocrData: ocrResult.data!,
               estado: nuevoEstado,
               error: confianza < 50 ? 'Baja confianza en los datos. Verifica manualmente.' : undefined,
+              motivoRevision,
               hasOCR: true,
             }
           : doc
@@ -715,20 +1139,43 @@ export default function DocumentoOCRUploader({
     }
   }, [disabled, documentos.length, maxImages]);
 
-  const handleEliminar = useCallback((id: string) => {
-    // Primero encontrar el documento para limpiar el preview URL
+  const handleEliminar = useCallback(async (id: string) => {
+    console.log('[handleEliminar] Iniciando eliminación, id:', id);
+    console.log('[handleEliminar] documentos actuales:', documentos.map(d => ({ id: d.id, url: d.imageUrl?.substring(0, 50) })));
+
     const docToDelete = documentos.find(d => d.id === id);
-    if (docToDelete && docToDelete.previewUrl && !docToDelete.previewUrl.startsWith('http')) {
+    if (!docToDelete) {
+      console.warn('[handleEliminar] Documento no encontrado con id:', id);
+      return;
+    }
+
+    console.log('[handleEliminar] Documento a eliminar:', { id: docToDelete.id, imageUrl: docToDelete.imageUrl?.substring(0, 80) });
+
+    // Si hay callback de eliminación y el documento tiene URL (es de BD), llamarlo
+    if (onDocumentoEliminado && docToDelete.imageUrl?.startsWith('http')) {
+      console.log('[handleEliminar] Llamando a onDocumentoEliminado con URL:', docToDelete.imageUrl);
+      try {
+        await onDocumentoEliminado(docToDelete.imageUrl);
+        console.log('[handleEliminar] Eliminación del servidor exitosa');
+      } catch (error) {
+        console.error('[handleEliminar] Error eliminando documento del servidor:', error);
+        return; // No eliminar localmente si falla el servidor
+      }
+    } else {
+      console.log('[handleEliminar] No hay callback o URL no es http, eliminando solo localmente');
+    }
+
+    // Limpiar preview URL si es blob
+    if (docToDelete.previewUrl && !docToDelete.previewUrl.startsWith('http')) {
       URL.revokeObjectURL(docToDelete.previewUrl);
     }
 
-    // Actualizar el estado local - la notificación al padre se hace via useEffect
+    // Actualizar estado local
+    console.log('[handleEliminar] Actualizando estado local, filtrando id:', id);
     setDocumentos(prev => prev.filter(doc => doc.id !== id));
-
-    if (expandedOCR === id) {
-      setExpandedOCR(null);
-    }
-  }, [documentos, expandedOCR]);
+    setExpandedOCR(current => current === id ? null : current);
+    console.log('[handleEliminar] Eliminación completada');
+  }, [documentos, onDocumentoEliminado]);
 
   // ========================================
   // RENDER HELPERS
@@ -831,6 +1278,24 @@ export default function DocumentoOCRUploader({
             expanded={expandedOCR === documentoConOCR.id}
             onToggle={() => setExpandedOCR(expandedOCR === documentoConOCR.id ? null : documentoConOCR.id)}
           />
+        ) : tipo === 'dni_reverso' ? (
+          <PanelDatosDNIReverso
+            data={documentoConOCR.ocrData as DNIReversoOCRData}
+            expanded={expandedOCR === documentoConOCR.id}
+            onToggle={() => setExpandedOCR(expandedOCR === documentoConOCR.id ? null : documentoConOCR.id)}
+          />
+        ) : tipo === 'recibo_luz' ? (
+          <PanelDatosReciboLuz
+            data={documentoConOCR.ocrData as ReciboLuzOCRData}
+            expanded={expandedOCR === documentoConOCR.id}
+            onToggle={() => setExpandedOCR(expandedOCR === documentoConOCR.id ? null : documentoConOCR.id)}
+          />
+        ) : tipo === 'declaracion_jurada' ? (
+          <PanelDatosDeclaracionJurada
+            data={documentoConOCR.ocrData as DeclaracionJuradaOCRData}
+            expanded={expandedOCR === documentoConOCR.id}
+            onToggle={() => setExpandedOCR(expandedOCR === documentoConOCR.id ? null : documentoConOCR.id)}
+          />
         ) : (
           <PanelDatosVoucher
             data={documentoConOCR.ocrData as VoucherOCRData}
@@ -844,19 +1309,19 @@ export default function DocumentoOCRUploader({
       {documentos.length > 0 && (
         <div className="mt-4">
           <p className="text-xs text-gray-500 mb-2 font-medium">Imagenes subidas:</p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {documentos.map((doc, index) => (
               <div
                 key={doc.id}
-                className={`relative group rounded-lg overflow-hidden border-2 ${
+                className={`relative rounded-lg overflow-hidden border-2 ${
                   doc.estado === 'valido' ? 'border-green-300' :
                   doc.estado === 'revision' ? 'border-yellow-300' :
                   doc.estado === 'error' ? 'border-red-300' :
                   'border-blue-300'
                 }`}
               >
-                {/* Preview */}
-                <div className="aspect-square bg-gray-100">
+                {/* Contenedor de imagen - relative para stacking context unificado */}
+                <div className="relative group aspect-square bg-gray-100">
                   <img
                     src={doc.previewUrl}
                     alt={`${title} ${index + 1}`}
@@ -871,20 +1336,37 @@ export default function DocumentoOCRUploader({
                     </div>
                   )}
 
-                  {/* Hover overlay */}
+                  {/* Badge de estado - z-10 */}
+                  <div className="absolute top-1 left-1 z-10">
+                    {getEstadoBadge(doc, index)}
+                  </div>
+
+                  {/* Badge Principal (OCR) - pointer-events-none en ambos divs */}
+                  {index === 0 && doc.hasOCR && (
+                    <div className="absolute bottom-8 left-1 right-1 z-10 pointer-events-none">
+                      <div className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded text-center font-medium pointer-events-none">
+                        Principal (OCR)
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Barra de acciones - z-20 para estar encima de badges */}
                   {doc.estado !== 'subiendo' && doc.estado !== 'procesando' && (
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/50 transition-colors flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+                    <div className="absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/70 to-transparent p-2 flex items-center justify-center gap-2">
                       <button
                         onClick={() => setShowPreviewIndex(index)}
-                        className="p-1.5 bg-white rounded-full shadow-md hover:bg-gray-100"
+                        className="p-1.5 bg-white/90 rounded-full shadow-md hover:bg-white transition-colors"
                         title="Ver imagen"
                       >
                         <Eye className="w-4 h-4 text-gray-700" />
                       </button>
                       {!disabled && (
                         <button
-                          onClick={() => handleEliminar(doc.id)}
-                          className="p-1.5 bg-white rounded-full shadow-md hover:bg-red-50"
+                          onClick={() => {
+                            console.log('[DocumentoOCRUploader] Click en Eliminar, doc.id:', doc.id);
+                            handleEliminar(doc.id);
+                          }}
+                          className="p-1.5 bg-white/90 rounded-full shadow-md hover:bg-red-100 transition-colors"
                           title="Eliminar"
                         >
                           <X className="w-4 h-4 text-red-500" />
@@ -894,17 +1376,23 @@ export default function DocumentoOCRUploader({
                   )}
                 </div>
 
-                {/* Badge de estado */}
-                <div className="absolute top-1 left-1">
-                  {getEstadoBadge(doc, index)}
-                </div>
+                {/* Mensaje de motivo de revision */}
+                {doc.estado === 'revision' && doc.motivoRevision && (
+                  <div className="p-2 bg-yellow-50 border-t border-yellow-200">
+                    <p className="text-xs text-yellow-800 flex items-start gap-1">
+                      <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <span>{doc.motivoRevision}</span>
+                    </p>
+                  </div>
+                )}
 
-                {/* Badge Principal */}
-                {index === 0 && doc.hasOCR && (
-                  <div className="absolute bottom-1 left-1 right-1">
-                    <div className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded text-center font-medium">
-                      Principal (OCR)
-                    </div>
+                {/* Mensaje de error */}
+                {doc.estado === 'error' && doc.error && (
+                  <div className="p-2 bg-red-50 border-t border-red-200">
+                    <p className="text-xs text-red-800 flex items-start gap-1">
+                      <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      <span>{doc.error}</span>
+                    </p>
                   </div>
                 )}
               </div>

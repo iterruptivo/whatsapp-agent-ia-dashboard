@@ -215,6 +215,11 @@ export async function getPagoStats(controlPagoId: string): Promise<PagoStats> {
   }
 }
 
+/**
+ * Registrar abono de pago
+ *
+ * RBAC: Requiere permiso control_pagos:write
+ */
 export async function registrarAbono(data: {
   pagoId: string;
   monto: number;
@@ -224,6 +229,15 @@ export async function registrarAbono(data: {
   notas?: string;
   registradoPor: string;
 }) {
+  // RBAC: Validar permiso control_pagos:write
+  const { checkPermission } = await import('@/lib/permissions/server');
+  const { PERMISOS_CONTROL_PAGOS } = await import('@/lib/permissions/types');
+
+  const permissionCheck = await checkPermission(PERMISOS_CONTROL_PAGOS.WRITE.modulo, PERMISOS_CONTROL_PAGOS.WRITE.accion);
+  if (!permissionCheck.ok) {
+    return { success: false, message: permissionCheck.error || 'No autorizado para registrar abonos' };
+  }
+
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

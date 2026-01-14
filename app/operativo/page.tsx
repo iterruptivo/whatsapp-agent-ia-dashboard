@@ -6,19 +6,42 @@ import OperativoClient from '@/components/dashboard/OperativoClient';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { getAllLeads, Lead } from '@/lib/db';
 import { useAuth } from '@/lib/auth-context';
+import { canCurrentUser } from '@/lib/permissions/server';
+import { isRBACEnabled } from '@/lib/permissions/types';
 
 export default function OperativoPage() {
   const router = useRouter();
   const { user, selectedProyecto, loading: authLoading } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+
+  // RBAC: Verificar permiso leads:read
+  useEffect(() => {
+    async function checkAccess() {
+      if (!authLoading && user) {
+        // Si RBAC está habilitado, verificar permiso; si no, permitir acceso (sin restricción legacy)
+        if (isRBACEnabled()) {
+          const canRead = await canCurrentUser('leads', 'read');
+          setHasAccess(canRead);
+        } else {
+          // Fallback legacy: Todos los roles pueden ver leads (sin restricción)
+          setHasAccess(true);
+        }
+      }
+    }
+    checkAccess();
+  }, [user, authLoading]);
 
   // Redirect if not authenticated or no proyecto selected
   useEffect(() => {
     if (!authLoading && (!user || !selectedProyecto)) {
       router.push('/login');
+    } else if (hasAccess === false) {
+      // RBAC: Redirigir si no tiene permiso
+      router.push('/');
     }
-  }, [user, selectedProyecto, authLoading, router]);
+  }, [user, selectedProyecto, authLoading, hasAccess, router]);
 
   // Fetch leads when selectedProyecto changes
   useEffect(() => {
@@ -70,8 +93,8 @@ export default function OperativoPage() {
     }
   }, [selectedProyecto]);
 
-  // Show loading while auth or data is loading
-  if (authLoading || loading || !selectedProyecto) {
+  // Show loading while auth or data is loading or access check is pending
+  if (authLoading || loading || !selectedProyecto || hasAccess === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

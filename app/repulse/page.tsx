@@ -47,7 +47,12 @@ export default function RepulsePage() {
   });
   const [loadingData, setLoadingData] = useState(true);
 
-  // Redirect if not authenticated or not authorized
+  // ============================================================================
+  // VALIDACIÓN DE ACCESO - PREPARADO PARA RBAC (Grupo 2)
+  // ============================================================================
+  // PERMISO REQUERIDO: repulse:read (PERMISOS_REPULSE.READ)
+  // ROLES ACTUALES: superadmin, admin, jefe_ventas
+  // ============================================================================
   useEffect(() => {
     if (!loading) {
       if (!user) {

@@ -4,6 +4,27 @@
 
 ---
 
+## URGENTE: Fix Roles Reuniones (13 Enero 2026)
+
+### Problema: Rol 'gerencia' vs 'superadmin' en Módulo Reuniones
+**Decision:** Reemplazar TODAS las referencias a `'gerencia'` por `'superadmin'` en módulo reuniones
+**Razon:**
+- El sistema usa `superadmin` como rol de máximo privilegio
+- `gerencia` NO existe en la tabla `usuarios.rol`
+- Middleware usaba `superadmin` pero páginas/APIs usaban `gerencia` → bloqueo total
+**Fecha:** 13 Enero 2026
+**Impacto:** Sin este fix, ni admin ni superadmin podían acceder a `/reuniones`
+**Archivos corregidos:**
+- `app/reuniones/page.tsx` - Validación de acceso en página principal
+- `app/reuniones/[id]/page.tsx` - Validación de acceso en página detalle
+- `app/api/reuniones/presigned-url/route.ts` - Validación permisos API
+- `app/api/reuniones/upload/route.ts` - Validación permisos API
+- `app/api/reuniones/[id]/route.ts` - Validación permisos PATCH
+**Roles permitidos ahora:** `superadmin`, `admin`, `jefe_ventas`
+**Testing:** Login con superadmin → debería poder acceder a `/reuniones`
+
+---
+
 ## Arquitectura
 
 ### Client Components vs Server Components

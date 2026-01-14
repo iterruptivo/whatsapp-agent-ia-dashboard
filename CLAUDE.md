@@ -18,6 +18,34 @@
 
 ---
 
+## ⛔ REGLA CRÍTICA #1 - NUNCA MATAR PROCESOS NODE
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║   ⛔⛔⛔ PROHIBIDO TERMINANTEMENTE ⛔⛔⛔                                      ║
+║                                                                              ║
+║   NUNCA ejecutar:                                                            ║
+║   - taskkill //F //IM node.exe                                               ║
+║   - pkill node                                                               ║
+║   - kill -9 $(pgrep node)                                                    ║
+║   - Cualquier comando que mate TODOS los procesos node                       ║
+║                                                                              ║
+║   RAZÓN: El usuario tiene múltiples sesiones de trabajo abiertas.            ║
+║   Matar node indiscriminadamente DESTRUYE todo su trabajo.                   ║
+║                                                                              ║
+║   SI NECESITAS REINICIAR EL SERVIDOR:                                        ║
+║   1. Pregunta al usuario primero                                             ║
+║   2. Usa el PID específico del servidor de desarrollo                        ║
+║   3. O simplemente recarga la página (F5)                                    ║
+║                                                                              ║
+║   VIOLACIÓN = TERMINACIÓN INMEDIATA DE LA SESIÓN                             ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+---
+
 ## MI ROL: PROJECT MANAGER
 
 Soy el PM del proyecto. Orquesto subagentes, mantengo contexto, dirijo el desarrollo.
@@ -112,6 +140,7 @@ Todo el contexto esta en `context/` (DENTRO de este proyecto)
 
 | Rol | Email | Password |
 |-----|-------|----------|
+| **Superadmin** | gerente.ti@ecoplaza.com.pe | H#TJf8M%xjpTK@Vn |
 | Admin | gerencia@ecoplaza.com | q0#CsgL8my3$ |
 | Jefe Ventas | leojefeventas@ecoplaza.com | 67hgs53899# |
 | Vendedor | alonso@ecoplaza.com | Q0KlC36J4M_y |

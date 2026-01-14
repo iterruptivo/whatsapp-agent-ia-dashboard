@@ -3,7 +3,7 @@
 // ============================================================================
 // Ruta: /comisiones
 // Descripción: Sistema de cálculo y seguimiento de comisiones de vendedores
-// Acceso: Todos los roles (cada usuario ve sus propias comisiones)
+// Acceso: Requiere permiso comisiones:read (RBAC)
 // ============================================================================
 
 'use client';
@@ -24,6 +24,8 @@ import {
   type Comision,
   type ComisionStats
 } from '@/lib/actions-comisiones';
+import { canCurrentUser } from '@/lib/permissions/server';
+import { isRBACEnabled } from '@/lib/permissions/types';
 
 export default function ComisionesPage() {
   const router = useRouter();
@@ -52,6 +54,24 @@ export default function ComisionesPage() {
     count_pendiente: 0,
   });
   const [loadingData, setLoadingData] = useState(true);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+
+  // RBAC: Verificar permiso comisiones:read
+  useEffect(() => {
+    async function checkAccess() {
+      if (!loading && user) {
+        // Si RBAC está habilitado, verificar permiso; si no, usar legacy
+        if (isRBACEnabled()) {
+          const canRead = await canCurrentUser('comisiones', 'read');
+          setHasAccess(canRead);
+        } else {
+          // Fallback legacy: Todos los usuarios pueden ver sus comisiones
+          setHasAccess(true);
+        }
+      }
+    }
+    checkAccess();
+  }, [user, loading]);
 
   // Sesión 64: Función fetchData con filtro por proyecto
   const fetchData = async () => {
@@ -86,17 +106,19 @@ export default function ComisionesPage() {
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
+    } else if (hasAccess === false) {
+      router.push('/');
     }
-  }, [user, loading, router]);
+  }, [user, loading, hasAccess, router]);
 
   // Sesión 64: Refetch cuando cambia el proyecto seleccionado
   useEffect(() => {
-    if (!loading && user && selectedProyecto?.id) {
+    if (!loading && hasAccess === true && user && selectedProyecto?.id) {
       fetchData();
     }
-  }, [loading, user, selectedProyecto?.id]);
+  }, [loading, hasAccess, user, selectedProyecto?.id]);
 
-  if (loading || loadingData) {
+  if (loading || loadingData || hasAccess === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

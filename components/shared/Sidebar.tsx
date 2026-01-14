@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3, Building, Building2, Columns3, Layers, Activity, PieChart, TrendingUp, ShieldCheck, Video, CheckSquare } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3, Building, Building2, Columns3, Layers, Activity, PieChart, TrendingUp, ShieldCheck, Video, CheckSquare, Briefcase, Scale, ShoppingCart } from 'lucide-react';
 import VersionBadge from '@/components/shared/VersionBadge';
 
 interface SidebarProps {
@@ -127,18 +127,28 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         ],
       };
 
+      // Bottom items base para admin/superadmin
+      const bottomItems: MenuItem[] = [
+        { href: '/reuniones', label: 'Reuniones', icon: Video },
+        { href: '/repulse', label: 'Repulse', icon: Zap },
+        { href: '/expansion/inbox', label: 'Corredores', icon: Briefcase },
+        { href: '/admin/usuarios', label: 'Adm. de Usuarios', icon: UserCog },
+      ];
+
+      // Solo superadmin puede ver Roles y Permisos
+      if (user?.rol === 'superadmin') {
+        bottomItems.push({ href: '/admin/roles', label: 'Roles y Permisos', icon: ShieldCheck });
+      }
+
       return {
         directItems: [
-          { href: '/', label: 'Insights', icon: LayoutDashboard },
+          { href: '/', label: 'Estadísticas', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
           { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
+          { href: '/solicitudes-compra', label: 'Solicitudes de Compra', icon: ShoppingCart },
         ],
         categories: [finanzasCategory, reporteriaCategory, configuracionesCategory],
-        bottomItems: [
-          { href: '/reuniones', label: 'Reuniones', icon: Video },
-          { href: '/repulse', label: 'Repulse', icon: Zap },
-          { href: '/admin/usuarios', label: 'Adm. de Usuarios', icon: UserCog },
-        ],
+        bottomItems,
       };
     }
 
@@ -147,13 +157,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         directItems: [
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
           { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
+          { href: '/solicitudes-compra', label: 'Solicitudes de Compra', icon: ShoppingCart },
         ],
         categories: [finanzasCategory],
         bottomItems: [] as MenuItem[],
       };
     }
 
-    // jefe_ventas tiene acceso a Insights, Operativo, Reportería (categoría), y Repulse
+    // jefe_ventas tiene acceso a Estadísticas, Operativo, Reportería (categoría), y Repulse
     if (user?.rol === 'jefe_ventas') {
       // Categoría de Reportería para jefe_ventas
       const reporteriaCategory: MenuCategory = {
@@ -168,9 +179,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
       return {
         directItems: [
-          { href: '/', label: 'Insights', icon: LayoutDashboard },
+          { href: '/', label: 'Estadísticas', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
           { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
+          { href: '/solicitudes-compra', label: 'Solicitudes de Compra', icon: ShoppingCart },
         ],
         categories: [finanzasCategory, reporteriaCategory],
         bottomItems: [
@@ -186,6 +198,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         directItems: [
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
           { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
+          { href: '/solicitudes-compra', label: 'Solicitudes de Compra', icon: ShoppingCart },
         ],
         categories: [finanzasCategory],
         bottomItems: [] as MenuItem[],
@@ -199,24 +212,50 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           { href: '/control-pagos', label: 'Control de Pagos', icon: FileText },
           { href: '/validacion-bancaria', label: 'Validación Bancaria', icon: Building2 },
           { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
+          { href: '/solicitudes-compra', label: 'Solicitudes de Compra', icon: ShoppingCart },
         ],
         categories: [],
         bottomItems: [] as MenuItem[],
       };
     }
 
-    // marketing ve Insights, Operativo y Reportería
+    // marketing ve Estadísticas, Operativo y Reportería
     if (user?.rol === 'marketing') {
       return {
         directItems: [
-          { href: '/', label: 'Insights', icon: LayoutDashboard },
+          { href: '/', label: 'Estadísticas', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
           { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
+          { href: '/solicitudes-compra', label: 'Solicitudes de Compra', icon: ShoppingCart },
         ],
         categories: [],
         bottomItems: [
           { href: '/reporteria', label: 'Reportería', icon: BarChart3 },
         ],
+      };
+    }
+
+    // legal: solo ve inbox de corredores
+    if (user?.rol === 'legal') {
+      return {
+        directItems: [
+          { href: '/expansion/inbox', label: 'Solicitudes Corredores', icon: Briefcase },
+          { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
+          { href: '/solicitudes-compra', label: 'Solicitudes de Compra', icon: ShoppingCart },
+        ],
+        categories: [],
+        bottomItems: [] as MenuItem[],
+      };
+    }
+
+    // corredor: solo ve su registro o bienvenido
+    if (user?.rol === 'corredor') {
+      return {
+        directItems: [
+          { href: '/expansion', label: 'Mi Registro', icon: Briefcase },
+        ],
+        categories: [],
+        bottomItems: [] as MenuItem[],
       };
     }
 
@@ -301,6 +340,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               ? 'Coordinador'
               : user?.rol === 'marketing'
               ? 'Marketing'
+              : user?.rol === 'legal'
+              ? 'Legal'
+              : user?.rol === 'corredor'
+              ? 'Corredor'
               : 'Finanzas'}
           </span>
         </div>

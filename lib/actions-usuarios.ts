@@ -292,11 +292,23 @@ export async function getUsuarioById(id: string): Promise<UsuarioConDatos | null
 // CREATE: Crear nuevo usuario
 // ============================================================================
 
+/**
+ * RBAC: Requiere permiso usuarios:write
+ */
 export async function createUsuario(data: CreateUsuarioData): Promise<{
   success: boolean;
   message: string;
   userId?: string;
 }> {
+  // RBAC: Validar permiso usuarios:write
+  const { checkPermission } = await import('@/lib/permissions/server');
+  const { PERMISOS_USUARIOS } = await import('@/lib/permissions/types');
+
+  const permissionCheck = await checkPermission(PERMISOS_USUARIOS.WRITE.modulo, PERMISOS_USUARIOS.WRITE.accion);
+  if (!permissionCheck.ok) {
+    return { success: false, message: permissionCheck.error || 'No autorizado para crear usuarios' };
+  }
+
   // NOTA: La verificación de admin se hace en el middleware y en la página
   // Usamos cliente admin (service role) para bypasear RLS en operaciones de creación
   const supabaseAdmin = createAdminClient();
@@ -515,11 +527,23 @@ export async function updateUsuario(data: UpdateUsuarioData): Promise<{
 // TOGGLE: Activar/Desactivar usuario
 // ============================================================================
 
+/**
+ * RBAC: Requiere permiso usuarios:delete (desactivar es similar a delete soft)
+ */
 export async function toggleUsuarioActivo(id: string): Promise<{
   success: boolean;
   message: string;
   nuevoEstado?: boolean;
 }> {
+  // RBAC: Validar permiso usuarios:delete
+  const { checkPermission } = await import('@/lib/permissions/server');
+  const { PERMISOS_USUARIOS } = await import('@/lib/permissions/types');
+
+  const permissionCheck = await checkPermission(PERMISOS_USUARIOS.DELETE.modulo, PERMISOS_USUARIOS.DELETE.accion);
+  if (!permissionCheck.ok) {
+    return { success: false, message: permissionCheck.error || 'No autorizado para desactivar usuarios' };
+  }
+
   // NOTA: La verificación de admin se hace en el middleware y en la página
   // TODO: Agregar validación para evitar desactivarse a sí mismo cuando tengamos el userId del contexto
   // Usamos admin client para bypasear RLS (solo admins ejecutan esta función)

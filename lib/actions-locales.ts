@@ -31,6 +31,9 @@ import { trackLocalStatusChanged, trackVentaCerrada } from './analytics/posthog-
 /**
  * SESIÓN 48C: Actualizada para aceptar comentario opcional + monto de venta
  * Cambiar estado de un local (semáforo)
+ *
+ * RBAC: Requiere permiso locales:cambiar_estado
+ *
  * @param localId ID del local
  * @param nuevoEstado Nuevo estado (verde, amarillo, naranja, rojo)
  * @param vendedorId ID del vendedor que hace el cambio
@@ -58,6 +61,15 @@ export async function updateLocalEstado(
   proyectoId?: string,
   agregarComoLead?: boolean
 ) {
+  // RBAC: Validar permiso locales:cambiar_estado
+  const { checkPermission } = await import('@/lib/permissions/server');
+  const { PERMISOS_LOCALES } = await import('@/lib/permissions/types');
+
+  const permissionCheck = await checkPermission(PERMISOS_LOCALES.CAMBIAR_ESTADO.modulo, PERMISOS_LOCALES.CAMBIAR_ESTADO.accion);
+  if (!permissionCheck.ok) {
+    return { success: false, message: permissionCheck.error || 'No autorizado para cambiar estado de local' };
+  }
+
   try {
     // ============================================================================
     // SESIÓN 48: VALIDACIÓN - Vendedor NO puede cambiar desde NARANJA
@@ -269,10 +281,22 @@ export async function importLocales(locales: LocalImportRow[], proyectoId: strin
 
 /**
  * Eliminar un local (solo admin)
+ *
+ * RBAC: Requiere permiso locales:delete
+ *
  * @param localId ID del local a eliminar
  * @returns Success/error
  */
 export async function deleteLocal(localId: string) {
+  // RBAC: Validar permiso locales:delete
+  const { checkPermission } = await import('@/lib/permissions/server');
+  const { PERMISOS_LOCALES } = await import('@/lib/permissions/types');
+
+  const permissionCheck = await checkPermission(PERMISOS_LOCALES.DELETE.modulo, PERMISOS_LOCALES.DELETE.accion);
+  if (!permissionCheck.ok) {
+    return { success: false, message: permissionCheck.error || 'No autorizado para eliminar locales' };
+  }
+
   try {
     const result = await deleteLocalQuery(localId);
 

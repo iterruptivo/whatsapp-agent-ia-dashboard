@@ -60,7 +60,12 @@ export default function ConfiguracionKanbanPage() {
     'otros',
   ]);
 
-  // Only admin can access
+  // ============================================================================
+  // VALIDACIÓN DE ACCESO - PREPARADO PARA RBAC (Grupo 2)
+  // ============================================================================
+  // PERMISO REQUERIDO: configuracion:write (PERMISOS_CONFIGURACION.WRITE)
+  // ROLES ACTUALES: admin
+  // ============================================================================
   useEffect(() => {
     if (user && user.rol !== 'admin') {
       router.push('/operativo');

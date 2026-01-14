@@ -3,7 +3,7 @@
 // ============================================================================
 // Ruta: /locales
 // Descripción: Dashboard para gestionar locales con estados en tiempo real
-// Acceso: Admin + Vendedor (ambos pueden ver y cambiar estados)
+// Acceso: Requiere permiso locales:read (RBAC)
 // ============================================================================
 
 import { redirect } from 'next/navigation';
@@ -12,10 +12,20 @@ import { getAllProyectos } from '@/lib/db';
 import LocalesClient from '@/components/locales/LocalesClient';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import { getSelectedProyectoId } from '@/lib/server-utils';
+import { checkPermission } from '@/lib/permissions/server';
+import { isRBACEnabled, PERMISOS_LOCALES } from '@/lib/permissions/types';
 
 export const dynamic = 'force-dynamic'; // Evitar cache agresivo de Next.js 15
 
 export default async function LocalesPage() {
+  // RBAC: Validar permiso locales:read
+  if (isRBACEnabled()) {
+    const result = await checkPermission(PERMISOS_LOCALES.READ.modulo, PERMISOS_LOCALES.READ.accion);
+    if (!result.ok) {
+      redirect('/');
+    }
+  }
+  // No hay fallback legacy - anteriormente no había restricción en esta ruta
   // SESIÓN 55: Obtener proyecto seleccionado desde cookie
   const selectedProyectoId = await getSelectedProyectoId();
 

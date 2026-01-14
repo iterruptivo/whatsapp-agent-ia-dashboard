@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     if (
       !usuario ||
-      !['admin', 'gerencia', 'jefe_ventas'].includes(usuario.rol)
+      !['superadmin', 'admin', 'jefe_ventas'].includes(usuario.rol)
     ) {
       return NextResponse.json(
         { error: 'No tiene permisos para subir reuniones' },

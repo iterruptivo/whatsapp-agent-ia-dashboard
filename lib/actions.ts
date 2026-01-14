@@ -5,9 +5,13 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { trackLeadAssigned, trackLeadLiberated, trackLeadCreated, trackVisitaRegistered } from './analytics/posthog-server';
+import { checkPermission } from '@/lib/permissions/server';
+import { PERMISOS_LEADS } from '@/lib/permissions/types';
 
 /**
  * Server Action: Assign or reassign a lead to a vendedor
+ *
+ * RBAC: Requiere permiso leads:assign
  *
  * Business Rules:
  * - Lead must exist
@@ -21,6 +25,14 @@ import { trackLeadAssigned, trackLeadLiberated, trackLeadCreated, trackVisitaReg
  * @returns Success/error response with vendedor name on success
  */
 export async function assignLeadToVendedor(leadId: string, vendedorId: string) {
+  // RBAC: Validar permiso leads:assign
+  const permissionCheck = await checkPermission(PERMISOS_LEADS.ASSIGN.modulo, PERMISOS_LEADS.ASSIGN.accion);
+  if (!permissionCheck.ok) {
+    return {
+      success: false,
+      message: permissionCheck.error || 'No autorizado',
+    };
+  }
   try {
     // Step 1: Validate vendedor (if provided) exists and is active
     // Empty string means liberate lead (set vendedor_asignado_id to NULL)

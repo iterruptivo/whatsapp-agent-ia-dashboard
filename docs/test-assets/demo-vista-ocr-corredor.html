@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demo: Vista OCR Corredor - EcoPlaza</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .icon-emoji { font-size: 2rem; }
+  </style>
+</head>
+<body class="bg-gray-50 p-8">
+  <div class="max-w-6xl mx-auto">
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">Vista Detalle Corredor - Módulo Expansión</h1>
+    <p class="text-gray-600 mb-8">Demostración de mejora UX/UI para datos OCR</p>
+
+    <!-- Documentos Adjuntos -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+      <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-[#1b967a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+        </svg>
+        Documentos Adjuntos (4)
+      </h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <!-- DNI Frente -->
+        <div class="relative group bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-lg p-4 hover:border-[#1b967a] transition-all cursor-pointer">
+          <div class="flex flex-col items-center text-center">
+            <div class="w-12 h-12 mb-2 bg-[#1b967a]/10 rounded-full flex items-center justify-center">
+              <span class="icon-emoji">🪪</span>
+            </div>
+            <p class="text-xs font-medium text-gray-900 mb-1">DNI</p>
+            <div class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+              </svg>
+              OCR 95%
+            </div>
+          </div>
+          <div class="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/70 transition-all rounded-lg opacity-0 group-hover:opacity-100">
+            <span class="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg text-sm font-medium">
+              Ver Documento
+            </span>
+          </div>
+        </div>
+
+        <!-- DNI Reverso -->
+        <div class="relative group bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-lg p-4 hover:border-[#1b967a] transition-all cursor-pointer">
+          <div class="flex flex-col items-center text-center">
+            <div class="w-12 h-12 mb-2 bg-[#1b967a]/10 rounded-full flex items-center justify-center">
+              <span class="icon-emoji">🪪</span>
+            </div>
+            <p class="text-xs font-medium text-gray-900 mb-1">DNI Reverso</p>
+            <div class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+              </svg>
+              OCR 92%
+            </div>
+          </div>
+        </div>
+
+        <!-- Recibo Luz -->
+        <div class="relative group bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-lg p-4 hover:border-[#1b967a] transition-all cursor-pointer">
+          <div class="flex flex-col items-center text-center">
+            <div class="w-12 h-12 mb-2 bg-[#1b967a]/10 rounded-full flex items-center justify-center">
+              <span class="icon-emoji">💡</span>
+            </div>
+            <p class="text-xs font-medium text-gray-900 mb-1">Recibo Luz</p>
+            <div class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+              </svg>
+              OCR 87%
+            </div>
+          </div>
+        </div>
+
+        <!-- Declaración Jurada -->
+        <div class="relative group bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-lg p-4 hover:border-[#1b967a] transition-all cursor-pointer">
+          <div class="flex flex-col items-center text-center">
+            <div class="w-12 h-12 mb-2 bg-[#1b967a]/10 rounded-full flex items-center justify-center">
+              <span class="icon-emoji">📄</span>
+            </div>
+            <p class="text-xs font-medium text-gray-900 mb-1">Decl. Jurada</p>
+            <div class="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+              </svg>
+              OCR 90%
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Datos Extraídos por OCR -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <h3 class="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 text-[#1b967a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+        </svg>
+        Datos Extraídos por OCR
+      </h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- DNI Frente -->
+        <div class="bg-gradient-to-br from-white to-gray-50 rounded-lg border-2 border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex items-start justify-between mb-4 pb-3 border-b border-gray-200">
+            <div class="flex items-center gap-3">
+              <div class="text-3xl">🪪</div>
+              <div>
+                <h4 class="font-semibold text-gray-900 text-sm">DNI (Frente)</h4>
+                <p class="text-xs text-gray-500 mt-0.5">Datos extraídos por OCR</p>
+              </div>
+            </div>
+            <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+              </svg>
+              95% confianza
+            </div>
+          </div>
+          <div class="space-y-2.5">
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Nombres</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">JUAN CARLOS</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Apellido Paterno</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">PÉREZ</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Apellido Materno</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">GARCÍA</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">DNI</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">12345678</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Fecha Nacimiento</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">15/03/1985</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- DNI Reverso -->
+        <div class="bg-gradient-to-br from-white to-gray-50 rounded-lg border-2 border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex items-start justify-between mb-4 pb-3 border-b border-gray-200">
+            <div class="flex items-center gap-3">
+              <div class="text-3xl">🪪</div>
+              <div>
+                <h4 class="font-semibold text-gray-900 text-sm">DNI (Reverso)</h4>
+                <p class="text-xs text-gray-500 mt-0.5">Datos extraídos por OCR</p>
+              </div>
+            </div>
+            <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+              </svg>
+              92% confianza
+            </div>
+          </div>
+          <div class="space-y-2.5">
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Dirección</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">AV BRASIL 123 APTO 201</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Distrito</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">SAN ISIDRO</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Ubigeo</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">150101</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recibo Luz -->
+        <div class="bg-gradient-to-br from-white to-gray-50 rounded-lg border-2 border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex items-start justify-between mb-4 pb-3 border-b border-gray-200">
+            <div class="flex items-center gap-3">
+              <div class="text-3xl">💡</div>
+              <div>
+                <h4 class="font-semibold text-gray-900 text-sm">Recibo de Luz</h4>
+                <p class="text-xs text-gray-500 mt-0.5">Datos extraídos por OCR</p>
+              </div>
+            </div>
+            <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-medium">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+              </svg>
+              87% confianza
+            </div>
+          </div>
+          <div class="space-y-2.5">
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Empresa</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">LUZ DEL SUR</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Dirección</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">AV BRASIL 123 APTO 201</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Suministro</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">1234567</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Período</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">01/2026</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Total</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">S/ 67.89</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Declaración Jurada -->
+        <div class="bg-gradient-to-br from-white to-gray-50 rounded-lg border-2 border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div class="flex items-start justify-between mb-4 pb-3 border-b border-gray-200">
+            <div class="flex items-center gap-3">
+              <div class="text-3xl">📄</div>
+              <div>
+                <h4 class="font-semibold text-gray-900 text-sm">Declaración Jurada de Dirección</h4>
+                <p class="text-xs text-gray-500 mt-0.5">Datos extraídos por OCR</p>
+              </div>
+            </div>
+            <div class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
+              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+              </svg>
+              90% confianza
+            </div>
+          </div>
+          <div class="space-y-2.5">
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Nombre Completo</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">JUAN CARLOS PÉREZ GARCÍA</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">DNI</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">12345678</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Dirección</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">AV BRASIL 123 APTO 201</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <div class="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-[#1b967a]"></div>
+              <div class="ml-3 flex-1">
+                <p class="text-xs font-medium text-gray-500">Distrito</p>
+                <p class="text-sm text-gray-900 font-medium mt-0.5">SAN ISIDRO</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+      <p class="text-sm text-blue-900">
+        <strong>Mejoras UX:</strong> Los datos OCR ahora son visibles directamente en la vista de detalle,
+        sin necesidad de descargar documentos. Badges de confianza con colores semánticos (verde ≥90%, amarillo 70-89%, rojo <70%).
+      </p>
+    </div>
+  </div>
+</body>
+</html>

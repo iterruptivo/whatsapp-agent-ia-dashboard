@@ -454,12 +454,23 @@ export async function getRepulseLeadsPendientes(proyectoId: string): Promise<Rep
 
 /**
  * Agregar lead manualmente a repulse
+ *
+ * RBAC: Requiere permiso repulse:write
  */
 export async function addLeadToRepulse(
   leadId: string,
   proyectoId: string,
   agregadoPor: string
 ): Promise<{ success: boolean; error?: string }> {
+  // RBAC: Validar permiso repulse:write
+  const { checkPermission } = await import('@/lib/permissions/server');
+  const { PERMISOS_REPULSE } = await import('@/lib/permissions/types');
+
+  const permissionCheck = await checkPermission(PERMISOS_REPULSE.WRITE.modulo, PERMISOS_REPULSE.WRITE.accion);
+  if (!permissionCheck.ok) {
+    return { success: false, error: permissionCheck.error || 'No autorizado para agregar leads a Repulse' };
+  }
+
   const supabase = await createClient();
 
   // Verificar que el lead no esté excluido
@@ -582,10 +593,21 @@ export async function updateRepulseLeadEstado(
 
 /**
  * Excluir lead de futuros repulses
+ *
+ * RBAC: Requiere permiso repulse:exclude
  */
 export async function excluirLeadDeRepulse(
   leadId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // RBAC: Validar permiso repulse:exclude
+  const { checkPermission } = await import('@/lib/permissions/server');
+  const { PERMISOS_REPULSE } = await import('@/lib/permissions/types');
+
+  const permissionCheck = await checkPermission(PERMISOS_REPULSE.EXCLUDE.modulo, PERMISOS_REPULSE.EXCLUDE.accion);
+  if (!permissionCheck.ok) {
+    return { success: false, error: permissionCheck.error || 'No autorizado para excluir leads de Repulse' };
+  }
+
   const supabase = await createClient();
 
   // Marcar en la tabla leads

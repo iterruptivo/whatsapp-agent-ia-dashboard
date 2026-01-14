@@ -7,6 +7,9 @@
 //   - DNI peruano frente (numero, nombres, apellidos, fecha nacimiento)
 //   - DNI peruano reverso (departamento, provincia, distrito, direccion, ubigeo)
 //   - Boletas/Facturas (serie, numero, fecha, monto, RUC)
+//   - Recibo luz/agua (titular, dni_titular, direccion, suministro, mes, empresa)
+//   - Ficha RUC (ruc, razon social, tipo, estado, direccion fiscal, representante)
+//   - Declaracion jurada (nombre_completo, dni, direccion)
 // ============================================================================
 
 'use server';
@@ -76,7 +79,56 @@ export interface OCRDNIReversoResult {
   raw_response?: string;
 }
 
-export type OCRDocumentType = 'voucher' | 'dni' | 'boleta' | 'dni_reverso';
+export type OCRDocumentType = 'voucher' | 'dni' | 'boleta' | 'dni_reverso' | 'recibo_luz' | 'ficha_ruc' | 'declaracion_jurada';
+
+// ============================================================================
+// Nuevos tipos para módulo Expansión (Corredores)
+// ============================================================================
+
+export interface OCRReciboLuzResult {
+  success: boolean;
+  data?: {
+    es_documento_valido: boolean;
+    titular: string;
+    dni_titular: string | null;
+    direccion: string;
+    suministro: string;
+    mes_facturado: string;
+    empresa: string;
+    confianza: number;
+  };
+  error?: string;
+  raw_response?: string;
+}
+
+export interface OCRFichaRUCResult {
+  success: boolean;
+  data?: {
+    es_documento_valido: boolean;
+    ruc: string;
+    razon_social: string;
+    tipo_contribuyente: string;
+    estado: string;
+    direccion_fiscal: string;
+    representante_legal: string;
+    confianza: number;
+  };
+  error?: string;
+  raw_response?: string;
+}
+
+export interface OCRDeclaracionJuradaResult {
+  success: boolean;
+  data?: {
+    es_documento_valido: boolean;
+    nombre_completo: string;
+    dni: string;
+    direccion: string;
+    confianza: number;
+  };
+  error?: string;
+  raw_response?: string;
+}
 
 // ============================================================================
 // SISTEMA: Contexto empresarial para GPT-4 Vision
@@ -247,6 +299,141 @@ Responde con este JSON:
 Si no puedes leer algun campo, usa null. El campo confianza es un numero de 0 a 100.`;
 
 // ============================================================================
+// PROMPTS PARA MÓDULO EXPANSIÓN (CORREDORES)
+// ============================================================================
+
+const PROMPT_RECIBO_LUZ = `PRIMERO: Verifica si esta imagen es realmente un RECIBO DE LUZ/AGUA peruano.
+
+Un recibo de servicios válido tiene:
+- Logo de una empresa eléctrica (Luz del Sur, Enel, Hidrandina, etc.) o de agua (Sedapal, Sedalib, etc.)
+- Número de suministro o código de cliente
+- Nombre del titular del servicio
+- Dirección del predio/inmueble
+- Mes o período facturado
+- Monto a pagar
+
+SI LA IMAGEN NO ES UN RECIBO DE LUZ/AGUA (por ejemplo: una foto cualquiera, otro documento, etc.):
+Responde con este JSON:
+{
+  "es_documento_valido": false,
+  "tipo_detectado": "descripcion breve de lo que es la imagen",
+  "mensaje_error": "La imagen no corresponde a un recibo de luz o agua. Por favor sube una foto clara de tu recibo de servicio público."
+}
+
+SI LA IMAGEN ES UN RECIBO VÁLIDO:
+Extrae los siguientes datos:
+1. Nombre completo del titular del servicio
+2. DNI del titular (si está visible, puede ser null)
+3. Dirección completa del predio/inmueble
+4. Número de suministro o código de cliente
+5. Mes/período facturado (ejemplo: "Enero 2026", "Dic-2025")
+6. Nombre de la empresa (Luz del Sur, Enel, Sedapal, etc.)
+
+Responde con este JSON:
+{
+  "es_documento_valido": true,
+  "titular": "JUAN CARLOS PEREZ GARCIA",
+  "dni_titular": "12345678",
+  "direccion": "AV. LARCO 123 URB. AURORA, MIRAFLORES, LIMA",
+  "suministro": "12345678",
+  "mes_facturado": "Diciembre 2025",
+  "empresa": "Luz del Sur",
+  "confianza": 90
+}
+
+IMPORTANTE:
+- Si no puedes leer el DNI del titular, usa null (no "N/A")
+- Si no puedes leer otros campos, usa "N/A"
+- El campo confianza es un numero de 0 a 100
+- La dirección debe ser completa incluyendo distrito y ciudad si están visibles`;
+
+const PROMPT_FICHA_RUC = `PRIMERO: Verifica si esta imagen es realmente una FICHA RUC de SUNAT (Perú).
+
+Una ficha RUC válida tiene:
+- Logo de SUNAT
+- Título "Ficha RUC" o "Constancia de Información Registrada"
+- Número de RUC (11 dígitos)
+- Razón social o nombre
+- Tipo de contribuyente
+- Estado del contribuyente
+- Dirección fiscal
+
+SI LA IMAGEN NO ES UNA FICHA RUC (por ejemplo: una foto cualquiera, otro documento, etc.):
+Responde con este JSON:
+{
+  "es_documento_valido": false,
+  "tipo_detectado": "descripcion breve de lo que es la imagen",
+  "mensaje_error": "La imagen no corresponde a una Ficha RUC de SUNAT. Por favor sube una foto clara de tu ficha RUC."
+}
+
+SI LA IMAGEN ES UNA FICHA RUC VÁLIDA:
+Extrae los siguientes datos:
+1. Número de RUC (11 dígitos)
+2. Razón social (nombre de la empresa)
+3. Tipo de contribuyente (Persona Natural con Negocio, Sociedad Anónima, etc.)
+4. Estado del contribuyente (Activo, Suspensión Temporal, etc.)
+5. Dirección fiscal completa
+6. Nombre del representante legal (si está visible)
+
+Responde con este JSON:
+{
+  "es_documento_valido": true,
+  "ruc": "20600695771",
+  "razon_social": "INMOBILIARIA ECOPLAZA S.A.C.",
+  "tipo_contribuyente": "SOCIEDAD ANONIMA CERRADA",
+  "estado": "ACTIVO",
+  "direccion_fiscal": "AV. LARCO 123, MIRAFLORES, LIMA, LIMA",
+  "representante_legal": "JUAN CARLOS PEREZ GARCIA",
+  "confianza": 95
+}
+
+Si no puedes leer algún campo, usa "N/A". El campo confianza es un numero de 0 a 100.`;
+
+const PROMPT_DECLARACION_JURADA = `PRIMERO: Verifica si esta imagen es realmente una DECLARACIÓN JURADA DE DOMICILIO peruana.
+
+Una declaración jurada válida es un documento legal donde:
+- Una persona declara bajo juramento su dirección de domicilio
+- Contiene nombre completo del declarante
+- Contiene DNI del declarante
+- Contiene dirección completa declarada
+- Puede tener firma del declarante
+- Puede tener fecha de emisión
+- Puede incluir texto legal como "Declaro bajo juramento", "Ante usted", etc.
+
+CONTEXTO LEGAL:
+La declaración jurada es un documento legal usado en Perú para acreditar el domicilio de una persona cuando no se dispone de un recibo de servicios a su nombre. Es válido para trámites administrativos y legales.
+
+SI LA IMAGEN NO ES UNA DECLARACIÓN JURADA (por ejemplo: una foto cualquiera, otro documento, etc.):
+Responde con este JSON:
+{
+  "es_documento_valido": false,
+  "tipo_detectado": "descripcion breve de lo que es la imagen",
+  "mensaje_error": "La imagen no corresponde a una declaración jurada de domicilio. Por favor sube una foto clara de tu declaración jurada."
+}
+
+SI LA IMAGEN ES UNA DECLARACIÓN JURADA VÁLIDA:
+Extrae los siguientes datos:
+1. Nombre completo de la persona que declara
+2. DNI de la persona
+3. Dirección completa declarada (calle, número, urbanización, distrito, provincia, departamento)
+
+Responde con este JSON:
+{
+  "es_documento_valido": true,
+  "nombre_completo": "JUAN CARLOS PEREZ GARCIA",
+  "dni": "12345678",
+  "direccion": "AV. LARCO 123 URB. AURORA, MIRAFLORES, LIMA, LIMA",
+  "confianza": 85
+}
+
+IMPORTANTE:
+- Si no puedes leer algún campo claramente, usa "N/A"
+- El DNI debe ser de 8 dígitos
+- La dirección debe ser completa incluyendo distrito y ciudad
+- El campo confianza es un numero de 0 a 100
+- Ten en cuenta que puede ser un documento escrito a mano o impreso`;
+
+// ============================================================================
 // FUNCION PRINCIPAL: Extraer datos con GPT-4 Vision
 // ============================================================================
 
@@ -254,7 +441,7 @@ export async function extractDocumentData(
   imageBase64: string,
   documentType: OCRDocumentType,
   mimeType: string = 'image/jpeg'
-): Promise<OCRVoucherResult | OCRDNIResult | OCRBoletaResult | OCRDNIReversoResult> {
+): Promise<OCRVoucherResult | OCRDNIResult | OCRBoletaResult | OCRDNIReversoResult | OCRReciboLuzResult | OCRFichaRUCResult | OCRDeclaracionJuradaResult> {
   try {
     const apiKey = process.env.OPENAI_API_KEY;
 
@@ -279,6 +466,15 @@ export async function extractDocumentData(
         break;
       case 'dni_reverso':
         prompt = PROMPT_DNI_REVERSO;
+        break;
+      case 'recibo_luz':
+        prompt = PROMPT_RECIBO_LUZ;
+        break;
+      case 'ficha_ruc':
+        prompt = PROMPT_FICHA_RUC;
+        break;
+      case 'declaracion_jurada':
+        prompt = PROMPT_DECLARACION_JURADA;
         break;
       default:
         return { success: false, error: 'Tipo de documento no soportado' };
@@ -439,6 +635,27 @@ export async function extractDNIReversoData(
   mimeType: string = 'image/jpeg'
 ): Promise<OCRDNIReversoResult> {
   return extractDocumentData(imageBase64, 'dni_reverso', mimeType) as Promise<OCRDNIReversoResult>;
+}
+
+export async function extractReciboLuzData(
+  imageBase64: string,
+  mimeType: string = 'image/jpeg'
+): Promise<OCRReciboLuzResult> {
+  return extractDocumentData(imageBase64, 'recibo_luz', mimeType) as Promise<OCRReciboLuzResult>;
+}
+
+export async function extractFichaRUCData(
+  imageBase64: string,
+  mimeType: string = 'image/jpeg'
+): Promise<OCRFichaRUCResult> {
+  return extractDocumentData(imageBase64, 'ficha_ruc', mimeType) as Promise<OCRFichaRUCResult>;
+}
+
+export async function extractDeclaracionJuradaData(
+  imageBase64: string,
+  mimeType: string = 'image/jpeg'
+): Promise<OCRDeclaracionJuradaResult> {
+  return extractDocumentData(imageBase64, 'declaracion_jurada', mimeType) as Promise<OCRDeclaracionJuradaResult>;
 }
 
 // ============================================================================

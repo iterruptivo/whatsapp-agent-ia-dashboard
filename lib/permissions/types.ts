@@ -84,6 +84,9 @@ export const MODULOS = {
   // Otros
   REUNIONES: 'reuniones',
   CONFIGURACION: 'configuracion',
+
+  // Expansión (Corredores)
+  EXPANSION: 'expansion',
 } as const;
 
 export type Modulo = typeof MODULOS[keyof typeof MODULOS];
@@ -131,6 +134,7 @@ export const ACCIONES = {
   WEBHOOKS: 'webhooks',                   // Configuración: webhooks
   INTEGRACIONES: 'integraciones',         // Configuración: APIs externas
   EXCLUDE: 'exclude',                     // Repulse: excluir leads
+  OBSERVE: 'observe',                     // Expansión: observar registro
 } as const;
 
 export type Accion = typeof ACCIONES[keyof typeof ACCIONES];
@@ -267,6 +271,18 @@ export const PERMISOS_CONFIGURACION = {
   WRITE: { modulo: MODULOS.CONFIGURACION, accion: ACCIONES.WRITE },
   WEBHOOKS: { modulo: MODULOS.CONFIGURACION, accion: ACCIONES.WEBHOOKS },
   INTEGRACIONES: { modulo: MODULOS.CONFIGURACION, accion: ACCIONES.INTEGRACIONES },
+} as const;
+
+/**
+ * Permisos del módulo EXPANSION (6 permisos) - Corredores externos
+ */
+export const PERMISOS_EXPANSION = {
+  READ: { modulo: MODULOS.EXPANSION, accion: ACCIONES.READ },           // Corredor: ver su registro
+  READ_ALL: { modulo: MODULOS.EXPANSION, accion: ACCIONES.READ_ALL },   // Admin/Legal: ver todos
+  WRITE: { modulo: MODULOS.EXPANSION, accion: ACCIONES.WRITE },         // Corredor: crear/editar registro
+  APPROVE: { modulo: MODULOS.EXPANSION, accion: ACCIONES.APPROVE },     // Legal/Admin: aprobar
+  REJECT: { modulo: MODULOS.EXPANSION, accion: ACCIONES.REJECT },       // Legal/Admin: rechazar
+  OBSERVE: { modulo: MODULOS.EXPANSION, accion: ACCIONES.OBSERVE },     // Legal/Admin: observar
 } as const;
 
 // ============================================================================

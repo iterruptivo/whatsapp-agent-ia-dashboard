@@ -7,6 +7,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 import Sidebar from '@/components/shared/Sidebar';
 import ProyectoSelector from '@/components/dashboard/ProyectoSelector';
+import { NotificationContainer } from '@/components/notifications';
 
 interface DashboardHeaderProps {
   title: string;
@@ -70,8 +71,11 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
             ) : user ? (
               // User logged in
               <div className="flex items-center gap-2 sm:gap-3">
-                {/* Proyecto Selector - Cambiar proyecto sin logout */}
-                <ProyectoSelector />
+                {/* Notification Bell */}
+                <NotificationContainer />
+
+                {/* Proyecto Selector - Cambiar proyecto sin logout (hidden for corredor) */}
+                {user.rol !== 'corredor' && <ProyectoSelector />}
 
                 {/* User Info - Hidden on mobile */}
                 <div className="hidden sm:flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-lg">
@@ -93,6 +97,8 @@ export default function DashboardHeader({ title, subtitle }: DashboardHeaderProp
                         ? 'Coordinador'
                         : user.rol === 'marketing'
                         ? 'Marketing'
+                        : user.rol === 'corredor'
+                        ? 'Corredor'
                         : 'Finanzas'}
                     </p>
                   </div>

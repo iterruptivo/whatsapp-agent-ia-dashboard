@@ -3,7 +3,7 @@
 // ============================================================================
 // Ruta: /admin/usuarios
 // Descripción: CRUD de usuarios del sistema
-// Acceso: Solo admin
+// Acceso: Requiere permiso usuarios:read (RBAC)
 // ============================================================================
 
 'use client';
@@ -18,6 +18,8 @@ import {
   getUsuariosStats,
   type UsuarioConDatos,
 } from '@/lib/actions-usuarios';
+import { canCurrentUser } from '@/lib/permissions/server';
+import { isRBACEnabled } from '@/lib/permissions/types';
 
 export default function AdminUsuariosPage() {
   const router = useRouter();
@@ -30,13 +32,32 @@ export default function AdminUsuariosPage() {
     porRol: {} as Record<string, number>,
   });
   const [loadingData, setLoadingData] = useState(true);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
 
-  // Redirect if not authenticated or not admin/superadmin
+  // RBAC: Verificar permiso usuarios:read
+  useEffect(() => {
+    async function checkAccess() {
+      if (!loading && user) {
+        // Si RBAC está habilitado, verificar permiso; si no, usar legacy
+        if (isRBACEnabled()) {
+          const canRead = await canCurrentUser('usuarios', 'read');
+          setHasAccess(canRead);
+        } else {
+          // Fallback legacy: solo admin y superadmin
+          const hasLegacyAccess = user.rol === 'admin' || user.rol === 'superadmin';
+          setHasAccess(hasLegacyAccess);
+        }
+      }
+    }
+    checkAccess();
+  }, [user, loading]);
+
+  // Redirect if not authenticated or no access
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push('/login');
-      } else if (user.rol !== 'superadmin' && user.rol !== 'admin') {
+      } else if (hasAccess === false) {
         // Redirect según rol
         if (user.rol === 'vendedor') {
           router.push('/operativo');
@@ -45,14 +66,14 @@ export default function AdminUsuariosPage() {
         }
       }
     }
-  }, [user, loading, router]);
+  }, [user, loading, hasAccess, router]);
 
   // Fetch data
   useEffect(() => {
-    if (user && (user.rol === 'superadmin' || user.rol === 'admin')) {
+    if (hasAccess === true) {
       fetchData();
     }
-  }, [user]);
+  }, [hasAccess]);
 
   const fetchData = async () => {
     setLoadingData(true);
@@ -70,8 +91,8 @@ export default function AdminUsuariosPage() {
     }
   };
 
-  // Show loading while auth is loading
-  if (loading || !user) {
+  // Show loading while auth is loading or access check is pending
+  if (loading || !user || hasAccess === null) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -82,8 +103,8 @@ export default function AdminUsuariosPage() {
     );
   }
 
-  // Only render for admin/superadmin
-  if (user.rol !== 'superadmin' && user.rol !== 'admin') {
+  // Only render if has access
+  if (hasAccess === false) {
     return null;
   }
 

@@ -3,7 +3,7 @@
 // ============================================================================
 // Descripcion: Detalle completo de una reunión con tabs
 // Features: Resumen, Action Items, Transcripción
-// Acceso: admin, gerencia, jefe_ventas
+// Acceso: superadmin, admin, jefe_ventas
 // ============================================================================
 
 'use client';
@@ -37,7 +37,7 @@ export default function ReunionDetallePage() {
   // Verificar acceso
   useEffect(() => {
     if (!authLoading && user) {
-      if (user.rol !== 'admin' && user.rol !== 'gerencia' && user.rol !== 'jefe_ventas') {
+      if (user.rol !== 'superadmin' && user.rol !== 'admin' && user.rol !== 'jefe_ventas') {
         router.push('/');
       }
     }
@@ -74,7 +74,7 @@ export default function ReunionDetallePage() {
     );
   }
 
-  if (!user || (user.rol !== 'admin' && user.rol !== 'gerencia' && user.rol !== 'jefe_ventas')) {
+  if (!user || (user.rol !== 'superadmin' && user.rol !== 'admin' && user.rol !== 'jefe_ventas')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">

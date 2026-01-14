@@ -27,10 +27,15 @@ export default function AprobacionesPage() {
     rechazadas: number;
   } | null>(null);
 
-  // Verificar acceso
+  // ============================================================================
+  // VALIDACIÓN DE ACCESO - PREPARADO PARA RBAC (Grupo 2)
+  // ============================================================================
+  // PERMISO REQUERIDO: aprobaciones:read (PERMISOS_APROBACIONES.READ)
+  // ROLES ACTUALES: admin, jefe_ventas
+  // ============================================================================
   useEffect(() => {
     if (!authLoading && user) {
-      // Solo admin y jefe_ventas pueden acceder
+      // Validación legacy (será reemplazada por RBAC cuando se active)
       if (user.rol !== 'admin' && user.rol !== 'jefe_ventas') {
         router.push('/');
       }

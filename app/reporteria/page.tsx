@@ -5,23 +5,44 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import ReporteriaClient from '@/components/reporteria/ReporteriaClient';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
+import { canCurrentUser } from '@/lib/permissions/server';
+import { isRBACEnabled } from '@/lib/permissions/types';
 
 export default function ReporteriaPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [showAccessDenied, setShowAccessDenied] = useState(false);
+  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+
+  // RBAC: Verificar permiso insights:read
+  useEffect(() => {
+    async function checkAccess() {
+      if (!loading && user) {
+        // Si RBAC está habilitado, verificar permiso; si no, usar legacy
+        if (isRBACEnabled()) {
+          const canRead = await canCurrentUser('insights', 'read');
+          setHasAccess(canRead);
+        } else {
+          // Fallback legacy: admin, jefe_ventas, marketing
+          const hasLegacyAccess = user.rol === 'admin' || user.rol === 'jefe_ventas' || user.rol === 'marketing';
+          setHasAccess(hasLegacyAccess);
+        }
+      }
+    }
+    checkAccess();
+  }, [user, loading]);
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push('/login');
-      } else if (user.rol !== 'admin' && user.rol !== 'jefe_ventas' && user.rol !== 'marketing') {
+      } else if (hasAccess === false) {
         setShowAccessDenied(true);
       }
     }
-  }, [user, loading, router]);
+  }, [user, loading, hasAccess, router]);
 
-  if (loading) {
+  if (loading || hasAccess === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-3">

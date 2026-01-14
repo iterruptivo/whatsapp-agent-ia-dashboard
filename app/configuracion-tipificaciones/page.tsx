@@ -53,7 +53,12 @@ export default function ConfiguracionTipificacionesPage() {
   const [editForm, setEditForm] = useState({ nivel: 1 as 1 | 2 | 3, id: '', label: '' });
   const [isSaving, setIsSaving] = useState(false);
 
-  // Only admin can access
+  // ============================================================================
+  // VALIDACIÓN DE ACCESO - PREPARADO PARA RBAC (Grupo 2)
+  // ============================================================================
+  // PERMISO REQUERIDO: configuracion:write (PERMISOS_CONFIGURACION.WRITE)
+  // ROLES ACTUALES: admin
+  // ============================================================================
   useEffect(() => {
     if (user && user.rol !== 'admin') {
       router.push('/operativo');

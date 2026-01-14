@@ -93,12 +93,13 @@ export async function POST(request: NextRequest) {
     // The actual login will happen after proyecto selection
     await supabase.auth.signOut();
 
-    // Return success with user info
+    // Return success with user info (including rol)
     return NextResponse.json({
       success: true,
       user: {
         nombre: userData.nombre,
         email: userData.email,
+        rol: userData.rol,
       }
     });
 

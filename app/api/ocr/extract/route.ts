@@ -2,7 +2,7 @@
 // API ROUTE: /api/ocr/extract
 // ============================================================================
 // Extrae datos de documentos usando GPT-4 Vision
-// Tipos soportados: voucher, dni, dni_reverso, boleta
+// Tipos soportados: voucher, dni, dni_reverso, boleta, recibo_luz, declaracion_jurada
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,6 +11,8 @@ import {
   extractDNIData,
   extractBoletaData,
   extractDNIReversoData,
+  extractReciboLuzData,
+  extractDeclaracionJuradaData,
   OCRDocumentType,
 } from '@/lib/actions-ocr';
 
@@ -32,9 +34,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!type || !['voucher', 'dni', 'boleta', 'dni_reverso'].includes(type)) {
+    if (!type || !['voucher', 'dni', 'boleta', 'dni_reverso', 'recibo_luz', 'declaracion_jurada'].includes(type)) {
       return NextResponse.json(
-        { success: false, error: 'Tipo de documento invalido. Use: voucher, dni, boleta, dni_reverso' },
+        { success: false, error: 'Tipo de documento invalido. Use: voucher, dni, boleta, dni_reverso, recibo_luz, declaracion_jurada' },
         { status: 400 }
       );
     }
@@ -64,6 +66,12 @@ export async function POST(request: NextRequest) {
         break;
       case 'dni_reverso':
         result = await extractDNIReversoData(image, mime);
+        break;
+      case 'recibo_luz':
+        result = await extractReciboLuzData(image, mime);
+        break;
+      case 'declaracion_jurada':
+        result = await extractDeclaracionJuradaData(image, mime);
         break;
       default:
         return NextResponse.json(

@@ -26,6 +26,7 @@ export default function LoginV2Page() {
   const [loginState, setLoginState] = useState<LoginState>('idle');
   const [error, setError] = useState('');
   const [userName, setUserName] = useState('');
+  const [userRol, setUserRol] = useState('');
 
   // Check for URL error parameter (e.g., ?error=deactivated)
   useEffect(() => {
@@ -84,6 +85,31 @@ export default function LoginV2Page() {
 
       // Credentials are valid!
       setUserName(data.user.nombre);
+      setUserRol(data.user.rol);
+
+      // SPECIAL CASE: Corredores skip proyecto selection
+      if (data.user.rol === 'corredor') {
+        setLoginState('logging_in');
+
+        // Login directly (corredores don't need proyecto)
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (authError || !authData.user) {
+          setError('Error al iniciar sesión. Intenta nuevamente.');
+          setLoginState('error');
+          setTimeout(() => setLoginState('idle'), 500);
+          return;
+        }
+
+        // Redirect directly to /expansion/registro
+        router.push('/expansion/registro');
+        return;
+      }
+
+      // For other roles: show proyecto selector
       setLoginState('credentials_valid');
 
       // Fetch proyectos for step 2
@@ -240,7 +266,7 @@ export default function LoginV2Page() {
               )}
 
               {/* Success Message - Welcome user */}
-              {showProyectoSelector && (
+              {showProyectoSelector && userRol !== 'corredor' && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3 animate-slideDown">
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                   <div>
@@ -295,8 +321,8 @@ export default function LoginV2Page() {
                 </div>
               </div>
 
-              {/* Proyecto Dropdown - ANIMATED REVEAL (hidden until credentials validated) */}
-              {showProyectoSelector && (
+              {/* Proyecto Dropdown - ANIMATED REVEAL (hidden until credentials validated and not corredor) */}
+              {showProyectoSelector && userRol !== 'corredor' && (
                 <div className="animate-slideDown">
                   <label htmlFor="proyecto" className="block text-sm font-medium text-gray-700 mb-2">
                     Proyecto

@@ -92,7 +92,7 @@ export default function Home() {
     <div className="min-h-screen">
       {/* Header with logout button */}
       <DashboardHeader
-        title="Insights"
+        title="Estadísticas"
         subtitle={`Gestión de Leads - ${selectedProyecto.nombre}`}
       />
 

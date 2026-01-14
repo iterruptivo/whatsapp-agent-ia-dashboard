@@ -3,7 +3,7 @@
 // ============================================================================
 // Descripcion: Lista de reuniones y transcripciones
 // Features: Tabla, filtros, nueva reunion modal
-// Acceso: admin, gerencia, jefe_ventas
+// Acceso: superadmin, admin, jefe_ventas
 // NOTA: Reuniones son GLOBALES - no dependen del proyecto seleccionado
 // ============================================================================
 
@@ -23,11 +23,16 @@ export default function ReunionesPage() {
   const [showModal, setShowModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Verificar acceso
+  // ============================================================================
+  // VALIDACIÓN DE ACCESO - PREPARADO PARA RBAC (Grupo 2)
+  // ============================================================================
+  // PERMISO REQUERIDO: reuniones:read (PERMISOS_REUNIONES.READ)
+  // ROLES ACTUALES: superadmin, admin, jefe_ventas
+  // ============================================================================
   useEffect(() => {
     if (!authLoading && user) {
-      // Solo admin, gerencia y jefe_ventas pueden acceder
-      if (user.rol !== 'admin' && user.rol !== 'gerencia' && user.rol !== 'jefe_ventas') {
+      // Solo superadmin, admin y jefe_ventas pueden acceder
+      if (user.rol !== 'superadmin' && user.rol !== 'admin' && user.rol !== 'jefe_ventas') {
         router.push('/');
       }
     }
@@ -41,7 +46,7 @@ export default function ReunionesPage() {
     );
   }
 
-  if (!user || (user.rol !== 'admin' && user.rol !== 'gerencia' && user.rol !== 'jefe_ventas')) {
+  if (!user || (user.rol !== 'superadmin' && user.rol !== 'admin' && user.rol !== 'jefe_ventas')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">

@@ -15,6 +15,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
+    "@marsidev/react-turnstile": "^1.4.1",
     "@reduxjs/toolkit": "^2.11.1",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.12",
@@ -22,6 +23,7 @@
     "@types/swagger-ui-react": "^5.18.0",
     "browser-image-compression": "^2.0.2",
     "cmdk": "^1.1.1",
+    "date-fns": "^4.1.0",
     "docx-templates": "^4.15.0",
     "emoji-picker-react": "^4.16.1",
     "ffmpeg-static": "^5.3.0",
@@ -43,6 +45,7 @@
     "react-is": "^19.2.3",
     "react-phone-number-input": "^3.4.14",
     "recharts": "^3.2.1",
+    "sonner": "^2.0.7",
     "swagger-ui-react": "^5.31.0",
     "xlsx": "^0.18.5"
   },

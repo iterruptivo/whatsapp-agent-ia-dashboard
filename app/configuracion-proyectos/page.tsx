@@ -76,6 +76,13 @@ export default function ConfiguracionProyectos() {
   // SESIÓN 54: Estado de usuarios para comisiones
   const [todosUsuarios, setTodosUsuarios] = useState<Usuario[]>([]);
 
+  // ============================================================================
+  // VALIDACIÓN DE ACCESO - PREPARADO PARA RBAC (Grupo 2)
+  // ============================================================================
+  // PERMISO REQUERIDO: proyectos:config (PERMISOS_PROYECTOS.CONFIG)
+  // ROLES ACTUALES: Sin restricción (solo autenticación)
+  // NOTA: Cuando RBAC esté activo, validar proyectos:config
+  // ============================================================================
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');

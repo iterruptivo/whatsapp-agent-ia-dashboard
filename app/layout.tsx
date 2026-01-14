@@ -5,6 +5,7 @@ import { AnalyticsProvider } from "@/lib/analytics";
 import { SherpaWidget } from "@/components/shared/SherpaWidget";
 import { NewVersionBanner } from "@/components/shared/NewVersionBanner";
 import { DevModeIndicator } from "@/components/shared/DevModeIndicator";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -59,6 +60,14 @@ export default function RootLayout({
 
         {/* Sherpa Widget - Centro de Ayuda */}
         <SherpaWidget />
+
+        {/* Toast Notifications - sonner */}
+        <Toaster
+          position="top-right"
+          richColors
+          closeButton
+          duration={4000}
+        />
       </body>
     </html>
   );

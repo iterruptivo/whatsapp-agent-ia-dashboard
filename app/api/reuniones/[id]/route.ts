@@ -110,7 +110,7 @@ export async function PATCH(
       );
     }
 
-    // Verificar permisos (solo admin, gerencia, jefe_ventas)
+    // Verificar permisos (solo superadmin, admin, jefe_ventas)
     const { data: perfil, error: perfilError } = await supabase
       .from('usuarios')
       .select('rol')
@@ -125,7 +125,7 @@ export async function PATCH(
       );
     }
 
-    const rolesPermitidos = ['admin', 'gerencia', 'jefe_ventas'];
+    const rolesPermitidos = ['superadmin', 'admin', 'jefe_ventas'];
     if (!rolesPermitidos.includes(perfil.rol)) {
       return NextResponse.json(
         { success: false, error: 'No tienes permisos para editar reuniones' },
