@@ -77,6 +77,9 @@ export async function hasPermission(
     const cachedPermissions = getPermisosFromCache(userId);
 
     if (cachedPermissions) {
+      // SAFETY CHECK: Superadmin SIEMPRE tiene todos los permisos
+      if (cachedPermissions.rol === 'superadmin') return true;
+
       // Cache hit - verificar permiso
       return checkPermissionInMemory(cachedPermissions, modulo, accion);
     }
@@ -92,8 +95,21 @@ export async function hasPermission(
     // PASO 3: Guardar en cache
     setPermisosInCache(userId, permissions);
 
+    // SAFETY CHECK: Superadmin SIEMPRE tiene todos los permisos
+    if (permissions.rol === 'superadmin') return true;
+
     // PASO 4: Verificar permiso
-    return checkPermissionInMemory(permissions, modulo, accion);
+    const hasAccess = checkPermissionInMemory(permissions, modulo, accion);
+
+    // DEBUG: Log si superadmin no tiene un permiso (no debería pasar)
+    if (!hasAccess && permissions.rol === 'superadmin') {
+      console.error(
+        `[RBAC] ⚠️ CRITICAL: Superadmin sin permiso ${modulo}:${accion}`,
+        'Ejecutar: migrations/fix_superadmin_permisos_urgent.sql'
+      );
+    }
+
+    return hasAccess;
   } catch (error) {
     console.error('[RBAC] Error en hasPermission:', error);
     // En caso de error, denegar acceso por seguridad
@@ -288,6 +304,12 @@ function checkPermissionInMemory(
   modulo: string,
   accion: string
 ): boolean {
+  // HOTFIX: leads:assign está habilitado para TODOS los roles EXCEPTO corredor
+  // Esto permite asignación de leads para demo y operación normal
+  if (modulo === 'leads' && accion === 'assign') {
+    return permissions.rol !== 'corredor';
+  }
+
   // Verificar en permisos del rol
   const hasInRole = permissions.permisos.some(
     (p) => p.modulo === modulo && p.accion === accion
@@ -333,8 +355,13 @@ async function checkPermissionLegacy(
 
     const rol = userData.rol;
 
-    // Admin tiene todos los permisos
-    if (rol === 'admin') return true;
+    // HOTFIX: leads:assign está habilitado para TODOS los roles EXCEPTO corredor
+    if (modulo === 'leads' && accion === 'assign' && rol !== 'corredor') {
+      return true;
+    }
+
+    // Superadmin y Admin tienen todos los permisos
+    if (rol === 'superadmin' || rol === 'admin') return true;
 
     // Jefe de ventas y gerencia (legacy) tienen casi todos los permisos
     if (rol === 'jefe_ventas' || rol === 'gerencia') {

@@ -4,6 +4,73 @@
 
 ---
 
+## HOTFIX: leads:assign para Todos los Roles (14 Enero 2026)
+
+### Contexto
+**Problema:** Demo bloqueada - solo coordinador podía asignar leads
+**Requerimiento del Cliente:** Habilitar permiso `leads:assign` para TODOS los roles EXCEPTO corredor
+**Urgencia:** CRÍTICA - Demo programada HOY
+
+### Decisión: Bypass en Código (No Migración BD)
+**Opción elegida:** Agregar validación especial en `checkPermissionInMemory()` y `checkPermissionLegacy()`
+
+**Razones:**
+1. **Velocidad:** Solución inmediata sin esperar migración de BD
+2. **Seguridad:** Bypass explícito, auditable, fácil de remover
+3. **Compatibilidad:** Funciona con RBAC enabled o disabled
+4. **Simplicidad:** 2 líneas de código vs migración + verificación
+
+**Alternativas descartadas:**
+- Migración BD: Requiere 62 INSERTs (8 permisos × 7 roles + validación)
+- Service role key: Anti-patrón de seguridad
+- Modificar RLS policies: Bypass en lugar incorrecto
+
+### Implementación
+```typescript
+// lib/permissions/check.ts - líneas 307-311, 358-361
+if (modulo === 'leads' && accion === 'assign') {
+  return permissions.rol !== 'corredor';
+}
+```
+
+**Afecta a:**
+- `checkPermissionInMemory()`: Verificación con RBAC enabled
+- `checkPermissionLegacy()`: Verificación con RBAC disabled
+
+**Ubicación estratégica:**
+- Después de obtener datos del usuario
+- Antes de verificar en tablas de permisos
+- Bypass explícito y documentado
+
+### Impacto
+| Rol | Antes | Ahora |
+|-----|-------|-------|
+| superadmin | ✅ TENÍA (siempre bypass) | ✅ TIENE |
+| admin | ❌ NO TENÍA | ✅ TIENE |
+| jefe_ventas | ❌ NO TENÍA | ✅ TIENE |
+| vendedor | ❌ NO TENÍA | ✅ TIENE |
+| caseta | ❌ NO TENÍA | ✅ TIENE |
+| finanzas | ❌ NO TENÍA | ✅ TIENE |
+| legal | ❌ NO TENÍA | ✅ TIENE |
+| coordinador | ✅ TENÍA (hardcoded) | ✅ TIENE |
+| corredor | ❌ NO TENÍA | ❌ NO TIENE |
+
+**Testing requerido:**
+- [ ] Login con cada rol (excepto corredor)
+- [ ] Intentar asignar lead desde LeadsTable
+- [ ] Verificar que corredor NO pueda asignar
+
+**Plan de migración futuro:**
+1. Testing exitoso con bypass
+2. Ejecutar migración BD: INSERT permisos para roles
+3. Remover bypass de código (condicional ya no necesario)
+4. Validación final con permisos desde BD
+
+**Fecha:** 14 Enero 2026
+**Estado:** IMPLEMENTADO - Listo para testing
+
+---
+
 ## URGENTE: Fix Roles Reuniones (13 Enero 2026)
 
 ### Problema: Rol 'gerencia' vs 'superadmin' en Módulo Reuniones

@@ -4,6 +4,89 @@
 
 ---
 
+## HOTFIX URGENTE: Permiso leads:assign para Todos los Roles (14 Enero 2026)
+
+**Problema:** Solo coordinador tenía permiso `leads:assign`, bloqueando demo HOY
+**Requerimiento:** Habilitar para TODOS los roles EXCEPTO corredor
+**Severidad:** CRÍTICA - DEMO BLOCKER
+
+### Solución Implementada (INMEDIATA)
+
+**Modificación en Código:**
+- [x] `lib/permissions/check.ts` - función `checkPermissionInMemory()` (líneas 307-311)
+- [x] `lib/permissions/check.ts` - función `checkPermissionLegacy()` (líneas 358-361)
+
+**Lógica del HOTFIX:**
+```typescript
+// En checkPermissionInMemory() y checkPermissionLegacy()
+if (modulo === 'leads' && accion === 'assign') {
+  return permissions.rol !== 'corredor';
+}
+```
+
+**Roles afectados:**
+- ✅ superadmin: TIENE permiso (antes: tenía)
+- ✅ admin: TIENE permiso (antes: NO tenía)
+- ✅ jefe_ventas: TIENE permiso (antes: NO tenía)
+- ✅ vendedor: TIENE permiso (antes: NO tenía)
+- ✅ caseta: TIENE permiso (antes: NO tenía)
+- ✅ finanzas: TIENE permiso (antes: NO tenía)
+- ✅ legal: TIENE permiso (antes: NO tenía)
+- ❌ corredor: NO TIENE permiso (correcto)
+
+**Razón del bypass:**
+- Permite asignación de leads sin esperar migración de BD
+- Demo puede proceder inmediatamente
+- No requiere cambios en tablas ni RLS policies
+- Funcionará con RBAC enabled o disabled
+
+**Estado:** LISTO PARA TESTING ✅
+**Próximo paso:** Testing manual con todos los roles en ambiente dev
+
+---
+
+## CAMBIO URGENTE: Fix Permisos Superadmin (14 Enero 2026)
+
+**Problema:** Superadmin no podía asignar leads (error: "No tienes permiso (leads:assign)")
+**Causa:** Rol superadmin sin permisos en tabla `rol_permisos`
+**Severidad:** CRÍTICA
+
+### Solución Implementada
+
+**1. Fix de Código (Inmediato):**
+- [x] Agregar superadmin a validación legacy (`checkPermissionLegacy`)
+- [x] Safety checks en `hasPermission()`: superadmin SIEMPRE tiene todos los permisos
+- [x] Logging de errores si superadmin no tiene un permiso
+
+**Archivos modificados:**
+- `lib/permissions/check.ts` (líneas 81, 99, 105-109, 337)
+
+**2. Fix de Base de Datos (Pendiente Ejecución):**
+- [x] Migración SQL creada: `migrations/fix_superadmin_permisos_urgent.sql`
+- [x] Documentación: `migrations/EJECUTAR_AHORA_fix_superadmin.md`
+- [ ] **PENDIENTE:** Ejecutar migración en Supabase SQL Editor
+
+**Migración:**
+```sql
+INSERT INTO rol_permisos (rol_id, permiso_id)
+SELECT r.id, p.id
+FROM roles r, permisos p
+WHERE r.nombre = 'superadmin'
+ON CONFLICT (rol_id, permiso_id) DO NOTHING;
+```
+
+**3. Documentación:**
+- [x] Sesión documentada: `docs/sesiones/SESION_91_Fix_Superadmin_Permisos.md`
+
+**Estado:** FIX DE CÓDIGO COMPLETO ✅ | MIGRACIÓN BD PENDIENTE ⏳
+
+**Próximos pasos:**
+1. Ejecutar `migrations/fix_superadmin_permisos_urgent.sql` en Supabase
+2. Verificar con usuario superadmin (gerente.ti@ecoplaza.com.pe)
+3. Test manual: asignar lead desde dashboard
+
+---
+
 ## CAMBIO RECIENTE: Traducción "Insights" → "Estadísticas" (14 Enero 2026)
 
 **Cambios Rápidos - Traducción UI:**

@@ -4,6 +4,42 @@
 
 ---
 
+## URGENTE: Testing y Deploy Hotfix leads:assign (14 Enero 2026)
+
+**Prioridad:** CRÍTICA - Demo HOY
+**Archivo:** `HOTFIX_LEADS_ASSIGN_RESUMEN.md` (resumen ejecutivo)
+
+### Pasos Inmediatos
+
+1. **Testing Manual (15 minutos)**
+   - [ ] Login con superadmin → asignar lead → SUCCESS
+   - [ ] Login con admin → asignar lead → SUCCESS
+   - [ ] Login con jefe_ventas → asignar lead → SUCCESS
+   - [ ] Login con vendedor → asignar lead → SUCCESS
+   - [ ] (Opcional) Crear usuario corredor → verificar NO puede asignar
+
+2. **Deploy a Producción (5 minutos)**
+   ```bash
+   git add .
+   git commit -m "hotfix: enable leads:assign for all roles except corredor"
+   git push origin main
+   # Vercel auto-deploy ~2 min
+   ```
+
+3. **Verificación en Producción (2 minutos)**
+   - Login con admin en dashboard.ecoplaza.com
+   - Asignar lead
+   - Confirmar SUCCESS
+
+**Archivos modificados:**
+- `lib/permissions/check.ts` (bypass en 2 funciones)
+- Documentación en `context/` y `docs/sesiones/`
+
+**Riesgo:** BAJO (solo afecta verificación de permisos)
+**Rollback:** `git revert HEAD && git push`
+
+---
+
 ## INVESTIGACIÓN: Módulo de Notificaciones ✅ COMPLETADA (13 Enero 2026)
 
 **Investigador:** Strategic Researcher
