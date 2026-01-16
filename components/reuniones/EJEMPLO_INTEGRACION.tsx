@@ -28,6 +28,7 @@ export default function EjemploIntegracionReuniones() {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [estado, setEstado] = useState<ReunionEstado | 'todos'>('todos');
+  const [createdByFilter, setCreatedByFilter] = useState<'all' | 'mine' | string>('mine');
 
   // Paginación
   const [page, setPage] = useState(1);
@@ -124,6 +125,7 @@ export default function EjemploIntegracionReuniones() {
     setFechaDesde('');
     setFechaHasta('');
     setEstado('todos');
+    setCreatedByFilter('mine');
     setPage(1); // Reset a página 1
   };
 
@@ -169,6 +171,7 @@ export default function EjemploIntegracionReuniones() {
         fechaDesde={fechaDesde}
         fechaHasta={fechaHasta}
         estado={estado}
+        createdByFilter={createdByFilter}
         onFechaDesdeChange={(fecha) => {
           setFechaDesde(fecha);
           setPage(1); // Reset a página 1 cuando se filtra
@@ -179,6 +182,10 @@ export default function EjemploIntegracionReuniones() {
         }}
         onEstadoChange={(nuevoEstado) => {
           setEstado(nuevoEstado);
+          setPage(1);
+        }}
+        onCreatedByFilterChange={(filter) => {
+          setCreatedByFilter(filter);
           setPage(1);
         }}
         onLimpiar={handleLimpiarFiltros}

@@ -24,19 +24,14 @@ export default function ReunionesPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   // ============================================================================
-  // VALIDACIÓN DE ACCESO - PREPARADO PARA RBAC (Grupo 2)
+  // VALIDACIÓN DE ACCESO - NUEVO SISTEMA DE PERMISOS
   // ============================================================================
-  // PERMISO REQUERIDO: reuniones:read (PERMISOS_REUNIONES.READ)
-  // ROLES ACTUALES: superadmin, admin, jefe_ventas
+  // VER: Todos los roles pueden ver reuniones (filtradas por RLS)
+  // CREAR: Solo superadmin, admin, gerencia
   // ============================================================================
-  useEffect(() => {
-    if (!authLoading && user) {
-      // Solo superadmin, admin y jefe_ventas pueden acceder
-      if (user.rol !== 'superadmin' && user.rol !== 'admin' && user.rol !== 'jefe_ventas') {
-        router.push('/');
-      }
-    }
-  }, [user, authLoading, router]);
+
+  // Determinar si puede crear reuniones
+  const puedeCrear = user && ['superadmin', 'admin', 'gerencia'].includes(user.rol);
 
   if (authLoading) {
     return (
@@ -46,13 +41,13 @@ export default function ReunionesPage() {
     );
   }
 
-  if (!user || (user.rol !== 'superadmin' && user.rol !== 'admin' && user.rol !== 'jefe_ventas')) {
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-800">Acceso Denegado</h2>
-          <p className="text-gray-500 mt-2">No tienes permiso para acceder a esta página</p>
+          <p className="text-gray-500 mt-2">Debes iniciar sesión para acceder</p>
         </div>
       </div>
     );
@@ -80,14 +75,16 @@ export default function ReunionesPage() {
               </div>
             </div>
 
-            {/* Boton Nueva Reunion */}
-            <button
-              onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a63] transition-colors font-medium"
-            >
-              <Plus className="w-5 h-5" />
-              Nueva Reunión
-            </button>
+            {/* Boton Nueva Reunion - Solo para superadmin/admin/gerencia */}
+            {puedeCrear && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a63] transition-colors font-medium"
+              >
+                <Plus className="w-5 h-5" />
+                Nueva Reunión
+              </button>
+            )}
           </div>
         </div>
 

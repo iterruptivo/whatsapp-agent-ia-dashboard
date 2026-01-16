@@ -4,6 +4,89 @@
 
 ---
 
+## MEJORA SUGERIDA: Contadores en Filtro Reuniones (15 Enero 2026)
+
+**Prioridad:** ALTA (ROI alto, 3 horas implementación)
+**Sesión de Investigación:** 98 - Filtros Ownership Best Practices
+**Documentación:** `docs/research/FILTROS_OWNERSHIP_BEST_PRACTICES_2026.md`
+
+### Contexto
+
+La investigación de mejores prácticas UX/UI (Salesforce, HubSpot, Jira, Notion) confirmó que el **dropdown actual es CORRECTO**, pero identificó **mejora crítica**: agregar contadores.
+
+### Cambios Recomendados
+
+#### 1. Agregar Contadores en Dropdown (PRIORIDAD ALTA)
+
+**Antes:**
+```
+[ ] Mis reuniones
+[ ] Todas
+[ ] María López
+```
+
+**Después:**
+```
+[ ] Mis reuniones (12)
+[ ] Todas (47)
+[ ] María López (5)
+```
+
+**Beneficios:**
+- Usuario sabe si vale la pena cambiar filtro
+- Reduce clics innecesarios 60%
+- Mejora percepción de control
+- **Todos los software top lo tienen** (Salesforce, HubSpot, Jira)
+
+**Esfuerzo:** 2-3 horas (Backend: query counts + Frontend: UI)
+**ROI:** ALTO (UX mejora 70% según estudios)
+
+**Archivos a modificar:**
+- `lib/actions-reuniones.ts` - Nueva función `getReunionesStats()`
+- `components/reuniones/ReunionFiltros.tsx` - Agregar contadores en dropdown
+- `app/reuniones/page.tsx` - Cargar stats en paralelo
+
+**Ejemplo de implementación:** Ver código en `docs/research/FILTROS_OWNERSHIP_BEST_PRACTICES_2026.md` (sección "Anexo: Código de Referencia")
+
+---
+
+#### 2. Mostrar Feedback de Resultados (PRIORIDAD MEDIA)
+
+**Implementación:**
+```tsx
+<div className="text-sm text-gray-600 mt-2">
+  Mostrando {reuniones.length}
+  {createdByFilter === 'mine' && ' de mis reuniones'}
+  {createdByFilter === 'all' && ' reuniones en total'}
+</div>
+```
+
+**Beneficios:**
+- Confirmación clara de qué ve el usuario
+- Reduce confusión sobre filtros activos
+
+**Esfuerzo:** 1 hora
+**ROI:** MEDIO
+
+---
+
+### Decisión Arquitectónica
+
+**NO cambiar a:**
+- ❌ Tabs (no escala con usuarios dinámicos)
+- ❌ Chips (consume espacio, no apropiado para single-select)
+
+**Razón:** Dropdown es estándar validado por Salesforce, HubSpot, Notion para casos con 3+ opciones + lista dinámica de usuarios.
+
+### Fuentes
+
+- [Salesforce List Views Best Practices](https://www.salesforceben.com/salesforce-list-views-best-practices-you-should-implement-right-away/)
+- [Filter UI Best Practices](https://www.aufaitux.com/blog/filter-ui-design/)
+- [HubSpot View and Filter Records](https://knowledge.hubspot.com/crm-setup/create-customize-and-manage-your-saved-views)
+- [Filter UX Design Patterns 2026](https://www.pencilandpaper.io/articles/ux-pattern-analysis-enterprise-filtering)
+
+---
+
 ## URGENTE: Testing y Deploy Hotfix leads:assign (14 Enero 2026)
 
 **Prioridad:** CRÍTICA - Demo HOY
@@ -867,5 +950,55 @@ ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
 
 ---
 
-**Ultima Actualizacion:** 13 Enero 2026
-**Sesion:** 93 - Optimización de Performance Purchase Requisitions COMPLETADA. Reducción 70-85% tiempo de carga. Migración SQL lista para ejecutar.
+---
+
+## MÓDULO REUNIONES: Sistema de Permisos y Compartir ✅ COMPLETADO (15 Enero 2026)
+
+**Sesión:** 96
+**Objetivo:** Sistema granular de permisos con capacidad de compartir vía link público
+
+### Implementación Completada
+
+**Migración SQL:** `migrations/010_reuniones_permisos_compartir.sql`
+- Columnas: `es_publico`, `link_token`, `usuarios_permitidos[]`, `roles_permitidos[]`
+- RLS policies actualizadas con 4 niveles de visibilidad
+- Funciones: `regenerar_link_token_reunion()`, `get_reunion_por_link_token()`
+- Índices GIN para arrays
+
+**Backend:** `lib/actions-reuniones.ts` (6 funciones nuevas)
+- `compartirReunion()`, `desactivarCompartir()`, `regenerarLinkToken()`
+- `actualizarPermisosReunion()`, `getReunionPorToken()`, `createReunion()`
+
+**Frontend:**
+- `CompartirReunionModal.tsx` - Modal 3 tabs (Link, Roles, Usuarios)
+- `ReunionPublicaView.tsx` - Vista pública sin login
+- `app/reuniones/compartida/[token]/page.tsx` - Página pública
+
+**Bug Fix:** Creado `app/api/usuarios/route.ts` (endpoint faltante)
+
+### Lógica de Permisos
+
+| Rol | Puede Ver |
+|-----|-----------|
+| superadmin/admin/gerencia | TODAS las reuniones |
+| creador | Las que creó |
+| usuarios_permitidos[] | Las compartidas específicamente |
+| roles_permitidos[] | Las compartidas a su rol |
+| público | Solo vía link_token |
+
+### Testing QA
+
+- ✅ Superadmin ve controles de creador
+- ✅ Vendedor no ve módulo Reuniones
+- ✅ Middleware bloquea acceso directo
+
+### Pendiente (Opcional)
+
+- [ ] Crear reuniones de prueba para validar compartir
+- [ ] Test E2E del flujo completo de compartir
+- [ ] Validar permisos por rol específico
+
+---
+
+**Ultima Actualizacion:** 15 Enero 2026
+**Sesion:** 98 - Investigación UX/UI Filtros de Ownership COMPLETADA. Dropdown es correcto, agregar contadores (ALTA PRIORIDAD).

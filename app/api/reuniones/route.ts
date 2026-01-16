@@ -40,12 +40,27 @@ export async function GET(request: NextRequest): Promise<NextResponse<GetReunion
       );
     }
 
+    // Obtener datos del usuario para permisos
+    const { data: usuario } = await supabase
+      .from('usuarios')
+      .select('rol')
+      .eq('id', user.id)
+      .single();
+
+    if (!usuario) {
+      return NextResponse.json(
+        { success: false, error: 'Usuario no encontrado', reuniones: [], pagination: {} as PaginationMetadata },
+        { status: 404 }
+      );
+    }
+
     // Obtener parámetros de query
     const searchParams = request.nextUrl.searchParams;
     const proyectoId = searchParams.get('proyecto_id');
     const estado = searchParams.get('estado');
     const fechaDesde = searchParams.get('fecha_desde');
     const fechaHasta = searchParams.get('fecha_hasta');
+    const createdByFilter = searchParams.get('created_by_filter'); // 'mine', 'all', o UUID
 
     // Paginación
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
@@ -53,7 +68,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<GetReunion
     const offset = (page - 1) * limit;
 
     // PASO 1: Query optimizada para lista (sin campos pesados)
-    // Solo traemos campos ligeros + COUNT de action_items
+    // Incluir campos de permisos para badges de visibilidad
     let query = supabase
       .from('reuniones')
       .select(`
@@ -63,9 +78,37 @@ export async function GET(request: NextRequest): Promise<NextResponse<GetReunion
         estado,
         duracion_segundos,
         created_at,
-        participantes
+        created_by,
+        participantes,
+        es_publico,
+        link_token,
+        roles_permitidos,
+        usuarios_permitidos
       `, { count: 'exact' })
       .order('created_at', { ascending: false });
+
+    // LÓGICA DE PERMISOS: Roles administrativos ven todo, otros roles deben estar autorizados
+    const rolesAdministrativos = ['superadmin', 'admin', 'gerencia'];
+    const esRolAdministrativo = rolesAdministrativos.includes(usuario.rol);
+
+    if (!esRolAdministrativo) {
+      // Solo aplica filtros a roles NO administrativos
+      query = query.or(
+        `created_by.eq.${user.id},usuarios_permitidos.cs.{${user.id}},roles_permitidos.cs.{${usuario.rol}}`
+      );
+    }
+    // Si es rol administrativo, NO aplicamos ningún filtro de permisos (ve todo)
+
+    // Filtro de creador (disponible para roles con acceso)
+    if (createdByFilter && esRolAdministrativo) {
+      if (createdByFilter === 'mine') {
+        query = query.eq('created_by', user.id);
+      } else if (createdByFilter !== 'all') {
+        // UUID específico
+        query = query.eq('created_by', createdByFilter);
+      }
+      // 'all' = no aplicar filtro
+    }
 
     // Filtros
     if (proyectoId) {
@@ -124,8 +167,13 @@ export async function GET(request: NextRequest): Promise<NextResponse<GetReunion
       estado: r.estado,
       duracion_segundos: r.duracion_segundos,
       created_at: r.created_at,
+      created_by: r.created_by,
       action_items_count: actionItemsCounts[r.id] || 0,
       participantes_count: r.participantes ? r.participantes.length : 0,
+      es_publico: r.es_publico || false,
+      link_token: r.link_token || null,
+      roles_permitidos: r.roles_permitidos || null,
+      usuarios_permitidos: r.usuarios_permitidos || null,
     }));
 
     // PASO 4: Metadata de paginación

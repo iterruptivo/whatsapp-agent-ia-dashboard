@@ -32,6 +32,12 @@ export interface Reunion {
   decisiones: string[] | null;
   preguntas_abiertas: string[] | null;
 
+  // Sistema de permisos y compartir
+  es_publico: boolean;
+  link_token: string | null;
+  usuarios_permitidos: string[] | null; // Array de UUIDs de usuarios
+  roles_permitidos: string[] | null; // Array de roles ('vendedor', 'jefe_ventas', etc.)
+
   // Estado
   estado: ReunionEstado;
   error_mensaje: string | null;
@@ -89,6 +95,7 @@ export interface GetReunionesParams {
   proyecto_id?: string;
   estado?: ReunionEstado;
   created_by?: string;
+  created_by_filter?: 'mine' | 'all' | string; // Filtro adicional: 'mine'=solo mías, 'all'=todas, UUID=usuario específico
   page?: number;
   limit?: number;
   fecha_desde?: string;
@@ -103,8 +110,14 @@ export interface ReunionListItem {
   estado: ReunionEstado;
   duracion_segundos: number | null;
   created_at: string;
+  created_by: string | null;
   action_items_count: number;
   participantes_count: number;
+  // Campos de permisos para badges de visibilidad
+  es_publico: boolean;
+  link_token: string | null;
+  roles_permitidos: string[] | null;
+  usuarios_permitidos: string[] | null;
 }
 
 // Metadata de paginación

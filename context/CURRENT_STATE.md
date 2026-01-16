@@ -4,6 +4,133 @@
 
 ---
 
+## SESIÓN 97 - Control de Acceso Reuniones: Solo Creador ✅ COMPLETADO (15 Enero 2026)
+
+**Objetivo:** Implementar restricción para que SOLO el creador de una reunión pueda ver y usar los botones de acción (Editar, Reprocesar, Compartir, Descargar).
+
+### Cambios Implementados
+
+**1. ReunionDetalleHeader.tsx**
+- Agregado hook `useAuth()` para obtener usuario actual
+- Variable `esCreador = user?.id === reunion.created_by`
+- Botones de acción condicionados: `{esCreador && ( <botones> )}`
+- Afecta: Editar, Reprocesar, Descargar
+
+**2. ReunionesTable.tsx**
+- Función `puedeCompartir()` modificada
+- Antes: Permitía a admin/gerencia también
+- Después: `return reunion.created_by === user.id`
+- Botón "Compartir" solo visible para creador
+
+### Lógica de Control de Acceso
+
+| Condición | Ver Reunión | Ver Botones Acción |
+|-----------|-------------|-------------------|
+| Eres el creador (`created_by === user.id`) | ✅ Sí | ✅ Sí |
+| Admin/gerencia (pero no creador) | ✅ Sí (si compartida) | ❌ No |
+| Usuario permitido (en `usuarios_permitidos[]`) | ✅ Sí | ❌ No |
+| Rol permitido (en `roles_permitidos[]`) | ✅ Sí | ❌ No |
+| Link público (`es_publico = true`) | ✅ Sí | ❌ No |
+
+### Seguridad en Capas
+
+1. **Frontend (UI):** Botones ocultos con condicional React
+2. **Backend (Server Actions):** Ya existe validación `created_by` en `lib/actions-reuniones.ts`
+3. **Base de Datos (RLS):** Políticas RLS también verifican `created_by`
+
+### Estado
+
+- ✅ Cambios implementados
+- ✅ Código revisado
+- ⏳ Pendiente: Validación con Playwright MCP
+
+---
+
+## SESIÓN 96 - Sistema Permisos y Compartir Reuniones ✅ COMPLETADO (15 Enero 2026)
+
+**Objetivo:** Implementar sistema de permisos granular + compartir reuniones estilo Google Docs
+
+### Requerimientos Implementados
+
+1. **Solo superadmin/admin/gerencia pueden CREAR** reuniones (jefe_ventas removido)
+2. **Visibilidad controlada:**
+   - Creadores (superadmin/admin/gerencia) ven TODAS las reuniones
+   - Otros roles solo ven reuniones donde:
+     - Son creadores
+     - Están en `usuarios_permitidos`
+     - Su rol está en `roles_permitidos`
+     - La reunión es pública (`es_publico = true`)
+3. **Compartir via link:** Token único de 64 caracteres hex
+4. **Compartir por roles:** Checkboxes para seleccionar roles
+5. **Compartir por usuarios:** Selector de usuarios específicos
+6. **Filtro "Mis reuniones":** Para creadores
+
+### Archivos Creados
+
+| Archivo | Descripción |
+|---------|-------------|
+| `migrations/010_reuniones_permisos_compartir.sql` | Migración BD (ejecutada) |
+| `components/reuniones/CompartirReunionModal.tsx` | Modal 3 tabs (Link/Roles/Usuarios) |
+| `components/reuniones/ReunionPublicaView.tsx` | Vista pública sin login |
+| `app/reuniones/compartida/[token]/page.tsx` | Página acceso público |
+| `app/api/usuarios/route.ts` | API lista usuarios (fix bug QA) |
+
+### Archivos Modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `lib/actions-reuniones.ts` | 6 funciones nuevas: compartirReunion, desactivarCompartir, regenerarLinkToken, actualizarPermisosReunion, getReunionPorToken, createReunion |
+| `app/reuniones/page.tsx` | Control acceso: todos pueden ver, solo creadores crean |
+| `components/reuniones/ReunionFiltros.tsx` | Dropdown "Ver reuniones de" |
+| `components/reuniones/ReunionesTable.tsx` | Badges visibilidad + botón Compartir |
+| `lib/db.ts` | Tipos actualizados (es_publico, link_token, etc.) |
+
+### Campos Nuevos en Tabla `reuniones`
+
+```sql
+es_publico BOOLEAN DEFAULT FALSE        -- Link compartido activo
+link_token TEXT UNIQUE                  -- Token 64 chars hex
+usuarios_permitidos UUID[] DEFAULT '{}'  -- Array usuarios específicos
+roles_permitidos TEXT[] DEFAULT '{}'     -- Array roles permitidos
+```
+
+### Funciones SQL Creadas
+
+- `regenerar_link_token_reunion(reunion_id)` - Con permission check
+- `agregar_usuario_permitido(reunion_id, usuario_id)`
+- `remover_usuario_permitido(reunion_id, usuario_id)`
+- `agregar_rol_permitido(reunion_id, rol_nombre)`
+- `remover_rol_permitido(reunion_id, rol_nombre)`
+- `toggle_acceso_publico_reunion(reunion_id, activar)`
+- `usuario_puede_ver_reunion(reunion_id, usuario_id)`
+- `get_reunion_por_link_token(token)` - Acceso público (anon)
+- `get_user_reuniones(user_id)` - Actualizada con nueva lógica
+
+### QA Testing con Playwright
+
+- ✅ Superadmin ve controles de creador
+- ✅ Vendedor NO ve módulo Reuniones
+- ✅ Middleware bloquea acceso directo
+- ✅ API /api/usuarios funciona (bug corregido)
+- ⚠️ No hay reuniones de prueba para probar compartir
+
+### Estado
+
+- ✅ Migración ejecutada en BD
+- ✅ Backend implementado
+- ✅ Frontend implementado
+- ✅ QA validado
+- ✅ Bug API usuarios corregido
+
+### Próximos Pasos
+
+1. Crear reuniones de prueba para validar compartir
+2. Probar flujo completo de compartir por link
+3. Probar compartir por roles y usuarios
+4. Deploy a producción
+
+---
+
 ## RESTRICCIÓN URGENTE: leads:export SOLO para Superadmin (14 Enero 2026)
 
 **Problema:** Exportación de leads a Excel estaba disponible para admin y jefe_ventas

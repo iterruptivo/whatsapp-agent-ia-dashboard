@@ -16,15 +16,22 @@ import {
   Loader2 as LoaderIcon,
   ListChecks,
   Search,
+  Share2,
+  Lock,
+  Users,
+  Globe,
 } from 'lucide-react';
 import { ReunionListItem, ReunionEstado, PaginationMetadata } from '@/types/reuniones';
 import ReunionEstadoBadge from './ReunionEstadoBadge';
 import ReunionFiltros from './ReunionFiltros';
 import ReunionPagination from './ReunionPagination';
+import CompartirReunionModal from './CompartirReunionModal';
+import { useAuth } from '@/lib/auth-context';
 
 // Reuniones son GLOBALES - no dependen del proyecto seleccionado
 export default function ReunionesTable() {
   const router = useRouter();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [reuniones, setReuniones] = useState<ReunionListItem[]>([]);
   const [pagination, setPagination] = useState<PaginationMetadata | null>(null);
@@ -35,6 +42,11 @@ export default function ReunionesTable() {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [estadoFiltro, setEstadoFiltro] = useState<ReunionEstado | 'todos'>('todos');
+  const [createdByFilter, setCreatedByFilter] = useState<'all' | 'mine' | string>('mine');
+
+  // Modal compartir
+  const [showCompartirModal, setShowCompartirModal] = useState(false);
+  const [reunionSeleccionada, setReunionSeleccionada] = useState<ReunionListItem | null>(null);
 
   // Fetch reuniones desde API
   const fetchReuniones = useCallback(async () => {
@@ -48,6 +60,7 @@ export default function ReunionesTable() {
     if (fechaDesde) params.append('fecha_desde', fechaDesde);
     if (fechaHasta) params.append('fecha_hasta', fechaHasta);
     if (estadoFiltro !== 'todos') params.append('estado', estadoFiltro);
+    if (createdByFilter) params.append('created_by_filter', createdByFilter);
 
     try {
       const response = await fetch(`/api/reuniones?${params}`);
@@ -71,7 +84,7 @@ export default function ReunionesTable() {
     } finally {
       setLoading(false);
     }
-  }, [page, fechaDesde, fechaHasta, estadoFiltro, searchTerm]);
+  }, [page, fechaDesde, fechaHasta, estadoFiltro, createdByFilter, searchTerm]);
 
   // Cargar datos cuando cambian filtros
   useEffect(() => {
@@ -81,15 +94,60 @@ export default function ReunionesTable() {
   // Reset página cuando cambian filtros
   useEffect(() => {
     setPage(1);
-  }, [fechaDesde, fechaHasta, estadoFiltro]);
+  }, [fechaDesde, fechaHasta, estadoFiltro, createdByFilter]);
 
   // Limpiar filtros
   const handleLimpiarFiltros = () => {
     setFechaDesde('');
     setFechaHasta('');
     setEstadoFiltro('todos');
+    setCreatedByFilter('mine');
     setSearchTerm('');
     setPage(1);
+  };
+
+  // Abrir modal compartir
+  const handleCompartir = (e: React.MouseEvent, reunion: ReunionListItem) => {
+    e.stopPropagation(); // Prevenir navegación a detalle
+    setReunionSeleccionada(reunion);
+    setShowCompartirModal(true);
+  };
+
+  // Determinar si puede compartir una reunión (solo el creador)
+  const puedeCompartir = (reunion: ReunionListItem) => {
+    if (!user) return false;
+    return reunion.created_by === user.id;
+  };
+
+  // Obtener badge de visibilidad
+  const getVisibilidadBadge = (reunion: ReunionListItem) => {
+    if (reunion.es_publico) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-xs font-medium">
+          <Globe className="w-3 h-3" />
+          Pública
+        </span>
+      );
+    }
+
+    const tieneRoles = reunion.roles_permitidos && reunion.roles_permitidos.length > 0;
+    const tieneUsuarios = reunion.usuarios_permitidos && reunion.usuarios_permitidos.length > 0;
+
+    if (tieneRoles || tieneUsuarios) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs font-medium">
+          <Users className="w-3 h-3" />
+          Compartida
+        </span>
+      );
+    }
+
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-800 text-xs font-medium">
+        <Lock className="w-3 h-3" />
+        Privada
+      </span>
+    );
   };
 
   // Formatear duración
@@ -140,9 +198,11 @@ export default function ReunionesTable() {
           fechaDesde={fechaDesde}
           fechaHasta={fechaHasta}
           estado={estadoFiltro}
+          createdByFilter={createdByFilter}
           onFechaDesdeChange={setFechaDesde}
           onFechaHastaChange={setFechaHasta}
           onEstadoChange={setEstadoFiltro}
+          onCreatedByFilterChange={setCreatedByFilter}
           onLimpiar={handleLimpiarFiltros}
           loading={loading}
         />
@@ -193,7 +253,7 @@ export default function ReunionesTable() {
                   </div>
                 </div>
                 {/* Metadata del card */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-gray-500 mb-2">
                   <div className="flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
                     <span>{formatFecha(reunion.fecha_reunion)}</span>
@@ -202,11 +262,20 @@ export default function ReunionesTable() {
                     <Clock className="w-3.5 h-3.5" />
                     <span>{formatDuracion(reunion.duracion_segundos)}</span>
                   </div>
-                  {reunion.action_items_count > 0 && (
-                    <div className="flex items-center gap-1">
-                      <ListChecks className="w-3.5 h-3.5" />
-                      <span>{reunion.action_items_count} tarea(s)</span>
-                    </div>
+                </div>
+                {/* Footer del card */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {getVisibilidadBadge(reunion)}
+                  </div>
+                  {puedeCompartir(reunion) && (
+                    <button
+                      onClick={(e) => handleCompartir(e, reunion)}
+                      className="p-1.5 text-gray-400 hover:text-[#1b967a] hover:bg-gray-100 rounded transition-colors"
+                      title="Compartir reunión"
+                    >
+                      <Share2 className="w-4 h-4" />
+                    </button>
                   )}
                 </div>
               </div>
@@ -231,7 +300,10 @@ export default function ReunionesTable() {
                     Estado
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Action Items
+                    Visibilidad
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Acciones
                   </th>
                 </tr>
               </thead>
@@ -275,13 +347,19 @@ export default function ReunionesTable() {
                       <ReunionEstadoBadge estado={reunion.estado} />
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <ListChecks className="w-4 h-4 text-gray-400" />
-                        <span>
-                          {reunion.action_items_count > 0
-                            ? `${reunion.action_items_count} tarea(s)`
-                            : 'Sin tareas'}
-                        </span>
+                      {getVisibilidadBadge(reunion)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center">
+                        {puedeCompartir(reunion) && (
+                          <button
+                            onClick={(e) => handleCompartir(e, reunion)}
+                            className="p-2 text-gray-400 hover:text-[#1b967a] hover:bg-gray-100 rounded-lg transition-colors"
+                            title="Compartir reunión"
+                          >
+                            <Share2 className="w-5 h-5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -301,6 +379,21 @@ export default function ReunionesTable() {
             </div>
           )}
         </>
+      )}
+
+      {/* Modal Compartir */}
+      {reunionSeleccionada && (
+        <CompartirReunionModal
+          isOpen={showCompartirModal}
+          onClose={() => {
+            setShowCompartirModal(false);
+            setReunionSeleccionada(null);
+          }}
+          reunion={reunionSeleccionada}
+          onSuccess={() => {
+            fetchReuniones(); // Recargar lista
+          }}
+        />
       )}
     </div>
   );

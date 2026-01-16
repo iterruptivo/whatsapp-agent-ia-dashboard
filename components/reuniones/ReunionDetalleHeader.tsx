@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Calendar, Clock, Video, ListChecks, User, Download, Loader2, RefreshCw, AlertTriangle, Pencil } from 'lucide-react';
 import { Reunion, ReunionActionItem } from '@/types/reuniones';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 import ReunionEstadoBadge from './ReunionEstadoBadge';
 import EditarReunionModal from './EditarReunionModal';
 
@@ -26,6 +27,7 @@ export default function ReunionDetalleHeader({
   onReprocess,
   onReunionUpdate,
 }: ReunionDetalleHeaderProps) {
+  const { user } = useAuth();
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [reprocessing, setReprocessing] = useState(false);
@@ -37,6 +39,9 @@ export default function ReunionDetalleHeader({
   const actionItemsCount = actionItems.length;
   const completedCount = actionItems.filter(item => item.completado).length;
   const hasCompletedItems = completedCount > 0;
+
+  // Verificar si el usuario actual es el creador de la reunión
+  const esCreador = user?.id === reunion.created_by;
 
   // Determinar si se puede reprocesar
   const canReprocess = reunion.media_storage_path &&
@@ -167,62 +172,65 @@ export default function ReunionDetalleHeader({
             </div>
           </div>
 
-          {/* Botones de acción */}
-          <div className="flex items-center gap-2">
-            {/* Botón editar */}
-            <button
-              onClick={() => setShowEditModal(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors text-sm font-medium backdrop-blur-sm"
-              title="Editar título y fecha"
-            >
-              <Pencil className="w-4 h-4" />
-              <span className="hidden sm:inline">Editar</span>
-            </button>
-
-            {/* Botón reprocesar */}
-            {canReprocess && (
+          {/* Botones de acción - Solo para el creador */}
+          {esCreador && (
+            <div className="flex items-center gap-2">
+              {/* Botón editar */}
               <button
-                onClick={handleReprocessClick}
-                disabled={reprocessing}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors disabled:opacity-50 text-sm font-medium backdrop-blur-sm"
-                title={hasCompletedItems ? 'Reprocesar (perderás action items completados)' : 'Reprocesar con IA'}
+                onClick={() => setShowEditModal(true)}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors text-sm font-medium backdrop-blur-sm"
+                title="Editar título y fecha"
               >
-                {reprocessing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="hidden sm:inline">Procesando...</span>
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4" />
-                    <span className="hidden sm:inline">Reprocesar</span>
-                  </>
-                )}
+                <Pencil className="w-4 h-4" />
+                <span className="hidden sm:inline">Editar</span>
               </button>
-            )}
 
-            {/* Botón descargar */}
-            {reunion.media_storage_path && !reunion.media_deleted_at && (
-              <button
-                onClick={handleDownload}
-                disabled={downloading}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors disabled:opacity-50 text-sm font-medium backdrop-blur-sm"
-                title="Descargar archivo original"
-              >
-                {downloading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span className="hidden sm:inline">Descargando...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4" />
-                    <span className="hidden sm:inline">Descargar</span>
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+              {/* Botón reprocesar */}
+              {canReprocess && (
+                <button
+                  onClick={handleReprocessClick}
+                  disabled={reprocessing}
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors disabled:opacity-50 text-sm font-medium backdrop-blur-sm"
+                  title={hasCompletedItems ? 'Reprocesar (perderás action items completados)' : 'Reprocesar con IA'}
+                >
+                  {reprocessing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="hidden sm:inline">Procesando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      <span className="hidden sm:inline">Reprocesar</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {/* Botón descargar */}
+              {reunion.media_storage_path && !reunion.media_deleted_at && (
+                <button
+                  onClick={handleDownload}
+                  disabled={downloading}
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors disabled:opacity-50 text-sm font-medium backdrop-blur-sm"
+                  title="Descargar archivo original"
+                >
+                  {downloading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="hidden sm:inline">Descargando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span className="hidden sm:inline">Descargar</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+
         </div>
 
         {/* Error de descarga */}

@@ -89,6 +89,68 @@ export interface Usuario {
   activo: boolean;
 }
 
+// Sesión 86: Interface para el módulo de Reuniones con permisos compartidos
+export interface Reunion {
+  id: string;
+  proyecto_id: string;
+  created_by: string | null;
+
+  // Metadata
+  titulo: string;
+  fecha_reunion: string | null; // TIMESTAMPTZ
+  duracion_segundos: number | null;
+  participantes: string[] | null; // Array de nombres
+
+  // Archivo multimedia
+  media_storage_path: string | null;
+  media_tipo: 'audio' | 'video' | null;
+  media_size_bytes: number | null;
+  media_deleted_at: string | null; // TIMESTAMPTZ
+
+  // Contenido procesado por IA
+  transcripcion_completa: string | null;
+  resumen: string | null;
+  puntos_clave: string[] | null; // JSONB array
+  decisiones: string[] | null; // JSONB array
+  preguntas_abiertas: string[] | null; // JSONB array
+
+  // Estado de procesamiento
+  estado: 'subiendo' | 'procesando' | 'completado' | 'error';
+  error_mensaje: string | null;
+
+  // Permisos compartidos (Migración 010)
+  es_publico: boolean; // Si tiene link compartido activo
+  link_token: string | null; // Token de 64 caracteres hex para compartir (gen_random_bytes)
+  usuarios_permitidos: string[]; // Array de UUIDs de usuarios con acceso específico
+  roles_permitidos: ('admin' | 'gerencia' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | 'superadmin' | 'corredor' | 'legal')[]; // Array de roles con acceso
+
+  // Timestamps
+  created_at: string; // TIMESTAMPTZ
+  updated_at: string; // TIMESTAMPTZ
+  processed_at: string | null; // TIMESTAMPTZ
+}
+
+// Interface para Action Items de reuniones
+export interface ReunionActionItem {
+  id: string;
+  reunion_id: string;
+
+  // Contenido
+  descripcion: string;
+  asignado_nombre: string | null; // Nombre inferido de transcripción
+  asignado_usuario_id: string | null; // UUID de usuario real
+  deadline: string | null; // DATE
+  prioridad: 'alta' | 'media' | 'baja';
+  contexto_quote: string | null; // Cita textual
+
+  // Estado
+  completado: boolean;
+  completado_at: string | null; // TIMESTAMPTZ
+  completado_por: string | null; // UUID
+
+  created_at: string; // TIMESTAMPTZ
+}
+
 // Get all proyectos from Supabase (only active ones by default)
 export async function getAllProyectos(includeInactive = false): Promise<Proyecto[]> {
   try {
