@@ -98,7 +98,12 @@ export default function NuevaReunionModal({
       return;
     }
 
-    await upload(selectedFile, titulo.trim(), fechaReunion || undefined);
+    // Convertir datetime-local a ISO string si existe
+    const fechaReunionISO = fechaReunion
+      ? new Date(fechaReunion).toISOString()
+      : undefined;
+
+    await upload(selectedFile, titulo.trim(), fechaReunionISO);
   };
 
   // Limpiar y cerrar
@@ -205,17 +210,20 @@ export default function NuevaReunionModal({
             />
           </div>
 
-          {/* Fecha (opcional) */}
+          {/* Fecha y Hora (opcional) */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Fecha de la Reunión (opcional)
+              Fecha y Hora de la Reunión
             </label>
             <input
-              type="date"
+              type="datetime-local"
               value={fechaReunion}
               onChange={(e) => setFechaReunion(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              Opcional. Puedes dejar vacío si no sabes la fecha exacta.
+            </p>
           </div>
 
           {/* Drop zone */}

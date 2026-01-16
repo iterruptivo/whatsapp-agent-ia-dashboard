@@ -789,3 +789,81 @@ export async function createReunion(data: {
     };
   }
 }
+
+// ============================================================================
+// ACTUALIZAR REUNIÓN (título y fecha)
+// ============================================================================
+
+export async function updateReunion(
+  reunionId: string,
+  data: { titulo?: string; fecha_reunion?: string }
+) {
+  try {
+    const supabase = await createClient();
+
+    // Verificar autenticación
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'No autorizado' };
+    }
+
+    // Obtener reunión para verificar permisos
+    const { data: reunion } = await supabase
+      .from('reuniones')
+      .select('created_by')
+      .eq('id', reunionId)
+      .single();
+
+    if (!reunion) {
+      return { success: false, error: 'Reunión no encontrada' };
+    }
+
+    // Verificar que es el creador
+    const esCreador = reunion.created_by === user.id;
+
+    if (!esCreador) {
+      return {
+        success: false,
+        error: 'Solo el creador puede editar esta reunión',
+      };
+    }
+
+    // Construir objeto de actualización
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (data.titulo !== undefined) {
+      updateData.titulo = data.titulo;
+    }
+
+    if (data.fecha_reunion !== undefined) {
+      updateData.fecha_reunion = data.fecha_reunion;
+    }
+
+    // Actualizar reunión
+    const { data: reunionActualizada, error } = await supabase
+      .from('reuniones')
+      .update(updateData)
+      .eq('id', reunionId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('[updateReunion] Error:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true, reunion: reunionActualizada };
+  } catch (error: any) {
+    console.error('[updateReunion] Error inesperado:', error);
+    return {
+      success: false,
+      error: error.message || 'Error al actualizar reunión',
+    };
+  }
+}
