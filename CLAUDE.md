@@ -232,6 +232,15 @@ Todo el contexto esta en `context/` (DENTRO de este proyecto)
 - Comandos {IF}/{FOR} SOLOS en su parrafo
 - ENTER para parrafo nuevo (no Shift+Enter)
 
+### Migraciones SQL (PATRÓN OBLIGATORIO)
+- **NUNCA** ir al dashboard de Supabase manualmente para ejecutar SQL
+- **SIEMPRE** usar: `node scripts/run-migration-generic.js <archivo.sql>`
+- Para SQL inline: `node scripts/run-migration-generic.js --sql "SELECT ..."`
+- Lee credenciales de `.env.local` automáticamente
+- Usa `SUPABASE_SERVICE_ROLE_KEY` para bypass RLS
+- Logs detallados en terminal
+- Ver documentación completa: `scripts/README.md`
+
 ---
 
 ## DOCUMENTACION
@@ -291,5 +300,5 @@ Ver detalles completos en: `docs/test-assets/README.md`
 
 ---
 
-**Ultima Actualizacion:** 9 Enero 2026
-**Sesion:** 84+
+**Ultima Actualizacion:** 16 Enero 2026
+**Sesion:** 97 (Sistema de Migraciones SQL Genéricas)

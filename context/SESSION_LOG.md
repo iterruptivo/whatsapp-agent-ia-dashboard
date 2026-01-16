@@ -4,7 +4,82 @@
 
 ---
 
-## SESIÓN 98 - 15 Enero 2026
+## SESIÓN 98 - 16 Enero 2026
+
+**Fase:** FIX URGENTE - RLS Policy Reuniones
+
+**Objetivo:** Resolver error que bloquea al usuario superadmin de crear reuniones.
+
+**Problema reportado:**
+- Error HTTP 400: "new row violates row-level security policy"
+- Usuario afectado: gerente.ti@ecoplaza.com.pe (superadmin)
+- Acción bloqueada: Crear/subir reunión en módulo de Reuniones
+
+**Investigación realizada:**
+
+1. **Análisis de migraciones:**
+   - `20260106_create_reuniones_tables.sql` (original - sin superadmin)
+   - `010_reuniones_permisos_compartir.sql` (fix presente, no ejecutada)
+   - Identificada causa: Policy INSERT no incluye rol 'superadmin'
+
+2. **Causa raíz identificada:**
+   - Policy "Reuniones - Insert" permite solo: admin, gerencia, jefe_ventas
+   - Omite superadmin
+   - Migración 010 tiene el fix pero no se ha ejecutado
+
+**Solución implementada:**
+
+3. **Archivos creados:**
+   - `migrations/011_fix_reuniones_insert_superadmin_URGENTE.sql`
+     - Recrea policy incluyendo superadmin
+     - Script idempotente (seguro para ejecutar múltiples veces)
+     - Incluye diagnóstico pre/post ejecución
+
+   - `migrations/README_011_FIX_SUPERADMIN_INSERT_URGENTE.md`
+     - Instrucciones paso a paso para ejecutar el fix
+     - Troubleshooting detallado
+     - Queries de verificación
+
+   - `migrations/diagnose_rls_reuniones.sql`
+     - Script de diagnóstico completo
+     - 12 queries para identificar problema
+     - Útil antes y después del fix
+
+   - `migrations/RESUMEN_FIX_SUPERADMIN.md`
+     - Resumen ejecutivo para el usuario
+     - Pasos rápidos de ejecución
+
+4. **Contexto actualizado:**
+   - CURRENT_STATE.md con sección nueva: Sesión 98
+   - Problema documentado con causa raíz
+   - Pendiente: Ejecutar en Supabase
+
+**Estado:** 🔴 URGENTE - Fix creado, pendiente aplicar en Supabase
+
+**Próximos pasos:**
+1. Ejecutar `011_fix_reuniones_insert_superadmin_URGENTE.sql` en Supabase SQL Editor
+2. Ejecutar `diagnose_rls_reuniones.sql` para verificar
+3. Probar crear reunión como gerente.ti@ecoplaza.com.pe
+4. Marcar como resuelto
+
+**Archivos modificados:**
+- `context/CURRENT_STATE.md` (actualizado)
+- `context/SESSION_LOG.md` (esta entrada)
+
+**Archivos creados:**
+- `migrations/011_fix_reuniones_insert_superadmin_URGENTE.sql`
+- `migrations/README_011_FIX_SUPERADMIN_INSERT_URGENTE.md`
+- `migrations/diagnose_rls_reuniones.sql`
+- `migrations/RESUMEN_FIX_SUPERADMIN.md`
+
+**Lección aprendida:**
+- SIEMPRE incluir superadmin en policies RLS de INSERT/UPDATE/DELETE
+- Verificar que migraciones previas se ejecutaron antes de crear nuevas
+- Crear scripts de diagnóstico junto con fixes para troubleshooting
+
+---
+
+## SESIÓN 97 - 15 Enero 2026 (Investigación UX/UI)
 
 **Fase:** Investigación UX/UI - Filtros de Ownership
 

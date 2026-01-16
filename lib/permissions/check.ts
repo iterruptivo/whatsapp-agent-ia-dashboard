@@ -410,10 +410,10 @@ async function checkPermissionLegacy(
       return false;
     }
 
-    // Coordinador: acceso limitado
+    // Coordinador: acceso limitado + asignar leads + cambiar estado locales
     if (rol === 'coordinador') {
       if (modulo === 'leads' && ['read', 'assign'].includes(accion)) return true;
-      if (modulo === 'locales' && accion === 'read') return true;
+      if (modulo === 'locales' && ['read', 'cambiar_estado'].includes(accion)) return true;
       if (modulo === 'reuniones') return true;
       return false;
     }

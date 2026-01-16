@@ -4,6 +4,78 @@
 
 ---
 
+## PERMISO: locales:cambiar_estado para Coordinador (16 Enero 2026)
+
+### Contexto
+**Requerimiento del Cliente:** El rol coordinador necesita poder marcar locales como vendidos (estado ROJO)
+**Problema:** Coordinador solo tenía permiso `locales:read`, no podía cambiar estado de locales
+**Impacto:** Coordinadores bloqueados en operaciones de venta
+
+### Decisión: Agregar permiso cambiar_estado (con restricción)
+**Opción elegida:** Modificar `checkPermissionLegacy()` para incluir `cambiar_estado` en módulo locales
+
+**Razones:**
+1. **Operación:** Coordinadores necesitan cerrar ventas (cambiar a ROJO)
+2. **Seguridad:** Mantener restricción "no cambiar DESDE NARANJA" (solo admin/jefe_ventas)
+3. **Consistencia:** Usar el sistema de permisos existente
+4. **No requiere migración BD:** Solo cambio en código TypeScript
+
+**Restricción mantenida:**
+- Coordinador NO puede cambiar estado si local está en NARANJA
+- Validación en `lib/actions-locales.ts` líneas 98-109
+- Mensaje: "Solo jefes de ventas o administradores pueden cambiar el estado de un local confirmado (NARANJA)"
+
+### Implementación
+
+**Archivo modificado:** `lib/permissions/check.ts` línea 416
+
+**Código:**
+```typescript
+// Coordinador: acceso limitado + asignar leads + cambiar estado locales
+if (rol === 'coordinador') {
+  if (modulo === 'leads' && ['read', 'assign'].includes(accion)) return true;
+  if (modulo === 'locales' && ['read', 'cambiar_estado'].includes(accion)) return true;
+  if (modulo === 'reuniones') return true;
+  return false;
+}
+```
+
+### Permisos del Coordinador (antes y después)
+
+| Módulo | Antes | Después |
+|--------|-------|---------|
+| leads | `read`, `assign` | `read`, `assign` (sin cambios) |
+| locales | `read` | `read`, `cambiar_estado` ✅ NUEVO |
+| reuniones | full access | full access (sin cambios) |
+
+### Flujo de Estados Permitidos
+
+**Coordinador PUEDE:**
+- ✅ VERDE → AMARILLO
+- ✅ VERDE → NARANJA (separación)
+- ✅ VERDE → ROJO (venta directa)
+- ✅ AMARILLO → NARANJA
+- ✅ AMARILLO → ROJO
+- ✅ NARANJA → ROJO (confirmar venta)
+
+**Coordinador NO PUEDE:**
+- ❌ NARANJA → VERDE (revertir)
+- ❌ NARANJA → AMARILLO (revertir)
+- ❌ Solo admin/jefe_ventas pueden cambiar desde NARANJA
+
+### Testing Requerido
+
+1. Login como coordinador
+2. Verificar cambio VERDE → NARANJA → ROJO (debe funcionar)
+3. Verificar que NO puede cambiar desde NARANJA a VERDE/AMARILLO (debe fallar)
+4. Verificar que puede asignar leads (debe funcionar, ya estaba habilitado)
+
+### Nota sobre leads:assign
+
+**Hallazgo:** El permiso `leads:assign` YA estaba habilitado para coordinador antes de esta sesión (línea 415 de `check.ts`). No fue necesario agregarlo.
+
+---
+
 ## RESTRICCIÓN: leads:export SOLO para Superadmin (14 Enero 2026)
 
 ### Contexto

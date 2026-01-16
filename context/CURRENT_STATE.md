@@ -4,7 +4,199 @@
 
 ---
 
-## SESIÓN 97 - Control de Acceso Reuniones: Solo Creador ✅ COMPLETADO (15 Enero 2026)
+## SESIÓN 98 - Agregar Permisos al Rol Coordinador (16 Enero 2026)
+
+**Estado:** ✅ COMPLETADO - Permisos agregados
+
+### Requerimiento
+
+El rol `coordinador` necesita dos permisos adicionales:
+1. **Asignar leads** - Poder asignarse un lead a sí mismo
+2. **Marcar locales como vendidos** - Poder cambiar estado de un local a "vendido" (ROJO)
+
+### Análisis Realizado
+
+**1. Permiso leads:assign**
+- ✅ YA ESTABA HABILITADO en `lib/permissions/check.ts` línea 415
+- El coordinador ya podía asignar leads antes de esta sesión
+
+**2. Permiso locales:cambiar_estado**
+- ❌ NO ESTABA HABILITADO - solo tenía permiso `read` para locales
+- ✅ AGREGADO en `lib/permissions/check.ts` línea 416
+
+### Cambio Implementado
+
+**Archivo modificado:** `lib/permissions/check.ts`
+
+**Antes:**
+```typescript
+// Coordinador: acceso limitado
+if (rol === 'coordinador') {
+  if (modulo === 'leads' && ['read', 'assign'].includes(accion)) return true;
+  if (modulo === 'locales' && accion === 'read') return true;
+  if (modulo === 'reuniones') return true;
+  return false;
+}
+```
+
+**Después:**
+```typescript
+// Coordinador: acceso limitado + asignar leads + cambiar estado locales
+if (rol === 'coordinador') {
+  if (modulo === 'leads' && ['read', 'assign'].includes(accion)) return true;
+  if (modulo === 'locales' && ['read', 'cambiar_estado'].includes(accion)) return true;
+  if (modulo === 'reuniones') return true;
+  return false;
+}
+```
+
+### Restricciones Importantes
+
+**El coordinador puede cambiar estado de locales CON ESTAS LIMITACIONES:**
+
+1. ✅ **Puede cambiar a cualquier estado** (VERDE → AMARILLO → NARANJA → ROJO)
+2. ❌ **NO puede cambiar DESDE NARANJA** (solo jefe_ventas o admin pueden revertir un local confirmado)
+   - Validación en `lib/actions-locales.ts` líneas 98-109
+   - Mensaje de error: "Solo jefes de ventas o administradores pueden cambiar el estado de un local confirmado (NARANJA)"
+
+**El coordinador puede asignar leads CON ESTAS LIMITACIONES:**
+
+1. ✅ **Puede asignarse leads a sí mismo** (solo leads disponibles)
+2. ✅ **Puede asignar leads a otros vendedores** (funcionalidad estándar)
+3. ❌ **NO puede hacer operaciones de administración masiva**
+
+### Permisos del Rol Coordinador (Post-Cambio)
+
+| Módulo | Permisos |
+|--------|----------|
+| **leads** | `read`, `assign` |
+| **locales** | `read`, `cambiar_estado` ✨ NUEVO |
+| **reuniones** | Acceso completo (read, write) |
+
+### Testing Recomendado
+
+**Prueba 1: Asignar Lead**
+```
+1. Login como coordinador
+2. Ir a /operativo
+3. Seleccionar un lead disponible
+4. ✅ Debe poder asignárselo a sí mismo o a otro vendedor
+```
+
+**Prueba 2: Cambiar Estado de Local (VERDE → ROJO)**
+```
+1. Login como coordinador
+2. Ir a /locales
+3. Seleccionar un local en estado VERDE
+4. Cambiar a NARANJA (separación)
+5. ✅ Debe permitir el cambio
+6. Cambiar a ROJO (vendido)
+7. ✅ Debe permitir el cambio
+```
+
+**Prueba 3: Intentar Cambiar Desde NARANJA (debe fallar)**
+```
+1. Login como coordinador
+2. Ir a /locales
+3. Seleccionar un local en estado NARANJA
+4. Intentar cambiar a AMARILLO o VERDE
+5. ❌ Debe mostrar error: "Solo jefes de ventas o administradores pueden cambiar el estado de un local confirmado (NARANJA)"
+```
+
+### Estado
+
+- ✅ Código modificado en `lib/permissions/check.ts`
+- ✅ Análisis de restricciones documentado
+- ⏳ Pendiente: Testing manual con usuario coordinador
+- ⏳ Pendiente: Validar que la restricción desde NARANJA funciona correctamente
+
+---
+
+## SESIÓN 97 - Script de Migraciones SQL Genéricas + Fix RLS Superadmin (16 Enero 2026)
+
+**Estado:** ✅ COMPLETADO - Fix aplicado exitosamente
+
+### Problema Reportado
+
+**Error HTTP 400:**
+```
+{"statusCode":"403","error":"Unauthorized","message":"new row violates row-level security policy"}
+```
+
+**Usuario afectado:** `gerente.ti@ecoplaza.com.pe` (rol: superadmin)
+**Acción bloqueada:** Crear/subir reunión en módulo de Reuniones
+**Impacto:** ALTO - Usuario principal bloqueado
+
+### Causa Raíz Identificada
+
+La política RLS `"Reuniones - Insert"` en tabla `reuniones` NO incluye rol `superadmin`:
+
+```sql
+-- Policy actual (de migración 20260106_create_reuniones_tables.sql)
+CREATE POLICY "Reuniones - Insert"
+ON reuniones FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM usuarios
+    WHERE id = auth.uid()
+    AND rol IN ('admin', 'gerencia', 'jefe_ventas')  -- NO incluye 'superadmin'
+  )
+);
+```
+
+**Nota:** La migración `010_reuniones_permisos_compartir.sql` ya contiene el fix correcto (líneas 101-110) pero aún NO se ha ejecutado en Supabase.
+
+### Solución Implementada
+
+**Nuevo Sistema:** Script genérico de migraciones SQL
+
+**Script creado:** `scripts/run-migration-generic.js`
+- Lee credenciales de `.env.local` automáticamente
+- Ejecuta SQL directo en PostgreSQL (bypass RLS)
+- Soporta archivos `.sql` o SQL inline
+- Logging detallado con emojis
+- Tiempo de ejecución: ~2 segundos
+
+**Fix aplicado:** `migrations/011_fix_reuniones_insert_superadmin_SIMPLE.sql`
+- Recrea policy `"Reuniones - Insert"` incluyendo `superadmin`
+- Roles permitidos después del fix: `superadmin`, `admin`, `gerencia`, `jefe_ventas`
+- Ejecutado exitosamente en Supabase
+
+**Documentación creada:**
+- `scripts/README.md` - Guía completa de uso de scripts
+- `docs/sesiones/SESION_97_Script_Migraciones_SQL_Genericas.md` - Documentación detallada
+- `CLAUDE.md` - Nueva sección "Migraciones SQL (PATRÓN OBLIGATORIO)"
+
+### Comandos de Uso
+
+**Ejecutar migración:**
+```bash
+node scripts/run-migration-generic.js migrations/011_fix_reuniones_insert_superadmin_SIMPLE.sql
+```
+
+**Verificar policies:**
+```bash
+node scripts/run-migration-generic.js --sql "SELECT policyname, cmd FROM pg_policies WHERE tablename = 'reuniones'"
+```
+
+**Verificar usuario superadmin:**
+```bash
+node scripts/run-migration-generic.js --sql "SELECT id, email, rol, activo FROM usuarios WHERE email = 'gerente.ti@ecoplaza.com.pe'"
+```
+
+### Estado Final
+
+- ✅ Script genérico creado
+- ✅ Fix de RLS ejecutado exitosamente
+- ✅ Policy verificada en Supabase
+- ✅ Usuario superadmin confirmado activo
+- ✅ Patrón documentado como obligatorio
+- ⏳ Pendiente: Usuario probar crear reunión en UI
+
+---
+
+## SESIÓN 98 - Control de Acceso Reuniones: Solo Creador ✅ COMPLETADO (15 Enero 2026)
 
 **Objetivo:** Implementar restricción para que SOLO el creador de una reunión pueda ver y usar los botones de acción (Editar, Reprocesar, Compartir, Descargar).
 

@@ -4,6 +4,31 @@
 
 ---
 
+## INMEDIATO: Probar Crear Reunión como Superadmin (16 Enero 2026)
+
+**Prioridad:** URGENTE - Fix de RLS aplicado, necesita validación
+**Sesión:** 97 - Script Migraciones SQL Genéricas
+
+### Contexto
+
+Fix de RLS ejecutado exitosamente con nuevo script `run-migration-generic.js`. La policy `"Reuniones - Insert"` ahora incluye rol `'superadmin'`.
+
+### Acción Requerida
+
+Usuario debe intentar **crear una reunión** desde el dashboard con credenciales de superadmin (`gerente.ti@ecoplaza.com.pe`).
+
+**Pasos:**
+1. Login en dashboard con superadmin
+2. Ir a módulo Reuniones
+3. Clic en "Nueva Reunión" o subir archivo
+4. Verificar que NO aparece error "new row violates row-level security policy"
+5. Confirmar que reunión se crea exitosamente
+
+**Resultado Esperado:** Creación exitosa
+**Rollback (si falla):** Ejecutar `git revert` del commit de fix
+
+---
+
 ## MEJORA SUGERIDA: Contadores en Filtro Reuniones (15 Enero 2026)
 
 **Prioridad:** ALTA (ROI alto, 3 horas implementación)
@@ -1000,5 +1025,5 @@ ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
 
 ---
 
-**Ultima Actualizacion:** 15 Enero 2026
-**Sesion:** 98 - Investigación UX/UI Filtros de Ownership COMPLETADA. Dropdown es correcto, agregar contadores (ALTA PRIORIDAD).
+**Ultima Actualizacion:** 16 Enero 2026
+**Sesion:** 97 - Script Migraciones SQL Genéricas COMPLETADO. Fix RLS aplicado, pendiente validación usuario.
