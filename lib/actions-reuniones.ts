@@ -293,10 +293,10 @@ export async function updateReunionEstado(
 }
 
 // ============================================================================
-// ELIMINAR REUNIÓN (Solo creador)
+// ELIMINAR REUNIÓN (Solo creador, con auditoría)
 // ============================================================================
 
-export async function deleteReunion(reunionId: string) {
+export async function deleteReunion(reunionId: string, motivo: string) {
   try {
     const supabase = await createClient();
 
@@ -310,10 +310,15 @@ export async function deleteReunion(reunionId: string) {
       return { success: false, error: 'No autorizado' };
     }
 
-    // Obtener reunión para verificar permisos
+    // Validar motivo
+    if (!motivo || motivo.trim().length === 0) {
+      return { success: false, error: 'El motivo de eliminación es obligatorio' };
+    }
+
+    // Obtener reunión para verificar permisos y obtener datos para auditoría
     const { data: reunion } = await supabase
       .from('reuniones')
-      .select('created_by, media_storage_path')
+      .select('created_by, media_storage_path, titulo, proyecto_id')
       .eq('id', reunionId)
       .single();
 
@@ -331,14 +336,34 @@ export async function deleteReunion(reunionId: string) {
       };
     }
 
-    // Eliminar archivo del storage si existe
+    // PASO 1: Guardar registro de auditoría ANTES de eliminar
+    const { error: auditError } = await supabase
+      .from('reuniones_audit')
+      .insert({
+        reunion_id: reunionId,
+        titulo: reunion.titulo,
+        created_by: reunion.created_by,
+        deleted_by: user.id,
+        motivo: motivo.trim(),
+        proyecto_id: reunion.proyecto_id,
+      });
+
+    if (auditError) {
+      console.error('[deleteReunion] Error guardando auditoría:', auditError);
+      return {
+        success: false,
+        error: 'Error al registrar auditoría de eliminación',
+      };
+    }
+
+    // PASO 2: Eliminar archivo del storage si existe
     if (reunion.media_storage_path) {
       await supabase.storage
         .from('reuniones-media')
         .remove([reunion.media_storage_path]);
     }
 
-    // Eliminar reunión (cascade eliminará action items)
+    // PASO 3: Eliminar reunión (cascade eliminará action items)
     const { error } = await supabase
       .from('reuniones')
       .delete()

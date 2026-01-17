@@ -9,36 +9,48 @@
  * 2. Cruce de Ventas (cross-match sales with leads)
  */
 
-import { useState } from 'react';
-import { Users, FileSpreadsheet } from 'lucide-react';
+import { Users, FileSpreadsheet, FileText } from 'lucide-react';
 
-export type ReporteriaTab = 'leads_vendedor' | 'atribucion_ia';
+export type ReporteriaTab = 'leads_vendedor' | 'atribucion_ia' | 'fichas_inscripcion';
 
 interface ReporteriaTabsProps {
   activeTab: ReporteriaTab;
   onTabChange: (tab: ReporteriaTab) => void;
   userRole: string;
+  puedeVerFichas?: boolean;
 }
 
 export default function ReporteriaTabs({
   activeTab,
   onTabChange,
-  userRole
+  userRole: _userRole,
+  puedeVerFichas = false
 }: ReporteriaTabsProps) {
-  const tabs = [
+  const allTabs = [
+    {
+      id: 'fichas_inscripcion' as ReporteriaTab,
+      label: 'Fichas Inscripción',
+      icon: FileText,
+      description: 'Reporte de fichas de inscripción',
+      visible: puedeVerFichas
+    },
     {
       id: 'leads_vendedor' as ReporteriaTab,
       label: 'Leads por Vendedor',
       icon: Users,
       description: 'Análisis de leads por vendedor',
+      visible: true
     },
     {
       id: 'atribucion_ia' as ReporteriaTab,
       label: 'Cruce de Ventas',
       icon: FileSpreadsheet,
       description: 'Cruza ventas con leads para verificar su origen',
+      visible: true
     },
   ];
+
+  const tabs = allTabs.filter(tab => tab.visible);
 
   return (
     <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">

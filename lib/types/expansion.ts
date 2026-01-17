@@ -316,3 +316,493 @@ export const ACCION_LABELS: Record<AccionHistorial, string> = {
   aprobado: 'Registro aprobado',
   rechazado: 'Registro rechazado',
 };
+
+// ============================================================================
+// TERRENOS - TIPOS Y INTERFACES
+// ============================================================================
+
+/**
+ * Tipo de terreno
+ */
+export type TerrenoTipo = 'urbano' | 'rural' | 'eriaza' | 'agricola' | 'industrial';
+
+/**
+ * Tipo de propiedad del terreno
+ */
+export type TerrenoPropiedad = 'inscrito' | 'posesion' | 'herencia' | 'comunidad' | 'otro';
+
+/**
+ * Urgencia de venta
+ */
+export type TerrenoUrgencia = 'inmediata' | 'corto_plazo' | 'mediano_plazo' | 'sin_apuro';
+
+/**
+ * Estados de un terreno en el pipeline
+ */
+export type TerrenoEstado =
+  | 'borrador'
+  | 'enviado'
+  | 'en_revision'
+  | 'info_adicional'
+  | 'evaluacion'
+  | 'visita_programada'
+  | 'visitado'
+  | 'negociacion'
+  | 'aprobado'
+  | 'rechazado'
+  | 'archivado';
+
+/**
+ * Prioridad del terreno
+ */
+export type TerrenoPrioridad = 'baja' | 'normal' | 'alta' | 'urgente';
+
+/**
+ * Decisión final sobre el terreno
+ */
+export type TerrenoDecision = 'comprar' | 'descartar' | 'pendiente' | 'negociar';
+
+/**
+ * Moneda para precio
+ */
+export type TerrenoMoneda = 'USD' | 'PEN';
+
+/**
+ * Terreno completo
+ */
+export interface Terreno {
+  id: string;
+  corredor_id: string;
+  codigo: string;
+
+  // Ubicación
+  departamento: string;
+  provincia: string;
+  distrito: string;
+  direccion: string;
+  referencia?: string;
+  coordenadas_lat?: number;
+  coordenadas_lng?: number;
+
+  // Características
+  area_total_m2: number;
+  area_construida_m2: number;
+  frente_ml?: number;
+  fondo_ml?: number;
+  tipo_terreno: TerrenoTipo;
+  zonificacion?: string;
+  uso_actual?: string;
+
+  // Servicios
+  tiene_agua: boolean;
+  tiene_luz: boolean;
+  tiene_desague: boolean;
+  tiene_internet: boolean;
+  acceso_pavimentado: boolean;
+
+  // Legal
+  tipo_propiedad?: TerrenoPropiedad;
+  partida_registral?: string;
+  ficha_registral_url?: string;
+  tiene_cargas: boolean;
+  descripcion_cargas?: string;
+  propietario_nombre?: string;
+  propietario_dni?: string;
+  propietario_telefono?: string;
+  propietario_es_corredor: boolean;
+
+  // Valorización
+  precio_solicitado?: number;
+  moneda: TerrenoMoneda;
+  precio_negociable: boolean;
+  tasacion_referencial?: number;
+  fuente_tasacion?: string;
+  urgencia_venta?: TerrenoUrgencia;
+
+  // Multimedia
+  fotos_urls: string[];
+  videos_urls: string[];
+  planos_urls: string[];
+  documentos_urls: string[];
+
+  // Estado interno
+  estado: TerrenoEstado;
+  prioridad: TerrenoPrioridad;
+  asignado_a?: string;
+  fecha_asignacion?: string;
+
+  // Evaluación
+  puntaje_evaluacion?: number;
+  evaluacion_notas?: string;
+
+  // Visita
+  fecha_visita_programada?: string;
+  fecha_visita_realizada?: string;
+  resultado_visita?: string;
+
+  // Decisión
+  decision_final?: TerrenoDecision;
+  motivo_decision?: string;
+  decidido_por?: string;
+  fecha_decision?: string;
+
+  // Oferta
+  oferta_monto?: number;
+  oferta_fecha?: string;
+  oferta_aceptada?: boolean;
+
+  // Comisión
+  comision_porcentaje: number;
+  comision_monto?: number;
+  comision_pagada: boolean;
+  fecha_pago_comision?: string;
+
+  // Metadata
+  notas_internas?: string;
+  etiquetas: string[];
+
+  // Auditoría
+  created_at: string;
+  updated_at: string;
+  enviado_at?: string;
+
+  // Proyecto relacionado
+  proyecto_id?: string;
+
+  // Relaciones (para joins)
+  corredor?: RegistroCorredor;
+  asignado?: {
+    id: string;
+    nombre: string;
+  };
+  proyecto?: {
+    id: string;
+    nombre: string;
+  };
+}
+
+/**
+ * Input para crear/editar terreno - Paso 1: Ubicación
+ */
+export interface TerrenoUbicacionInput {
+  departamento: string;
+  provincia: string;
+  distrito: string;
+  direccion: string;
+  referencia?: string;
+  coordenadas_lat?: number;
+  coordenadas_lng?: number;
+}
+
+/**
+ * Input para crear/editar terreno - Paso 2: Características
+ */
+export interface TerrenoCaracteristicasInput {
+  area_total_m2: number;
+  area_construida_m2?: number;
+  frente_ml?: number;
+  fondo_ml?: number;
+  tipo_terreno: TerrenoTipo;
+  zonificacion?: string;
+  uso_actual?: string;
+  tiene_agua: boolean;
+  tiene_luz: boolean;
+  tiene_desague: boolean;
+  tiene_internet: boolean;
+  acceso_pavimentado: boolean;
+}
+
+/**
+ * Input para crear/editar terreno - Paso 3: Legal
+ */
+export interface TerrenoLegalInput {
+  tipo_propiedad?: TerrenoPropiedad;
+  partida_registral?: string;
+  tiene_cargas: boolean;
+  descripcion_cargas?: string;
+  propietario_nombre?: string;
+  propietario_dni?: string;
+  propietario_telefono?: string;
+  propietario_es_corredor: boolean;
+}
+
+/**
+ * Input para crear/editar terreno - Paso 4: Valorización
+ */
+export interface TerrenoValorizacionInput {
+  precio_solicitado?: number;
+  moneda: TerrenoMoneda;
+  precio_negociable: boolean;
+  tasacion_referencial?: number;
+  fuente_tasacion?: string;
+  urgencia_venta?: TerrenoUrgencia;
+}
+
+/**
+ * Input para crear/editar terreno - Paso 5: Multimedia
+ */
+export interface TerrenoMultimediaInput {
+  fotos_urls: string[];
+  videos_urls: string[];
+  planos_urls: string[];
+  documentos_urls: string[];
+}
+
+/**
+ * Input completo para crear terreno
+ */
+export interface TerrenoCreateInput extends
+  TerrenoUbicacionInput,
+  TerrenoCaracteristicasInput,
+  TerrenoLegalInput,
+  TerrenoValorizacionInput,
+  TerrenoMultimediaInput {
+  corredor_id: string;
+}
+
+/**
+ * Historial de terreno
+ */
+export interface TerrenoHistorial {
+  id: string;
+  terreno_id: string;
+  usuario_id?: string;
+  corredor_id?: string;
+  accion: string;
+  estado_anterior?: TerrenoEstado;
+  estado_nuevo?: TerrenoEstado;
+  descripcion?: string;
+  datos_anteriores?: Record<string, unknown>;
+  datos_nuevos?: Record<string, unknown>;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
+
+  // Relaciones
+  usuario?: {
+    id: string;
+    nombre: string;
+  };
+  corredor?: {
+    id: string;
+    nombres: string;
+    apellido_paterno: string;
+  };
+}
+
+/**
+ * Comentario en terreno
+ */
+export interface TerrenoComentario {
+  id: string;
+  terreno_id: string;
+  usuario_id?: string;
+  corredor_id?: string;
+  mensaje: string;
+  archivos_urls: string[];
+  es_interno: boolean;
+  leido: boolean;
+  fecha_leido?: string;
+  created_at: string;
+
+  // Relaciones
+  usuario?: {
+    id: string;
+    nombre: string;
+    avatar_url?: string;
+  };
+  corredor?: {
+    id: string;
+    nombres: string;
+    apellido_paterno: string;
+    foto_perfil_url?: string;
+  };
+}
+
+/**
+ * Input para comentario
+ */
+export interface ComentarioInput {
+  terreno_id: string;
+  mensaje: string;
+  archivos_urls?: string[];
+  es_interno?: boolean;
+}
+
+/**
+ * Ubigeo (ubicación geográfica)
+ */
+export interface Ubigeo {
+  id: string;
+  departamento: string;
+  provincia?: string;
+  distrito?: string;
+  tipo: 'departamento' | 'provincia' | 'distrito';
+}
+
+/**
+ * Filtros para terrenos
+ */
+export interface TerrenosFiltros {
+  estado?: TerrenoEstado | 'todos';
+  prioridad?: TerrenoPrioridad | 'todas';
+  departamento?: string;
+  tipo_terreno?: TerrenoTipo | 'todos';
+  asignado_a?: string | 'todos' | 'sin_asignar';
+  corredor_id?: string;
+  busqueda?: string;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  area_min?: number;
+  area_max?: number;
+  precio_min?: number;
+  precio_max?: number;
+}
+
+/**
+ * Parámetros de paginación
+ */
+export interface PaginacionParams {
+  page: number;
+  pageSize: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * Respuesta paginada
+ */
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+/**
+ * Estadísticas del módulo de terrenos
+ */
+export interface TerrenosStats {
+  total: number;
+  borradores: number;
+  en_revision: number;
+  aprobados: number;
+  rechazados: number;
+  por_estado: Record<TerrenoEstado, number>;
+  por_departamento: { departamento: string; count: number }[];
+  area_total_m2: number;
+  valor_total_usd: number;
+}
+
+/**
+ * Estado del wizard de terreno
+ */
+export interface TerrenoWizardState {
+  paso_actual: number;
+  terreno_id?: string;
+  borrador: Partial<TerrenoCreateInput>;
+  errores: Record<string, string>;
+  guardando: boolean;
+}
+
+// ============================================================================
+// TERRENOS - LABELS Y CONSTANTES UI
+// ============================================================================
+
+/**
+ * Labels para tipos de terreno
+ */
+export const TIPO_TERRENO_LABELS: Record<TerrenoTipo, string> = {
+  urbano: 'Urbano',
+  rural: 'Rural',
+  eriaza: 'Eriaza',
+  agricola: 'Agrícola',
+  industrial: 'Industrial',
+};
+
+/**
+ * Labels para tipo de propiedad
+ */
+export const TIPO_PROPIEDAD_LABELS: Record<TerrenoPropiedad, string> = {
+  inscrito: 'Inscrito en SUNARP',
+  posesion: 'Posesión',
+  herencia: 'Herencia',
+  comunidad: 'Comunidad Campesina',
+  otro: 'Otro',
+};
+
+/**
+ * Labels para urgencia de venta
+ */
+export const URGENCIA_LABELS: Record<TerrenoUrgencia, string> = {
+  inmediata: 'Inmediata (< 1 mes)',
+  corto_plazo: 'Corto plazo (1-3 meses)',
+  mediano_plazo: 'Mediano plazo (3-6 meses)',
+  sin_apuro: 'Sin apuro',
+};
+
+/**
+ * Labels para estados de terreno
+ */
+export const TERRENO_ESTADO_LABELS: Record<TerrenoEstado, string> = {
+  borrador: 'Borrador',
+  enviado: 'Enviado',
+  en_revision: 'En Revisión',
+  info_adicional: 'Info. Adicional',
+  evaluacion: 'En Evaluación',
+  visita_programada: 'Visita Programada',
+  visitado: 'Visitado',
+  negociacion: 'En Negociación',
+  aprobado: 'Aprobado',
+  rechazado: 'Rechazado',
+  archivado: 'Archivado',
+};
+
+/**
+ * Colores para estados de terreno
+ */
+export const TERRENO_ESTADO_COLORS: Record<TerrenoEstado, { bg: string; text: string; border: string }> = {
+  borrador: { bg: 'bg-gray-100', text: 'text-gray-700', border: 'border-gray-300' },
+  enviado: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' },
+  en_revision: { bg: 'bg-yellow-100', text: 'text-yellow-700', border: 'border-yellow-300' },
+  info_adicional: { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300' },
+  evaluacion: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' },
+  visita_programada: { bg: 'bg-cyan-100', text: 'text-cyan-700', border: 'border-cyan-300' },
+  visitado: { bg: 'bg-teal-100', text: 'text-teal-700', border: 'border-teal-300' },
+  negociacion: { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-300' },
+  aprobado: { bg: 'bg-green-100', text: 'text-green-700', border: 'border-green-300' },
+  rechazado: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300' },
+  archivado: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-300' },
+};
+
+/**
+ * Labels para prioridad
+ */
+export const PRIORIDAD_LABELS: Record<TerrenoPrioridad, string> = {
+  baja: 'Baja',
+  normal: 'Normal',
+  alta: 'Alta',
+  urgente: 'Urgente',
+};
+
+/**
+ * Colores para prioridad
+ */
+export const PRIORIDAD_COLORS: Record<TerrenoPrioridad, { bg: string; text: string }> = {
+  baja: { bg: 'bg-gray-100', text: 'text-gray-600' },
+  normal: { bg: 'bg-blue-100', text: 'text-blue-600' },
+  alta: { bg: 'bg-orange-100', text: 'text-orange-600' },
+  urgente: { bg: 'bg-red-100', text: 'text-red-600' },
+};
+
+/**
+ * Pasos del wizard de terreno
+ */
+export const WIZARD_STEPS = [
+  { id: 1, titulo: 'Ubicación', descripcion: 'Datos de ubicación del terreno' },
+  { id: 2, titulo: 'Características', descripcion: 'Área, tipo y servicios' },
+  { id: 3, titulo: 'Documentación', descripcion: 'Información legal y propietario' },
+  { id: 4, titulo: 'Valorización', descripcion: 'Precio y urgencia de venta' },
+  { id: 5, titulo: 'Multimedia', descripcion: 'Fotos, videos y planos' },
+];

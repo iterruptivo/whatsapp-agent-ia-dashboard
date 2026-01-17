@@ -289,3 +289,52 @@ export async function getProyectosForFilter(): Promise<Proyecto[]> {
     return [];
   }
 }
+
+/**
+ * Obtener solo proyectos que tienen fichas de inscripción
+ * La tabla de fichas es 'clientes_ficha' con relación a 'locales' vía local_id
+ */
+export async function getProyectosConFichas(): Promise<Proyecto[]> {
+  try {
+    const supabase = await createSupabaseServer();
+
+    // Obtener IDs de proyectos que tienen fichas (usando clientes_ficha)
+    const { data: fichasData, error: fichasError } = await supabase
+      .from('clientes_ficha')
+      .select('locales!inner(proyecto_id)');
+
+    if (fichasError) {
+      console.error('[REPORTERIA] Error fetching fichas for proyectos filter:', fichasError);
+      return [];
+    }
+
+    // Extraer IDs únicos de proyectos
+    const proyectoIds = [...new Set(
+      (fichasData || [])
+        .map((f: any) => f.locales?.proyecto_id)
+        .filter((id: string | null | undefined) => id != null)
+    )];
+
+    if (proyectoIds.length === 0) {
+      return [];
+    }
+
+    // Obtener los proyectos
+    const { data, error } = await supabase
+      .from('proyectos')
+      .select('id, nombre, slug, color, activo')
+      .in('id', proyectoIds)
+      .eq('activo', true)
+      .order('nombre', { ascending: true });
+
+    if (error) {
+      console.error('[REPORTERIA] Error fetching proyectos con fichas:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('[REPORTERIA] Error in getProyectosConFichas:', error);
+    return [];
+  }
+}

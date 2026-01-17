@@ -20,12 +20,14 @@ import {
   Lock,
   Users,
   Globe,
+  Trash2,
 } from 'lucide-react';
 import { ReunionListItem, ReunionEstado, PaginationMetadata } from '@/types/reuniones';
 import ReunionEstadoBadge from './ReunionEstadoBadge';
 import ReunionFiltros from './ReunionFiltros';
 import ReunionPagination from './ReunionPagination';
 import CompartirReunionModal from './CompartirReunionModal';
+import EliminarReunionModal from './EliminarReunionModal';
 import { useAuth } from '@/lib/auth-context';
 
 // Reuniones son GLOBALES - no dependen del proyecto seleccionado
@@ -47,6 +49,10 @@ export default function ReunionesTable() {
   // Modal compartir
   const [showCompartirModal, setShowCompartirModal] = useState(false);
   const [reunionSeleccionada, setReunionSeleccionada] = useState<ReunionListItem | null>(null);
+
+  // Modal eliminar
+  const [showEliminarModal, setShowEliminarModal] = useState(false);
+  const [reunionAEliminar, setReunionAEliminar] = useState<ReunionListItem | null>(null);
 
   // Fetch reuniones desde API
   const fetchReuniones = useCallback(async () => {
@@ -113,8 +119,21 @@ export default function ReunionesTable() {
     setShowCompartirModal(true);
   };
 
+  // Abrir modal eliminar
+  const handleEliminar = (e: React.MouseEvent, reunion: ReunionListItem) => {
+    e.stopPropagation(); // Prevenir navegación a detalle
+    setReunionAEliminar(reunion);
+    setShowEliminarModal(true);
+  };
+
   // Determinar si puede compartir una reunión (solo el creador)
   const puedeCompartir = (reunion: ReunionListItem) => {
+    if (!user) return false;
+    return reunion.created_by === user.id;
+  };
+
+  // Determinar si puede eliminar una reunión (solo el creador)
+  const puedeEliminar = (reunion: ReunionListItem) => {
     if (!user) return false;
     return reunion.created_by === user.id;
   };
@@ -268,15 +287,26 @@ export default function ReunionesTable() {
                   <div className="flex items-center gap-2">
                     {getVisibilidadBadge(reunion)}
                   </div>
-                  {puedeCompartir(reunion) && (
-                    <button
-                      onClick={(e) => handleCompartir(e, reunion)}
-                      className="p-1.5 text-gray-400 hover:text-[#1b967a] hover:bg-gray-100 rounded transition-colors"
-                      title="Compartir reunión"
-                    >
-                      <Share2 className="w-4 h-4" />
-                    </button>
-                  )}
+                  <div className="flex items-center gap-1">
+                    {puedeCompartir(reunion) && (
+                      <button
+                        onClick={(e) => handleCompartir(e, reunion)}
+                        className="p-1.5 text-gray-400 hover:text-[#1b967a] hover:bg-gray-100 rounded transition-colors"
+                        title="Compartir reunión"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    {puedeEliminar(reunion) && (
+                      <button
+                        onClick={(e) => handleEliminar(e, reunion)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="Eliminar reunión"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -350,7 +380,7 @@ export default function ReunionesTable() {
                       {getVisibilidadBadge(reunion)}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-center">
+                      <div className="flex items-center justify-center gap-1">
                         {puedeCompartir(reunion) && (
                           <button
                             onClick={(e) => handleCompartir(e, reunion)}
@@ -358,6 +388,15 @@ export default function ReunionesTable() {
                             title="Compartir reunión"
                           >
                             <Share2 className="w-5 h-5" />
+                          </button>
+                        )}
+                        {puedeEliminar(reunion) && (
+                          <button
+                            onClick={(e) => handleEliminar(e, reunion)}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar reunión"
+                          >
+                            <Trash2 className="w-5 h-5" />
                           </button>
                         )}
                       </div>
@@ -390,6 +429,21 @@ export default function ReunionesTable() {
             setReunionSeleccionada(null);
           }}
           reunion={reunionSeleccionada}
+          onSuccess={() => {
+            fetchReuniones(); // Recargar lista
+          }}
+        />
+      )}
+
+      {/* Modal Eliminar */}
+      {reunionAEliminar && (
+        <EliminarReunionModal
+          isOpen={showEliminarModal}
+          onClose={() => {
+            setShowEliminarModal(false);
+            setReunionAEliminar(null);
+          }}
+          reunion={reunionAEliminar}
           onSuccess={() => {
             fetchReuniones(); // Recargar lista
           }}

@@ -113,7 +113,7 @@ async function checkExpansionPermission(
   if (!usuario) return false;
 
   // Roles con acceso completo al módulo
-  const adminRoles = ['superadmin', 'admin', 'legal'];
+  const adminRoles = ['superadmin', 'admin', 'gerencia', 'legal'];
   if (adminRoles.includes(usuario.rol)) {
     return true;
   }
@@ -1204,5 +1204,940 @@ export async function deleteDocumentoCorredor(documentoId: string): Promise<Expa
   } catch (error) {
     console.error('Error en deleteDocumentoCorredor:', error);
     return { success: false, error: 'Error interno' };
+  }
+}
+
+// ============================================================================
+// TERRENOS - ACCIONES
+// ============================================================================
+
+import type {
+  Terreno,
+  TerrenoCreateInput,
+  TerrenoEstado,
+  TerrenoPrioridad,
+  TerrenosFiltros,
+  TerrenoHistorial,
+  TerrenoComentario,
+  ComentarioInput,
+  PaginacionParams,
+  PaginatedResponse,
+  TerrenosStats,
+  Ubigeo,
+} from './types/expansion';
+
+// ============================================================================
+// TERRENOS: Crear terreno (borrador)
+// ============================================================================
+
+export async function crearTerreno(
+  input: Partial<TerrenoCreateInput>
+): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const supabase = await createClient();
+
+    // Verificar que el usuario tiene un registro de corredor aprobado
+    const { data: registro } = await supabase
+      .from('corredores_registro')
+      .select('id, estado')
+      .eq('usuario_id', user.id)
+      .single();
+
+    if (!registro || registro.estado !== 'aprobado') {
+      return { success: false, error: 'Debe tener un registro de corredor aprobado para crear terrenos' };
+    }
+
+    const { data, error } = await supabase
+      .from('terrenos_expansion')
+      .insert({
+        corredor_id: registro.id,
+        departamento: input.departamento || '',
+        provincia: input.provincia || '',
+        distrito: input.distrito || '',
+        direccion: input.direccion || '',
+        referencia: input.referencia,
+        coordenadas_lat: input.coordenadas_lat,
+        coordenadas_lng: input.coordenadas_lng,
+        area_total_m2: input.area_total_m2 || 0,
+        area_construida_m2: input.area_construida_m2 || 0,
+        frente_ml: input.frente_ml,
+        fondo_ml: input.fondo_ml,
+        tipo_terreno: input.tipo_terreno || 'urbano',
+        zonificacion: input.zonificacion,
+        uso_actual: input.uso_actual,
+        tiene_agua: input.tiene_agua || false,
+        tiene_luz: input.tiene_luz || false,
+        tiene_desague: input.tiene_desague || false,
+        tiene_internet: input.tiene_internet || false,
+        acceso_pavimentado: input.acceso_pavimentado || false,
+        tipo_propiedad: input.tipo_propiedad,
+        partida_registral: input.partida_registral,
+        tiene_cargas: input.tiene_cargas || false,
+        descripcion_cargas: input.descripcion_cargas,
+        propietario_nombre: input.propietario_nombre,
+        propietario_dni: input.propietario_dni,
+        propietario_telefono: input.propietario_telefono,
+        propietario_es_corredor: input.propietario_es_corredor || false,
+        precio_solicitado: input.precio_solicitado,
+        moneda: input.moneda || 'USD',
+        precio_negociable: input.precio_negociable ?? true,
+        tasacion_referencial: input.tasacion_referencial,
+        fuente_tasacion: input.fuente_tasacion,
+        urgencia_venta: input.urgencia_venta,
+        fotos_urls: input.fotos_urls || [],
+        videos_urls: input.videos_urls || [],
+        planos_urls: input.planos_urls || [],
+        documentos_urls: input.documentos_urls || [],
+        estado: 'borrador',
+      })
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    // Registrar en historial
+    await supabase.from('terrenos_historial').insert({
+      terreno_id: data.id,
+      corredor_id: registro.id,
+      accion: 'creado',
+      estado_nuevo: 'borrador',
+      descripcion: 'Terreno creado como borrador',
+    });
+
+    revalidatePath('/expansion/terrenos');
+    return { success: true, data: { terreno_id: data.id } };
+  } catch (error) {
+    console.error('Error creando terreno:', error);
+    return { success: false, error: 'Error al crear terreno' };
+  }
+}
+
+// ============================================================================
+// TERRENOS: Actualizar terreno (wizard steps)
+// ============================================================================
+
+export async function actualizarTerreno(
+  terreno_id: string,
+  datos: Partial<TerrenoCreateInput>
+): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const supabase = await createClient();
+
+    // Obtener registro del corredor
+    const { data: registro } = await supabase
+      .from('corredores_registro')
+      .select('id')
+      .eq('usuario_id', user.id)
+      .single();
+
+    if (!registro) {
+      return { success: false, error: 'Registro de corredor no encontrado' };
+    }
+
+    // Verificar que el terreno pertenece al corredor
+    const { data: terreno } = await supabase
+      .from('terrenos_expansion')
+      .select('id, corredor_id, estado')
+      .eq('id', terreno_id)
+      .single();
+
+    if (!terreno || terreno.corredor_id !== registro.id) {
+      return { success: false, error: 'Terreno no encontrado' };
+    }
+
+    if (terreno.estado !== 'borrador' && terreno.estado !== 'info_adicional') {
+      return { success: false, error: 'El terreno no puede ser editado en su estado actual' };
+    }
+
+    const { error } = await supabase
+      .from('terrenos_expansion')
+      .update(datos)
+      .eq('id', terreno_id);
+
+    if (error) throw error;
+
+    revalidatePath('/expansion/terrenos');
+    return { success: true };
+  } catch (error) {
+    console.error('Error actualizando terreno:', error);
+    return { success: false, error: 'Error al actualizar terreno' };
+  }
+}
+
+// ============================================================================
+// TERRENOS: Enviar para revisión
+// ============================================================================
+
+export async function enviarTerreno(terreno_id: string): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const supabase = await createClient();
+
+    // Obtener registro del corredor
+    const { data: registro } = await supabase
+      .from('corredores_registro')
+      .select('id')
+      .eq('usuario_id', user.id)
+      .single();
+
+    if (!registro) {
+      return { success: false, error: 'Registro de corredor no encontrado' };
+    }
+
+    // Verificar terreno
+    const { data: terreno } = await supabase
+      .from('terrenos_expansion')
+      .select('*')
+      .eq('id', terreno_id)
+      .eq('corredor_id', registro.id)
+      .single();
+
+    if (!terreno) {
+      return { success: false, error: 'Terreno no encontrado' };
+    }
+
+    if (terreno.estado !== 'borrador' && terreno.estado !== 'info_adicional') {
+      return { success: false, error: 'El terreno ya fue enviado' };
+    }
+
+    // Validar campos requeridos
+    if (!terreno.departamento || !terreno.provincia || !terreno.distrito || !terreno.direccion) {
+      return { success: false, error: 'Complete la ubicación del terreno' };
+    }
+
+    if (!terreno.area_total_m2 || terreno.area_total_m2 <= 0) {
+      return { success: false, error: 'Ingrese el área del terreno' };
+    }
+
+    if (!terreno.fotos_urls || terreno.fotos_urls.length === 0) {
+      return { success: false, error: 'Suba al menos una foto del terreno' };
+    }
+
+    const { error } = await supabase
+      .from('terrenos_expansion')
+      .update({
+        estado: 'enviado',
+        enviado_at: new Date().toISOString(),
+      })
+      .eq('id', terreno_id);
+
+    if (error) throw error;
+
+    // Registrar en historial
+    await supabase.from('terrenos_historial').insert({
+      terreno_id,
+      corredor_id: registro.id,
+      accion: 'enviado',
+      estado_anterior: terreno.estado,
+      estado_nuevo: 'enviado',
+      descripcion: 'Terreno enviado para revisión',
+    });
+
+    revalidatePath('/expansion/terrenos');
+    return { success: true };
+  } catch (error) {
+    console.error('Error enviando terreno:', error);
+    return { success: false, error: 'Error al enviar terreno' };
+  }
+}
+
+// ============================================================================
+// TERRENOS: Obtener terrenos del corredor actual
+// ============================================================================
+
+export async function getMisTerrenos(): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const supabase = await createClient();
+
+    // Obtener registro del corredor
+    const { data: registro } = await supabase
+      .from('corredores_registro')
+      .select('id')
+      .eq('usuario_id', user.id)
+      .single();
+
+    if (!registro) {
+      return { success: true, data: [] };
+    }
+
+    const { data, error } = await supabase
+      .from('terrenos_expansion')
+      .select('*')
+      .eq('corredor_id', registro.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Error obteniendo terrenos:', error);
+    return { success: false, error: 'Error al obtener terrenos' };
+  }
+}
+
+// ============================================================================
+// TERRENOS: Obtener terreno por ID
+// ============================================================================
+
+export async function getTerrenoById(id: string): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const supabase = await createClient();
+    const adminClient = createAdminClient();
+
+    // Verificar permisos
+    const hasAdminPermission = await checkExpansionPermission(user.id, 'read_all');
+
+    if (hasAdminPermission) {
+      // Admin puede ver cualquier terreno
+      const { data, error } = await adminClient
+        .from('terrenos_expansion')
+        .select(`
+          *,
+          corredor:corredores_registro(id, nombres, apellido_paterno, apellido_materno, email, telefono, dni),
+          asignado:usuarios!terrenos_expansion_asignado_a_fkey(id, nombre)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    } else {
+      // Corredor solo puede ver sus propios terrenos
+      const { data: registro } = await supabase
+        .from('corredores_registro')
+        .select('id')
+        .eq('usuario_id', user.id)
+        .single();
+
+      if (!registro) {
+        return { success: false, error: 'No tienes permiso' };
+      }
+
+      const { data, error } = await supabase
+        .from('terrenos_expansion')
+        .select('*')
+        .eq('id', id)
+        .eq('corredor_id', registro.id)
+        .single();
+
+      if (error) throw error;
+      return { success: true, data };
+    }
+  } catch (error) {
+    console.error('Error obteniendo terreno:', error);
+    return { success: false, error: 'Error al obtener terreno' };
+  }
+}
+
+// ============================================================================
+// ADMIN: Obtener todos los terrenos
+// ============================================================================
+
+export async function getAllTerrenos(
+  filtros?: TerrenosFiltros,
+  paginacion?: PaginacionParams
+): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const hasPermission = await checkExpansionPermission(user.id, 'read_all');
+    if (!hasPermission) {
+      return { success: false, error: 'Sin permiso' };
+    }
+
+    const adminClient = createAdminClient();
+
+    let query = adminClient
+      .from('terrenos_expansion')
+      .select(`
+        *,
+        corredor:corredores_registro(id, nombres, apellido_paterno, apellido_materno, email, telefono),
+        asignado:usuarios!terrenos_expansion_asignado_a_fkey(id, nombre)
+      `, { count: 'exact' });
+
+    // Aplicar filtros
+    if (filtros?.estado && filtros.estado !== 'todos') {
+      query = query.eq('estado', filtros.estado);
+    }
+
+    if (filtros?.prioridad && filtros.prioridad !== 'todas') {
+      query = query.eq('prioridad', filtros.prioridad);
+    }
+
+    if (filtros?.departamento) {
+      query = query.eq('departamento', filtros.departamento);
+    }
+
+    if (filtros?.tipo_terreno && filtros.tipo_terreno !== 'todos') {
+      query = query.eq('tipo_terreno', filtros.tipo_terreno);
+    }
+
+    if (filtros?.asignado_a) {
+      if (filtros.asignado_a === 'sin_asignar') {
+        query = query.is('asignado_a', null);
+      } else if (filtros.asignado_a !== 'todos') {
+        query = query.eq('asignado_a', filtros.asignado_a);
+      }
+    }
+
+    if (filtros?.corredor_id) {
+      query = query.eq('corredor_id', filtros.corredor_id);
+    }
+
+    if (filtros?.busqueda) {
+      query = query.or(
+        `codigo.ilike.%${filtros.busqueda}%,direccion.ilike.%${filtros.busqueda}%,distrito.ilike.%${filtros.busqueda}%`
+      );
+    }
+
+    if (filtros?.fecha_desde) {
+      query = query.gte('created_at', filtros.fecha_desde);
+    }
+
+    if (filtros?.fecha_hasta) {
+      query = query.lte('created_at', filtros.fecha_hasta + 'T23:59:59');
+    }
+
+    // Ordenamiento
+    const sortBy = paginacion?.sortBy || 'created_at';
+    const sortOrder = paginacion?.sortOrder === 'asc';
+    query = query.order(sortBy, { ascending: sortOrder });
+
+    // Paginación
+    if (paginacion) {
+      const from = (paginacion.page - 1) * paginacion.pageSize;
+      const to = from + paginacion.pageSize - 1;
+      query = query.range(from, to);
+    }
+
+    const { data, count, error } = await query;
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      data: {
+        terrenos: data || [],
+        total: count || 0,
+        page: paginacion?.page || 1,
+        pageSize: paginacion?.pageSize || 20,
+        totalPages: Math.ceil((count || 0) / (paginacion?.pageSize || 20)),
+      },
+    };
+  } catch (error) {
+    console.error('Error obteniendo terrenos:', error);
+    return { success: false, error: 'Error al obtener terrenos' };
+  }
+}
+
+// ============================================================================
+// ADMIN: Cambiar estado de terreno
+// ============================================================================
+
+export async function cambiarEstadoTerreno(
+  terreno_id: string,
+  nuevo_estado: TerrenoEstado,
+  notas?: string
+): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const hasPermission = await checkExpansionPermission(user.id, 'approve');
+    if (!hasPermission) {
+      return { success: false, error: 'Sin permiso' };
+    }
+
+    const adminClient = createAdminClient();
+
+    // Obtener estado actual
+    const { data: terreno } = await adminClient
+      .from('terrenos_expansion')
+      .select('estado')
+      .eq('id', terreno_id)
+      .single();
+
+    if (!terreno) {
+      return { success: false, error: 'Terreno no encontrado' };
+    }
+
+    const { error } = await adminClient
+      .from('terrenos_expansion')
+      .update({
+        estado: nuevo_estado,
+        evaluacion_notas: notas || undefined,
+      })
+      .eq('id', terreno_id);
+
+    if (error) throw error;
+
+    // Registrar en historial
+    await adminClient.from('terrenos_historial').insert({
+      terreno_id,
+      usuario_id: user.id,
+      accion: 'estado_cambio',
+      estado_anterior: terreno.estado,
+      estado_nuevo: nuevo_estado,
+      descripcion: notas || `Estado cambiado a ${nuevo_estado}`,
+    });
+
+    revalidatePath('/expansion/terrenos');
+    revalidatePath(`/expansion/terrenos/${terreno_id}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error cambiando estado terreno:', error);
+    return { success: false, error: 'Error al cambiar estado' };
+  }
+}
+
+// ============================================================================
+// ADMIN: Asignar terreno a usuario
+// ============================================================================
+
+export async function asignarTerreno(
+  terreno_id: string,
+  asignado_a: string
+): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const hasPermission = await checkExpansionPermission(user.id, 'approve');
+    if (!hasPermission) {
+      return { success: false, error: 'Sin permiso' };
+    }
+
+    const adminClient = createAdminClient();
+
+    const { error } = await adminClient
+      .from('terrenos_expansion')
+      .update({
+        asignado_a,
+        fecha_asignacion: new Date().toISOString(),
+        estado: 'en_revision',
+      })
+      .eq('id', terreno_id);
+
+    if (error) throw error;
+
+    // Registrar en historial
+    await adminClient.from('terrenos_historial').insert({
+      terreno_id,
+      usuario_id: user.id,
+      accion: 'asignado',
+      estado_nuevo: 'en_revision',
+      descripcion: 'Terreno asignado para revisión',
+    });
+
+    revalidatePath('/expansion/terrenos');
+    return { success: true };
+  } catch (error) {
+    console.error('Error asignando terreno:', error);
+    return { success: false, error: 'Error al asignar terreno' };
+  }
+}
+
+// ============================================================================
+// ADMIN: Cambiar prioridad de terreno
+// ============================================================================
+
+export async function cambiarPrioridadTerreno(
+  terreno_id: string,
+  prioridad: TerrenoPrioridad
+): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const hasPermission = await checkExpansionPermission(user.id, 'write');
+    if (!hasPermission) {
+      return { success: false, error: 'Sin permiso' };
+    }
+
+    const adminClient = createAdminClient();
+
+    const { error } = await adminClient
+      .from('terrenos_expansion')
+      .update({ prioridad })
+      .eq('id', terreno_id);
+
+    if (error) throw error;
+
+    revalidatePath('/expansion/terrenos');
+    return { success: true };
+  } catch (error) {
+    console.error('Error cambiando prioridad:', error);
+    return { success: false, error: 'Error al cambiar prioridad' };
+  }
+}
+
+// ============================================================================
+// ADMIN: Programar visita
+// ============================================================================
+
+export async function programarVisita(
+  terreno_id: string,
+  fecha: string
+): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const hasPermission = await checkExpansionPermission(user.id, 'approve');
+    if (!hasPermission) {
+      return { success: false, error: 'Sin permiso' };
+    }
+
+    const adminClient = createAdminClient();
+
+    const { error } = await adminClient
+      .from('terrenos_expansion')
+      .update({
+        fecha_visita_programada: fecha,
+        estado: 'visita_programada',
+      })
+      .eq('id', terreno_id);
+
+    if (error) throw error;
+
+    // Registrar en historial
+    await adminClient.from('terrenos_historial').insert({
+      terreno_id,
+      usuario_id: user.id,
+      accion: 'visita_programada',
+      estado_nuevo: 'visita_programada',
+      descripcion: `Visita programada para ${new Date(fecha).toLocaleDateString('es-PE')}`,
+    });
+
+    revalidatePath('/expansion/terrenos');
+    return { success: true };
+  } catch (error) {
+    console.error('Error programando visita:', error);
+    return { success: false, error: 'Error al programar visita' };
+  }
+}
+
+// ============================================================================
+// COMENTARIOS: Agregar comentario a terreno
+// ============================================================================
+
+export async function agregarComentarioTerreno(
+  input: ComentarioInput
+): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const supabase = await createClient();
+    const adminClient = createAdminClient();
+
+    // Determinar si es admin o corredor
+    const hasAdminPermission = await checkExpansionPermission(user.id, 'read_all');
+
+    let corredor_id = null;
+    let usuario_id = null;
+
+    if (hasAdminPermission) {
+      usuario_id = user.id;
+    } else {
+      // Es corredor, obtener su registro
+      const { data: registro } = await supabase
+        .from('corredores_registro')
+        .select('id')
+        .eq('usuario_id', user.id)
+        .single();
+
+      if (!registro) {
+        return { success: false, error: 'Registro de corredor no encontrado' };
+      }
+      corredor_id = registro.id;
+    }
+
+    const client = hasAdminPermission ? adminClient : supabase;
+
+    const { error } = await client.from('terrenos_comentarios').insert({
+      terreno_id: input.terreno_id,
+      usuario_id,
+      corredor_id,
+      mensaje: input.mensaje,
+      archivos_urls: input.archivos_urls || [],
+      es_interno: input.es_interno || false,
+    });
+
+    if (error) throw error;
+
+    // Registrar en historial
+    await client.from('terrenos_historial').insert({
+      terreno_id: input.terreno_id,
+      usuario_id,
+      corredor_id,
+      accion: 'comentario',
+      descripcion: 'Nuevo comentario agregado',
+    });
+
+    revalidatePath(`/expansion/terrenos/${input.terreno_id}`);
+    return { success: true };
+  } catch (error) {
+    console.error('Error agregando comentario:', error);
+    return { success: false, error: 'Error al agregar comentario' };
+  }
+}
+
+// ============================================================================
+// COMENTARIOS: Obtener comentarios de terreno
+// ============================================================================
+
+export async function getComentariosTerreno(
+  terreno_id: string,
+  incluir_internos: boolean = false
+): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const adminClient = createAdminClient();
+
+    let query = adminClient
+      .from('terrenos_comentarios')
+      .select(`
+        *,
+        usuario:usuarios!terrenos_comentarios_usuario_id_fkey(id, nombre),
+        corredor:corredores_registro!terrenos_comentarios_corredor_id_fkey(id, nombres, apellido_paterno)
+      `)
+      .eq('terreno_id', terreno_id)
+      .order('created_at', { ascending: true });
+
+    if (!incluir_internos) {
+      query = query.eq('es_interno', false);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Error obteniendo comentarios:', error);
+    return { success: false, error: 'Error al obtener comentarios' };
+  }
+}
+
+// ============================================================================
+// HISTORIAL: Obtener historial de terreno
+// ============================================================================
+
+export async function getHistorialTerreno(terreno_id: string): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const adminClient = createAdminClient();
+
+    const { data, error } = await adminClient
+      .from('terrenos_historial')
+      .select(`
+        *,
+        usuario:usuarios!terrenos_historial_usuario_id_fkey(id, nombre),
+        corredor:corredores_registro!terrenos_historial_corredor_id_fkey(id, nombres, apellido_paterno)
+      `)
+      .eq('terreno_id', terreno_id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Error obteniendo historial:', error);
+    return { success: false, error: 'Error al obtener historial' };
+  }
+}
+
+// ============================================================================
+// UBIGEO: Obtener departamentos
+// ============================================================================
+
+export async function getDepartamentos(): Promise<ExpansionActionResult> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from('ubigeo_peru')
+      .select('*')
+      .eq('tipo', 'departamento')
+      .order('departamento');
+
+    if (error) throw error;
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Error obteniendo departamentos:', error);
+    return { success: false, error: 'Error al obtener departamentos' };
+  }
+}
+
+// ============================================================================
+// UBIGEO: Obtener provincias
+// ============================================================================
+
+export async function getProvincias(departamento: string): Promise<ExpansionActionResult> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from('ubigeo_peru')
+      .select('*')
+      .eq('tipo', 'provincia')
+      .eq('departamento', departamento)
+      .order('provincia');
+
+    if (error) throw error;
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Error obteniendo provincias:', error);
+    return { success: false, error: 'Error al obtener provincias' };
+  }
+}
+
+// ============================================================================
+// UBIGEO: Obtener distritos
+// ============================================================================
+
+export async function getDistritos(departamento: string, provincia: string): Promise<ExpansionActionResult> {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from('ubigeo_peru')
+      .select('*')
+      .eq('tipo', 'distrito')
+      .eq('departamento', departamento)
+      .eq('provincia', provincia)
+      .order('distrito');
+
+    if (error) throw error;
+
+    return { success: true, data: data || [] };
+  } catch (error) {
+    console.error('Error obteniendo distritos:', error);
+    return { success: false, error: 'Error al obtener distritos' };
+  }
+}
+
+// ============================================================================
+// ESTADÍSTICAS: Obtener estadísticas de terrenos
+// ============================================================================
+
+export async function getTerrenosStats(): Promise<ExpansionActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { success: false, error: 'No autenticado' };
+    }
+
+    const hasPermission = await checkExpansionPermission(user.id, 'read_all');
+    if (!hasPermission) {
+      return { success: false, error: 'Sin permiso' };
+    }
+
+    const adminClient = createAdminClient();
+
+    const { data: terrenosData } = await adminClient
+      .from('terrenos_expansion')
+      .select('estado, departamento, area_total_m2, precio_solicitado, moneda, created_at');
+
+    const terrenos = terrenosData || [];
+    const inicioSemana = new Date();
+    inicioSemana.setDate(inicioSemana.getDate() - 7);
+
+    const porEstado: Record<TerrenoEstado, number> = {
+      borrador: 0,
+      enviado: 0,
+      en_revision: 0,
+      info_adicional: 0,
+      evaluacion: 0,
+      visita_programada: 0,
+      visitado: 0,
+      negociacion: 0,
+      aprobado: 0,
+      rechazado: 0,
+      archivado: 0,
+    };
+
+    const porDepartamento: Record<string, number> = {};
+    let areaTotal = 0;
+    let valorTotal = 0;
+
+    terrenos.forEach((t: any) => {
+      porEstado[t.estado as TerrenoEstado]++;
+      if (t.departamento) {
+        porDepartamento[t.departamento] = (porDepartamento[t.departamento] || 0) + 1;
+      }
+      areaTotal += t.area_total_m2 || 0;
+      if (t.precio_solicitado) {
+        valorTotal += t.moneda === 'USD' ? t.precio_solicitado : t.precio_solicitado / 3.8;
+      }
+    });
+
+    const stats: TerrenosStats = {
+      total: terrenos.length,
+      borradores: porEstado.borrador,
+      en_revision: porEstado.en_revision + porEstado.evaluacion + porEstado.enviado,
+      aprobados: porEstado.aprobado,
+      rechazados: porEstado.rechazado,
+      por_estado: porEstado,
+      por_departamento: Object.entries(porDepartamento)
+        .map(([departamento, count]) => ({ departamento, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10),
+      area_total_m2: areaTotal,
+      valor_total_usd: valorTotal,
+    };
+
+    return { success: true, data: stats };
+  } catch (error) {
+    console.error('Error obteniendo estadísticas:', error);
+    return { success: false, error: 'Error al obtener estadísticas' };
   }
 }

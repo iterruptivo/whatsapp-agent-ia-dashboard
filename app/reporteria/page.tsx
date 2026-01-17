@@ -23,8 +23,8 @@ export default function ReporteriaPage() {
           const canRead = await canCurrentUser('insights', 'read');
           setHasAccess(canRead);
         } else {
-          // Fallback legacy: admin, jefe_ventas, marketing
-          const hasLegacyAccess = user.rol === 'admin' || user.rol === 'jefe_ventas' || user.rol === 'marketing';
+          // Fallback legacy: superadmin, admin, jefe_ventas, marketing, finanzas
+          const hasLegacyAccess = user.rol === 'superadmin' || user.rol === 'admin' || user.rol === 'jefe_ventas' || user.rol === 'marketing' || user.rol === 'finanzas';
           setHasAccess(hasLegacyAccess);
         }
       }
@@ -63,7 +63,7 @@ export default function ReporteriaPage() {
             </svg>
           </div>
           <h2 className="text-xl font-bold text-gray-800 mb-2">Acceso Denegado</h2>
-          <p className="text-gray-600 mb-6">No tienes permisos para acceder a esta página. Solo administradores, jefes de ventas y marketing pueden ver la reportería.</p>
+          <p className="text-gray-600 mb-6">No tienes permisos para acceder a esta página. Solo administradores, jefes de ventas, marketing y finanzas pueden ver la reportería.</p>
           <button
             onClick={() => router.back()}
             className="w-full py-3 px-4 bg-[#1b967a] text-white font-medium rounded-lg hover:bg-[#157a64] transition-colors"

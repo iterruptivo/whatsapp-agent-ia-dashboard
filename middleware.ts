@@ -395,20 +395,18 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  // REPORTERIA ROUTES (/reporteria) - Admin, jefe_ventas and marketing only
+  // REPORTERIA ROUTES (/reporteria) - Admin, jefe_ventas, marketing and finanzas
   // Página especial sin sidebar, accesible desde dropdown de login
   if (isReporteriaRoute) {
-    if (userData.rol !== 'superadmin' && userData.rol !== 'admin' && userData.rol !== 'jefe_ventas' && userData.rol !== 'marketing') {
+    if (userData.rol !== 'superadmin' && userData.rol !== 'admin' && userData.rol !== 'jefe_ventas' && userData.rol !== 'marketing' && userData.rol !== 'finanzas') {
       // Non-authorized user trying to access reporteria - redirect based on role
       if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
-      } else if (userData.rol === 'finanzas') {
-        return NextResponse.redirect(new URL('/control-pagos', req.url));
       } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
         return NextResponse.redirect(new URL('/locales', req.url));
       }
     }
-    // Admin, jefe_ventas and marketing can access
+    // Admin, jefe_ventas, marketing and finanzas can access
     return res;
   }
 
@@ -436,6 +434,16 @@ export async function middleware(req: NextRequest) {
 
   // EXPANSION ROUTES (/expansion) - Admin, legal, corredor
   if (isExpansionRoute) {
+    // Terrenos inbox: solo admin, gerencia, legal (NO corredor)
+    if (pathname.startsWith('/expansion/terrenos/inbox')) {
+      if (['superadmin', 'admin', 'gerencia', 'legal'].includes(userData.rol)) {
+        return res;
+      }
+      // Corredor que intenta acceder al inbox - redirect a sus terrenos
+      if (userData.rol === 'corredor') {
+        return NextResponse.redirect(new URL('/expansion/terrenos', req.url));
+      }
+    }
     // Permitir acceso a admin, legal y corredor
     if (['superadmin', 'admin', 'legal', 'corredor'].includes(userData.rol)) {
       return res;

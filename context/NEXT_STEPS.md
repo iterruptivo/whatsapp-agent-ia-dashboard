@@ -4,6 +4,56 @@
 
 ---
 
+## NUEVO: Módulo Expansión Terrenos - Completar Funcionalidad (17 Enero 2026)
+
+**Prioridad:** MEDIA - Módulo base implementado, extras opcionales
+**Sesión:** 100
+
+### Implementado ✅
+
+- Migración SQL ejecutada
+- Tipos TypeScript completos
+- Server Actions funcionando
+- Wizard de 5 pasos
+- Páginas del corredor
+- API de upload
+
+### Próximos Pasos (Opcionales)
+
+#### 1. Admin Inbox para Terrenos (ALTA)
+**Descripción:** Crear bandeja de administración para revisar terrenos propuestos
+**Archivos a crear:**
+- `app/expansion/terrenos/inbox/page.tsx` - Listado admin
+- `components/expansion/terrenos/TerrenosInboxTable.tsx` - Tabla con filtros
+- `components/expansion/terrenos/TerrenoDetalleAdmin.tsx` - Vista detalle admin
+
+**Funcionalidades:**
+- Ver todos los terrenos por estado
+- Cambiar estados (en_revision, visita_programada, aprobado, rechazado)
+- Agregar comentarios internos
+- Asignar evaluador
+
+#### 2. Poblar Ubigeo Completo (MEDIA)
+**Descripción:** Agregar provincias y distritos a `ubigeo_peru`
+**Nota:** Actualmente solo tiene departamentos. Para cascading completo necesita:
+- ~200 provincias
+- ~1,800 distritos
+
+#### 3. Testing Playwright (MEDIA)
+**Descripción:** Validar wizard completo con QA specialist
+**Casos a probar:**
+- Crear terreno nuevo
+- Completar 5 pasos
+- Subir archivos multimedia
+- Enviar propuesta
+- Verificar RLS (corredor solo ve los suyos)
+
+#### 4. Sidebar Integration (BAJA)
+**Descripción:** Agregar enlace "Mis Terrenos" en sidebar del corredor
+**Archivo:** `components/shared/Sidebar.tsx`
+
+---
+
 ## INMEDIATO: Probar Crear Reunión como Superadmin (16 Enero 2026)
 
 **Prioridad:** URGENTE - Fix de RLS aplicado, necesita validación

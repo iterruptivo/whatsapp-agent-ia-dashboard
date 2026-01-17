@@ -217,3 +217,18 @@ export interface ActionItemWithReunion extends ReunionActionItem {
   reunion_titulo: string;
   reunion_fecha: string | null;
 }
+
+// ============================================================================
+// TIPOS PARA AUDITORÍA DE ELIMINACIÓN
+// ============================================================================
+
+export interface ReunionAudit {
+  id: string;
+  reunion_id: string;
+  titulo: string;
+  created_by: string;
+  deleted_by: string;
+  motivo: string;
+  proyecto_id: string;
+  deleted_at: string;
+}

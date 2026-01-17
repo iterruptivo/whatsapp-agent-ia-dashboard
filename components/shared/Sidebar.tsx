@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3, Building, Building2, Columns3, Layers, Activity, PieChart, TrendingUp, ShieldCheck, Video, CheckSquare, Briefcase, Scale, ShoppingCart } from 'lucide-react';
+import { X, LayoutDashboard, Users, Home, ChevronDown, ChevronRight, DollarSign, Settings, FileText, Zap, UserCog, BarChart3, Building, Building2, Columns3, Layers, Activity, PieChart, TrendingUp, ShieldCheck, Video, CheckSquare, Briefcase, Scale, ShoppingCart, MapPin } from 'lucide-react';
 import VersionBadge from '@/components/shared/VersionBadge';
 
 interface SidebarProps {
@@ -132,6 +132,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         { href: '/reuniones', label: 'Reuniones', icon: Video },
         { href: '/repulse', label: 'Repulse', icon: Zap },
         { href: '/expansion/inbox', label: 'Corredores', icon: Briefcase },
+        { href: '/expansion/terrenos/inbox', label: 'Terrenos', icon: MapPin },
         { href: '/admin/usuarios', label: 'Adm. de Usuarios', icon: UserCog },
       ];
 
@@ -205,8 +206,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // finanzas ve Control de Pagos y Validación Bancaria (sin categorías, items directos)
+    // finanzas ve Control de Pagos, Validación Bancaria y Reportería
     if (user?.rol === 'finanzas') {
+      const reporteriaCategory: MenuCategory = {
+        label: 'Reportería',
+        icon: BarChart3,
+        items: [
+          { href: '/reporteria', label: 'Reportes', icon: FileText },
+        ],
+      };
+
       return {
         directItems: [
           { href: '/control-pagos', label: 'Control de Pagos', icon: FileText },
@@ -214,7 +223,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
           { href: '/solicitudes-compra', label: 'Solicitudes de Compra', icon: ShoppingCart },
         ],
-        categories: [],
+        categories: [reporteriaCategory],
         bottomItems: [] as MenuItem[],
       };
     }
@@ -235,11 +244,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // legal: solo ve inbox de corredores
+    // legal: solo ve inbox de corredores y terrenos
     if (user?.rol === 'legal') {
       return {
         directItems: [
           { href: '/expansion/inbox', label: 'Solicitudes Corredores', icon: Briefcase },
+          { href: '/expansion/terrenos/inbox', label: 'Propuestas Terrenos', icon: MapPin },
           { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
           { href: '/solicitudes-compra', label: 'Solicitudes de Compra', icon: ShoppingCart },
         ],
@@ -248,11 +258,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
-    // corredor: solo ve su registro o bienvenido
+    // corredor: solo ve su registro, bienvenido y terrenos
     if (user?.rol === 'corredor') {
       return {
         directItems: [
           { href: '/expansion', label: 'Mi Registro', icon: Briefcase },
+          { href: '/expansion/terrenos', label: 'Mis Terrenos', icon: MapPin },
         ],
         categories: [],
         bottomItems: [] as MenuItem[],

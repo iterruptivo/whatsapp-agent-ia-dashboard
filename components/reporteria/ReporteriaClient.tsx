@@ -19,6 +19,8 @@ import {
 import type { Proyecto } from '@/lib/db';
 import ReporteriaTabs, { type ReporteriaTab } from './ReporteriaTabs';
 import AtribucionIATab from './AtribucionIATab';
+import FichasInscripcionTab from './FichasInscripcionTab';
+import FichaInscripcionReadonlyModal from './FichaInscripcionReadonlyModal';
 
 // Tipo Usuario de auth-context (no importar de @/lib/db para evitar conflictos)
 interface Usuario {
@@ -55,8 +57,15 @@ function getDefaultDates() {
 }
 
 export default function ReporteriaClient({ user }: ReporteriaClientProps) {
-  // Tab state - Session 74
-  const [activeTab, setActiveTab] = useState<ReporteriaTab>('leads_vendedor');
+  // Permisos para ver tab de Fichas Inscripción
+  const puedeVerFichas = ['finanzas', 'admin', 'superadmin'].includes(user.rol);
+
+  // Tab state - Session 74 (fichas_inscripcion primero si tiene permiso)
+  const [activeTab, setActiveTab] = useState<ReporteriaTab>(puedeVerFichas ? 'fichas_inscripcion' : 'leads_vendedor');
+
+  // Estado para modal de ficha (Session 100)
+  const [showFichaModal, setShowFichaModal] = useState(false);
+  const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null);
 
   // Referencias para scroll dual
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -268,6 +277,12 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
   const totalesPorProyecto = calculateTotalesPorProyecto();
   const tableWidth = calculateTableWidth();
 
+  // Handler para ver ficha desde FichasInscripcionTab
+  const handleVerFicha = (fichaId: string, localId: string) => {
+    setSelectedLocalId(localId);
+    setShowFichaModal(true);
+  };
+
   return (
     <div className="space-y-6">
       {/* Tabs - Session 74: Sistema de Atribución IA */}
@@ -275,6 +290,7 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         userRole={user.rol}
+        puedeVerFichas={puedeVerFichas}
       />
 
       {/* CONTENIDO PRINCIPAL */}
@@ -282,6 +298,11 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
         {/* TAB: Atribución IA */}
         {activeTab === 'atribucion_ia' && (
           <AtribucionIATab user={user} />
+        )}
+
+        {/* TAB: Fichas Inscripción - Session 100 */}
+        {activeTab === 'fichas_inscripcion' && puedeVerFichas && (
+          <FichasInscripcionTab user={user} onVerFicha={handleVerFicha} />
         )}
 
         {/* TAB: Leads por Vendedor (contenido original) */}
@@ -638,6 +659,18 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
         </>
         )}
       </div>
+
+      {/* Modal de Ficha Readonly */}
+      {selectedLocalId && (
+        <FichaInscripcionReadonlyModal
+          isOpen={showFichaModal}
+          onClose={() => {
+            setShowFichaModal(false);
+            setSelectedLocalId(null);
+          }}
+          localId={selectedLocalId}
+        />
+      )}
     </div>
   );
 }
