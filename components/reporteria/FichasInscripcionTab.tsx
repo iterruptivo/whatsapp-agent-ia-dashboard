@@ -54,6 +54,16 @@ function formatMonto(monto: number): string {
   }).format(monto);
 }
 
+// Helper para formatear moneda PEN (Soles)
+function formatMontoPEN(monto: number): string {
+  return new Intl.NumberFormat('es-PE', {
+    style: 'currency',
+    currency: 'PEN',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(monto);
+}
+
 // Helper para formatear fecha
 function formatFecha(fecha: string): string {
   const date = new Date(fecha);
@@ -227,7 +237,10 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
                       Caseta
                     </th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Abonado
+                      Monto USD
+                    </th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Monto PEN
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Fecha
@@ -287,9 +300,14 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
                         {ficha.vendedor_caseta_nombre || '-'}
                       </td>
 
-                      {/* Total Abonado */}
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-right text-[#1b967a]">
-                        {formatMonto(ficha.total_abonado)}
+                      {/* Monto USD (de vouchers OCR) */}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
+                        {ficha.monto_voucher_usd > 0 ? formatMonto(ficha.monto_voucher_usd) : '-'}
+                      </td>
+
+                      {/* Monto PEN (de vouchers OCR) */}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
+                        {ficha.monto_voucher_pen > 0 ? formatMontoPEN(ficha.monto_voucher_pen) : '-'}
                       </td>
 
                       {/* Fecha */}
@@ -386,10 +404,27 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
                     )}
 
                     <div className="pt-2 border-t border-gray-100">
-                      <span className="font-medium text-gray-600">Total Abonado:</span>
-                      <span className="ml-2 font-semibold text-[#1b967a]">
-                        {formatMonto(ficha.total_abonado)}
-                      </span>
+                      <div className="flex gap-4 text-sm">
+                        {ficha.monto_voucher_usd > 0 && (
+                          <div>
+                            <span className="font-medium text-gray-600">USD:</span>
+                            <span className="ml-1 font-semibold text-gray-900">
+                              {formatMonto(ficha.monto_voucher_usd)}
+                            </span>
+                          </div>
+                        )}
+                        {ficha.monto_voucher_pen > 0 && (
+                          <div>
+                            <span className="font-medium text-gray-600">PEN:</span>
+                            <span className="ml-1 font-semibold text-gray-900">
+                              {formatMontoPEN(ficha.monto_voucher_pen)}
+                            </span>
+                          </div>
+                        )}
+                        {ficha.monto_voucher_usd === 0 && ficha.monto_voucher_pen === 0 && (
+                          <span className="text-gray-400">Sin montos registrados</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

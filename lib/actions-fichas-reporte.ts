@@ -55,6 +55,9 @@ export interface FichaReporteRow {
   tiene_nuevo_abono: boolean;
   fecha_ultimo_abono: string | null;
   abonos_count: number;
+  // Campos de montos extraídos por OCR de vouchers (separación)
+  monto_voucher_usd: number;
+  monto_voucher_pen: number;
 }
 
 // ============================================================================
@@ -89,6 +92,7 @@ export async function getFichasParaReporte(proyectoId?: string): Promise<FichaRe
     console.log('[getFichasParaReporte] Filtro proyecto:', proyectoId || 'TODOS');
 
     // PASO 1: Obtener todas las fichas con datos de local y proyecto
+    // Incluye comprobante_deposito_ocr para calcular montos por moneda
     let fichasQuery = supabase
       .from('clientes_ficha')
       .select(`
@@ -100,6 +104,7 @@ export async function getFichasParaReporte(proyectoId?: string): Promise<FichaRe
         titular_numero_documento,
         vendedor_id,
         created_at,
+        comprobante_deposito_ocr,
         locales!inner (
           id,
           codigo,
@@ -301,6 +306,26 @@ export async function getFichasParaReporte(proyectoId?: string): Promise<FichaRe
         tieneNuevoAbono = diasDesdeAbono <= 7;
       }
 
+      // Calcular montos por moneda desde OCR de vouchers
+      let montoVoucherUsd = 0;
+      let montoVoucherPen = 0;
+
+      const ocrData = ficha.comprobante_deposito_ocr as Array<{
+        monto?: number | null;
+        moneda?: 'USD' | 'PEN' | null;
+      }> | null;
+
+      if (ocrData && Array.isArray(ocrData)) {
+        ocrData.forEach(voucher => {
+          const monto = Number(voucher.monto) || 0;
+          if (voucher.moneda === 'USD') {
+            montoVoucherUsd += monto;
+          } else if (voucher.moneda === 'PEN') {
+            montoVoucherPen += monto;
+          }
+        });
+      }
+
       return {
         ficha_id: ficha.id,
         local_id: ficha.local_id,
@@ -320,6 +345,8 @@ export async function getFichasParaReporte(proyectoId?: string): Promise<FichaRe
         tiene_nuevo_abono: tieneNuevoAbono,
         fecha_ultimo_abono: fechaUltimoAbono,
         abonos_count: abonosCount,
+        monto_voucher_usd: montoVoucherUsd,
+        monto_voucher_pen: montoVoucherPen,
       };
     });
 
