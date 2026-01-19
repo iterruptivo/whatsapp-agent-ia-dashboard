@@ -11,18 +11,19 @@ import {
   Image,
   Clock,
   CheckCircle,
-  XCircle,
   AlertCircle,
-  MessageSquare,
-  Send,
   User,
-  Calendar,
   Eye,
   Play,
   Building2,
+  Video,
+  Youtube,
+  ExternalLink,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth-context';
 import { getTerrenoById, cambiarEstadoTerreno } from '@/lib/actions-expansion';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import {
   TERRENO_ESTADO_LABELS,
   TERRENO_ESTADO_COLORS,
@@ -47,11 +48,39 @@ const TRANSICIONES_ESTADO: Record<TerrenoEstado, TerrenoEstado[]> = {
   archivado: [],
 };
 
+// Helper para detectar si es URL de YouTube
+const esUrlYoutube = (url: string): boolean => {
+  return url.includes('youtube.com/embed/') || url.includes('youtube.com/watch') || url.includes('youtu.be/');
+};
+
+// Extraer ID de YouTube para convertir a embed
+const extraerYoutubeVideoId = (url: string): string | null => {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) return match[1];
+  }
+  return null;
+};
+
+// Obtener URL de embed para YouTube
+const obtenerUrlEmbed = (url: string): string => {
+  // Si ya es URL embed, retornarla
+  if (url.includes('youtube.com/embed/')) return url;
+
+  // Extraer ID y generar embed URL
+  const videoId = extraerYoutubeVideoId(url);
+  return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+};
+
 export default function TerrenoDetalleAdminPage() {
   const router = useRouter();
   const params = useParams();
   const terrenoId = params.id as string;
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [terreno, setTerreno] = useState<Terreno | null>(null);
   const [loading, setLoading] = useState(true);
@@ -99,23 +128,45 @@ export default function TerrenoDetalleAdminPage() {
         setMostrarModal(false);
         setNuevoEstado('');
         setNotasEstado('');
+        toast.success('Estado actualizado correctamente');
       } else {
-        alert(result.error || 'Error al cambiar estado');
+        toast.error(result.error || 'Error al cambiar estado');
       }
     } catch (err) {
-      alert('Error de conexión');
+      toast.error('Error de conexión');
     } finally {
       setCambiandoEstado(false);
     }
   };
 
+  // Mostrar loading mientras se carga la autenticación
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader
+          title="Detalle Terreno"
+          subtitle="Cargando..."
+        />
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1b967a]"></div>
+        </div>
+      </div>
+    );
+  }
+
   if (!tienePermiso) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-sm p-8 text-center max-w-md">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Acceso Denegado</h2>
-          <p className="text-gray-600">No tienes permisos para acceder a esta sección.</p>
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader
+          title="Detalle Terreno"
+          subtitle="Acceso restringido"
+        />
+        <div className="flex items-center justify-center py-12">
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center max-w-md">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Acceso Denegado</h2>
+            <p className="text-gray-600">No tienes permisos para acceder a esta sección.</p>
+          </div>
         </div>
       </div>
     );
@@ -123,26 +174,38 @@ export default function TerrenoDetalleAdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1b967a]"></div>
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader
+          title="Detalle Terreno"
+          subtitle="Cargando..."
+        />
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1b967a]"></div>
+        </div>
       </div>
     );
   }
 
   if (error || !terreno) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-sm p-8 text-center max-w-md">
-          <FileText className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            {error || 'Terreno no encontrado'}
-          </h2>
-          <button
-            onClick={() => router.push('/expansion/terrenos/inbox')}
-            className="mt-4 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#158a6e]"
-          >
-            Volver a la bandeja
-          </button>
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader
+          title="Detalle Terreno"
+          subtitle="Error"
+        />
+        <div className="flex items-center justify-center py-12">
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center max-w-md">
+            <FileText className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              {error || 'Terreno no encontrado'}
+            </h2>
+            <button
+              onClick={() => router.push('/expansion/terrenos/inbox')}
+              className="mt-4 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#158a6e]"
+            >
+              Volver a la bandeja
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -153,47 +216,41 @@ export default function TerrenoDetalleAdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/expansion/terrenos/inbox')}
-                className="p-2 text-gray-600 hover:text-[#1b967a] hover:bg-gray-100 rounded-lg"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-xl font-bold text-[#192c4d]">{terreno.codigo}</h1>
-                  <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full ${estadoColors.bg} ${estadoColors.text}`}
-                  >
-                    {TERRENO_ESTADO_LABELS[terreno.estado]}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600">
-                  {terreno.distrito}, {terreno.provincia}, {terreno.departamento}
-                </p>
-              </div>
-            </div>
-
-            {/* Botones de acción */}
-            {transicionesDisponibles.length > 0 && (
-              <button
-                onClick={() => setMostrarModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#158a6e]"
-              >
-                <Play className="w-4 h-4" />
-                Cambiar Estado
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Header con menú */}
+      <DashboardHeader
+        title={terreno.codigo}
+        subtitle={`${terreno.distrito}, ${terreno.provincia}, ${terreno.departamento}`}
+      />
 
       <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* Acciones y estado */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/expansion/terrenos/inbox')}
+              className="flex items-center gap-2 text-gray-600 hover:text-[#1b967a] transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Volver a la bandeja
+            </button>
+            <span
+              className={`px-2 py-1 text-xs font-medium rounded-full ${estadoColors.bg} ${estadoColors.text}`}
+            >
+              {TERRENO_ESTADO_LABELS[terreno.estado]}
+            </span>
+          </div>
+
+          {/* Botones de acción */}
+          {transicionesDisponibles.length > 0 && (
+            <button
+              onClick={() => setMostrarModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#158a6e]"
+            >
+              <Play className="w-4 h-4" />
+              Cambiar Estado
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Columna principal */}
           <div className="lg:col-span-2 space-y-6">
@@ -374,6 +431,7 @@ export default function TerrenoDetalleAdminPage() {
 
             {/* Multimedia */}
             {((terreno.fotos_urls && terreno.fotos_urls.length > 0) ||
+              (terreno.videos_urls && terreno.videos_urls.length > 0) ||
               (terreno.planos_urls && terreno.planos_urls.length > 0) ||
               (terreno.documentos_urls && terreno.documentos_urls.length > 0)) && (
               <div className="bg-white rounded-lg shadow-sm p-6">
@@ -384,16 +442,19 @@ export default function TerrenoDetalleAdminPage() {
 
                 {/* Fotos */}
                 {terreno.fotos_urls && terreno.fotos_urls.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-500 mb-2">Fotos ({terreno.fotos_urls.length})</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div className="mb-6">
+                    <p className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                      <Image className="w-4 h-4 text-[#1b967a]" />
+                      Fotos ({terreno.fotos_urls.length})
+                    </p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       {terreno.fotos_urls.map((url, index) => (
                         <a
                           key={index}
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="aspect-square rounded-lg overflow-hidden bg-gray-100 hover:opacity-80 transition-opacity"
+                          className="aspect-square rounded-lg overflow-hidden bg-gray-100 hover:opacity-80 hover:shadow-md transition-all border border-gray-200"
                         >
                           <img
                             src={url}
@@ -406,10 +467,75 @@ export default function TerrenoDetalleAdminPage() {
                   </div>
                 )}
 
+                {/* Videos */}
+                {terreno.videos_urls && terreno.videos_urls.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                      <Video className="w-4 h-4 text-red-500" />
+                      Videos ({terreno.videos_urls.length})
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {terreno.videos_urls.map((url, index) => (
+                        <div key={index} className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                          {esUrlYoutube(url) ? (
+                            // YouTube embed con aspect ratio 16:9
+                            <div className="relative bg-black" style={{ paddingBottom: '56.25%' }}>
+                              <iframe
+                                src={obtenerUrlEmbed(url)}
+                                title={`Video ${index + 1}`}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                className="absolute inset-0 w-full h-full"
+                              />
+                            </div>
+                          ) : (
+                            // Video subido directamente
+                            <div className="relative bg-gray-900">
+                              <video
+                                src={url}
+                                controls
+                                className="w-full"
+                                style={{ maxHeight: '300px' }}
+                              >
+                                Tu navegador no soporta el elemento video.
+                              </video>
+                            </div>
+                          )}
+                          {/* Footer con info del video */}
+                          <div className="px-3 py-2 bg-gray-50 flex items-center justify-between">
+                            <span className="text-sm text-gray-600 flex items-center gap-1.5">
+                              {esUrlYoutube(url) ? (
+                                <>
+                                  <Youtube className="w-4 h-4 text-red-500" />
+                                  YouTube
+                                </>
+                              ) : (
+                                <>
+                                  <Video className="w-4 h-4 text-blue-500" />
+                                  Video {index + 1}
+                                </>
+                              )}
+                            </span>
+                            <a
+                              href={esUrlYoutube(url) ? url.replace('/embed/', '/watch?v=') : url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-[#1b967a] hover:underline flex items-center gap-1"
+                            >
+                              Abrir <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Planos */}
                 {terreno.planos_urls && terreno.planos_urls.length > 0 && (
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-500 mb-2">
+                  <div className="mb-6">
+                    <p className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-blue-500" />
                       Planos ({terreno.planos_urls.length})
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -419,11 +545,11 @@ export default function TerrenoDetalleAdminPage() {
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                          className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors"
                         >
-                          <FileText className="w-4 h-4 text-gray-600" />
-                          <span className="text-sm">Plano {index + 1}</span>
-                          <Eye className="w-3 h-3 text-gray-400" />
+                          <FileText className="w-4 h-4 text-blue-600" />
+                          <span className="text-sm text-blue-700">Plano {index + 1}</span>
+                          <Eye className="w-3.5 h-3.5 text-blue-400" />
                         </a>
                       ))}
                     </div>
@@ -433,7 +559,8 @@ export default function TerrenoDetalleAdminPage() {
                 {/* Documentos */}
                 {terreno.documentos_urls && terreno.documentos_urls.length > 0 && (
                   <div>
-                    <p className="text-sm text-gray-500 mb-2">
+                    <p className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-amber-500" />
                       Documentos ({terreno.documentos_urls.length})
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -443,11 +570,11 @@ export default function TerrenoDetalleAdminPage() {
                           href={url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                          className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border border-amber-100 rounded-lg hover:bg-amber-100 transition-colors"
                         >
-                          <FileText className="w-4 h-4 text-gray-600" />
-                          <span className="text-sm">Documento {index + 1}</span>
-                          <Eye className="w-3 h-3 text-gray-400" />
+                          <FileText className="w-4 h-4 text-amber-600" />
+                          <span className="text-sm text-amber-700">Documento {index + 1}</span>
+                          <Eye className="w-3.5 h-3.5 text-amber-400" />
                         </a>
                       ))}
                     </div>

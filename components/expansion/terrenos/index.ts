@@ -10,3 +10,7 @@ export { default as PasoDocumentacion } from './PasoDocumentacion';
 export { default as PasoValorizacion } from './PasoValorizacion';
 export { default as PasoMultimedia } from './PasoMultimedia';
 export { default as TerrenoCard } from './TerrenoCard';
+
+// Componentes de ubicación (UX clase mundial)
+export { default as UbigeoSelector } from './UbigeoSelector';
+export { default as MapAddressSelector } from './MapAddressSelector';

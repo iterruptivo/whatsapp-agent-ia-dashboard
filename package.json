@@ -21,6 +21,7 @@
     "@supabase/supabase-js": "^2.47.12",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/swagger-ui-react": "^5.18.0",
+    "@vis.gl/react-google-maps": "^1.7.1",
     "browser-image-compression": "^2.0.2",
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",

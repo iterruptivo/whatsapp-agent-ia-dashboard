@@ -45,6 +45,24 @@
 
 ---
 
+## Google Maps API
+
+### Geocoding API Key Restrictions
+- **Geocoding API NO soporta HTTP referer restrictions**
+- Error: "API keys with referer restrictions cannot be used with this API"
+- Las llamadas a Geocoding son **client-side** (desde el navegador)
+- No se pueden proteger con IP restrictions porque la IP cambia por usuario
+- **Solución:** Usar solo "API restrictions" (limitar qué APIs puede usar la key)
+- En Google Cloud Console: Credentials → Edit API Key → API restrictions → Restrict key
+
+### NEXT_PUBLIC_* Environment Variables
+- Variables con prefijo `NEXT_PUBLIC_` se "bake" en el bundle client-side en compile time
+- Cambiar `.env.local` NO tiene efecto inmediato en desarrollo
+- **Requiere Hard Refresh:** Ctrl+Shift+R o reiniciar el servidor
+- Si hay cacheo agresivo, puede requerir limpiar caché del navegador
+
+---
+
 ## TypeScript
 
 ### Tuple types

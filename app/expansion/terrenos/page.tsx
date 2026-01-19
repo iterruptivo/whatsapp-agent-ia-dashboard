@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Plus, MapPin, Filter, Search, RefreshCw } from 'lucide-react';
 import { getMisTerrenos } from '@/lib/actions-expansion';
 import { TerrenoCard } from '@/components/expansion/terrenos';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import type { Terreno } from '@/lib/types/expansion';
 
 export default function TerrenosPage() {
@@ -58,31 +59,23 @@ export default function TerrenosPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-[#192c4d] flex items-center gap-2">
-                <MapPin className="w-7 h-7 text-[#1b967a]" />
-                Mis Terrenos
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Gestiona tus propuestas de terrenos para EcoPlaza
-              </p>
-            </div>
-            <button
-              onClick={() => router.push('/expansion/terrenos/nuevo')}
-              className="flex items-center gap-2 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#158a6e] transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Nuevo Terreno
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Header con menú */}
+      <DashboardHeader
+        title="Mis Terrenos"
+        subtitle="Gestiona tus propuestas de terrenos para EcoPlaza"
+      />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Botón Nuevo Terreno */}
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={() => router.push('/expansion/terrenos/nuevo')}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#158a6e] transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Nuevo Terreno
+          </button>
+        </div>
         {/* Filtros */}
         <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">

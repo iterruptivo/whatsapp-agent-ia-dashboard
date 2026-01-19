@@ -196,6 +196,7 @@ Todo el contexto esta en `context/` (DENTRO de este proyecto)
 | Vendedor | alonso@ecoplaza.com | Q0KlC36J4M_y |
 | Caseta | leocaseta@ecoplaza.com | y62$3904h%$$3 |
 | Finanzas | rosaquispef@ecoplaza.com | u$432##faYh1 |
+| **Corredor** | yajuppoucivi-3372@yopmail.com | Corredor2026 |
 
 ---
 

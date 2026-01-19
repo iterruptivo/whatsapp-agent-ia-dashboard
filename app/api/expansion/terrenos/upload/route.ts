@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { validateTerrenoFile, type FileCategory } from '@/lib/utils/terreno-file-validator';
+
+// ============================================================================
+// POST /api/expansion/terrenos/upload - Upload archivos multimedia de terrenos
+// ============================================================================
+// Sube archivos a Supabase Storage y retorna URLs públicas
+// Bucket: terrenos-multimedia (público)
+// Validaciones: tipo, tamaño, permisos
+// ============================================================================
 
 // Crear cliente admin para storage
 function createAdminClient() {
@@ -27,6 +36,15 @@ async function createAuthClient() {
       cookies: {
         getAll() {
           return cookieStore.getAll();
+        },
+        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Ignorar errores en Server Components
+          }
         },
       },
     }
@@ -61,33 +79,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tipo de archivo inválido' }, { status: 400 });
     }
 
-    // Validar tipo de archivo según categoría
-    const allowedTypes: Record<string, string[]> = {
-      fotos: ['image/jpeg', 'image/png', 'image/webp'],
-      videos: ['video/mp4', 'video/quicktime', 'video/webm'],
-      planos: ['image/jpeg', 'image/png', 'application/pdf'],
-      documentos: ['application/pdf', 'image/jpeg', 'image/png'],
-    };
-
-    if (!allowedTypes[tipo].includes(file.type)) {
-      return NextResponse.json({
-        error: `Tipo de archivo no permitido para ${tipo}. Permitidos: ${allowedTypes[tipo].join(', ')}`,
-      }, { status: 400 });
-    }
-
-    // Validar tamaño (fotos/planos/docs: 10MB, videos: 100MB)
-    const maxSizes: Record<string, number> = {
-      fotos: 10 * 1024 * 1024,      // 10MB
-      videos: 100 * 1024 * 1024,     // 100MB
-      planos: 10 * 1024 * 1024,      // 10MB
-      documentos: 10 * 1024 * 1024,  // 10MB
-    };
-
-    if (file.size > maxSizes[tipo]) {
-      const maxMB = maxSizes[tipo] / (1024 * 1024);
-      return NextResponse.json({
-        error: `El archivo excede el tamaño máximo de ${maxMB}MB`,
-      }, { status: 400 });
+    // Validar archivo con el validador centralizado
+    const validation = validateTerrenoFile(file, tipo as FileCategory);
+    if (!validation.isValid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     // Verificar que el terreno pertenece al usuario
@@ -119,10 +114,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No se pueden subir archivos en este estado' }, { status: 400 });
     }
 
-    // Generar path único
+    // Generar path único y sanitizado
     const timestamp = Date.now();
-    const ext = file.name.split('.').pop() || 'bin';
-    const storagePath = `terrenos/${terrenoId}/${tipo}/${timestamp}.${ext}`;
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = `terrenos/${terrenoId}/${tipo}/${timestamp}_${sanitizedFileName}`;
 
     // Subir a Supabase Storage usando admin client
     const adminClient = createAdminClient();
@@ -169,17 +164,32 @@ export async function POST(request: NextRequest) {
       .from('terrenos-multimedia')
       .getPublicUrl(storagePath);
 
+    if (!urlData?.publicUrl) {
+      console.error('[Terrenos Upload] No se pudo generar URL pública');
+      return NextResponse.json(
+        { error: 'Error al generar URL pública del archivo' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       url: urlData.publicUrl,
       path: storagePath,
       tipo,
+      message: 'Archivo subido correctamente',
     });
-  } catch (error) {
-    console.error('Error en upload:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+  } catch (error: any) {
+    console.error('[Terrenos Upload] Error inesperado:', error);
+    return NextResponse.json(
+      { error: error.message || 'Error interno del servidor' },
+      { status: 500 }
+    );
   }
 }
+
+export const runtime = 'nodejs';
+export const maxDuration = 60; // 60 segundos máximo
 
 // DELETE para eliminar archivo
 export async function DELETE(request: NextRequest) {

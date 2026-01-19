@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { ArrowLeft, Edit, Eye, Clock, MapPin, Ruler, DollarSign, FileText, Image } from 'lucide-react';
+import { ArrowLeft, Edit, Clock, MapPin, Ruler, DollarSign, FileText, Image } from 'lucide-react';
 import { getTerrenoById } from '@/lib/actions-expansion';
 import { WizardTerreno } from '@/components/expansion/terrenos';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import {
   TERRENO_ESTADO_LABELS,
   TERRENO_ESTADO_COLORS,
   TIPO_TERRENO_LABELS,
-  TIPO_PROPIEDAD_LABELS,
   URGENCIA_LABELS,
 } from '@/lib/types/expansion';
 import type { Terreno } from '@/lib/types/expansion';
@@ -53,28 +53,40 @@ export default function TerrenoDetallePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1b967a]"></div>
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader
+          title="Detalle Terreno"
+          subtitle="Cargando..."
+        />
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1b967a]"></div>
+        </div>
       </div>
     );
   }
 
   if (error || !terreno) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-sm p-8 text-center max-w-md">
-          <div className="text-red-500 mb-4">
-            <FileText className="w-16 h-16 mx-auto" />
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader
+          title="Terreno"
+          subtitle="Error"
+        />
+        <div className="flex items-center justify-center py-12">
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center max-w-md">
+            <div className="text-red-500 mb-4">
+              <FileText className="w-16 h-16 mx-auto" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              {error || 'Terreno no encontrado'}
+            </h2>
+            <button
+              onClick={() => router.push('/expansion/terrenos')}
+              className="mt-4 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#158a6e]"
+            >
+              Volver a la lista
+            </button>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
-            {error || 'Terreno no encontrado'}
-          </h2>
-          <button
-            onClick={() => router.push('/expansion/terrenos')}
-            className="mt-4 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#158a6e]"
-          >
-            Volver a la lista
-          </button>
         </div>
       </div>
     );
@@ -84,28 +96,20 @@ export default function TerrenoDetallePage() {
   if (modoEdicion && puedeEditar) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="bg-white border-b sticky top-0 z-10">
-          <div className="max-w-4xl mx-auto px-4 py-4">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setModoEdicion(false)}
-                className="p-2 text-gray-600 hover:text-[#1b967a] hover:bg-gray-100 rounded-lg"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="text-xl font-bold text-[#192c4d]">
-                  Editar Terreno - {terreno.codigo}
-                </h1>
-                <p className="text-sm text-gray-600">
-                  Completa los datos faltantes
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DashboardHeader
+          title={`Editar Terreno - ${terreno.codigo}`}
+          subtitle="Completa los datos faltantes"
+        />
 
         <div className="max-w-4xl mx-auto px-4 py-6">
+          <button
+            onClick={() => setModoEdicion(false)}
+            className="flex items-center gap-2 mb-4 text-gray-600 hover:text-[#1b967a] transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Volver a detalle
+          </button>
+
           <WizardTerreno
             terrenoId={terrenoId}
             datosIniciales={terreno}
@@ -120,46 +124,37 @@ export default function TerrenoDetallePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/expansion/terrenos')}
-                className="p-2 text-gray-600 hover:text-[#1b967a] hover:bg-gray-100 rounded-lg"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-xl font-bold text-[#192c4d]">
-                    {terreno.codigo}
-                  </h1>
-                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${estadoColors.bg} ${estadoColors.text}`}>
-                    {TERRENO_ESTADO_LABELS[terreno.estado]}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600">
-                  {terreno.distrito}, {terreno.provincia}
-                </p>
-              </div>
-            </div>
-
-            {puedeEditar && (
-              <button
-                onClick={() => setModoEdicion(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#158a6e]"
-              >
-                <Edit className="w-4 h-4" />
-                Editar
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      <DashboardHeader
+        title={terreno.codigo}
+        subtitle={`${terreno.distrito}, ${terreno.provincia}`}
+      />
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Acciones y estado */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/expansion/terrenos')}
+              className="flex items-center gap-2 text-gray-600 hover:text-[#1b967a] transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+              Volver a Mis Terrenos
+            </button>
+            <span className={`px-2 py-1 text-xs font-medium rounded-full ${estadoColors.bg} ${estadoColors.text}`}>
+              {TERRENO_ESTADO_LABELS[terreno.estado]}
+            </span>
+          </div>
+
+          {puedeEditar && (
+            <button
+              onClick={() => setModoEdicion(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#158a6e]"
+            >
+              <Edit className="w-4 h-4" />
+              Editar
+            </button>
+          )}
+        </div>
         {/* Ubicación */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-[#192c4d] flex items-center gap-2 mb-4">

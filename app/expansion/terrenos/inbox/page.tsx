@@ -13,10 +13,10 @@ import {
   XCircle,
   AlertCircle,
   Calendar,
-  Building2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { getAllTerrenos } from '@/lib/actions-expansion';
+import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import {
   TERRENO_ESTADO_LABELS,
   TERRENO_ESTADO_COLORS,
@@ -39,7 +39,7 @@ const ESTADOS_FILTRO: { value: TerrenoEstado | 'todos'; label: string }[] = [
 
 export default function TerrenosInboxPage() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   const [terrenos, setTerrenos] = useState<Terreno[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +66,10 @@ export default function TerrenosInboxPage() {
       const result = await getAllTerrenos(filtros);
 
       if (result.success) {
-        const data = Array.isArray(result.data) ? result.data : [];
+        // getAllTerrenos retorna { terrenos: [...], total: N, ... }
+        // El inbox solo muestra terrenos NO en borrador (enviados para revisión)
+        const allData = result.data?.terrenos || [];
+        const data = allData.filter((t: Terreno) => t.estado !== 'borrador');
         setTerrenos(data);
 
         // Calcular stats
@@ -111,13 +114,34 @@ export default function TerrenosInboxPage() {
       })
     : [];
 
+  // Mostrar loading mientras se carga la autenticación
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader
+          title="Bandeja de Terrenos"
+          subtitle="Cargando..."
+        />
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#1b967a]"></div>
+        </div>
+      </div>
+    );
+  }
+
   if (!tienePermiso) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-sm p-8 text-center max-w-md">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Acceso Denegado</h2>
-          <p className="text-gray-600">No tienes permisos para acceder a esta sección.</p>
+      <div className="min-h-screen bg-gray-50">
+        <DashboardHeader
+          title="Bandeja de Terrenos"
+          subtitle="Acceso restringido"
+        />
+        <div className="flex items-center justify-center py-12">
+          <div className="bg-white rounded-lg shadow-sm p-8 text-center max-w-md">
+            <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Acceso Denegado</h2>
+            <p className="text-gray-600">No tienes permisos para acceder a esta sección.</p>
+          </div>
         </div>
       </div>
     );
@@ -125,22 +149,11 @@ export default function TerrenosInboxPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-[#192c4d] flex items-center gap-2">
-                <Building2 className="w-7 h-7 text-[#1b967a]" />
-                Bandeja de Terrenos
-              </h1>
-              <p className="text-gray-600 mt-1">
-                Revisa y gestiona las propuestas de terrenos de corredores
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Header con menú */}
+      <DashboardHeader
+        title="Bandeja de Terrenos"
+        subtitle="Revisa y gestiona las propuestas de terrenos de corredores"
+      />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Stats Cards */}

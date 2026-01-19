@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Circle, Loader2, Save } from 'lucide-react';
+import { toast } from 'sonner';
 import type { TerrenoCreateInput } from '@/lib/types/expansion';
 import { WIZARD_STEPS } from '@/lib/types/expansion';
 import { crearTerreno, actualizarTerreno, enviarTerreno } from '@/lib/actions-expansion';
@@ -97,22 +98,22 @@ export default function WizardTerreno({ terrenoId, datosIniciales }: WizardTerre
         // Actualizar existente
         const result = await actualizarTerreno(terrenoIdLocal, datos);
         if (!result.success) {
-          alert(result.error || 'Error al guardar');
+          toast.error(result.error || 'Error al guardar');
           return;
         }
       } else {
         // Crear nuevo
         const result = await crearTerreno(datos);
         if (!result.success) {
-          alert(result.error || 'Error al crear terreno');
+          toast.error(result.error || 'Error al crear terreno');
           return;
         }
         setTerrenoIdLocal(result.data?.terreno_id);
       }
-      alert('Borrador guardado correctamente');
+      toast.success('Borrador guardado correctamente');
     } catch (error) {
       console.error('Error guardando borrador:', error);
-      alert('Error al guardar borrador');
+      toast.error('Error al guardar borrador');
     } finally {
       setGuardando(false);
     }
@@ -145,28 +146,36 @@ export default function WizardTerreno({ terrenoId, datosIniciales }: WizardTerre
     for (let i = 1; i <= 5; i++) {
       setPasoActual(i);
       if (!validarPaso(i)) {
-        alert(`Complete correctamente el paso ${i}: ${WIZARD_STEPS[i - 1].titulo}`);
+        toast.error(`Complete correctamente el paso ${i}: ${WIZARD_STEPS[i - 1].titulo}`);
         return;
       }
     }
 
     if (!terrenoIdLocal) {
-      alert('Debe guardar el terreno primero');
+      toast.error('Debe guardar el terreno primero');
       return;
     }
 
     setEnviando(true);
     try {
-      const result = await enviarTerreno(terrenoIdLocal);
-      if (!result.success) {
-        alert(result.error || 'Error al enviar');
+      // Guardar borrador antes de enviar para persistir todos los cambios
+      const saveResult = await actualizarTerreno(terrenoIdLocal, datos);
+      if (!saveResult.success) {
+        toast.error(saveResult.error || 'Error al guardar cambios');
+        setEnviando(false);
         return;
       }
-      alert('Terreno enviado correctamente para revisión');
+
+      const result = await enviarTerreno(terrenoIdLocal);
+      if (!result.success) {
+        toast.error(result.error || 'Error al enviar');
+        return;
+      }
+      toast.success('Terreno enviado correctamente para revisión');
       router.push('/expansion/terrenos');
     } catch (error) {
       console.error('Error enviando terreno:', error);
-      alert('Error al enviar terreno');
+      toast.error('Error al enviar terreno');
     } finally {
       setEnviando(false);
     }

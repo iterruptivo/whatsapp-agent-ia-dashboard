@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Image, Video, FileText, Upload, X, Loader2 } from 'lucide-react';
+import { Image, Video, FileText, Upload, X, Loader2, Link as LinkIcon, Play } from 'lucide-react';
+import { toast } from 'sonner';
 import type { TerrenoCreateInput } from '@/lib/types/expansion';
 
 interface PasoMultimediaProps {
@@ -21,6 +22,73 @@ export default function PasoMultimedia({
   const [subiendoVideos, setSubiendoVideos] = useState(false);
   const [subiendoPlanos, setSubiendoPlanos] = useState(false);
   const [subiendoDocumentos, setSubiendoDocumentos] = useState(false);
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+
+  // Parsear URL de YouTube para extraer el ID del video
+  const extraerYoutubeVideoId = (url: string): string | null => {
+    // Limpiar espacios
+    url = url.trim();
+
+    // Patrones comunes de YouTube
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+      /youtube\.com\/watch\?.*v=([^&\n?#]+)/,
+    ];
+
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+
+    // Si parece ser solo el ID (11 caracteres alfanuméricos)
+    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+      return url;
+    }
+
+    return null;
+  };
+
+  // Convertir video ID a URL embed
+  const obtenerUrlEmbed = (videoId: string): string => {
+    return `https://www.youtube.com/embed/${videoId}`;
+  };
+
+  // Detectar si una URL es de YouTube embed
+  const esUrlYoutube = (url: string): boolean => {
+    return url.includes('youtube.com/embed/');
+  };
+
+  // Agregar video de YouTube
+  const handleAgregarYoutubeUrl = () => {
+    if (!youtubeUrl.trim()) {
+      toast.error('Por favor ingresa una URL de YouTube');
+      return;
+    }
+
+    const videoId = extraerYoutubeVideoId(youtubeUrl);
+    if (!videoId) {
+      toast.error('URL de YouTube inválida. Usa formatos como: https://www.youtube.com/watch?v=ABC123 o https://youtu.be/ABC123');
+      return;
+    }
+
+    const embedUrl = obtenerUrlEmbed(videoId);
+
+    // Verificar si ya existe
+    if (datos.videos_urls?.includes(embedUrl)) {
+      toast.warning('Este video ya fue agregado');
+      return;
+    }
+
+    actualizarDatos({
+      videos_urls: [...(datos.videos_urls || []), embedUrl],
+    });
+
+    toast.success('Video de YouTube agregado');
+    // Limpiar input
+    setYoutubeUrl('');
+  };
 
   // Subir archivos a Supabase Storage
   const subirArchivos = async (
@@ -30,13 +98,40 @@ export default function PasoMultimedia({
     const urls: string[] = [];
 
     for (const file of Array.from(files)) {
-      const formData = new FormData();
-      formData.append('file', file);
+      try {
+        // Crear FormData con el archivo
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('tipo', tipo);
 
-      // TODO: Implementar endpoint de upload en /api/expansion/terrenos/upload
-      // Por ahora, retornamos URL placeholder
-      const placeholderUrl = `https://placeholder.com/${tipo}/${file.name}`;
-      urls.push(placeholderUrl);
+        // Si tenemos terrenoId, agregarlo para organizar mejor los archivos
+        if (terrenoId) {
+          formData.append('terreno_id', terrenoId);
+        }
+
+        // Hacer request al endpoint de upload
+        const response = await fetch('/api/expansion/terrenos/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Error al subir archivo');
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.url) {
+          urls.push(data.url);
+        } else {
+          throw new Error('Respuesta inválida del servidor');
+        }
+      } catch (error: any) {
+        console.error(`Error subiendo ${file.name}:`, error);
+        toast.error(`Error subiendo ${file.name}: ${error.message}`);
+        // Continuar con los demás archivos
+      }
     }
 
     return urls;
@@ -53,9 +148,10 @@ export default function PasoMultimedia({
       actualizarDatos({
         fotos_urls: [...(datos.fotos_urls || []), ...urls],
       });
+      toast.success(`${urls.length} foto(s) agregada(s)`);
     } catch (error) {
       console.error('Error subiendo fotos:', error);
-      alert('Error al subir fotos');
+      toast.error('Error al subir fotos');
     } finally {
       setSubiendoFotos(false);
     }
@@ -72,9 +168,10 @@ export default function PasoMultimedia({
       actualizarDatos({
         videos_urls: [...(datos.videos_urls || []), ...urls],
       });
+      toast.success(`${urls.length} video(s) subido(s)`);
     } catch (error) {
       console.error('Error subiendo videos:', error);
-      alert('Error al subir videos');
+      toast.error('Error al subir videos');
     } finally {
       setSubiendoVideos(false);
     }
@@ -91,9 +188,10 @@ export default function PasoMultimedia({
       actualizarDatos({
         planos_urls: [...(datos.planos_urls || []), ...urls],
       });
+      toast.success(`${urls.length} plano(s) agregado(s)`);
     } catch (error) {
       console.error('Error subiendo planos:', error);
-      alert('Error al subir planos');
+      toast.error('Error al subir planos');
     } finally {
       setSubiendoPlanos(false);
     }
@@ -110,9 +208,10 @@ export default function PasoMultimedia({
       actualizarDatos({
         documentos_urls: [...(datos.documentos_urls || []), ...urls],
       });
+      toast.success(`${urls.length} documento(s) agregado(s)`);
     } catch (error) {
       console.error('Error subiendo documentos:', error);
-      alert('Error al subir documentos');
+      toast.error('Error al subir documentos');
     } finally {
       setSubiendoDocumentos(false);
     }
@@ -212,7 +311,9 @@ export default function PasoMultimedia({
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Videos (Opcional)
         </label>
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#1b967a] transition-colors bg-gray-50">
+
+        {/* Upload de archivos de video */}
+        <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-[#1b967a] transition-colors bg-gray-50 mb-4">
           <input
             type="file"
             multiple
@@ -235,30 +336,93 @@ export default function PasoMultimedia({
               <>
                 <Video className="w-12 h-12 text-gray-400 mb-2" />
                 <p className="text-sm text-gray-600">Subir videos del terreno</p>
-                <p className="text-xs text-gray-400 mt-1">MP4, MOV (máx. 50MB cada uno)</p>
+                <p className="text-xs text-gray-400 mt-1">MP4, MOV, WebM (máx. 100MB cada uno)</p>
               </>
             )}
           </label>
         </div>
 
+        {/* Input para link de YouTube */}
+        <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <LinkIcon className="w-5 h-5 text-blue-600" />
+            <span className="text-sm font-medium text-blue-900">O pega un link de YouTube</span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={youtubeUrl}
+              onChange={(e) => setYoutubeUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAgregarYoutubeUrl();
+                }
+              }}
+              placeholder="https://www.youtube.com/watch?v=... o https://youtu.be/..."
+              className="flex-1 px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent text-sm"
+            />
+            <button
+              type="button"
+              onClick={handleAgregarYoutubeUrl}
+              className="bg-[#1b967a] text-white px-4 py-2 rounded-md hover:bg-[#156b5a] transition-colors flex items-center gap-2 whitespace-nowrap"
+            >
+              <Play className="w-4 h-4" />
+              Agregar
+            </button>
+          </div>
+          <p className="text-xs text-blue-600 mt-2">
+            Formatos: youtube.com/watch?v=ABC123, youtu.be/ABC123
+          </p>
+        </div>
+
+        {/* Lista de videos */}
         {datos.videos_urls && datos.videos_urls.length > 0 && (
-          <div className="space-y-2 mt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             {datos.videos_urls.map((url, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-2 bg-gray-100 rounded"
-              >
-                <div className="flex items-center gap-2">
-                  <Video className="w-5 h-5 text-blue-500" />
-                  <span className="text-sm text-gray-700">Video {index + 1}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => eliminarArchivo('videos_urls', index)}
-                  className="text-red-500 hover:text-red-700"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+              <div key={index} className="relative group">
+                {esUrlYoutube(url) ? (
+                  // Video de YouTube - Mostrar embed
+                  <div className="bg-gray-900 rounded-lg overflow-hidden">
+                    <div className="relative" style={{ paddingBottom: '56.25%' }}>
+                      <iframe
+                        src={url}
+                        title={`Video de YouTube ${index + 1}`}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        className="absolute top-0 left-0 w-full h-full"
+                      />
+                    </div>
+                    <div className="bg-gray-800 px-3 py-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <LinkIcon className="w-4 h-4 text-red-500" />
+                        <span className="text-sm text-white">Video de YouTube</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => eliminarArchivo('videos_urls', index)}
+                        className="text-red-400 hover:text-red-300 transition-colors"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  // Video subido - Mostrar card simple
+                  <div className="flex items-center justify-between p-3 bg-gray-100 rounded-lg border border-gray-300">
+                    <div className="flex items-center gap-2">
+                      <Video className="w-5 h-5 text-blue-500" />
+                      <span className="text-sm text-gray-700">Video subido {index + 1}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => eliminarArchivo('videos_urls', index)}
+                      className="text-red-500 hover:text-red-700 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
