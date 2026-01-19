@@ -349,3 +349,114 @@ export async function getUsuarioById(usuarioId: string): Promise<UsuarioAsesor |
     return null;
   }
 }
+
+// ============================================================================
+// HELPER: Obtener abonos de control_pagos por local_id
+// ============================================================================
+
+export interface AbonoControlPago {
+  id: string;
+  monto: number;
+  moneda: 'USD' | 'PEN';
+  metodo_pago: string | null;
+  fecha_abono: string;
+  banco: string | null;
+  numero_operacion: string | null;
+  comprobante_url: string | null;
+  notas: string | null;
+  created_at: string;
+  // Info del pago asociado
+  pago_concepto: string | null;
+  pago_numero_cuota: number | null;
+}
+
+/**
+ * Obtiene todos los abonos de control_pagos para un local específico
+ * Flujo: local_id → control_pagos → pagos_local → abonos_pago
+ */
+export async function getAbonosByLocalId(localId: string): Promise<AbonoControlPago[]> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+
+  try {
+    // Primero obtener el control_pago del local
+    const { data: controlPago, error: cpError } = await supabase
+      .from('control_pagos')
+      .select('id')
+      .eq('local_id', localId)
+      .maybeSingle();
+
+    if (cpError || !controlPago) {
+      console.log('[CLIENTES_FICHA] No hay control_pago para local:', localId);
+      return [];
+    }
+
+    // Obtener todos los pagos_local del control_pago
+    const { data: pagosLocal, error: plError } = await supabase
+      .from('pagos_local')
+      .select('id, concepto, numero_cuota')
+      .eq('control_pago_id', controlPago.id);
+
+    if (plError || !pagosLocal || pagosLocal.length === 0) {
+      console.log('[CLIENTES_FICHA] No hay pagos_local para control_pago:', controlPago.id);
+      return [];
+    }
+
+    const pagoIds = pagosLocal.map(p => p.id);
+
+    // Crear mapa de pago_id -> info del pago
+    const pagoInfoMap = new Map(
+      pagosLocal.map(p => [p.id, { concepto: p.concepto, numero_cuota: p.numero_cuota }])
+    );
+
+    // Obtener todos los abonos de esos pagos
+    const { data: abonos, error: abonosError } = await supabase
+      .from('abonos_pago')
+      .select('*')
+      .in('pago_id', pagoIds)
+      .order('fecha_abono', { ascending: false });
+
+    if (abonosError) {
+      console.error('[CLIENTES_FICHA] Error obteniendo abonos:', abonosError);
+      return [];
+    }
+
+    if (!abonos || abonos.length === 0) {
+      return [];
+    }
+
+    // Mapear a la estructura esperada
+    const result: AbonoControlPago[] = abonos.map((abono: any) => {
+      const pagoInfo = pagoInfoMap.get(abono.pago_id);
+      return {
+        id: abono.id,
+        monto: Number(abono.monto),
+        moneda: abono.moneda || 'USD',
+        metodo_pago: abono.metodo_pago,
+        fecha_abono: abono.fecha_abono,
+        banco: abono.banco,
+        numero_operacion: abono.numero_operacion,
+        comprobante_url: abono.comprobante_url,
+        notas: abono.notas,
+        created_at: abono.created_at,
+        pago_concepto: pagoInfo?.concepto || null,
+        pago_numero_cuota: pagoInfo?.numero_cuota || null,
+      };
+    });
+
+    return result;
+  } catch (error) {
+    console.error('[CLIENTES_FICHA] Error in getAbonosByLocalId:', error);
+    return [];
+  }
+}

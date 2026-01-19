@@ -4,6 +4,82 @@
 
 ---
 
+## SESIÓN 100+ - Mejoras Módulo Finanzas (19 Enero 2026)
+
+**Tipo:** Desarrollo (Completado)
+
+**Objetivo:** Implementar 7 mejoras solicitadas por el equipo de Finanzas:
+1. Total de abonos del voucher en reporte
+2. Marcar fichas con nuevo abono (indicador visual)
+3. Historial de pagos en vista previa de ficha
+4. IA → pago semi-automático (mejorar UX de OCR)
+5. Solo voucher (sin constancias innecesarias)
+6. Buscar local por código o cliente
+7. Resaltar pagos vencidos
+
+### Implementación Completada
+
+**FASE 1.1: Agregar columna 'Nuevo Abono' en reporte fichas**
+- ✅ Extendido `FichaReporteRow` con campos: `tiene_nuevo_abono`, `fecha_ultimo_abono`, `abonos_count`
+- ✅ Nueva columna "Nuevo Abono" en tabla del reporte
+- ✅ Indicador verde "Nuevo" si abono en últimos 7 días
+- ✅ Badge gris con contador de abonos si no es nuevo
+- ✅ Vista mobile con indicador
+
+**FASE 1.2: Vouchers de control de pagos en Vista Previa**
+- ✅ Nueva función `getAbonosByLocalId()` en `lib/actions-clientes-ficha.ts`
+- ✅ Nueva interface `AbonoControlPago`
+- ✅ Sección "Abonos de Control de Pagos" en modal de Vista Previa
+- ✅ Grid de vouchers con miniaturas clickeables
+- ✅ Info del abono: Fecha, Monto, Método, Banco, Operación
+
+**FASE 2.1: Resaltar pagos vencidos en control de pagos**
+- ✅ Extendido `ControlPago` con campos: `tiene_vencidos`, `cuotas_vencidas`, `dias_max_vencido`
+- ✅ Modificado `getAllControlPagos` para calcular vencidos desde `pagos_local`
+- ✅ Filas con fondo rojo (`bg-red-50`) para registros con pagos vencidos
+- ✅ Badge con AlertCircle y tooltip mostrando cantidad y días vencidos
+
+**FASE 2.2: Mejorar UX de OCR semi-automático**
+- ✅ OCR habilitado por defecto (`showOCR = true`)
+- ✅ Nuevo estado `ocrConfianza` y `autoFilledFields`
+- ✅ Indicador de confianza después de extracción OCR
+- ✅ Campos auto-rellenados con borde verde y fondo verde claro
+- ✅ Label "Auto" en campos auto-rellenados
+- ✅ Al editar manualmente, el campo pierde el indicador "Auto"
+
+**FASE 3: Búsqueda de local por código o cliente**
+- ✅ Agregado `lead_nombre` a interface `Local`
+- ✅ JOIN con tabla `leads` en `getAllLocales()`
+- ✅ Filtro de búsqueda busca en código Y nombre de cliente
+- ✅ Placeholder actualizado: "Buscar código o cliente..."
+
+**FASE 4: Verificar constancias (solo voucher)**
+- ✅ Verificado: Constancias son botones OPCIONALES (no auto-generados)
+- ✅ Vouchers se almacenan automáticamente en `comprobante_url`
+- ✅ No se requieren cambios - sistema ya soporta "solo voucher"
+
+### Archivos Modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `lib/actions-fichas-reporte.ts` | Campos nuevo_abono, fecha_ultimo_abono, abonos_count |
+| `lib/actions-clientes-ficha.ts` | Nueva función getAbonosByLocalId() |
+| `lib/actions-control-pagos.ts` | Cálculo de vencidos en getAllControlPagos() |
+| `lib/locales.ts` | JOIN con leads, campo lead_nombre |
+| `components/reporteria/FichasInscripcionTab.tsx` | Columna "Nuevo Abono" |
+| `components/reporteria/FichaInscripcionReadonlyModal.tsx` | Sección "Abonos de Control de Pagos" |
+| `components/control-pagos/ControlPagosClient.tsx` | Resaltado vencidos + badge |
+| `components/control-pagos/RegistrarAbonoModal.tsx` | Mejoras UX OCR |
+| `components/locales/LocalesClient.tsx` | Búsqueda por cliente |
+
+### Estado Final
+
+- ✅ Las 7 mejoras implementadas
+- ✅ Plan de Finanzas completado al 100%
+- ✅ Listo para testing en producción
+
+---
+
 ## SESIÓN 100+ - Paso 5 Multimedia: YouTube Embed + Storage Upload (18 Enero 2026)
 
 **Tipo:** Desarrollo + QA (Completado)

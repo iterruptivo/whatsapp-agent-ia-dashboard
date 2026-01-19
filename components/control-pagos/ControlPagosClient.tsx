@@ -197,11 +197,30 @@ export default function ControlPagosClient({ initialData }: ControlPagosClientPr
             </thead>
             <tbody className="divide-y divide-gray-200">
               {controlPagos.map((cp) => (
-                <tr key={cp.id} className="hover:bg-gray-50 transition-colors">
+                <tr
+                  key={cp.id}
+                  className={`transition-colors ${
+                    cp.tiene_vencidos
+                      ? 'bg-red-50 hover:bg-red-100'
+                      : 'hover:bg-gray-50'
+                  }`}
+                >
                   {/* Código Local */}
                   <td className="px-4 py-3">
-                    <span className="font-medium text-gray-900">{cp.codigo_local}</span>
-                    <div className="text-xs text-gray-500">{cp.metraje} m²</div>
+                    <div className="flex items-center gap-2">
+                      <div>
+                        <span className="font-medium text-gray-900">{cp.codigo_local}</span>
+                        <div className="text-xs text-gray-500">{cp.metraje} m²</div>
+                      </div>
+                      {cp.tiene_vencidos && cp.cuotas_vencidas && cp.cuotas_vencidas > 0 && (
+                        <Tooltip text={`${cp.cuotas_vencidas} cuota${cp.cuotas_vencidas > 1 ? 's' : ''} vencida${cp.cuotas_vencidas > 1 ? 's' : ''} (${cp.dias_max_vencido} días)`}>
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+                            <AlertCircle className="w-3 h-3" />
+                            {cp.cuotas_vencidas}
+                          </span>
+                        </Tooltip>
+                      )}
+                    </div>
                   </td>
 
                   {/* Proyecto */}

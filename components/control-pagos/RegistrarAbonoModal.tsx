@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { X, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Sparkles, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { registrarAbono, type PagoConAbonos } from '@/lib/actions-pagos';
 import { useAuth } from '@/lib/auth-context';
 import AlertModal from '@/components/shared/AlertModal';
@@ -26,8 +26,10 @@ export default function RegistrarAbonoModal({
   const [numeroOperacion, setNumeroOperacion] = useState('');
   const [notas, setNotas] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showOCR, setShowOCR] = useState(false);
+  const [showOCR, setShowOCR] = useState(true); // Mostrar OCR por defecto
   const [voucherPreviewUrl, setVoucherPreviewUrl] = useState<string | null>(null);
+  const [ocrConfianza, setOcrConfianza] = useState<number | null>(null);
+  const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
   const [alertModal, setAlertModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -44,28 +46,37 @@ export default function RegistrarAbonoModal({
   // Handler para cuando OCR extrae datos del voucher
   // IMPORTANTE: Debe estar ANTES del early return para cumplir reglas de Hooks
   const handleOCRDataExtracted = useCallback((data: VoucherData, file: File, previewUrl: string) => {
+    const filledFields = new Set<string>();
+
     // Auto-rellenar campos con datos del OCR
     if (data.monto) {
       setMonto(data.monto.toString());
+      filledFields.add('monto');
     }
     if (data.fecha) {
       // Convertir fecha de formato YYYY-MM-DD
       setFechaAbono(data.fecha);
+      filledFields.add('fecha');
     }
     if (data.numero_operacion && data.numero_operacion !== 'N/A') {
       setNumeroOperacion(data.numero_operacion);
+      filledFields.add('operacion');
     }
     // Mapear tipo de operacion a metodo de pago
     if (data.tipo_operacion) {
       const tipoLower = data.tipo_operacion.toLowerCase();
       if (tipoLower.includes('transfer')) {
         setMetodoPago('Transferencia');
+        filledFields.add('metodo');
       } else if (tipoLower.includes('deposit') || tipoLower.includes('deposito')) {
         setMetodoPago('Depósito');
+        filledFields.add('metodo');
       } else if (tipoLower.includes('yape')) {
         setMetodoPago('Yape');
+        filledFields.add('metodo');
       } else if (tipoLower.includes('plin')) {
         setMetodoPago('Plin');
+        filledFields.add('metodo');
       }
     }
     // Agregar info del voucher a las notas
@@ -76,8 +87,11 @@ export default function RegistrarAbonoModal({
     }
     if (infoVoucher.length > 0) {
       setNotas(infoVoucher.join(' | '));
+      filledFields.add('notas');
     }
     setVoucherPreviewUrl(previewUrl);
+    setOcrConfianza(data.confianza);
+    setAutoFilledFields(filledFields);
   }, []);
 
   if (!isOpen || !pago) return null;
@@ -153,7 +167,9 @@ export default function RegistrarAbonoModal({
       setNotas('');
       setNumeroOperacion('');
       setVoucherPreviewUrl(null);
-      setShowOCR(false);
+      setShowOCR(true);
+      setOcrConfianza(null);
+      setAutoFilledFields(new Set());
     } else {
       setAlertModal({
         isOpen: true,
@@ -239,53 +255,99 @@ export default function RegistrarAbonoModal({
                       });
                     }}
                   />
+                  {/* Indicador de confianza OCR */}
+                  {ocrConfianza !== null && (
+                    <div className={`mt-3 p-2 rounded-lg flex items-center gap-2 text-sm ${
+                      ocrConfianza >= 85
+                        ? 'bg-green-50 text-green-700'
+                        : ocrConfianza >= 60
+                        ? 'bg-yellow-50 text-yellow-700'
+                        : 'bg-orange-50 text-orange-700'
+                    }`}>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>
+                        Datos extraídos con {ocrConfianza}% de confianza
+                        {ocrConfianza < 85 && ' - Verifica los campos'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                 Monto del Abono *
+                {autoFilledFields.has('monto') && (
+                  <span className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Auto
+                  </span>
+                )}
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-gray-500">$</span>
                 <input
                   type="number"
                   value={monto}
-                  onChange={(e) => setMonto(e.target.value)}
+                  onChange={(e) => {
+                    setMonto(e.target.value);
+                    setAutoFilledFields(prev => { prev.delete('monto'); return new Set(prev); });
+                  }}
                   onWheel={(e) => e.currentTarget.blur()}
                   step="0.01"
                   min="0.01"
                   required
                   placeholder="0.00"
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
+                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent ${
+                    autoFilledFields.has('monto') ? 'border-green-400 bg-green-50' : 'border-gray-300'
+                  }`}
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                 Fecha del Abono *
+                {autoFilledFields.has('fecha') && (
+                  <span className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Auto
+                  </span>
+                )}
               </label>
               <input
                 type="date"
                 value={fechaAbono}
-                onChange={(e) => setFechaAbono(e.target.value)}
+                onChange={(e) => {
+                  setFechaAbono(e.target.value);
+                  setAutoFilledFields(prev => { prev.delete('fecha'); return new Set(prev); });
+                }}
                 required
                 max={new Date().toISOString().split('T')[0]}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent ${
+                  autoFilledFields.has('fecha') ? 'border-green-400 bg-green-50' : 'border-gray-300'
+                }`}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                 Método de Pago *
+                {autoFilledFields.has('metodo') && (
+                  <span className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Auto
+                  </span>
+                )}
               </label>
               <select
                 value={metodoPago}
-                onChange={(e) => setMetodoPago(e.target.value)}
+                onChange={(e) => {
+                  setMetodoPago(e.target.value);
+                  setAutoFilledFields(prev => { prev.delete('metodo'); return new Set(prev); });
+                }}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent ${
+                  autoFilledFields.has('metodo') ? 'border-green-400 bg-green-50' : 'border-gray-300'
+                }`}
               >
                 <option value="Efectivo">Efectivo</option>
                 <option value="Transferencia">Transferencia</option>
@@ -298,28 +360,48 @@ export default function RegistrarAbonoModal({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                 Número de Operación
+                {autoFilledFields.has('operacion') && (
+                  <span className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Auto
+                  </span>
+                )}
               </label>
               <input
                 type="text"
                 value={numeroOperacion}
-                onChange={(e) => setNumeroOperacion(e.target.value)}
+                onChange={(e) => {
+                  setNumeroOperacion(e.target.value);
+                  setAutoFilledFields(prev => { prev.delete('operacion'); return new Set(prev); });
+                }}
                 placeholder="Ej: 804263"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent ${
+                  autoFilledFields.has('operacion') ? 'border-green-400 bg-green-50' : 'border-gray-300'
+                }`}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                 Notas (Opcional)
+                {autoFilledFields.has('notas') && (
+                  <span className="text-xs text-green-600 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Auto
+                  </span>
+                )}
               </label>
               <textarea
                 value={notas}
-                onChange={(e) => setNotas(e.target.value)}
+                onChange={(e) => {
+                  setNotas(e.target.value);
+                  setAutoFilledFields(prev => { prev.delete('notas'); return new Set(prev); });
+                }}
                 rows={3}
                 placeholder="Agrega notas o comentarios sobre este abono..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent resize-none"
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent resize-none ${
+                  autoFilledFields.has('notas') ? 'border-green-400 bg-green-50' : 'border-gray-300'
+                }`}
               />
             </div>
 

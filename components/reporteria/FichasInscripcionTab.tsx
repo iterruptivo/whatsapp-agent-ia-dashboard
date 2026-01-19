@@ -18,7 +18,9 @@ import {
   Filter,
   ChevronDown,
   FileText,
-  Eye
+  Eye,
+  Bell,
+  CheckCircle2
 } from 'lucide-react';
 import {
   getFichasParaReporte,
@@ -231,6 +233,9 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
                       Fecha
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Nuevo Abono
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Acciones
                     </th>
                   </tr>
@@ -292,6 +297,23 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
                         {formatFecha(ficha.fecha_creacion)}
                       </td>
 
+                      {/* Nuevo Abono */}
+                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                        {ficha.tiene_nuevo_abono ? (
+                          <div className="inline-flex items-center gap-1 px-2 py-1 bg-[#1b967a]/10 text-[#1b967a] rounded-full text-xs font-medium">
+                            <Bell className="w-3 h-3" />
+                            <span>Nuevo</span>
+                          </div>
+                        ) : ficha.abonos_count > 0 ? (
+                          <div className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>{ficha.abonos_count}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-300">-</span>
+                        )}
+                      </td>
+
                       {/* Acciones */}
                       <td className="px-4 py-3 whitespace-nowrap text-center">
                         <button
@@ -317,6 +339,12 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-gray-500">#{index + 1}</span>
                       <span className="font-semibold text-gray-900">{ficha.local_codigo}</span>
+                      {ficha.tiene_nuevo_abono && (
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#1b967a]/10 text-[#1b967a] rounded-full text-xs font-medium">
+                          <Bell className="w-3 h-3" />
+                          Nuevo
+                        </div>
+                      )}
                     </div>
                     <span className="text-xs text-gray-500">{formatFecha(ficha.fecha_creacion)}</span>
                   </div>

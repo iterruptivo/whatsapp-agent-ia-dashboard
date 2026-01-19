@@ -254,10 +254,12 @@ export default function LocalesClient({
   const filteredLocales = useMemo(() => {
     let filtered = locales;
 
-    // Filtro por búsqueda de código (match parcial, case-insensitive)
+    // Filtro por búsqueda de código o cliente (match parcial, case-insensitive)
     if (searchCodigo) {
+      const searchLower = searchCodigo.toLowerCase();
       filtered = filtered.filter((local) =>
-        local.codigo.toLowerCase().includes(searchCodigo.toLowerCase())
+        local.codigo.toLowerCase().includes(searchLower) ||
+        (local.lead_nombre && local.lead_nombre.toLowerCase().includes(searchLower))
       );
     }
 
@@ -431,7 +433,7 @@ export default function LocalesClient({
           <div className="w-full max-w-md flex items-center gap-2">
             <input
               type="text"
-              placeholder="Buscar código (ej: A-1, 106, B)"
+              placeholder="Buscar código o cliente..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onKeyPress={handleKeyPress}

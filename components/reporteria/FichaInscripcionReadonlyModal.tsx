@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, FileText, User, Users, DollarSign, Image as ImageIcon, Loader2 } from 'lucide-react';
-import { getClienteFichaByLocalId, ClienteFicha } from '@/lib/actions-clientes-ficha';
+import { X, FileText, User, Users, DollarSign, Image as ImageIcon, Loader2, Receipt, CreditCard, Calendar, Building2 } from 'lucide-react';
+import { getClienteFichaByLocalId, ClienteFicha, getAbonosByLocalId, AbonoControlPago } from '@/lib/actions-clientes-ficha';
 
 interface FichaInscripcionReadonlyModalProps {
   isOpen: boolean;
@@ -18,6 +18,7 @@ export default function FichaInscripcionReadonlyModal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ClienteFicha | null>(null);
+  const [abonos, setAbonos] = useState<AbonoControlPago[]>([]);
 
   useEffect(() => {
     if (isOpen && localId) {
@@ -29,14 +30,21 @@ export default function FichaInscripcionReadonlyModal({
     try {
       setLoading(true);
       setError(null);
-      const result = await getClienteFichaByLocalId(localId);
+      setAbonos([]);
 
-      if (!result) {
+      // Cargar ficha y abonos en paralelo
+      const [fichaResult, abonosResult] = await Promise.all([
+        getClienteFichaByLocalId(localId),
+        getAbonosByLocalId(localId),
+      ]);
+
+      if (!fichaResult) {
         setError('No se encontró la ficha de inscripción');
         return;
       }
 
-      setData(result);
+      setData(fichaResult);
+      setAbonos(abonosResult);
     } catch (err) {
       setError('Error al cargar la ficha de inscripción');
       console.error(err);
@@ -318,11 +326,11 @@ export default function FichaInscripcionReadonlyModal({
                     </div>
                   )}
 
-                  {/* Comprobantes de Depósito */}
+                  {/* Comprobantes de Depósito (Separación) */}
                   {data.comprobante_deposito_fotos && data.comprobante_deposito_fotos.length > 0 && (
                     <div>
                       <label className="text-sm font-semibold text-gray-700 mb-2 block">
-                        Comprobantes de Depósito ({data.comprobante_deposito_fotos.length})
+                        Comprobantes de Separación ({data.comprobante_deposito_fotos.length})
                       </label>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {data.comprobante_deposito_fotos.map((url, index) => (
@@ -345,9 +353,102 @@ export default function FichaInscripcionReadonlyModal({
                     </div>
                   )}
 
+                  {/* Abonos de Control de Pagos */}
+                  {abonos.length > 0 && (
+                    <div className="border-t border-gray-200 pt-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Receipt className="h-4 w-4 text-[#1b967a]" />
+                        <label className="text-sm font-semibold text-gray-700">
+                          Abonos de Control de Pagos ({abonos.length})
+                        </label>
+                      </div>
+                      <div className="space-y-3">
+                        {abonos.map((abono) => (
+                          <div
+                            key={abono.id}
+                            className="bg-white border border-gray-200 rounded-lg p-3 hover:border-[#1b967a]/50 transition-colors"
+                          >
+                            <div className="flex flex-col md:flex-row gap-4">
+                              {/* Voucher/Comprobante */}
+                              {abono.comprobante_url ? (
+                                <div className="flex-shrink-0">
+                                  <a
+                                    href={abono.comprobante_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block"
+                                  >
+                                    <img
+                                      src={abono.comprobante_url}
+                                      alt={`Voucher ${abono.numero_operacion || ''}`}
+                                      className="w-32 h-24 object-cover rounded-lg border border-gray-300 hover:border-[#1b967a] transition-colors"
+                                    />
+                                  </a>
+                                </div>
+                              ) : (
+                                <div className="w-32 h-24 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <Receipt className="h-8 w-8 text-gray-400" />
+                                </div>
+                              )}
+
+                              {/* Info del abono */}
+                              <div className="flex-1 space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold text-[#1b967a]">
+                                    {abono.moneda === 'USD' ? '$' : 'S/'} {abono.monto.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                  </span>
+                                  {abono.pago_concepto && (
+                                    <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                      {abono.pago_concepto}
+                                      {abono.pago_numero_cuota && ` #${abono.pago_numero_cuota}`}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" />
+                                    {new Date(abono.fecha_abono).toLocaleDateString('es-PE')}
+                                  </span>
+
+                                  {abono.metodo_pago && (
+                                    <span className="flex items-center gap-1">
+                                      <CreditCard className="h-3 w-3" />
+                                      {abono.metodo_pago}
+                                    </span>
+                                  )}
+
+                                  {abono.banco && (
+                                    <span className="flex items-center gap-1">
+                                      <Building2 className="h-3 w-3" />
+                                      {abono.banco}
+                                    </span>
+                                  )}
+
+                                  {abono.numero_operacion && (
+                                    <span className="text-gray-500">
+                                      Op: {abono.numero_operacion}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {abono.notas && (
+                                  <p className="text-xs text-gray-500 italic">
+                                    {abono.notas}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Mensaje si no hay documentos */}
                   {(!data.dni_fotos || data.dni_fotos.length === 0) &&
-                   (!data.comprobante_deposito_fotos || data.comprobante_deposito_fotos.length === 0) && (
+                   (!data.comprobante_deposito_fotos || data.comprobante_deposito_fotos.length === 0) &&
+                   abonos.length === 0 && (
                     <p className="text-gray-500 text-center py-4">
                       No hay documentos adjuntos
                     </p>

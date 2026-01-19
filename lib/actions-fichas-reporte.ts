@@ -51,6 +51,10 @@ export interface FichaReporteRow {
   vendedor_caseta_nombre: string | null; // si aplica
   total_abonado: number;
   fecha_creacion: string;
+  // Campos para indicador de nuevo abono
+  tiene_nuevo_abono: boolean;
+  fecha_ultimo_abono: string | null;
+  abonos_count: number;
 }
 
 // ============================================================================
@@ -204,12 +208,12 @@ export async function getFichasParaReporte(proyectoId?: string): Promise<FichaRe
       pagosLocalMap.set(pl.control_pago_id, [...existing, pl.id]);
     });
 
-    // PASO 8: Obtener abonos_pago y sumar por pago_id
+    // PASO 8: Obtener abonos_pago y sumar por pago_id + obtener fecha último abono
     const pagoIds = (pagosLocalData || []).map(pl => pl.id);
 
     const { data: abonosData, error: abonosError } = await supabase
       .from('abonos_pago')
-      .select('pago_id, monto')
+      .select('pago_id, monto, fecha_abono, created_at')
       .in('pago_id', pagoIds);
 
     if (abonosError) {
@@ -218,9 +222,26 @@ export async function getFichasParaReporte(proyectoId?: string): Promise<FichaRe
 
     // Crear mapa de pago_id -> total abonado
     const abonosPorPagoMap = new Map<string, number>();
+    // Crear mapa de pago_id -> fecha último abono
+    const ultimoAbonoPorPagoMap = new Map<string, string>();
+    // Crear mapa de pago_id -> count de abonos
+    const abonosCountPorPagoMap = new Map<string, number>();
+
     (abonosData || []).forEach(abono => {
+      // Sumar monto total
       const currentTotal = abonosPorPagoMap.get(abono.pago_id) || 0;
       abonosPorPagoMap.set(abono.pago_id, currentTotal + Number(abono.monto));
+
+      // Contar abonos
+      const currentCount = abonosCountPorPagoMap.get(abono.pago_id) || 0;
+      abonosCountPorPagoMap.set(abono.pago_id, currentCount + 1);
+
+      // Rastrear fecha más reciente (usar fecha_abono o created_at)
+      const fechaAbono = abono.fecha_abono || abono.created_at;
+      const currentFecha = ultimoAbonoPorPagoMap.get(abono.pago_id);
+      if (!currentFecha || new Date(fechaAbono) > new Date(currentFecha)) {
+        ultimoAbonoPorPagoMap.set(abono.pago_id, fechaAbono);
+      }
     });
 
     // PASO 9: Construir resultado final
@@ -249,15 +270,35 @@ export async function getFichasParaReporte(proyectoId?: string): Promise<FichaRe
       // Buscar jefe de ventas (por ahora null, se puede extender)
       const jefeVentasNombre = null; // TODO: Implementar lógica si se agrega relación vendedor -> jefe
 
-      // Calcular total abonado
+      // Calcular total abonado, fecha último abono y count
       const controlPagoId = ficha.local_id ? controlPagosMap.get(ficha.local_id) : null;
       let totalAbonado = 0;
+      let fechaUltimoAbono: string | null = null;
+      let abonosCount = 0;
 
       if (controlPagoId) {
         const pagoIdsDeLocal = pagosLocalMap.get(controlPagoId) || [];
-        totalAbonado = pagoIdsDeLocal.reduce((sum, pagoId) => {
-          return sum + (abonosPorPagoMap.get(pagoId) || 0);
-        }, 0);
+
+        pagoIdsDeLocal.forEach(pagoId => {
+          // Sumar monto
+          totalAbonado += abonosPorPagoMap.get(pagoId) || 0;
+          // Sumar count
+          abonosCount += abonosCountPorPagoMap.get(pagoId) || 0;
+          // Encontrar fecha más reciente
+          const fechaPago = ultimoAbonoPorPagoMap.get(pagoId);
+          if (fechaPago && (!fechaUltimoAbono || new Date(fechaPago) > new Date(fechaUltimoAbono))) {
+            fechaUltimoAbono = fechaPago;
+          }
+        });
+      }
+
+      // Determinar si tiene nuevo abono (últimos 7 días)
+      let tieneNuevoAbono = false;
+      if (fechaUltimoAbono) {
+        const hoy = new Date();
+        const fechaAbono = new Date(fechaUltimoAbono);
+        const diasDesdeAbono = Math.floor((hoy.getTime() - fechaAbono.getTime()) / (1000 * 60 * 60 * 24));
+        tieneNuevoAbono = diasDesdeAbono <= 7;
       }
 
       return {
@@ -276,6 +317,9 @@ export async function getFichasParaReporte(proyectoId?: string): Promise<FichaRe
         vendedor_caseta_nombre: vendedorCasetaNombre,
         total_abonado: totalAbonado,
         fecha_creacion: ficha.created_at,
+        tiene_nuevo_abono: tieneNuevoAbono,
+        fecha_ultimo_abono: fechaUltimoAbono,
+        abonos_count: abonosCount,
       };
     });
 

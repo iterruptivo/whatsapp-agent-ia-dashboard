@@ -23,6 +23,7 @@ export interface Local {
   monto_separacion: number | null; // Monto de separación (REQUERIDO al cambiar a NARANJA)
   monto_venta: number | null; // Monto de venta (REQUERIDO al cambiar a NARANJA)
   lead_id: string | null; // SESIÓN 52C: Lead vinculado al local (capturado en modal Datos)
+  lead_nombre?: string | null; // Via JOIN - Nombre del cliente/lead asociado
   vendedor_actual_id: string | null;
   vendedor_actual_nombre?: string | null; // Via JOIN (opcional)
   vendedor_cerro_venta_id: string | null;
@@ -116,6 +117,7 @@ export async function getAllLocales(options?: {
     const to = from + pageSize - 1;
 
     // Query base con JOINs
+    // NOTA: El JOIN con leads se hace por separado para evitar errores si no hay FK
     let query = supabase
       .from('locales')
       .select(`
@@ -161,7 +163,27 @@ export async function getAllLocales(options?: {
       proyecto_nombre: local.proyecto?.nombre || null,
       vendedor_actual_nombre: local.vendedor_actual?.nombre || null,
       vendedor_cerro_venta_nombre: local.vendedor_cerro_venta?.nombre || null,
+      lead_nombre: null, // Se obtiene por separado si es necesario
     }));
+
+    // Obtener nombres de leads para locales que tienen lead_id
+    const localesConLead = locales.filter(l => l.lead_id);
+    if (localesConLead.length > 0) {
+      const leadIds = [...new Set(localesConLead.map(l => l.lead_id).filter(Boolean))] as string[];
+      const { data: leadsData } = await supabase
+        .from('leads')
+        .select('id, nombre')
+        .in('id', leadIds);
+
+      if (leadsData) {
+        const leadsMap = new Map(leadsData.map(l => [l.id, l.nombre]));
+        locales.forEach(local => {
+          if (local.lead_id) {
+            local.lead_nombre = leadsMap.get(local.lead_id) || null;
+          }
+        });
+      }
+    }
 
     return { data: locales, count: count || 0 };
   } catch (error) {

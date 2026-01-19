@@ -77,6 +77,10 @@ export interface ControlPago {
   vendedor_id: string | null;
   created_at: string;
   updated_at: string;
+  // Campos calculados para vencidos (opcionales, se calculan en getAllControlPagos)
+  tiene_vencidos?: boolean;
+  cuotas_vencidas?: number;
+  dias_max_vencido?: number;
 }
 
 // ============================================================================
@@ -273,7 +277,63 @@ export async function getAllControlPagos(proyectoId: string): Promise<ControlPag
       return [];
     }
 
-    return data as ControlPago[] || [];
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    // Obtener IDs de control_pagos para buscar pagos_local
+    const controlPagoIds = data.map(cp => cp.id);
+
+    // Obtener todos los pagos_local de tipo 'cuota' para calcular vencidos
+    const { data: pagosData, error: pagosError } = await supabase
+      .from('pagos_local')
+      .select('control_pago_id, estado, fecha_esperada')
+      .in('control_pago_id', controlPagoIds)
+      .eq('tipo', 'cuota');
+
+    if (pagosError) {
+      console.warn('[CONTROL_PAGOS] Error obteniendo pagos_local:', pagosError);
+      // Retornar sin info de vencidos si falla
+      return data as ControlPago[];
+    }
+
+    // Calcular vencidos por control_pago
+    const hoy = new Date().toISOString().split('T')[0];
+    const vencidosMap = new Map<string, { cuotas_vencidas: number; dias_max_vencido: number }>();
+
+    (pagosData || []).forEach(pago => {
+      // Cuota vencida: pendiente o parcial Y fecha_esperada < hoy
+      const esVencida = (pago.estado === 'pendiente' || pago.estado === 'parcial') && pago.fecha_esperada < hoy;
+
+      if (esVencida) {
+        const current = vencidosMap.get(pago.control_pago_id) || { cuotas_vencidas: 0, dias_max_vencido: 0 };
+        current.cuotas_vencidas += 1;
+
+        // Calcular días vencidos
+        const fechaVencimiento = new Date(pago.fecha_esperada + 'T00:00:00');
+        const hoyDate = new Date();
+        const diasVencido = Math.floor((hoyDate.getTime() - fechaVencimiento.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diasVencido > current.dias_max_vencido) {
+          current.dias_max_vencido = diasVencido;
+        }
+
+        vencidosMap.set(pago.control_pago_id, current);
+      }
+    });
+
+    // Agregar info de vencidos a cada control_pago
+    const resultado: ControlPago[] = data.map(cp => {
+      const vencidosInfo = vencidosMap.get(cp.id);
+      return {
+        ...cp,
+        tiene_vencidos: !!vencidosInfo && vencidosInfo.cuotas_vencidas > 0,
+        cuotas_vencidas: vencidosInfo?.cuotas_vencidas || 0,
+        dias_max_vencido: vencidosInfo?.dias_max_vencido || 0,
+      } as ControlPago;
+    });
+
+    return resultado;
   } catch (error) {
     console.error('[CONTROL_PAGOS] Error in getAllControlPagos:', error);
     return [];
