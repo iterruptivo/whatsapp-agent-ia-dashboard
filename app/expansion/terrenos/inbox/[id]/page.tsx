@@ -286,6 +286,34 @@ export default function TerrenoDetalleAdminPage() {
                   </div>
                 )}
               </div>
+
+              {/* Mapa readonly */}
+              {terreno.coordenadas_lat && terreno.coordenadas_lng && (
+                <div className="mt-4 pt-4 border-t">
+                  <p className="text-sm text-gray-500 mb-3">Ubicación en mapa</p>
+                  <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
+                    <iframe
+                      src={`https://www.google.com/maps?q=${terreno.coordenadas_lat},${terreno.coordenadas_lng}&z=16&output=embed`}
+                      width="100%"
+                      height="300"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      title="Ubicación del terreno"
+                    />
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps?q=${terreno.coordenadas_lat},${terreno.coordenadas_lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-2 text-sm text-[#1b967a] hover:underline"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Abrir en Google Maps
+                  </a>
+                </div>
+              )}
             </div>
 
             {/* Características */}
