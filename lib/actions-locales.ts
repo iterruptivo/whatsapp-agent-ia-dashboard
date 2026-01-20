@@ -95,16 +95,16 @@ export async function updateLocalEstado(
       }
     }
 
-    // VALIDACIÓN CRÍTICA: Vendedor y Coordinador NO pueden cambiar desde NARANJA
-    // (Coordinador tiene mismas restricciones que jefe_ventas para cambio de estados)
+    // SESIÓN 101: Solo vendedor/vendedor_caseta NO pueden cambiar desde NARANJA
+    // Coordinador y jefe_ventas SÍ pueden (porque también venden y gestionan)
     if (
       local.estado === 'naranja' &&
       userRole &&
-      (userRole === 'vendedor' || userRole === 'vendedor_caseta' || userRole === 'coordinador')
+      (userRole === 'vendedor' || userRole === 'vendedor_caseta')
     ) {
       return {
         success: false,
-        message: 'Solo jefes de ventas o administradores pueden cambiar el estado de un local confirmado (NARANJA)',
+        message: 'Solo jefes de ventas, coordinadores o administradores pueden cambiar el estado de un local confirmado (NARANJA)',
       };
     }
 

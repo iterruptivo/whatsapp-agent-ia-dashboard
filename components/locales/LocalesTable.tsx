@@ -214,26 +214,9 @@ export default function LocalesTable({
       // Verde y Rojo siguen el flujo normal (verde = liberar, rojo = bloquear)
     }
 
-    // 🚫 RESTRICCIÓN: Jefe Ventas y Coordinador solo pueden bloquear (rojo) y desbloquear (rojo->verde)
-    if (user.rol === 'jefe_ventas' || user.rol === 'coordinador') {
-      const esBloqueo = nuevoEstado === 'rojo';
-      const esDesbloqueo = local.estado === 'rojo' && local.bloqueado && nuevoEstado === 'verde';
-
-      // Permitir solo bloqueo (cambiar a rojo) o desbloqueo (rojo bloqueado -> verde)
-      if (!esBloqueo && !esDesbloqueo) {
-        setConfirmModal({
-          isOpen: true,
-          local: null,
-          nuevoEstado: null,
-          title: 'Acción Restringida',
-          message: 'Los jefes de ventas y coordinadores solo pueden:\n\n• Bloquear locales (cambiar a VENDIDO)\n• Desbloquear locales bloqueados\n\nLos cambios de estado intermedios son exclusivos de los vendedores.',
-          variant: 'warning',
-        });
-        return;
-      }
-
-      // Si es desbloqueo, continuar con el flujo especial de desbloqueo abajo
-    }
+    // ✅ SESIÓN 101: Jefe Ventas y Coordinador ahora pueden cambiar estados intermedios
+    // (verde ↔ amarillo ↔ naranja) porque también venden
+    // Solo vendedor/vendedor_caseta quedan restringidos desde NARANJA (validado en server)
 
     // 🔓 CASO ESPECIAL: Admin, Jefe de Ventas o Coordinador desbloquea local en ROJO
     if (local.estado === 'rojo' && local.bloqueado && (user.rol === 'admin' || user.rol === 'jefe_ventas' || user.rol === 'coordinador')) {
