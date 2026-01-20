@@ -962,3 +962,233 @@ export async function updatePrecioBase(
     return { success: false, message: 'Error inesperado al actualizar precio base' };
   }
 }
+
+// ============================================================================
+// SESIÓN 102: LOCALES EXCEPCIONALES
+// ============================================================================
+// Para regularizar ventas duplicadas históricas (ej: A-107-1, A-107-2)
+// ============================================================================
+
+/**
+ * Crear un local excepcional para regularizar ventas duplicadas
+ * Solo disponible para: superadmin, admin, jefe_ventas
+ */
+export async function crearLocalExcepcional(data: {
+  codigo: string;
+  proyecto_id: string;
+  metraje: number;
+  precio_base: number;
+}): Promise<{ success: boolean; message: string; local?: { id: string; codigo: string } }> {
+  try {
+    // Crear Server Client con autenticación (patrón Sesión 51)
+    const cookieStore = await cookies();
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: () => {},
+        },
+      }
+    );
+
+    // Validar autenticación
+    const { data: { user: authUser }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !authUser) {
+      return { success: false, message: 'No autenticado' };
+    }
+
+    // Obtener datos del usuario desde tabla usuarios
+    const { data: userData, error: userError } = await supabaseAuth
+      .from('usuarios')
+      .select('id, nombre, rol')
+      .eq('id', authUser.id)
+      .single();
+
+    if (userError || !userData) {
+      return { success: false, message: 'Usuario no encontrado' };
+    }
+
+    const rolesAutorizados = ['superadmin', 'admin', 'jefe_ventas'];
+    if (!rolesAutorizados.includes(userData.rol)) {
+      return { success: false, message: 'No autorizado. Solo admin y jefe de ventas pueden crear locales excepcionales.' };
+    }
+
+    // Validar datos
+    if (!data.codigo?.trim()) {
+      return { success: false, message: 'El código es requerido' };
+    }
+
+    if (!data.proyecto_id) {
+      return { success: false, message: 'El proyecto es requerido' };
+    }
+
+    if (!data.metraje || data.metraje <= 0) {
+      return { success: false, message: 'El metraje debe ser mayor a 0' };
+    }
+
+    if (!data.precio_base || data.precio_base <= 0) {
+      return { success: false, message: 'El precio base debe ser mayor a 0' };
+    }
+
+    // Verificar que el código no exista en el proyecto
+    const { data: existente } = await supabase
+      .from('locales')
+      .select('id')
+      .eq('proyecto_id', data.proyecto_id)
+      .eq('codigo', data.codigo.trim())
+      .single();
+
+    if (existente) {
+      return { success: false, message: `Ya existe un local con código "${data.codigo}" en este proyecto` };
+    }
+
+    // Crear el local excepcional
+    const { data: nuevoLocal, error } = await supabase
+      .from('locales')
+      .insert({
+        codigo: data.codigo.trim(),
+        proyecto_id: data.proyecto_id,
+        metraje: data.metraje,
+        precio_base: data.precio_base,
+        estado: 'verde',
+        bloqueado: false,
+        es_excepcional: true,
+        en_control_pagos: false,
+        vendedores_negociando_ids: [],
+      })
+      .select('id, codigo')
+      .single();
+
+    if (error) {
+      console.error('[LOCAL EXCEPCIONAL] ❌ Error al crear:', error);
+      return { success: false, message: 'Error al crear el local excepcional' };
+    }
+
+    // Registrar en historial
+    await supabase.from('locales_historial').insert({
+      local_id: nuevoLocal.id,
+      usuario_id: userData.id,
+      estado_anterior: 'verde',
+      estado_nuevo: 'verde',
+      accion: `Local excepcional creado: ${data.codigo} (metraje: ${data.metraje}m², precio: $${data.precio_base})`,
+    });
+
+    console.log(`[LOCAL EXCEPCIONAL] ✅ Creado: ${data.codigo} por ${userData.nombre}`);
+
+    revalidatePath('/locales');
+
+    return {
+      success: true,
+      message: `Local excepcional "${data.codigo}" creado correctamente`,
+      local: nuevoLocal,
+    };
+  } catch (error) {
+    console.error('[LOCAL EXCEPCIONAL] ❌ Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al crear local excepcional' };
+  }
+}
+
+/**
+ * Eliminar un local excepcional
+ * Solo se puede eliminar si:
+ * - El local tiene es_excepcional = true
+ * - NO tiene ficha de inscripción (clientes_fichas)
+ */
+export async function eliminarLocalExcepcional(
+  localId: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    // Crear Server Client con autenticación (patrón Sesión 51)
+    const cookieStore = await cookies();
+    const supabaseAuth = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => cookieStore.getAll(),
+          setAll: () => {},
+        },
+      }
+    );
+
+    // Validar autenticación
+    const { data: { user: authUser }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !authUser) {
+      return { success: false, message: 'No autenticado' };
+    }
+
+    // Obtener datos del usuario desde tabla usuarios
+    const { data: userData, error: userError } = await supabaseAuth
+      .from('usuarios')
+      .select('id, nombre, rol')
+      .eq('id', authUser.id)
+      .single();
+
+    if (userError || !userData) {
+      return { success: false, message: 'Usuario no encontrado' };
+    }
+
+    const rolesAutorizados = ['superadmin', 'admin', 'jefe_ventas'];
+    if (!rolesAutorizados.includes(userData.rol)) {
+      return { success: false, message: 'No autorizado. Solo admin y jefe de ventas pueden eliminar locales excepcionales.' };
+    }
+
+    // Obtener el local
+    const { data: local, error: localError } = await supabase
+      .from('locales')
+      .select('id, codigo, es_excepcional')
+      .eq('id', localId)
+      .single();
+
+    if (localError || !local) {
+      return { success: false, message: 'Local no encontrado' };
+    }
+
+    // Validar que sea excepcional
+    if (!local.es_excepcional) {
+      return { success: false, message: 'Solo se pueden eliminar locales excepcionales' };
+    }
+
+    // Verificar que no tenga ficha de inscripción
+    const { data: ficha } = await supabase
+      .from('clientes_fichas')
+      .select('id')
+      .eq('local_id', localId)
+      .single();
+
+    if (ficha) {
+      return { success: false, message: 'No se puede eliminar: el local tiene una ficha de inscripción asociada' };
+    }
+
+    // Eliminar historial primero (FK constraint)
+    await supabase
+      .from('locales_historial')
+      .delete()
+      .eq('local_id', localId);
+
+    // Eliminar el local
+    const { error: deleteError } = await supabase
+      .from('locales')
+      .delete()
+      .eq('id', localId);
+
+    if (deleteError) {
+      console.error('[LOCAL EXCEPCIONAL] ❌ Error al eliminar:', deleteError);
+      return { success: false, message: 'Error al eliminar el local excepcional' };
+    }
+
+    console.log(`[LOCAL EXCEPCIONAL] ✅ Eliminado: ${local.codigo} por ${userData.nombre}`);
+
+    revalidatePath('/locales');
+
+    return {
+      success: true,
+      message: `Local excepcional "${local.codigo}" eliminado correctamente`,
+    };
+  } catch (error) {
+    console.error('[LOCAL EXCEPCIONAL] ❌ Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al eliminar local excepcional' };
+  }
+}

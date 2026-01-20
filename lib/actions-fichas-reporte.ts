@@ -377,6 +377,11 @@ export interface AbonoDiarioRow {
   moneda: 'PEN' | 'USD';
   banco: string | null;
   numero_operacion: string | null;
+  // Campos para boletas vinculadas
+  voucher_index: number;
+  boleta_url: string | null;
+  numero_boleta: string | null;
+  boleta_tipo: 'boleta' | 'factura' | null;
 }
 
 // Columnas ordenables
@@ -440,6 +445,17 @@ function parseFechaOCR(fechaStr: string): string | null {
 }
 
 // Helper interno para obtener todos los abonos filtrados (sin paginar)
+// Interface para boleta vinculada
+export interface BoletaVinculada {
+  voucher_index: number;
+  boleta_url: string;
+  numero_boleta: string;
+  tipo: 'boleta' | 'factura';
+  uploaded_at: string;
+  uploaded_by_id: string;
+  uploaded_by_nombre: string;
+}
+
 async function fetchAllAbonosFiltered(
   fechaDesde: string,
   fechaHasta: string,
@@ -448,7 +464,7 @@ async function fetchAllAbonosFiltered(
 ): Promise<AbonoDiarioRow[]> {
   const supabase = await createSupabaseServer();
 
-  // Obtener fichas con sus datos OCR
+  // Obtener fichas con sus datos OCR y boletas vinculadas
   let query = supabase
     .from('clientes_ficha')
     .select(`
@@ -458,6 +474,7 @@ async function fetchAllAbonosFiltered(
       titular_apellido_paterno,
       titular_apellido_materno,
       comprobante_deposito_ocr,
+      boletas_vinculadas,
       locales!inner (
         id,
         codigo,
@@ -498,6 +515,9 @@ async function fetchAllAbonosFiltered(
 
     if (!ocrData || !Array.isArray(ocrData)) continue;
 
+    // Obtener boletas vinculadas
+    const boletasVinculadas = (ficha.boletas_vinculadas || []) as BoletaVinculada[];
+
     const local = ficha.locales as any;
     const proyecto = local?.proyectos as any;
 
@@ -509,14 +529,17 @@ async function fetchAllAbonosFiltered(
     ].filter(Boolean).join(' ') || 'Sin nombre';
 
     // Procesar cada voucher
-    for (const voucher of ocrData) {
-      if (!voucher.fecha || !voucher.monto || !voucher.moneda) continue;
+    ocrData.forEach((voucher, voucherIndex) => {
+      if (!voucher.fecha || !voucher.monto || !voucher.moneda) return;
 
       const fechaComprobante = parseFechaOCR(voucher.fecha);
-      if (!fechaComprobante) continue;
+      if (!fechaComprobante) return;
 
       // Filtrar por rango de fechas
-      if (fechaComprobante < fechaDesde || fechaComprobante > fechaHasta) continue;
+      if (fechaComprobante < fechaDesde || fechaComprobante > fechaHasta) return;
+
+      // Buscar si tiene boleta vinculada
+      const boletaVinculada = boletasVinculadas.find(b => b.voucher_index === voucherIndex);
 
       abonos.push({
         ficha_id: ficha.id,
@@ -529,8 +552,12 @@ async function fetchAllAbonosFiltered(
         moneda: voucher.moneda,
         banco: voucher.banco || null,
         numero_operacion: voucher.numero_operacion || null,
+        voucher_index: voucherIndex,
+        boleta_url: boletaVinculada?.boleta_url || null,
+        numero_boleta: boletaVinculada?.numero_boleta || null,
+        boleta_tipo: boletaVinculada?.tipo || null,
       });
-    }
+    });
   }
 
   return abonos;
@@ -676,5 +703,171 @@ export async function getAbonosDiariosExport(params: {
   } catch (error: any) {
     console.error('[getAbonosDiariosExport] Error:', error);
     return [];
+  }
+}
+
+// ============================================================================
+// SESIÓN 103: VINCULAR BOLETAS A COMPROBANTES
+// ============================================================================
+
+/**
+ * Vincular una boleta/factura a un comprobante de pago (voucher)
+ * Solo disponible para: finanzas, admin, superadmin
+ */
+export async function vincularBoleta(params: {
+  fichaId: string;
+  voucherIndex: number;
+  boletaUrl: string;
+  numeroBoleta: string;
+  tipo: 'boleta' | 'factura';
+}): Promise<{ success: boolean; message: string }> {
+  try {
+    const supabase = await createSupabaseServer();
+
+    // Verificar autenticación
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return { success: false, message: 'No autenticado' };
+    }
+
+    // Obtener datos del usuario
+    const { data: userData, error: userError } = await supabase
+      .from('usuarios')
+      .select('id, nombre, rol')
+      .eq('id', authUser.id)
+      .single();
+
+    if (userError || !userData) {
+      return { success: false, message: 'Usuario no encontrado' };
+    }
+
+    // Validar rol
+    const rolesAutorizados = ['superadmin', 'admin', 'finanzas'];
+    if (!rolesAutorizados.includes(userData.rol)) {
+      return { success: false, message: 'No autorizado. Solo Finanzas puede vincular boletas.' };
+    }
+
+    // Obtener ficha actual
+    const { data: ficha, error: fichaError } = await supabase
+      .from('clientes_ficha')
+      .select('boletas_vinculadas')
+      .eq('id', params.fichaId)
+      .single();
+
+    if (fichaError || !ficha) {
+      return { success: false, message: 'Ficha no encontrada' };
+    }
+
+    // Obtener boletas existentes
+    const boletasExistentes = (ficha.boletas_vinculadas || []) as BoletaVinculada[];
+
+    // Verificar si ya existe una boleta para este voucher
+    const existeIndex = boletasExistentes.findIndex(b => b.voucher_index === params.voucherIndex);
+
+    const nuevaBoleta: BoletaVinculada = {
+      voucher_index: params.voucherIndex,
+      boleta_url: params.boletaUrl,
+      numero_boleta: params.numeroBoleta,
+      tipo: params.tipo,
+      uploaded_at: new Date().toISOString(),
+      uploaded_by_id: userData.id,
+      uploaded_by_nombre: userData.nombre,
+    };
+
+    let nuevasBoletasVinculadas: BoletaVinculada[];
+    if (existeIndex >= 0) {
+      // Reemplazar boleta existente
+      nuevasBoletasVinculadas = [...boletasExistentes];
+      nuevasBoletasVinculadas[existeIndex] = nuevaBoleta;
+    } else {
+      // Agregar nueva boleta
+      nuevasBoletasVinculadas = [...boletasExistentes, nuevaBoleta];
+    }
+
+    // Actualizar ficha
+    const { error: updateError } = await supabase
+      .from('clientes_ficha')
+      .update({ boletas_vinculadas: nuevasBoletasVinculadas })
+      .eq('id', params.fichaId);
+
+    if (updateError) {
+      console.error('[vincularBoleta] Error al actualizar:', updateError);
+      return { success: false, message: 'Error al vincular boleta' };
+    }
+
+    console.log(`[vincularBoleta] ✅ Boleta ${params.numeroBoleta} vinculada al voucher ${params.voucherIndex} por ${userData.nombre}`);
+
+    return { success: true, message: `Boleta ${params.numeroBoleta} vinculada correctamente` };
+  } catch (error) {
+    console.error('[vincularBoleta] Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al vincular boleta' };
+  }
+}
+
+/**
+ * Desvincular una boleta de un comprobante de pago
+ */
+export async function desvincularBoleta(params: {
+  fichaId: string;
+  voucherIndex: number;
+}): Promise<{ success: boolean; message: string }> {
+  try {
+    const supabase = await createSupabaseServer();
+
+    // Verificar autenticación
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return { success: false, message: 'No autenticado' };
+    }
+
+    // Obtener datos del usuario
+    const { data: userData, error: userError } = await supabase
+      .from('usuarios')
+      .select('id, nombre, rol')
+      .eq('id', authUser.id)
+      .single();
+
+    if (userError || !userData) {
+      return { success: false, message: 'Usuario no encontrado' };
+    }
+
+    // Validar rol
+    const rolesAutorizados = ['superadmin', 'admin', 'finanzas'];
+    if (!rolesAutorizados.includes(userData.rol)) {
+      return { success: false, message: 'No autorizado. Solo Finanzas puede desvincular boletas.' };
+    }
+
+    // Obtener ficha actual
+    const { data: ficha, error: fichaError } = await supabase
+      .from('clientes_ficha')
+      .select('boletas_vinculadas')
+      .eq('id', params.fichaId)
+      .single();
+
+    if (fichaError || !ficha) {
+      return { success: false, message: 'Ficha no encontrada' };
+    }
+
+    // Filtrar boletas (remover la del voucher indicado)
+    const boletasExistentes = (ficha.boletas_vinculadas || []) as BoletaVinculada[];
+    const nuevasBoletasVinculadas = boletasExistentes.filter(b => b.voucher_index !== params.voucherIndex);
+
+    // Actualizar ficha
+    const { error: updateError } = await supabase
+      .from('clientes_ficha')
+      .update({ boletas_vinculadas: nuevasBoletasVinculadas })
+      .eq('id', params.fichaId);
+
+    if (updateError) {
+      console.error('[desvincularBoleta] Error al actualizar:', updateError);
+      return { success: false, message: 'Error al desvincular boleta' };
+    }
+
+    console.log(`[desvincularBoleta] ✅ Boleta desvinculada del voucher ${params.voucherIndex} por ${userData.nombre}`);
+
+    return { success: true, message: 'Boleta desvinculada correctamente' };
+  } catch (error) {
+    console.error('[desvincularBoleta] Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al desvincular boleta' };
   }
 }

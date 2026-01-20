@@ -109,6 +109,17 @@ export interface ClienteFicha {
     confianza: number;
   }> | null;
 
+  // Boletas vinculadas a comprobantes
+  boletas_vinculadas: Array<{
+    voucher_index: number;
+    boleta_url: string;
+    numero_boleta: string;
+    tipo: 'boleta' | 'factura';
+    uploaded_at: string;
+    uploaded_by_id: string;
+    uploaded_by_nombre: string;
+  }> | null;
+
   vendedor_id: string | null;
   created_at: string;
   updated_at: string;

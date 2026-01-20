@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, FileText, User, Users, DollarSign, Image as ImageIcon, Loader2, Receipt, CreditCard, Calendar, Building2 } from 'lucide-react';
+import { X, FileText, User, Users, DollarSign, Image as ImageIcon, Loader2, Receipt, CreditCard, Calendar, Building2, ExternalLink } from 'lucide-react';
 import { getClienteFichaByLocalId, ClienteFicha, getAbonosByLocalId, AbonoControlPago } from '@/lib/actions-clientes-ficha';
 
 interface FichaInscripcionReadonlyModalProps {
@@ -326,29 +326,87 @@ export default function FichaInscripcionReadonlyModal({
                     </div>
                   )}
 
-                  {/* Comprobantes de Depósito (Separación) */}
+                  {/* Comprobantes de Depósito (Separación) con Boletas Vinculadas */}
                   {data.comprobante_deposito_fotos && data.comprobante_deposito_fotos.length > 0 && (
                     <div>
                       <label className="text-sm font-semibold text-gray-700 mb-2 block">
                         Comprobantes de Separación ({data.comprobante_deposito_fotos.length})
                       </label>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {data.comprobante_deposito_fotos.map((url, index) => (
-                          <div key={index}>
-                            <a
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block"
-                            >
-                              <img
-                                src={url}
-                                alt={`Comprobante ${index + 1}`}
-                                className="w-full h-40 object-cover rounded-lg border border-gray-300 hover:border-[#1b967a] transition-colors"
-                              />
-                            </a>
-                          </div>
-                        ))}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {data.comprobante_deposito_fotos.map((url, index) => {
+                          // Buscar boleta vinculada a este voucher
+                          const boletaVinculada = data.boletas_vinculadas?.find(
+                            (b) => b.voucher_index === index
+                          );
+
+                          return (
+                            <div key={index} className="border border-gray-200 rounded-lg p-3">
+                              <div className="flex gap-3">
+                                {/* Comprobante */}
+                                <div className="flex-shrink-0">
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block"
+                                  >
+                                    <img
+                                      src={url}
+                                      alt={`Comprobante ${index + 1}`}
+                                      className="w-24 h-20 object-cover rounded-lg border border-gray-300 hover:border-[#1b967a] transition-colors"
+                                    />
+                                  </a>
+                                  <p className="text-xs text-center text-gray-500 mt-1">Voucher {index + 1}</p>
+                                </div>
+
+                                {/* Info + Boleta */}
+                                <div className="flex-1 min-w-0">
+                                  {data.comprobante_deposito_ocr?.[index] && (
+                                    <div className="text-xs space-y-1 mb-2">
+                                      {data.comprobante_deposito_ocr[index].monto && (
+                                        <p className="font-medium text-[#1b967a]">
+                                          {data.comprobante_deposito_ocr[index].moneda === 'USD' ? '$' : 'S/'}{' '}
+                                          {data.comprobante_deposito_ocr[index].monto?.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                        </p>
+                                      )}
+                                      {data.comprobante_deposito_ocr[index].banco && (
+                                        <p className="text-gray-600">{data.comprobante_deposito_ocr[index].banco}</p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {/* Boleta Vinculada */}
+                                  {boletaVinculada ? (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
+                                      <div className="flex items-center gap-2">
+                                        <Receipt className="w-4 h-4 text-blue-600" />
+                                        <span className="text-xs font-medium text-blue-700">
+                                          {boletaVinculada.tipo === 'factura' ? 'Factura' : 'Boleta'}
+                                        </span>
+                                      </div>
+                                      <a
+                                        href={boletaVinculada.boleta_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 mt-1 text-xs text-blue-700 hover:text-blue-900 font-medium"
+                                      >
+                                        {boletaVinculada.numero_boleta}
+                                        <ExternalLink className="w-3 h-3" />
+                                      </a>
+                                      <p className="text-xs text-gray-400 mt-0.5">
+                                        Por: {boletaVinculada.uploaded_by_nombre}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-400 italic">
+                                      Sin boleta vinculada
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

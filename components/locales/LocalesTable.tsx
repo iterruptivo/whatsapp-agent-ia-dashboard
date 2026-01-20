@@ -9,10 +9,10 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
-import { updateLocalEstado, desbloquearLocal, updateMontoVenta, autoLiberarLocalesExpirados, salirDeNegociacion, updatePrecioBase } from '@/lib/actions-locales';
+import { updateLocalEstado, desbloquearLocal, updateMontoVenta, autoLiberarLocalesExpirados, salirDeNegociacion, updatePrecioBase, eliminarLocalExcepcional } from '@/lib/actions-locales';
 import type { Local, VendedorActivo } from '@/lib/locales';
 import { getAllVendedoresActivos } from '@/lib/locales';
-import { ChevronLeft, ChevronRight, History, Lock, Clock, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, History, Lock, Clock, Check, Trash2, Loader2 } from 'lucide-react';
 import ConfirmModal from '@/components/shared/ConfirmModal';
 import VendedorSelectModal from './VendedorSelectModal';
 import ComentarioNaranjaModal from './ComentarioNaranjaModal';
@@ -21,6 +21,7 @@ import DatosRegistroVentaModal from './DatosRegistroVentaModal'; // SESIÓN 52C:
 import TimerCountdown from './TimerCountdown'; // OPT: Componente separado para evitar re-render global
 import FichaInscripcionModal from './FichaInscripcionModal'; // SESIÓN 65: Modal ficha de inscripción
 import { FileText } from 'lucide-react'; // SESIÓN 65: Icono para enlace ficha
+import { toast } from 'sonner'; // SESIÓN 102: Para notificaciones de eliminar
 
 interface LocalesTableProps {
   locales: Local[];
@@ -43,6 +44,35 @@ export default function LocalesTable({
 }: LocalesTableProps) {
   const { user } = useAuth();
   const [changingLocalId, setChangingLocalId] = useState<string | null>(null);
+  const [eliminandoLocalId, setEliminandoLocalId] = useState<string | null>(null); // SESIÓN 102
+
+  // SESIÓN 102: Función para eliminar local excepcional
+  const handleEliminarExcepcional = async (local: Local) => {
+    if (!local.es_excepcional) return;
+
+    const confirmacion = window.confirm(
+      `¿Estás seguro de eliminar el local excepcional "${local.codigo}"?\n\nEsta acción no se puede deshacer.`
+    );
+
+    if (!confirmacion) return;
+
+    setEliminandoLocalId(local.id);
+    try {
+      const result = await eliminarLocalExcepcional(local.id);
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      toast.error('Error al eliminar el local excepcional');
+    } finally {
+      setEliminandoLocalId(null);
+    }
+  };
+
+  // Verificar si el usuario puede eliminar locales excepcionales
+  const canEliminarExcepcional = user?.rol === 'superadmin' || user?.rol === 'admin' || user?.rol === 'jefe_ventas';
 
   // State para modal de confirmación
   const [confirmModal, setConfirmModal] = useState<{
@@ -1018,9 +1048,16 @@ export default function LocalesTable({
               locales.map((local) => {
                 return (
                   <tr key={local.id} className="border-b hover:bg-gray-50">
-                    {/* Código */}
+                    {/* Código + Badge Excepcional (SESIÓN 102) */}
                     <td className="py-3 px-4 font-mono font-medium text-gray-900">
-                      {local.codigo}
+                      <div className="flex items-center gap-2">
+                        {local.codigo}
+                        {local.es_excepcional && (
+                          <span className="px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded font-sans font-medium">
+                            Excepcional
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* SESIÓN 56: Precio Base - Input + Botón actualizar */}
@@ -1098,14 +1135,32 @@ export default function LocalesTable({
 
                     {/* Acciones */}
                     <td className="py-3 px-4">
-                      <button
-                        onClick={() => onShowHistorial(local)}
-                        className="flex items-center gap-1 text-sm text-primary hover:text-primary/80"
-                        title="Ver historial"
-                      >
-                        <History className="w-4 h-4" />
-                        <span className="hidden sm:inline">Historial</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => onShowHistorial(local)}
+                          className="flex items-center gap-1 text-sm text-primary hover:text-primary/80"
+                          title="Ver historial"
+                        >
+                          <History className="w-4 h-4" />
+                          <span className="hidden sm:inline">Historial</span>
+                        </button>
+
+                        {/* SESIÓN 102: Botón eliminar para locales excepcionales */}
+                        {local.es_excepcional && canEliminarExcepcional && (
+                          <button
+                            onClick={() => handleEliminarExcepcional(local)}
+                            disabled={eliminandoLocalId === local.id}
+                            className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700 disabled:opacity-50"
+                            title="Eliminar local excepcional"
+                          >
+                            {eliminandoLocalId === local.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

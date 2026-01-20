@@ -26,8 +26,14 @@ import {
   ArrowUp,
   ArrowDown,
   Loader2,
-  FlaskConical
+  FlaskConical,
+  Receipt,
+  Plus,
+  ExternalLink,
+  Trash2,
 } from 'lucide-react';
+import VincularBoletaModal from './VincularBoletaModal';
+import { desvincularBoleta } from '@/lib/actions-fichas-reporte';
 import {
   getAbonosDiarios,
   getAbonosDiariosExport,
@@ -114,6 +120,14 @@ export default function ReporteDiarioTab({ user, onVerFicha }: ReporteDiarioTabP
   // Totales
   const [totalUSD, setTotalUSD] = useState(0);
   const [totalPEN, setTotalPEN] = useState(0);
+
+  // Modal vincular boleta
+  const [showBoletaModal, setShowBoletaModal] = useState(false);
+  const [selectedAbono, setSelectedAbono] = useState<AbonoDiarioRow | null>(null);
+  const [deletingBoleta, setDeletingBoleta] = useState<string | null>(null);
+
+  // Verificar si usuario puede vincular boletas
+  const canVincularBoleta = ['superadmin', 'admin', 'finanzas'].includes(user.rol);
 
   // Cargar proyectos al montar
   useEffect(() => {
@@ -258,6 +272,38 @@ export default function ReporteDiarioTab({ user, onVerFicha }: ReporteDiarioTabP
   // Calcular rango de registros mostrados
   const startRecord = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const endRecord = Math.min(page * pageSize, total);
+
+  // Handler para abrir modal de vincular boleta
+  const handleVincularBoleta = (abono: AbonoDiarioRow) => {
+    setSelectedAbono(abono);
+    setShowBoletaModal(true);
+  };
+
+  // Handler para desvincular boleta
+  const handleDesvincularBoleta = async (abono: AbonoDiarioRow) => {
+    if (!window.confirm('¿Está seguro de desvincular esta boleta?')) return;
+
+    const key = `${abono.ficha_id}-${abono.voucher_index}`;
+    setDeletingBoleta(key);
+
+    try {
+      const result = await desvincularBoleta({
+        fichaId: abono.ficha_id,
+        voucherIndex: abono.voucher_index,
+      });
+
+      if (result.success) {
+        loadData(); // Recargar datos
+      } else {
+        alert(result.message);
+      }
+    } catch (err) {
+      console.error('Error desvinculando boleta:', err);
+      alert('Error al desvincular boleta');
+    } finally {
+      setDeletingBoleta(null);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -465,6 +511,9 @@ export default function ReporteDiarioTab({ user, onVerFicha }: ReporteDiarioTabP
                         {renderSortIcon('banco')}
                       </div>
                     </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-36">
+                      Boleta
+                    </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                       Acción
                     </th>
@@ -495,6 +544,52 @@ export default function ReporteDiarioTab({ user, onVerFicha }: ReporteDiarioTabP
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                         {abono.banco || '-'}
+                      </td>
+                      {/* Columna Boleta */}
+                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                        {abono.boleta_url ? (
+                          // Boleta vinculada - mostrar info
+                          <div className="flex items-center justify-center gap-1">
+                            <a
+                              href={abono.boleta_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
+                              title="Ver boleta"
+                            >
+                              <Receipt className="w-3 h-3" />
+                              {abono.numero_boleta}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                            {canVincularBoleta && (
+                              <button
+                                onClick={() => handleDesvincularBoleta(abono)}
+                                disabled={deletingBoleta === `${abono.ficha_id}-${abono.voucher_index}`}
+                                className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                                title="Desvincular boleta"
+                              >
+                                {deletingBoleta === `${abono.ficha_id}-${abono.voucher_index}` ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        ) : canVincularBoleta ? (
+                          // Sin boleta - mostrar botón para agregar (solo roles autorizados)
+                          <button
+                            onClick={() => handleVincularBoleta(abono)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
+                            title="Vincular boleta"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Agregar
+                          </button>
+                        ) : (
+                          // Sin boleta - usuario sin permisos
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center">
                         <button
@@ -534,6 +629,47 @@ export default function ReporteDiarioTab({ user, onVerFicha }: ReporteDiarioTabP
                     </p>
                     {abono.banco && (
                       <p className="text-xs text-gray-400 mt-1">Banco: {abono.banco}</p>
+                    )}
+                  </div>
+
+                  {/* Boleta en mobile */}
+                  <div className="mb-3 flex items-center gap-2">
+                    <span className="text-xs text-gray-500">Boleta:</span>
+                    {abono.boleta_url ? (
+                      <div className="flex items-center gap-1">
+                        <a
+                          href={abono.boleta_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-50 rounded"
+                        >
+                          <Receipt className="w-3 h-3" />
+                          {abono.numero_boleta}
+                        </a>
+                        {canVincularBoleta && (
+                          <button
+                            onClick={() => handleDesvincularBoleta(abono)}
+                            disabled={deletingBoleta === `${abono.ficha_id}-${abono.voucher_index}`}
+                            className="p-1 text-red-500"
+                          >
+                            {deletingBoleta === `${abono.ficha_id}-${abono.voucher_index}` ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3 h-3" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    ) : canVincularBoleta ? (
+                      <button
+                        onClick={() => handleVincularBoleta(abono)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-700 bg-amber-50 rounded"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Agregar
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-400">-</span>
                     )}
                   </div>
 
@@ -644,6 +780,25 @@ export default function ReporteDiarioTab({ user, onVerFicha }: ReporteDiarioTabP
           </>
         )}
       </div>
+
+      {/* Modal Vincular Boleta */}
+      {selectedAbono && (
+        <VincularBoletaModal
+          isOpen={showBoletaModal}
+          onClose={() => {
+            setShowBoletaModal(false);
+            setSelectedAbono(null);
+          }}
+          fichaId={selectedAbono.ficha_id}
+          voucherIndex={selectedAbono.voucher_index}
+          clienteNombre={selectedAbono.cliente_nombre}
+          localCodigo={selectedAbono.local_codigo}
+          monto={formatMonto(selectedAbono.monto, selectedAbono.moneda)}
+          onSuccess={() => {
+            loadData(); // Recargar datos después de vincular
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -41,6 +41,8 @@ export interface Local {
   fecha_paso_naranja: string | null;
   usuario_paso_rojo_id: string | null;
   fecha_paso_rojo: string | null;
+  // SESIÓN 102: Locales excepcionales (para regularizar ventas duplicadas)
+  es_excepcional: boolean;
   created_at: string;
   updated_at: string;
 }

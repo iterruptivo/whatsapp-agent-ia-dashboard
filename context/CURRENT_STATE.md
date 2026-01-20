@@ -4,7 +4,35 @@
 
 ---
 
-## SESIÓN 100+ - Creación Masiva de Usuarios desde Excel (20 Enero 2026)
+## SESIÓN 100+ - Migración Locales Excepcionales + Creación Masiva Usuarios (20 Enero 2026)
+
+### Parte 1: Migración Locales Excepcionales
+
+**Tipo:** Database Schema Migration (Completado)
+
+**Objetivo:** Agregar columna `es_excepcional` a tabla `locales` para marcar locales creados manualmente que regularizan ventas duplicadas históricas.
+
+**Ejecución:**
+- ✅ Script de migración: `scripts/migrate-locales-excepcionales.js`
+- ✅ Archivo SQL: `migrations/20260120_locales_excepcionales.sql`
+- ✅ Columna agregada: `es_excepcional BOOLEAN DEFAULT false`
+- ✅ Índice parcial creado: `idx_locales_es_excepcional` (WHERE es_excepcional = true)
+- ✅ Comentario descriptivo agregado
+
+**Resultado:**
+- Total locales actuales: 4,904 (todos marcados como normales)
+- Campo nullable: YES
+- Default: false
+- Tipo: boolean
+
+**Uso futuro:**
+- Permitirá crear locales excepcionales (ej: A-107-1, A-107-2)
+- Regularización de ventas duplicadas históricas
+- Filtrado rápido mediante índice parcial
+
+---
+
+### Parte 2: Creación Masiva de Usuarios desde Excel (20 Enero 2026)
 
 **Tipo:** Database Operations + Scripting (Completado)
 

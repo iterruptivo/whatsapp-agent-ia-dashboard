@@ -16,11 +16,12 @@ import LocalesTable from './LocalesTable';
 import LocalesFilters from './LocalesFilters';
 import LocalImportModal from './LocalImportModal';
 import LocalHistorialPanel from './LocalHistorialPanel';
+import CrearLocalExcepcionalModal from './CrearLocalExcepcionalModal';
 import VisitaSinLocalModal from './VisitaSinLocalModal';
 import ConfirmModal from '../shared/ConfirmModal';
 import { useAuth } from '@/lib/auth-context';
 import { registrarVisitaSinLocal } from '@/lib/actions';
-import { RefreshCw, Upload, Search, X, UserPlus } from 'lucide-react';
+import { RefreshCw, Upload, Search, X, UserPlus, AlertTriangle } from 'lucide-react';
 
 interface LocalesClientProps {
   initialLocales: Local[];
@@ -50,6 +51,7 @@ export default function LocalesClient({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isVisitaSinLocalModalOpen, setIsVisitaSinLocalModalOpen] = useState(false);
+  const [isExcepcionalModalOpen, setIsExcepcionalModalOpen] = useState(false); // SESIÓN 102
   const [selectedLocalForHistorial, setSelectedLocalForHistorial] = useState<Local | null>(null);
 
   // Confirm modal state
@@ -494,6 +496,18 @@ export default function LocalesClient({
               </button>
             )}
 
+            {/* SESIÓN 102: Botón Local Excepcional - Solo Admin, Superadmin y Jefe Ventas */}
+            {(user?.rol === 'admin' || user?.rol === 'superadmin' || user?.rol === 'jefe_ventas') && (
+              <button
+                onClick={() => setIsExcepcionalModalOpen(true)}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors whitespace-nowrap"
+                title="Crear local excepcional para regularizar ventas duplicadas"
+              >
+                <AlertTriangle className="w-4 h-4" />
+                <span>Local Excepcional</span>
+              </button>
+            )}
+
             {/* Botón Visita sin Local - Todos los roles (SEGUNDO) */}
             <button
               onClick={() => setIsVisitaSinLocalModalOpen(true)}
@@ -566,6 +580,15 @@ export default function LocalesClient({
         proyectos={proyectos}
         selectedProyectoId={selectedProyecto?.id} // SESIÓN 56: Filtrar búsqueda por proyecto
         selectedProyectoNombre={selectedProyecto?.nombre} // SESIÓN 56: Nombre para mostrar fijo
+      />
+
+      {/* SESIÓN 102: Modal Local Excepcional */}
+      <CrearLocalExcepcionalModal
+        isOpen={isExcepcionalModalOpen}
+        onClose={() => setIsExcepcionalModalOpen(false)}
+        proyectos={proyectos}
+        selectedProyectoId={selectedProyecto?.id}
+        onSuccess={handleRefresh}
       />
 
       {/* Panel Historial */}

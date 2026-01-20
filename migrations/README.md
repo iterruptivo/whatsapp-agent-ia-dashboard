@@ -337,6 +337,52 @@ WHERE table_name = 'proyectos'
 - **Cambio:** Agregar columna monto_separacion a tablas locales y locales_leads
 - **Estado:** Ejemplo de referencia (no ejecutar si ya existe la columna)
 
+### 20260120_locales_excepcionales.sql ✅ EJECUTADA
+- **Fecha:** 20 Enero 2026
+- **Cambio:** Agregar columna `es_excepcional` a tabla `locales`
+- **Propósito:** Marcar locales creados manualmente para regularizar ventas duplicadas
+- **Estado:** ✅ Ejecutada exitosamente en producción
+- **Documentación:** `README_20260120_LOCALES_EXCEPCIONALES.md`
+- **Script:** `scripts/migrate-locales-excepcionales.js`
+- **Incluye:**
+  - Columna `es_excepcional BOOLEAN DEFAULT false`
+  - Índice parcial `idx_locales_es_excepcional`
+  - Comentario descriptivo
+
+### 20260120_jefe_ventas_vendedor_id.sql ✅ EJECUTADA
+- **Fecha:** 20 Enero 2026
+- **Cambio:** Permitir NULL en columna `vendedor_id` para usuarios con rol `jefe_ventas`
+- **Propósito:** Jefes de ventas no necesitan vendedor_id asignado
+- **Estado:** ✅ Ejecutada exitosamente en producción
+- **Documentación:** `README_20260120_JEFE_VENTAS_VENDEDOR_ID.md`
+
+### 011_boletas_vinculadas.sql ✅ EJECUTADA
+- **Fecha:** 20 Enero 2026
+- **Cambio:** Agregar columna `boletas_vinculadas` (JSONB) a tabla `clientes_ficha`
+- **Propósito:** Permitir vincular boletas/facturas a cada comprobante de pago (voucher)
+- **Estado:** ✅ Ejecutada exitosamente en producción
+- **Incluye:**
+  - Columna `boletas_vinculadas JSONB DEFAULT '[]'`
+  - Índice GIN `idx_clientes_ficha_boletas_vinculadas` para búsquedas eficientes
+  - Comentario descriptivo
+- **Estructura JSONB:**
+  ```json
+  [
+    {
+      "voucher_index": 0,
+      "boleta_url": "https://...",
+      "numero_boleta": "B001-00123",
+      "tipo": "boleta",
+      "uploaded_at": "2026-01-20T...",
+      "uploaded_by_id": "uuid...",
+      "uploaded_by_nombre": "Rosa Quispe"
+    }
+  ]
+  ```
+- **Scripts:**
+  - `scripts/run-migration-011.js` (ejecutar migración)
+  - `scripts/verify-migration-011.js` (verificar migración)
+
 ---
 
 ## ❓ FAQs
@@ -368,4 +414,4 @@ A: Generalmente no. Usa migrations solo para cambios de estructura. Datos manual
 
 ---
 
-**Última actualización:** 19 Noviembre 2025
+**Última actualización:** 20 Enero 2026
