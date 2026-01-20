@@ -3254,7 +3254,7 @@ export default function FichaInscripcionModal({
                       }));
                     }}
                     disabled={loading}
-                    maxVouchers={10}
+                    maxVouchers={20}
                   />
                 </div>
               </div>

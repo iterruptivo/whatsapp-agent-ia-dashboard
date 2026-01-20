@@ -4,6 +4,131 @@
 
 ---
 
+## SESIÓN 100+ - Creación Masiva de Usuarios desde Excel (20 Enero 2026)
+
+**Tipo:** Database Operations + Scripting (Completado)
+
+**Objetivo:** Crear usuarios masivamente desde archivo Excel para equipo de Huancayo
+
+### Resumen de Ejecución
+
+**Archivo origen:** `docs/huancayo_users.xlsx`
+**Total registros:** 16 usuarios
+**Usuarios creados:** 4 (nuevos)
+**Duplicados saltados:** 12 (ya existían por teléfono)
+
+### Usuarios Creados Exitosamente
+
+| Nombre | Email | Rol | Teléfono | Estado |
+|--------|-------|-----|----------|--------|
+| Álvaro Espinoza Escalante | alvaroespinozaescalante4@gmail.com | jefe_ventas | 51921312350 | ✅ Login OK |
+| Arnold Castañeda Salinas | arnoldcastanedasalinas@gmail.com | vendedor_caseta | 51997000977 | ✅ Login OK |
+| Estefani Noemi Cerdan Saman | estefani.cerdan.0214@gmail.com | vendedor_caseta | 51934896916 | ✅ Login OK |
+| Marysella Alisson Orellana Romero | alissonmarysella@gmail.com | vendedor_caseta | 51920611622 | ✅ Login OK |
+
+### Proceso Implementado
+
+**1. Script de Creación (`scripts/create-users-from-excel.js`)**
+- ✅ Lectura de Excel con XLSX
+- ✅ Validación de campos requeridos
+- ✅ Normalización de teléfonos (+51 automático)
+- ✅ Mapeo de roles (Excel → Sistema)
+- ✅ Validación de duplicados (email y teléfono)
+- ✅ Creación en 3 tablas: auth.users, usuarios, vendedores
+- ✅ Generación de passwords seguros (12 chars)
+- ✅ Export a Excel con passwords
+
+**2. Testing de Login (`scripts/test-login-huancayo.js`)**
+- ✅ Login verificado para los 4 usuarios
+- ✅ Email confirmado (pueden hacer login inmediatamente)
+- ✅ Metadata correcta (nombre + rol)
+- ✅ vendedor_id asignado a todos
+
+**3. Passwords Generados**
+- Longitud: 12 caracteres
+- Composición: mayúsculas, minúsculas, números, símbolos (@#$%&*)
+- Almacenados en: `docs/huancayo_users_passwords.xlsx`
+- Ejemplo: `@m$r8EdMLcsY`
+
+### Archivos Creados
+
+| Archivo | Propósito |
+|---------|-----------|
+| `scripts/create-users-from-excel.js` | Script de creación masiva |
+| `scripts/test-login-huancayo.js` | Verificación de login |
+| `docs/huancayo_users_passwords.xlsx` | Passwords generados (NO VERSIONAR) |
+| `docs/huancayo/README_CREACION_USUARIOS.md` | Documentación completa |
+
+### Validaciones Implementadas
+
+**Pre-creación:**
+- ✅ Validación de email único (contra BD)
+- ✅ Validación de teléfono único SOLO contra usuarios ACTIVOS
+- ✅ Validación de formato de email
+- ✅ Validación de campos requeridos
+
+**Post-creación:**
+- ✅ Login test exitoso (4/4)
+- ✅ Verificación en tabla usuarios
+- ✅ Verificación de vendedor_id
+- ✅ Verificación de estado activo
+
+### Usuarios Duplicados (Saltados)
+
+12 usuarios ya existían en el sistema (mismo teléfono):
+1. Marleny Cantorin Saldaña - 51950753799
+2. Sadith Yolanda Allpas Aquino - 51960734862
+3. Patricia Ana Pardave Chuco - 51997178832
+4. Vanessa Vilcapoma Romero - 51972295760
+5. Dayana Ruiz Cajahuaringa - 51960908520
+6. huros gurdijef damas flores - 51926721409
+7. Percy Martín Torres Yapias - 51964705725
+8. Elfer Andres Espinoza Escalante - 51922434547
+9. Gianmarco Rodrigo Osores Morales - 51997749672
+10. Ronald Reyes Andrade - 51964737058
+11. Antonella Sanchez Pachamango - 51931757389
+12. Adrián Cóndor Escalante - 51977473688
+
+**Nota:** Estos usuarios ya tenían teléfonos registrados y activos en el sistema.
+
+### Decisiones Técnicas
+
+**1. Normalización de Teléfonos**
+- Agregar código de país +51 si falta
+- Limpiar espacios, guiones, paréntesis
+- Formato final: `51XXXXXXXXX`
+
+**2. Validación de Duplicados**
+- Email: Siempre único (constraint de BD)
+- Teléfono: Único solo contra usuarios ACTIVOS (permite reemplazos)
+
+**3. Generación de Passwords**
+- Auto-generados por seguridad
+- Guardados en Excel para distribución
+- Recomendación: Cambio en primer login
+
+**4. Todos los Usuarios son Vendedores**
+- Siguiendo Sesión 84: Todos tienen vendedor_id
+- Permite que cualquier usuario haga ventas
+- Teléfono corporativo en tabla vendedores
+
+### Próximos Pasos
+
+1. ⏳ Enviar archivo `huancayo_users_passwords.xlsx` al responsable
+2. ⏳ Instruir primer login y cambio de password
+3. ⏳ Asignar proyecto de Huancayo a usuarios
+4. ⏳ Capacitación en uso del dashboard
+
+### Estado Final
+
+- ✅ 4 usuarios creados y verificados
+- ✅ Login funcionando para todos
+- ✅ Passwords exportados a Excel
+- ✅ Documentación completa
+- ✅ Scripts reutilizables para futuros batch de usuarios
+
+---
+
 ## SESIÓN 100+ - Migración DB: Jefe_ventas vendedor_id (20 Enero 2026)
 
 **Tipo:** Database Migration (Completado)
