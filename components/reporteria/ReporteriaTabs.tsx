@@ -9,9 +9,9 @@
  * 2. Cruce de Ventas (cross-match sales with leads)
  */
 
-import { Users, FileSpreadsheet, FileText } from 'lucide-react';
+import { Users, FileSpreadsheet, FileText, CalendarDays } from 'lucide-react';
 
-export type ReporteriaTab = 'leads_vendedor' | 'atribucion_ia' | 'fichas_inscripcion';
+export type ReporteriaTab = 'leads_vendedor' | 'atribucion_ia' | 'fichas_inscripcion' | 'reporte_diario';
 
 interface ReporteriaTabsProps {
   activeTab: ReporteriaTab;
@@ -27,6 +27,13 @@ export default function ReporteriaTabs({
   puedeVerFichas = false
 }: ReporteriaTabsProps) {
   const allTabs = [
+    {
+      id: 'reporte_diario' as ReporteriaTab,
+      label: 'Reporte Diario',
+      icon: CalendarDays,
+      description: 'Abonos por cliente ordenados por fecha',
+      visible: puedeVerFichas
+    },
     {
       id: 'fichas_inscripcion' as ReporteriaTab,
       label: 'Fichas Inscripción',

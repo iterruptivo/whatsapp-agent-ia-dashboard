@@ -20,6 +20,7 @@ import type { Proyecto } from '@/lib/db';
 import ReporteriaTabs, { type ReporteriaTab } from './ReporteriaTabs';
 import AtribucionIATab from './AtribucionIATab';
 import FichasInscripcionTab from './FichasInscripcionTab';
+import ReporteDiarioTab from './ReporteDiarioTab';
 import FichaInscripcionReadonlyModal from './FichaInscripcionReadonlyModal';
 
 // Tipo Usuario de auth-context (no importar de @/lib/db para evitar conflictos)
@@ -60,8 +61,8 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
   // Permisos para ver tab de Fichas Inscripción
   const puedeVerFichas = ['finanzas', 'admin', 'superadmin'].includes(user.rol);
 
-  // Tab state - Session 74 (fichas_inscripcion primero si tiene permiso)
-  const [activeTab, setActiveTab] = useState<ReporteriaTab>(puedeVerFichas ? 'fichas_inscripcion' : 'leads_vendedor');
+  // Tab state - Session 101: reporte_diario primero si tiene permiso de finanzas
+  const [activeTab, setActiveTab] = useState<ReporteriaTab>(puedeVerFichas ? 'reporte_diario' : 'leads_vendedor');
 
   // Estado para modal de ficha (Session 100)
   const [showFichaModal, setShowFichaModal] = useState(false);
@@ -303,6 +304,11 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
         {/* TAB: Fichas Inscripción - Session 100 */}
         {activeTab === 'fichas_inscripcion' && puedeVerFichas && (
           <FichasInscripcionTab user={user} onVerFicha={handleVerFicha} />
+        )}
+
+        {/* TAB: Reporte Diario - Session 101 */}
+        {activeTab === 'reporte_diario' && puedeVerFichas && (
+          <ReporteDiarioTab user={user} onVerFicha={handleVerFicha} />
         )}
 
         {/* TAB: Leads por Vendedor (contenido original) */}

@@ -20,7 +20,8 @@ import {
   FileText,
   Eye,
   Bell,
-  CheckCircle2
+  CheckCircle2,
+  FlaskConical
 } from 'lucide-react';
 import {
   getFichasParaReporte,
@@ -97,6 +98,7 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
   // Filtros
   const [proyectoId, setProyectoId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [incluirPruebas, setIncluirPruebas] = useState(false);
 
   // Cargar proyectos que tienen fichas al montar
   useEffect(() => {
@@ -107,16 +109,16 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
     loadProyectos();
   }, []);
 
-  // Cargar fichas al montar y cuando cambie el filtro de proyecto
+  // Cargar fichas al montar y cuando cambien los filtros
   useEffect(() => {
     async function loadFichas() {
       setLoading(true);
-      const fichasData = await getFichasParaReporte(proyectoId || undefined);
+      const fichasData = await getFichasParaReporte(proyectoId || undefined, incluirPruebas);
       setData(fichasData);
       setLoading(false);
     }
     loadFichas();
-  }, [proyectoId]);
+  }, [proyectoId, incluirPruebas]);
 
   // Filtrar datos por searchTerm (client-side, búsqueda en local, titular, vendedor)
   const filteredData = searchTerm
@@ -190,6 +192,38 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
               />
             </div>
           </div>
+        </div>
+
+        {/* Info de registros + Toggle Pruebas */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="text-sm text-gray-600">
+            Mostrando <span className="font-semibold text-gray-900">{sortedData.length}</span> fichas
+          </div>
+
+          {/* Toggle Incluir Pruebas - Discreto pero accesible */}
+          <button
+            onClick={() => setIncluirPruebas(!incluirPruebas)}
+            className={`
+              flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200
+              ${incluirPruebas
+                ? 'bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200'
+                : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200 hover:text-gray-700'
+              }
+            `}
+            title={incluirPruebas ? 'Click para excluir datos de prueba' : 'Click para incluir datos de prueba'}
+          >
+            <FlaskConical className="w-3.5 h-3.5" />
+            <span>{incluirPruebas ? 'Pruebas incluidas' : 'Sin pruebas'}</span>
+            <div className={`
+              w-8 h-4 rounded-full relative transition-colors duration-200
+              ${incluirPruebas ? 'bg-amber-400' : 'bg-gray-300'}
+            `}>
+              <div className={`
+                absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-all duration-200
+                ${incluirPruebas ? 'left-4' : 'left-0.5'}
+              `} />
+            </div>
+          </button>
         </div>
       </div>
 

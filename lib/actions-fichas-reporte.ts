@@ -71,9 +71,10 @@ const PROYECTO_PRUEBAS_ID = '80761314-7a78-43db-8ad5-10f16eedac87';
  * Incluye información de local, proyecto, vendedor, jefe de ventas y total abonado
  *
  * @param proyectoId - ID del proyecto específico (opcional). Si no se proporciona, trae todos los proyectos
+ * @param incluirPruebas - Si es true, incluye el proyecto de pruebas (por defecto false)
  * @returns Array de fichas con datos consolidados
  */
-export async function getFichasParaReporte(proyectoId?: string): Promise<FichaReporteRow[]> {
+export async function getFichasParaReporte(proyectoId?: string, incluirPruebas: boolean = false): Promise<FichaReporteRow[]> {
   try {
     const supabase = await createSupabaseServer();
 
@@ -121,10 +122,10 @@ export async function getFichasParaReporte(proyectoId?: string): Promise<FichaRe
     // Filtrar por proyecto si se especifica
     if (proyectoId) {
       fichasQuery = fichasQuery.eq('locales.proyecto_id', proyectoId);
+    } else if (!incluirPruebas) {
+      // Si no se especifica proyecto y no se quiere incluir pruebas, excluir proyecto pruebas
+      fichasQuery = fichasQuery.neq('locales.proyecto_id', PROYECTO_PRUEBAS_ID);
     }
-
-    // CRÍTICO: Excluir proyecto de pruebas
-    fichasQuery = fichasQuery.neq('locales.proyecto_id', PROYECTO_PRUEBAS_ID);
 
     const { data: fichasData, error: fichasError } = await fichasQuery;
 
@@ -355,6 +356,325 @@ export async function getFichasParaReporte(proyectoId?: string): Promise<FichaRe
     return resultado;
   } catch (error: any) {
     console.error('[getFichasParaReporte] Error inesperado:', error);
+    return [];
+  }
+}
+
+// ============================================================================
+// REPORTE DIARIO - Abonos por cliente ordenados por fecha
+// Session 101 - Nuevo reporte para Finanzas
+// Con paginación y ordenamiento server-side
+// ============================================================================
+
+export interface AbonoDiarioRow {
+  ficha_id: string;
+  local_id: string;
+  local_codigo: string;
+  proyecto_nombre: string;
+  cliente_nombre: string;
+  fecha_comprobante: string;
+  monto: number;
+  moneda: 'PEN' | 'USD';
+  banco: string | null;
+  numero_operacion: string | null;
+}
+
+// Columnas ordenables
+export type AbonoDiarioSortColumn = 'fecha_comprobante' | 'cliente_nombre' | 'monto' | 'local_codigo' | 'proyecto_nombre' | 'banco';
+export type SortDirection = 'asc' | 'desc';
+
+interface GetAbonosDiariosParams {
+  fechaDesde: string;
+  fechaHasta: string;
+  proyectoId?: string | null;
+  // Paginación
+  page?: number;
+  pageSize?: number;
+  // Ordenamiento
+  sortColumn?: AbonoDiarioSortColumn;
+  sortDirection?: SortDirection;
+  // Filtro de proyecto pruebas (por defecto se excluye)
+  incluirPruebas?: boolean;
+}
+
+interface GetAbonosDiariosResult {
+  data: AbonoDiarioRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  // Totales para mostrar en UI
+  totalUSD: number;
+  totalPEN: number;
+}
+
+// Helper para parsear fecha del OCR a formato YYYY-MM-DD
+function parseFechaOCR(fechaStr: string): string | null {
+  try {
+    let parsedDate: Date;
+
+    if (fechaStr.includes('/')) {
+      // Formato DD/MM/YYYY
+      const [dia, mes, anio] = fechaStr.split('/');
+      parsedDate = new Date(parseInt(anio), parseInt(mes) - 1, parseInt(dia));
+    } else if (fechaStr.includes('-')) {
+      // Formato YYYY-MM-DD o DD-MM-YYYY
+      const parts = fechaStr.split('-');
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD
+        parsedDate = new Date(fechaStr);
+      } else {
+        // DD-MM-YYYY
+        parsedDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      }
+    } else {
+      return null;
+    }
+
+    if (isNaN(parsedDate.getTime())) return null;
+
+    return parsedDate.toISOString().split('T')[0];
+  } catch {
+    return null;
+  }
+}
+
+// Helper interno para obtener todos los abonos filtrados (sin paginar)
+async function fetchAllAbonosFiltered(
+  fechaDesde: string,
+  fechaHasta: string,
+  proyectoId?: string | null,
+  incluirPruebas: boolean = false
+): Promise<AbonoDiarioRow[]> {
+  const supabase = await createSupabaseServer();
+
+  // Obtener fichas con sus datos OCR
+  let query = supabase
+    .from('clientes_ficha')
+    .select(`
+      id,
+      local_id,
+      titular_nombres,
+      titular_apellido_paterno,
+      titular_apellido_materno,
+      comprobante_deposito_ocr,
+      locales!inner (
+        id,
+        codigo,
+        proyecto_id,
+        proyectos!inner (
+          id,
+          nombre
+        )
+      )
+    `)
+    .not('comprobante_deposito_ocr', 'is', null);
+
+  // Filtrar por proyecto si se especifica
+  if (proyectoId) {
+    query = query.eq('locales.proyecto_id', proyectoId);
+  } else if (!incluirPruebas) {
+    // Si no se especifica proyecto y no se quiere incluir pruebas, excluir proyecto pruebas
+    query = query.neq('locales.proyecto_id', PROYECTO_PRUEBAS_ID);
+  }
+
+  const { data: fichas, error } = await query;
+
+  if (error || !fichas || fichas.length === 0) {
+    return [];
+  }
+
+  // Procesar los abonos
+  const abonos: AbonoDiarioRow[] = [];
+
+  for (const ficha of fichas) {
+    const ocrData = ficha.comprobante_deposito_ocr as Array<{
+      monto?: number | null;
+      moneda?: 'PEN' | 'USD' | null;
+      fecha?: string | null;
+      banco?: string | null;
+      numero_operacion?: string | null;
+    }> | null;
+
+    if (!ocrData || !Array.isArray(ocrData)) continue;
+
+    const local = ficha.locales as any;
+    const proyecto = local?.proyectos as any;
+
+    // Construir nombre del cliente
+    const clienteNombre = [
+      ficha.titular_nombres,
+      ficha.titular_apellido_paterno,
+      ficha.titular_apellido_materno
+    ].filter(Boolean).join(' ') || 'Sin nombre';
+
+    // Procesar cada voucher
+    for (const voucher of ocrData) {
+      if (!voucher.fecha || !voucher.monto || !voucher.moneda) continue;
+
+      const fechaComprobante = parseFechaOCR(voucher.fecha);
+      if (!fechaComprobante) continue;
+
+      // Filtrar por rango de fechas
+      if (fechaComprobante < fechaDesde || fechaComprobante > fechaHasta) continue;
+
+      abonos.push({
+        ficha_id: ficha.id,
+        local_id: ficha.local_id,
+        local_codigo: local?.codigo || 'N/A',
+        proyecto_nombre: proyecto?.nombre || 'N/A',
+        cliente_nombre: clienteNombre,
+        fecha_comprobante: fechaComprobante,
+        monto: voucher.monto,
+        moneda: voucher.moneda,
+        banco: voucher.banco || null,
+        numero_operacion: voucher.numero_operacion || null,
+      });
+    }
+  }
+
+  return abonos;
+}
+
+// Helper para ordenar abonos
+function sortAbonos(
+  abonos: AbonoDiarioRow[],
+  sortColumn: AbonoDiarioSortColumn,
+  sortDirection: SortDirection
+): AbonoDiarioRow[] {
+  return [...abonos].sort((a, b) => {
+    let comparison = 0;
+
+    switch (sortColumn) {
+      case 'fecha_comprobante':
+        comparison = a.fecha_comprobante.localeCompare(b.fecha_comprobante);
+        break;
+      case 'cliente_nombre':
+        comparison = a.cliente_nombre.localeCompare(b.cliente_nombre);
+        break;
+      case 'monto':
+        comparison = a.monto - b.monto;
+        break;
+      case 'local_codigo':
+        comparison = a.local_codigo.localeCompare(b.local_codigo);
+        break;
+      case 'proyecto_nombre':
+        comparison = a.proyecto_nombre.localeCompare(b.proyecto_nombre);
+        break;
+      case 'banco':
+        comparison = (a.banco || '').localeCompare(b.banco || '');
+        break;
+      default:
+        comparison = a.fecha_comprobante.localeCompare(b.fecha_comprobante);
+    }
+
+    return sortDirection === 'desc' ? -comparison : comparison;
+  });
+}
+
+/**
+ * Obtiene los abonos de fichas de inscripción con paginación y ordenamiento server-side
+ * Por defecto ordenado por fecha de comprobante descendente
+ */
+export async function getAbonosDiarios(params: GetAbonosDiariosParams): Promise<GetAbonosDiariosResult> {
+  try {
+    const {
+      fechaDesde,
+      fechaHasta,
+      proyectoId,
+      page = 1,
+      pageSize = 20,
+      sortColumn = 'fecha_comprobante',
+      sortDirection = 'desc',
+      incluirPruebas = false
+    } = params;
+
+    console.log('[getAbonosDiarios] Parámetros:', { fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas });
+
+    // Obtener todos los abonos filtrados
+    const allAbonos = await fetchAllAbonosFiltered(fechaDesde, fechaHasta, proyectoId, incluirPruebas);
+
+    // Calcular totales (antes de paginar)
+    const totalUSD = allAbonos
+      .filter(a => a.moneda === 'USD')
+      .reduce((sum, a) => sum + a.monto, 0);
+
+    const totalPEN = allAbonos
+      .filter(a => a.moneda === 'PEN')
+      .reduce((sum, a) => sum + a.monto, 0);
+
+    // Ordenar
+    const sortedAbonos = sortAbonos(allAbonos, sortColumn, sortDirection);
+
+    // Calcular paginación
+    const total = sortedAbonos.length;
+    const totalPages = Math.ceil(total / pageSize);
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+
+    // Obtener página actual
+    const paginatedAbonos = sortedAbonos.slice(startIndex, endIndex);
+
+    console.log(`[getAbonosDiarios] Resultado: ${total} total, página ${page}/${totalPages}, mostrando ${paginatedAbonos.length}`);
+
+    return {
+      data: paginatedAbonos,
+      total,
+      page,
+      pageSize,
+      totalPages,
+      totalUSD,
+      totalPEN
+    };
+  } catch (error: any) {
+    console.error('[getAbonosDiarios] Error inesperado:', error);
+    return {
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+      totalPages: 0,
+      totalUSD: 0,
+      totalPEN: 0
+    };
+  }
+}
+
+/**
+ * Obtiene TODOS los abonos para exportar a Excel (sin paginación)
+ * Mantiene el ordenamiento especificado
+ */
+export async function getAbonosDiariosExport(params: {
+  fechaDesde: string;
+  fechaHasta: string;
+  proyectoId?: string | null;
+  sortColumn?: AbonoDiarioSortColumn;
+  sortDirection?: SortDirection;
+  incluirPruebas?: boolean;
+}): Promise<AbonoDiarioRow[]> {
+  try {
+    const {
+      fechaDesde,
+      fechaHasta,
+      proyectoId,
+      sortColumn = 'fecha_comprobante',
+      sortDirection = 'desc',
+      incluirPruebas = false
+    } = params;
+
+    console.log('[getAbonosDiariosExport] Exportando todos los abonos...', { incluirPruebas });
+
+    // Obtener todos los abonos filtrados
+    const allAbonos = await fetchAllAbonosFiltered(fechaDesde, fechaHasta, proyectoId, incluirPruebas);
+
+    // Ordenar
+    const sortedAbonos = sortAbonos(allAbonos, sortColumn, sortDirection);
+
+    console.log(`[getAbonosDiariosExport] Exportando ${sortedAbonos.length} registros`);
+
+    return sortedAbonos;
+  } catch (error: any) {
+    console.error('[getAbonosDiariosExport] Error:', error);
     return [];
   }
 }
