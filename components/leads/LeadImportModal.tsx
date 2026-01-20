@@ -3,7 +3,7 @@
 // ============================================================================
 // Descripción: Modal para importar leads manuales desde CSV o Excel
 // Formato: nombre,telefono,email_vendedor,utm,email,rubro
-// Acceso: Solo Admin
+// Acceso: Admin, Jefe Ventas, Vendedor, Vendedor Caseta, Coordinador
 // ============================================================================
 
 'use client';

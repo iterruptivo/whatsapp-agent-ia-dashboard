@@ -4,6 +4,87 @@
 
 ---
 
+## SESIÓN 100+ - Migración DB: Jefe_ventas vendedor_id (20 Enero 2026)
+
+**Tipo:** Database Migration (Completado)
+
+**Objetivo:** Asegurar que todos los usuarios con rol `jefe_ventas` tengan un `vendedor_id` vinculado para poder:
+- Aparecer en dropdowns de asignación de leads
+- Asignarse leads a sí mismos
+- Ser seleccionados como vendedores en operaciones de venta
+
+### Estado Inicial
+
+Revisión de 8 jefe_ventas en la base de datos:
+- Álvaro Espinoza Escalante
+- Andrea Rocha Quineche
+- Brayan Jersy Meza Limaymanta
+- Juan Aquije
+- Kevin Espinoza
+- Leo Jefe Ventas
+- Pedro Ascencio Revilla
+- Pilar Robles Saavedra
+
+### Resultado de Migración
+
+**✅ MIGRACIÓN EXITOSA - NO REQUIRIÓ CAMBIOS**
+
+Verificación demostró que:
+- **8/8 jefe_ventas ya tenían vendedor_id** configurado previamente
+- Todos están activos y listos para asignación de leads
+- Integridad referencial 100% correcta (todos los vendedor_id existen en tabla vendedores)
+- Pueden aparecer en dropdowns de vendedores
+
+### Scripts Creados
+
+| Script | Propósito | Estado |
+|--------|-----------|--------|
+| `scripts/run-migration-jefe-ventas.js` | Ejecutar migración automática | ✅ Ejecutado |
+| `scripts/verify-jefe-ventas-vendedores.js` | Verificar integridad completa | ✅ Verificado |
+| `migrations/20260120_jefe_ventas_vendedor_id.sql` | SQL de migración (DO block) | ✅ Preparado |
+| `migrations/README_20260120_JEFE_VENTAS_VENDEDOR_ID.md` | Documentación completa | ✅ Creado |
+
+### Lógica de Migración (para futuros casos)
+
+```sql
+-- Para cada jefe_ventas sin vendedor_id:
+-- 1. Buscar teléfono en usuarios_datos_no_vendedores
+-- 2. Crear registro en tabla vendedores
+-- 3. Vincular vendedor_id en tabla usuarios
+```
+
+### Verificaciones Post-Migración
+
+- ✅ Query verificación: 8/8 con vendedor_id
+- ✅ Integridad FK: Todos los IDs existen en tabla vendedores
+- ✅ Estados: Todos activos
+- ✅ Datos completos: Nombre, teléfono, estado OK
+- ⏳ Pendiente: Testing UI en dropdowns de asignación
+
+### Dependencias Instaladas
+
+```bash
+npm install --save-dev dotenv
+```
+
+### Archivos de Documentación
+
+- `migrations/README_20260120_JEFE_VENTAS_VENDEDOR_ID.md` - Guía completa con:
+  - Instrucciones de ejecución
+  - Verificación post-migración
+  - Troubleshooting
+  - Procedimientos de rollback
+  - Queries de monitoreo
+
+### Próximos Pasos
+
+1. Testing UI: Verificar dropdowns de asignación en página Leads
+2. Testing funcional: Asignar un lead a un jefe_ventas
+3. Monitoreo: Revisar logs de Supabase (24h)
+4. Cleanup: Considerar eliminar scripts temporales si no se necesitan más
+
+---
+
 ## SESIÓN 100+ - Mejoras Módulo Finanzas (19 Enero 2026)
 
 **Tipo:** Desarrollo (Completado)

@@ -188,8 +188,8 @@ export async function assignLeadToVendedor(leadId: string, vendedorId: string) {
  * Server Action: Import manual leads from CSV/Excel
  *
  * Business Rules:
- * - Only admin can import manual leads
- * - email_vendedor must exist and have role "vendedor" (not vendedor_caseta)
+ * - Roles permitidos: admin, jefe_ventas, vendedor, vendedor_caseta, coordinador
+ * - email_vendedor debe existir con rol: vendedor, vendedor_caseta, coordinador, jefe_ventas
  * - Duplicate phone numbers in same project are skipped
  * - Estado is set to "lead_manual"
  * - UTM is REQUIRED for manual leads
@@ -261,7 +261,7 @@ export async function importManualLeads(
         continue;
       }
 
-      // Validar que el vendedor existe y tenga rol "vendedor" o "vendedor_caseta"
+      // Validar que el vendedor existe y tenga rol válido para asignar leads
       // Use server client with cookies (authenticated role) - RLS allows access
       const { data: usuarios, error: usuarioError } = await supabaseServer
         .from('usuarios')
@@ -272,10 +272,12 @@ export async function importManualLeads(
       const usuario = usuarios?.[0];
 
       // SESIÓN 74: Agregar 'coordinador' a roles válidos para importar leads
+      // SESIÓN 102: Agregar 'jefe_ventas' para que pueda asignarse leads a sí mismo
+      const rolesValidosParaAsignar = ['vendedor', 'vendedor_caseta', 'coordinador', 'jefe_ventas'];
       if (
         usuarioError ||
         !usuario ||
-        (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta' && usuario.rol !== 'coordinador') ||
+        !rolesValidosParaAsignar.includes(usuario.rol) ||
         !usuario.vendedor_id
       ) {
         // Determinar razón específica del fallo
@@ -284,7 +286,7 @@ export async function importManualLeads(
           failReason = `Error DB: ${usuarioError.message}`;
         } else if (!usuario) {
           failReason = 'Usuario no existe en BD';
-        } else if (usuario.rol !== 'vendedor' && usuario.rol !== 'vendedor_caseta' && usuario.rol !== 'coordinador') {
+        } else if (!rolesValidosParaAsignar.includes(usuario.rol)) {
           failReason = `Rol inválido: ${usuario.rol}`;
         } else if (!usuario.vendedor_id) {
           failReason = 'Sin vendedor_id';

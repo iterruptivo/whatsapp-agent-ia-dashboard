@@ -3,7 +3,7 @@
 // ============================================================================
 // Descripción: Panel lateral para agregar leads manualmente uno por uno
 // Formato: Formulario visual con campos: nombre, telefono, email_vendedor, email, rubro
-// Acceso: Admin + Vendedor
+// Acceso: Admin, Jefe Ventas, Vendedor, Vendedor Caseta, Coordinador
 // Estado asignado: "lead_manual"
 // ============================================================================
 
@@ -276,10 +276,12 @@ export default function ManualLeadPanel({
 
   if (!isOpen) return null;
 
-  // Filtrar usuarios activos con rol "vendedor", "vendedor_caseta" o "coordinador"
-  // NOTA: Coordinadores también pueden ser asignados a leads (Sesión 74)
+  // Filtrar usuarios activos con roles que pueden ser asignados a leads
+  // SESIÓN 74: Coordinadores también pueden ser asignados
+  // SESIÓN 102: Jefe de ventas también puede asignarse leads a sí mismo
+  const rolesConAsignacion = ['vendedor', 'vendedor_caseta', 'coordinador', 'jefe_ventas'];
   const activeVendedores = usuarios.filter(
-    (u) => u.activo && (u.rol === 'vendedor' || u.rol === 'vendedor_caseta' || u.rol === 'coordinador')
+    (u) => u.activo && rolesConAsignacion.includes(u.rol)
   );
 
   return (

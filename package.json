@@ -60,6 +60,7 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",
     "caniuse-lite": "^1.0.30001757",
+    "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "15.5.7",
     "pg": "^8.16.3",
