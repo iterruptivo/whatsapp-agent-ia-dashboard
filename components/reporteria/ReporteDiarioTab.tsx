@@ -33,6 +33,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import VincularBoletaModal from './VincularBoletaModal';
+import VerificarDepositoModal from './VerificarDepositoModal';
 import { desvincularBoleta } from '@/lib/actions-fichas-reporte';
 import {
   getAbonosDiarios,
@@ -41,6 +42,8 @@ import {
   type AbonoDiarioSortColumn,
   type SortDirection
 } from '@/lib/actions-fichas-reporte';
+import { verificarDepositoFinanzas } from '@/lib/actions-depositos-ficha';
+import { CheckCircle2, Clock, ShieldCheck } from 'lucide-react';
 import { getProyectosForFilter } from '@/lib/actions-reporteria';
 import type { Proyecto } from '@/lib/db';
 import * as XLSX from 'xlsx';
@@ -62,6 +65,15 @@ interface ReporteDiarioTabProps {
 function formatDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-');
   return `${day}/${month}/${year}`;
+}
+
+// Helper para formatear fecha con hora (para modal verificación)
+function formatDateWithTime(dateStr: string): string {
+  // fecha_comprobante viene como "YYYY-MM-DD HH:MM:SS"
+  const [datePart, timePart] = dateStr.split(' ');
+  const [year, month, day] = datePart.split('-');
+  const time = timePart ? timePart.substring(0, 5) : ''; // HH:MM
+  return time ? `${day}/${month}/${year} ${time}` : `${day}/${month}/${year}`;
 }
 
 // Helper para formatear monto
@@ -129,6 +141,16 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
 
   // Verificar si usuario puede vincular boletas
   const canVincularBoleta = ['superadmin', 'admin', 'finanzas'].includes(user.rol);
+
+  // Verificar si usuario puede verificar depósitos (solo finanzas o admin)
+  const canVerificarDeposito = ['superadmin', 'admin', 'finanzas'].includes(user.rol);
+
+  // Estado para verificación en progreso
+  const [verificandoId, setVerificandoId] = useState<string | null>(null);
+
+  // Estado para modal de verificación
+  const [showVerificarModal, setShowVerificarModal] = useState(false);
+  const [abonoAVerificar, setAbonoAVerificar] = useState<AbonoDiarioRow | null>(null);
 
   // Cargar proyectos al montar
   useEffect(() => {
@@ -304,6 +326,44 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
       alert('Error al desvincular boleta');
     } finally {
       setDeletingBoleta(null);
+    }
+  };
+
+  // Handler para abrir modal de verificación
+  const handleVerificarDeposito = (abono: AbonoDiarioRow) => {
+    if (!abono.deposito_id) {
+      alert('Este depósito no puede ser verificado (no está en la tabla normalizada)');
+      return;
+    }
+
+    if (abono.verificado_finanzas) {
+      alert('Este depósito ya está verificado');
+      return;
+    }
+
+    setAbonoAVerificar(abono);
+    setShowVerificarModal(true);
+  };
+
+  // Handler para confirmar verificación desde el modal
+  const handleConfirmarVerificacion = async () => {
+    if (!abonoAVerificar?.deposito_id) return;
+
+    setVerificandoId(abonoAVerificar.deposito_id);
+
+    try {
+      const result = await verificarDepositoFinanzas(abonoAVerificar.deposito_id);
+
+      if (result.success) {
+        loadData(); // Recargar datos
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (err) {
+      console.error('Error verificando depósito:', err);
+      throw err;
+    } finally {
+      setVerificandoId(null);
     }
   };
 
@@ -525,6 +585,9 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-36">
                       Boleta
                     </th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
+                      Verificado
+                    </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                       Acción
                     </th>
@@ -619,6 +682,40 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                         ) : (
                           // Sin boleta - usuario sin permisos
                           <span className="text-xs text-gray-400">-</span>
+                        )}
+                      </td>
+                      {/* Columna Verificación Finanzas */}
+                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                        {abono.verificado_finanzas ? (
+                          // Verificado
+                          <div
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded cursor-help"
+                            title={`Verificado por ${abono.verificado_finanzas_nombre || 'Finanzas'} el ${abono.verificado_finanzas_at ? new Date(abono.verificado_finanzas_at).toLocaleString('es-PE') : ''}`}
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Verificado
+                          </div>
+                        ) : canVerificarDeposito && abono.deposito_id ? (
+                          // Pendiente - mostrar botón para verificar
+                          <button
+                            onClick={() => handleVerificarDeposito(abono)}
+                            disabled={verificandoId === abono.deposito_id}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-50"
+                            title="Verificar depósito"
+                          >
+                            {verificandoId === abono.deposito_id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                            )}
+                            Verificar
+                          </button>
+                        ) : (
+                          // Pendiente - sin permisos
+                          <div className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 bg-gray-100 rounded">
+                            <Clock className="w-3.5 h-3.5" />
+                            Pendiente
+                          </div>
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center">
@@ -827,6 +924,22 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
           onSuccess={() => {
             loadData(); // Recargar datos después de vincular
           }}
+        />
+      )}
+
+      {/* Modal Verificar Depósito */}
+      {abonoAVerificar && (
+        <VerificarDepositoModal
+          isOpen={showVerificarModal}
+          onClose={() => {
+            setShowVerificarModal(false);
+            setAbonoAVerificar(null);
+          }}
+          onConfirm={handleConfirmarVerificacion}
+          monto={formatMonto(abonoAVerificar.monto, abonoAVerificar.moneda)}
+          cliente={abonoAVerificar.cliente_nombre}
+          banco={abonoAVerificar.banco}
+          fecha={formatDateWithTime(abonoAVerificar.fecha_comprobante + (abonoAVerificar.hora_comprobante ? ' ' + abonoAVerificar.hora_comprobante : ''))}
         />
       )}
     </div>

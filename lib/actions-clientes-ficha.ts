@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { syncDepositosFromFicha } from './actions-depositos-ficha';
 
 // ============================================================================
 // INTERFACES
@@ -285,6 +286,8 @@ export async function upsertClienteFicha(input: ClienteFichaInput): Promise<{ su
 
     const existing = await getClienteFichaByLocalId(input.local_id);
 
+    let fichaData: ClienteFicha;
+
     if (existing) {
       const { data, error } = await supabase
         .from('clientes_ficha')
@@ -301,7 +304,7 @@ export async function upsertClienteFicha(input: ClienteFichaInput): Promise<{ su
         return { success: false, message: 'Error al actualizar ficha' };
       }
 
-      return { success: true, message: 'Ficha actualizada', data: data as ClienteFicha };
+      fichaData = data as ClienteFicha;
     } else {
       const { data, error } = await supabase
         .from('clientes_ficha')
@@ -314,8 +317,24 @@ export async function upsertClienteFicha(input: ClienteFichaInput): Promise<{ su
         return { success: false, message: 'Error al crear ficha' };
       }
 
-      return { success: true, message: 'Ficha creada', data: data as ClienteFicha };
+      fichaData = data as ClienteFicha;
     }
+
+    // Sincronizar depósitos a tabla depositos_ficha (escritura dual)
+    if (input.comprobante_deposito_ocr && input.comprobante_deposito_ocr.length > 0) {
+      await syncDepositosFromFicha({
+        fichaId: fichaData.id,
+        localId: input.local_id,
+        depositos: input.comprobante_deposito_ocr,
+        fotos: input.comprobante_deposito_fotos || [],
+      });
+    }
+
+    return {
+      success: true,
+      message: existing ? 'Ficha actualizada' : 'Ficha creada',
+      data: fichaData,
+    };
   } catch (error) {
     console.error('[CLIENTES_FICHA] Error in upsertClienteFicha:', error);
     return { success: false, message: 'Error inesperado' };

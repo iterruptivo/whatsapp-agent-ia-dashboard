@@ -386,6 +386,12 @@ export interface AbonoDiarioRow {
   boleta_url: string | null;
   numero_boleta: string | null;
   boleta_tipo: 'boleta' | 'factura' | null;
+  // Campos de verificación por Finanzas (nuevos)
+  deposito_id: string | null; // ID en tabla depositos_ficha (null si no migrado)
+  verificado_finanzas: boolean;
+  verificado_finanzas_por: string | null;
+  verificado_finanzas_at: string | null;
+  verificado_finanzas_nombre: string | null;
 }
 
 // Columnas ordenables
@@ -468,105 +474,108 @@ async function fetchAllAbonosFiltered(
 ): Promise<AbonoDiarioRow[]> {
   const supabase = await createSupabaseServer();
 
-  // Obtener fichas con sus datos OCR y boletas vinculadas
-  let query = supabase
-    .from('clientes_ficha')
+  // NUEVA IMPLEMENTACIÓN: Leer de tabla depositos_ficha (normalizada)
+  // En lugar del JSONB comprobante_deposito_ocr
+
+  // Construir query a depositos_ficha con joins
+  let depositosQuery = supabase
+    .from('depositos_ficha')
     .select(`
       id,
+      ficha_id,
       local_id,
-      titular_nombres,
-      titular_apellido_paterno,
-      titular_apellido_materno,
-      comprobante_deposito_ocr,
-      boletas_vinculadas,
+      proyecto_id,
+      indice_original,
+      monto,
+      moneda,
+      fecha_comprobante,
+      hora_comprobante,
+      banco,
+      numero_operacion,
+      uploaded_at,
+      verificado_finanzas,
+      verificado_finanzas_por,
+      verificado_finanzas_at,
+      verificado_finanzas_nombre,
       locales!inner (
         id,
         codigo,
-        proyecto_id,
         proyectos!inner (
           id,
           nombre
         )
+      ),
+      clientes_ficha!inner (
+        id,
+        titular_nombres,
+        titular_apellido_paterno,
+        titular_apellido_materno,
+        boletas_vinculadas
       )
     `)
-    .not('comprobante_deposito_ocr', 'is', null);
+    .gte('fecha_comprobante', fechaDesde)
+    .lte('fecha_comprobante', fechaHasta);
 
-  // Filtrar por proyecto si se especifica
+  // Filtrar por proyecto
   if (proyectoId) {
-    query = query.eq('locales.proyecto_id', proyectoId);
+    depositosQuery = depositosQuery.eq('proyecto_id', proyectoId);
   } else if (!incluirPruebas) {
-    // Si no se especifica proyecto y no se quiere incluir pruebas, excluir proyecto pruebas
-    query = query.neq('locales.proyecto_id', PROYECTO_PRUEBAS_ID);
+    depositosQuery = depositosQuery.neq('proyecto_id', PROYECTO_PRUEBAS_ID);
   }
 
-  const { data: fichas, error } = await query;
+  const { data: depositos, error } = await depositosQuery;
 
-  if (error || !fichas || fichas.length === 0) {
+  if (error) {
+    console.error('[fetchAllAbonosFiltered] Error:', error);
     return [];
   }
 
-  // Procesar los abonos
-  const abonos: AbonoDiarioRow[] = [];
+  if (!depositos || depositos.length === 0) {
+    return [];
+  }
 
-  for (const ficha of fichas) {
-    const ocrData = ficha.comprobante_deposito_ocr as Array<{
-      monto?: number | null;
-      moneda?: 'PEN' | 'USD' | null;
-      fecha?: string | null;
-      hora?: string | null;
-      banco?: string | null;
-      numero_operacion?: string | null;
-      uploaded_at?: string | null;
-    }> | null;
-
-    if (!ocrData || !Array.isArray(ocrData)) continue;
-
-    // Obtener boletas vinculadas
-    const boletasVinculadas = (ficha.boletas_vinculadas || []) as BoletaVinculada[];
-
-    const local = ficha.locales as any;
-    const proyecto = local?.proyectos as any;
+  // Transformar a AbonoDiarioRow
+  const abonos: AbonoDiarioRow[] = depositos.map((dep: any) => {
+    const local = dep.locales;
+    const proyecto = local?.proyectos;
+    const ficha = dep.clientes_ficha;
 
     // Construir nombre del cliente
     const clienteNombre = [
-      ficha.titular_nombres,
-      ficha.titular_apellido_paterno,
-      ficha.titular_apellido_materno
+      ficha?.titular_nombres,
+      ficha?.titular_apellido_paterno,
+      ficha?.titular_apellido_materno
     ].filter(Boolean).join(' ') || 'Sin nombre';
 
-    // Procesar cada voucher
-    ocrData.forEach((voucher, voucherIndex) => {
-      if (!voucher.fecha || !voucher.monto || !voucher.moneda) return;
+    // Buscar boleta vinculada
+    const boletasVinculadas = (ficha?.boletas_vinculadas || []) as BoletaVinculada[];
+    const boletaVinculada = boletasVinculadas.find(b => b.voucher_index === dep.indice_original);
 
-      const fechaComprobante = parseFechaOCR(voucher.fecha);
-      if (!fechaComprobante) return;
-
-      // Filtrar por rango de fechas
-      if (fechaComprobante < fechaDesde || fechaComprobante > fechaHasta) return;
-
-      // Buscar si tiene boleta vinculada
-      const boletaVinculada = boletasVinculadas.find(b => b.voucher_index === voucherIndex);
-
-      abonos.push({
-        ficha_id: ficha.id,
-        local_id: ficha.local_id,
-        local_codigo: local?.codigo || 'N/A',
-        proyecto_nombre: proyecto?.nombre || 'N/A',
-        cliente_nombre: clienteNombre,
-        uploaded_at: voucher.uploaded_at || null,
-        fecha_comprobante: fechaComprobante,
-        hora_comprobante: voucher.hora || null,
-        monto: voucher.monto,
-        moneda: voucher.moneda,
-        banco: voucher.banco || null,
-        numero_operacion: voucher.numero_operacion || null,
-        voucher_index: voucherIndex,
-        boleta_url: boletaVinculada?.boleta_url || null,
-        numero_boleta: boletaVinculada?.numero_boleta || null,
-        boleta_tipo: boletaVinculada?.tipo || null,
-      });
-    });
-  }
+    return {
+      ficha_id: dep.ficha_id || '',
+      local_id: dep.local_id,
+      local_codigo: local?.codigo || 'N/A',
+      proyecto_nombre: proyecto?.nombre || 'N/A',
+      cliente_nombre: clienteNombre,
+      uploaded_at: dep.uploaded_at,
+      fecha_comprobante: dep.fecha_comprobante,
+      hora_comprobante: dep.hora_comprobante,
+      monto: Number(dep.monto) || 0,
+      moneda: dep.moneda || 'USD',
+      banco: dep.banco,
+      numero_operacion: dep.numero_operacion,
+      voucher_index: dep.indice_original || 0,
+      boleta_url: boletaVinculada?.boleta_url || null,
+      numero_boleta: boletaVinculada?.numero_boleta || null,
+      boleta_tipo: boletaVinculada?.tipo || null,
+      // Nuevos campos de verificación
+      deposito_id: dep.id,
+      verificado_finanzas: dep.verificado_finanzas || false,
+      verificado_finanzas_por: dep.verificado_finanzas_por,
+      verificado_finanzas_at: dep.verificado_finanzas_at,
+      verificado_finanzas_nombre: dep.verificado_finanzas_nombre,
+    };
+  });
 
   return abonos;
 }
