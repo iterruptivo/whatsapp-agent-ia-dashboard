@@ -24,6 +24,7 @@ export interface OCRVoucherResult {
     monto: number;
     moneda: 'USD' | 'PEN';
     fecha: string;
+    hora: string | null;
     banco: string;
     numero_operacion: string;
     nombre_depositante: string;
@@ -163,15 +164,17 @@ const PROMPT_VOUCHER = `Analiza esta imagen de un voucher/comprobante bancario p
 1. Monto de la operacion (solo el numero, sin simbolos)
 2. Moneda (USD o PEN)
 3. Fecha de la operacion (formato YYYY-MM-DD)
-4. Nombre del banco
-5. Numero de operacion/transaccion
-6. Nombre del depositante/ordenante
-7. Tipo de operacion (deposito, transferencia, etc)
+4. Hora de la operacion (formato HH:MM en 24 horas, solo si es visible en el comprobante)
+5. Nombre del banco
+6. Numero de operacion/transaccion
+7. Nombre del depositante/ordenante
+8. Tipo de operacion (deposito, transferencia, etc)
 
 IMPORTANTE:
 - Si no puedes leer algun dato claramente, usa "N/A"
 - El monto debe ser un numero decimal (ej: 5000.00)
 - La fecha debe estar en formato YYYY-MM-DD
+- La hora debe estar en formato HH:MM (24 horas). Si no es visible o no se puede extraer, usa null
 - Incluye un campo "confianza" del 0 al 100 indicando que tan seguro estas de los datos
 
 Responde SOLO con JSON valido en este formato exacto:
@@ -179,6 +182,7 @@ Responde SOLO con JSON valido en este formato exacto:
   "monto": 5000.00,
   "moneda": "USD",
   "fecha": "2025-01-01",
+  "hora": "14:30",
   "banco": "Interbank",
   "numero_operacion": "804263",
   "nombre_depositante": "JUAN PEREZ GARCIA",

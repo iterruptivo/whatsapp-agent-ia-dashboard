@@ -23,6 +23,7 @@ import { useOCRValidation } from '@/hooks/useOCRValidation';
 interface FichaInscripcionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave?: () => void; // Callback opcional que se ejecuta después de guardar exitosamente
   local: Local | null;
   mode?: 'ficha' | 'procesar'; // 'ficha' = solo guardar, 'procesar' = guardar + enviar a control-pagos
 }
@@ -298,10 +299,12 @@ function reconstruirVouchersDesdeUrls(
     monto: number | null;
     moneda: 'PEN' | 'USD' | null;
     fecha: string | null;
+    hora?: string | null;
     banco: string | null;
     numero_operacion: string | null;
     depositante: string | null;
     confianza: number;
+    uploaded_at?: string | null;
   }> | null
 ): VoucherItem[] {
   if (!urls || urls.length === 0) return [];
@@ -313,7 +316,7 @@ function reconstruirVouchersDesdeUrls(
       file: null,
       url: url,
       previewUrl: url,
-      ocrData: ocrData,
+      ocrData: ocrData ? { ...ocrData, hora: ocrData.hora ?? null, uploaded_at: ocrData.uploaded_at ?? null } : null,
       estado: 'valido' as const,
     };
   });
@@ -322,6 +325,7 @@ function reconstruirVouchersDesdeUrls(
 export default function FichaInscripcionModal({
   isOpen,
   onClose,
+  onSave,
   local,
   mode = 'ficha', // Default: solo guardar ficha
 }: FichaInscripcionModalProps) {
@@ -3235,17 +3239,19 @@ export default function FichaInscripcionModal({
                     initialVouchers={initialVouchers}
                     onVouchersChange={(vouchers) => {
                       const urls = vouchers.map(v => v.url).filter(Boolean);
-                      // Extraer datos del OCR para persistencia
+                      // Extraer datos del OCR para persistencia (incluye uploaded_at y hora)
                       const ocrDataArray = vouchers
                         .filter(v => v.url && v.ocrData)
                         .map(v => ({
                           monto: v.ocrData?.monto ?? null,
                           moneda: v.ocrData?.moneda ?? null,
                           fecha: v.ocrData?.fecha ?? null,
+                          hora: v.ocrData?.hora ?? null,
                           banco: v.ocrData?.banco ?? null,
                           numero_operacion: v.ocrData?.numero_operacion ?? null,
                           depositante: v.ocrData?.depositante ?? null,
                           confianza: v.ocrData?.confianza ?? 0,
+                          uploaded_at: v.ocrData?.uploaded_at ?? null,
                         }));
                       setFormData(prev => ({
                         ...prev,
@@ -3356,6 +3362,7 @@ export default function FichaInscripcionModal({
           // NO cerrar en alertas informativas como OCR extraído
           const titulosQueCierran = ['Ficha guardada', 'Venta procesada exitosamente'];
           if (alertModal.variant === 'success' && titulosQueCierran.includes(alertModal.title)) {
+            onSave?.(); // Notificar que se guardó exitosamente (para refresh de lista)
             onClose();
           }
         }}

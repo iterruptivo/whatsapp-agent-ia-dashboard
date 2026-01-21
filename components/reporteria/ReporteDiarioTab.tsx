@@ -55,6 +55,7 @@ interface Usuario {
 interface ReporteDiarioTabProps {
   user: Usuario;
   onVerFicha: (fichaId: string, localId: string) => void;
+  refreshKey?: number; // Key para forzar refresh desde el padre (ej: después de guardar ficha)
 }
 
 // Helper para formatear fecha
@@ -93,7 +94,7 @@ function getDefaultDates() {
 // Tamaños de página disponibles
 const PAGE_SIZES = [10, 20, 50, 100];
 
-export default function ReporteDiarioTab({ user, onVerFicha }: ReporteDiarioTabProps) {
+export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: ReporteDiarioTabProps) {
   const defaultDates = getDefaultDates();
 
   const [loading, setLoading] = useState(true);
@@ -113,7 +114,7 @@ export default function ReporteDiarioTab({ user, onVerFicha }: ReporteDiarioTabP
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  // Ordenamiento
+  // Ordenamiento - por defecto por fecha de comprobante descendente (fecha+hora compuesta)
   const [sortColumn, setSortColumn] = useState<AbonoDiarioSortColumn>('fecha_comprobante');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
@@ -157,7 +158,8 @@ export default function ReporteDiarioTab({ user, onVerFicha }: ReporteDiarioTabP
     setTotalUSD(result.totalUSD);
     setTotalPEN(result.totalPEN);
     setLoading(false);
-  }, [fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas, refreshKey]);
 
   // Cargar datos cuando cambian los filtros/paginación/ordenamiento
   useEffect(() => {
@@ -458,11 +460,20 @@ export default function ReporteDiarioTab({ user, onVerFicha }: ReporteDiarioTabP
                       #
                     </th>
                     <th
+                      onClick={() => handleSort('uploaded_at')}
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        F. Subida
+                        {renderSortIcon('uploaded_at')}
+                      </div>
+                    </th>
+                    <th
                       onClick={() => handleSort('fecha_comprobante')}
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     >
                       <div className="flex items-center gap-1">
-                        Fecha
+                        F. Comprobante
                         {renderSortIcon('fecha_comprobante')}
                       </div>
                     </th>
@@ -525,8 +536,27 @@ export default function ReporteDiarioTab({ user, onVerFicha }: ReporteDiarioTabP
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                         {startRecord + index}
                       </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {abono.uploaded_at ? (
+                          <div className="flex flex-col">
+                            <span className="text-gray-900 text-xs">
+                              {new Date(abono.uploaded_at).toLocaleDateString('es-PE')}
+                            </span>
+                            <span className="text-gray-400 text-[10px]">
+                              {new Date(abono.uploaded_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-300">-</span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {formatDate(abono.fecha_comprobante)}
+                        <div className="flex flex-col">
+                          <span>{formatDate(abono.fecha_comprobante)}</span>
+                          {abono.hora_comprobante && (
+                            <span className="text-gray-500 text-xs">{abono.hora_comprobante}</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                         {abono.cliente_nombre}

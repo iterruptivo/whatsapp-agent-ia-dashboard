@@ -103,10 +103,12 @@ export interface ClienteFicha {
     monto: number | null;
     moneda: 'PEN' | 'USD' | null;
     fecha: string | null;
+    hora: string | null;
     banco: string | null;
     numero_operacion: string | null;
     depositante: string | null;
     confianza: number;
+    uploaded_at: string | null; // Fecha/hora en que se subió a la plataforma
   }> | null;
 
   // Boletas vinculadas a comprobantes
@@ -209,10 +211,12 @@ export interface ClienteFichaInput {
     monto: number | null;
     moneda: 'PEN' | 'USD' | null;
     fecha: string | null;
+    hora?: string | null;
     banco: string | null;
     numero_operacion: string | null;
     depositante: string | null;
     confianza: number;
+    uploaded_at?: string | null; // Fecha/hora en que se subió a la plataforma
   }> | null;
 
   vendedor_id?: string | null;

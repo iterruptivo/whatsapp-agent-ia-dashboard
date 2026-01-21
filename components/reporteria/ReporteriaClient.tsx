@@ -22,6 +22,8 @@ import AtribucionIATab from './AtribucionIATab';
 import FichasInscripcionTab from './FichasInscripcionTab';
 import ReporteDiarioTab from './ReporteDiarioTab';
 import FichaInscripcionReadonlyModal from './FichaInscripcionReadonlyModal';
+import FichaInscripcionModal from '@/components/locales/FichaInscripcionModal';
+import { getLocalConProyecto, type LocalConProyecto } from '@/lib/actions-fichas-reporte';
 
 // Tipo Usuario de auth-context (no importar de @/lib/db para evitar conflictos)
 interface Usuario {
@@ -60,6 +62,8 @@ function getDefaultDates() {
 export default function ReporteriaClient({ user }: ReporteriaClientProps) {
   // Permisos para ver tab de Fichas Inscripción
   const puedeVerFichas = ['finanzas', 'admin', 'superadmin'].includes(user.rol);
+  // Permisos para EDITAR ficha de inscripción (finanzas puede editar)
+  const puedeEditarFicha = ['finanzas', 'admin', 'superadmin'].includes(user.rol);
 
   // Tab state - Session 101: reporte_diario primero si tiene permiso de finanzas
   const [activeTab, setActiveTab] = useState<ReporteriaTab>(puedeVerFichas ? 'reporte_diario' : 'leads_vendedor');
@@ -67,6 +71,11 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
   // Estado para modal de ficha (Session 100)
   const [showFichaModal, setShowFichaModal] = useState(false);
   const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null);
+  // Estado para local con proyecto (para modal editable)
+  const [selectedLocalData, setSelectedLocalData] = useState<LocalConProyecto | null>(null);
+  const [loadingLocalData, setLoadingLocalData] = useState(false);
+  // Key para forzar refresh de ReporteDiarioTab después de guardar ficha
+  const [reporteDiarioRefreshKey, setReporteDiarioRefreshKey] = useState(0);
 
   // Referencias para scroll dual
   const topScrollRef = useRef<HTMLDivElement>(null);
@@ -96,8 +105,13 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
     loadProyectos();
   }, []);
 
-  // Cargar datos al montar y cuando cambien filtros (excepto searchTerm que es client-side)
+  // LAZY LOADING: Solo cargar datos de "Leads por Vendedor" cuando ese tab está activo
   useEffect(() => {
+    // Solo cargar si estamos en el tab de leads_vendedor
+    if (activeTab !== 'leads_vendedor') {
+      return;
+    }
+
     async function loadData() {
       setLoading(true);
       const result = await getReporteriaData({
@@ -110,7 +124,7 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
       setLoading(false);
     }
     loadData();
-  }, [proyectoId, dateFrom, dateTo]);
+  }, [proyectoId, dateFrom, dateTo, activeTab]);
 
   // Filtrar datos por searchTerm (client-side, instantáneo)
   const filteredData = searchTerm
@@ -278,9 +292,18 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
   const totalesPorProyecto = calculateTotalesPorProyecto();
   const tableWidth = calculateTableWidth();
 
-  // Handler para ver ficha desde FichasInscripcionTab
-  const handleVerFicha = (fichaId: string, localId: string) => {
+  // Handler para ver ficha desde FichasInscripcionTab y ReporteDiarioTab
+  const handleVerFicha = async (fichaId: string, localId: string) => {
     setSelectedLocalId(localId);
+
+    // Si el usuario puede editar, cargar datos del local para el modal editable
+    if (puedeEditarFicha) {
+      setLoadingLocalData(true);
+      const localData = await getLocalConProyecto(localId);
+      setSelectedLocalData(localData);
+      setLoadingLocalData(false);
+    }
+
     setShowFichaModal(true);
   };
 
@@ -308,7 +331,7 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
 
         {/* TAB: Reporte Diario - Session 101 */}
         {activeTab === 'reporte_diario' && puedeVerFichas && (
-          <ReporteDiarioTab user={user} onVerFicha={handleVerFicha} />
+          <ReporteDiarioTab user={user} onVerFicha={handleVerFicha} refreshKey={reporteDiarioRefreshKey} />
         )}
 
         {/* TAB: Leads por Vendedor (contenido original) */}
@@ -666,16 +689,60 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
         )}
       </div>
 
-      {/* Modal de Ficha Readonly */}
-      {selectedLocalId && (
-        <FichaInscripcionReadonlyModal
-          isOpen={showFichaModal}
-          onClose={() => {
-            setShowFichaModal(false);
-            setSelectedLocalId(null);
-          }}
-          localId={selectedLocalId}
-        />
+      {/* Modal de Ficha - Editable para finanzas/admin/superadmin, Readonly para otros */}
+      {selectedLocalId && showFichaModal && (
+        puedeEditarFicha && selectedLocalData ? (
+          <FichaInscripcionModal
+            isOpen={showFichaModal}
+            onClose={() => {
+              setShowFichaModal(false);
+              setSelectedLocalId(null);
+              setSelectedLocalData(null);
+            }}
+            onSave={() => {
+              // Incrementar key para forzar refresh de ReporteDiarioTab
+              setReporteDiarioRefreshKey(prev => prev + 1);
+            }}
+            local={{
+              id: selectedLocalData.id,
+              codigo: selectedLocalData.codigo,
+              estado: selectedLocalData.estado as 'verde' | 'amarillo' | 'naranja' | 'rojo',
+              metraje: selectedLocalData.metraje ?? 0,
+              precio_base: selectedLocalData.precio_base ?? 0,
+              proyecto_id: selectedLocalData.proyecto_id,
+              proyecto_nombre: selectedLocalData.proyecto.nombre,
+              monto_venta: selectedLocalData.monto_venta ?? null,
+              // Campos requeridos por el tipo Local con valores por defecto
+              bloqueado: false,
+              monto_separacion: null,
+              lead_id: null,
+              vendedor_actual_id: null,
+              vendedor_cerro_venta_id: null,
+              fecha_cierre_venta: null,
+              naranja_timestamp: null,
+              naranja_vendedor_id: null,
+              vendedores_negociando_ids: [],
+              en_control_pagos: false,
+              usuario_paso_naranja_id: null,
+              fecha_paso_naranja: null,
+              usuario_paso_rojo_id: null,
+              fecha_paso_rojo: null,
+              es_excepcional: false,
+              created_at: '',
+              updated_at: '',
+            }}
+          />
+        ) : (
+          <FichaInscripcionReadonlyModal
+            isOpen={showFichaModal}
+            onClose={() => {
+              setShowFichaModal(false);
+              setSelectedLocalId(null);
+              setSelectedLocalData(null);
+            }}
+            localId={selectedLocalId}
+          />
+        )
       )}
     </div>
   );

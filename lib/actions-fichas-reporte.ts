@@ -372,7 +372,11 @@ export interface AbonoDiarioRow {
   local_codigo: string;
   proyecto_nombre: string;
   cliente_nombre: string;
+  // Fecha/hora de subida a la plataforma
+  uploaded_at: string | null;
+  // Fecha y hora del comprobante (del voucher)
   fecha_comprobante: string;
+  hora_comprobante: string | null;
   monto: number;
   moneda: 'PEN' | 'USD';
   banco: string | null;
@@ -385,7 +389,7 @@ export interface AbonoDiarioRow {
 }
 
 // Columnas ordenables
-export type AbonoDiarioSortColumn = 'fecha_comprobante' | 'cliente_nombre' | 'monto' | 'local_codigo' | 'proyecto_nombre' | 'banco';
+export type AbonoDiarioSortColumn = 'uploaded_at' | 'fecha_comprobante' | 'cliente_nombre' | 'monto' | 'local_codigo' | 'proyecto_nombre' | 'banco';
 export type SortDirection = 'asc' | 'desc';
 
 interface GetAbonosDiariosParams {
@@ -509,8 +513,10 @@ async function fetchAllAbonosFiltered(
       monto?: number | null;
       moneda?: 'PEN' | 'USD' | null;
       fecha?: string | null;
+      hora?: string | null;
       banco?: string | null;
       numero_operacion?: string | null;
+      uploaded_at?: string | null;
     }> | null;
 
     if (!ocrData || !Array.isArray(ocrData)) continue;
@@ -547,7 +553,9 @@ async function fetchAllAbonosFiltered(
         local_codigo: local?.codigo || 'N/A',
         proyecto_nombre: proyecto?.nombre || 'N/A',
         cliente_nombre: clienteNombre,
+        uploaded_at: voucher.uploaded_at || null,
         fecha_comprobante: fechaComprobante,
+        hora_comprobante: voucher.hora || null,
         monto: voucher.monto,
         moneda: voucher.moneda,
         banco: voucher.banco || null,
@@ -573,8 +581,14 @@ function sortAbonos(
     let comparison = 0;
 
     switch (sortColumn) {
+      case 'uploaded_at':
+        comparison = (a.uploaded_at || '').localeCompare(b.uploaded_at || '');
+        break;
       case 'fecha_comprobante':
-        comparison = a.fecha_comprobante.localeCompare(b.fecha_comprobante);
+        // Ordenar por fecha+hora compuesta (YYYY-MM-DD HH:MM:SS)
+        const aDateTime = `${a.fecha_comprobante} ${a.hora_comprobante || '00:00:00'}`;
+        const bDateTime = `${b.fecha_comprobante} ${b.hora_comprobante || '00:00:00'}`;
+        comparison = aDateTime.localeCompare(bDateTime);
         break;
       case 'cliente_nombre':
         comparison = a.cliente_nombre.localeCompare(b.cliente_nombre);
@@ -592,7 +606,7 @@ function sortAbonos(
         comparison = (a.banco || '').localeCompare(b.banco || '');
         break;
       default:
-        comparison = a.fecha_comprobante.localeCompare(b.fecha_comprobante);
+        comparison = (a.uploaded_at || '').localeCompare(b.uploaded_at || '');
     }
 
     return sortDirection === 'desc' ? -comparison : comparison;
@@ -869,5 +883,75 @@ export async function desvincularBoleta(params: {
   } catch (error) {
     console.error('[desvincularBoleta] Error inesperado:', error);
     return { success: false, message: 'Error inesperado al desvincular boleta' };
+  }
+}
+
+// ============================================================================
+// OBTENER LOCAL CON PROYECTO (para modal de ficha editable)
+// ============================================================================
+
+export interface LocalConProyecto {
+  id: string;
+  codigo: string;
+  estado: string;
+  metraje: number | null;
+  precio_base: number | null;
+  proyecto_id: string;
+  monto_venta: number | null;
+  proyecto: {
+    id: string;
+    nombre: string;
+  };
+}
+
+/**
+ * Obtiene un local con su proyecto asociado
+ * Para usar en el modal de ficha de inscripción editable
+ */
+export async function getLocalConProyecto(localId: string): Promise<LocalConProyecto | null> {
+  try {
+    const supabase = await createSupabaseServer();
+
+    const { data, error } = await supabase
+      .from('locales')
+      .select(`
+        id,
+        codigo,
+        estado,
+        metraje,
+        precio_base,
+        proyecto_id,
+        monto_venta,
+        proyectos!inner (
+          id,
+          nombre
+        )
+      `)
+      .eq('id', localId)
+      .single();
+
+    if (error || !data) {
+      console.error('[getLocalConProyecto] Error:', error);
+      return null;
+    }
+
+    const proyecto = data.proyectos as any;
+
+    return {
+      id: data.id,
+      codigo: data.codigo,
+      estado: data.estado,
+      metraje: data.metraje,
+      precio_base: data.precio_base,
+      proyecto_id: data.proyecto_id,
+      monto_venta: data.monto_venta,
+      proyecto: {
+        id: proyecto.id,
+        nombre: proyecto.nombre,
+      },
+    };
+  } catch (error) {
+    console.error('[getLocalConProyecto] Error inesperado:', error);
+    return null;
   }
 }

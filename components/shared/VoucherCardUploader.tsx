@@ -24,6 +24,9 @@ import {
   TrendingUp,
   Eye,
   X,
+  Pencil,
+  Check,
+  Clock,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
@@ -35,10 +38,12 @@ export interface VoucherOCRData {
   monto: number | null;
   moneda: 'PEN' | 'USD' | null;
   fecha: string | null;
+  hora: string | null;
   banco: string | null;
   numero_operacion: string | null;
   depositante: string | null;
   confianza: number;
+  uploaded_at: string | null; // Fecha/hora en que se subió a la plataforma
 }
 
 export interface VoucherItem {
@@ -251,10 +256,12 @@ export default function VoucherCardUploader({
           monto: result.data.monto || null,
           moneda: result.data.moneda || null,
           fecha: result.data.fecha || null,
+          hora: result.data.hora || null,
           banco: result.data.banco || null,
           numero_operacion: result.data.numero_operacion || null,
           depositante: result.data.nombre_depositante || null,
           confianza: result.data.confianza || 0,
+          uploaded_at: new Date().toISOString(), // Fecha de subida a la plataforma
         };
 
         // Determinar estado segun confianza
@@ -407,6 +414,14 @@ export default function VoucherCardUploader({
             voucher={voucher}
             index={index}
             onDelete={handleDelete}
+            onUpdate={(updatedOCR) => {
+              const updatedVouchers = vouchers.map((v) =>
+                v.id === voucher.id ? { ...v, ocrData: updatedOCR } : v
+              );
+              setVouchers(updatedVouchers);
+              onVouchersChange(updatedVouchers);
+            }}
+            disabled={disabled}
           />
         ))}
       </div>
@@ -453,21 +468,77 @@ export default function VoucherCardUploader({
 }
 
 // ============================================================================
-// COMPONENTE: VoucherCard
+// COMPONENTE: VoucherCard (con edición de datos OCR)
 // ============================================================================
 
 interface VoucherCardProps {
   voucher: VoucherItem;
   index: number;
   onDelete: (id: string) => void;
+  onUpdate: (ocrData: VoucherOCRData) => void;
+  disabled?: boolean;
 }
 
-function VoucherCard({ voucher, index, onDelete }: VoucherCardProps) {
+function VoucherCard({ voucher, index, onDelete, onUpdate, disabled }: VoucherCardProps) {
   const { estado, previewUrl, ocrData, error } = voucher;
   const [showPreview, setShowPreview] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Estado local para edición
+  const [editData, setEditData] = useState<VoucherOCRData>({
+    monto: ocrData?.monto ?? null,
+    moneda: ocrData?.moneda ?? null,
+    fecha: ocrData?.fecha ?? null,
+    hora: ocrData?.hora ?? null,
+    banco: ocrData?.banco ?? null,
+    numero_operacion: ocrData?.numero_operacion ?? null,
+    depositante: ocrData?.depositante ?? null,
+    confianza: ocrData?.confianza ?? 0,
+    uploaded_at: ocrData?.uploaded_at ?? null,
+  });
+
+  // Sincronizar cuando cambia ocrData externo
+  useEffect(() => {
+    if (ocrData) {
+      setEditData({
+        monto: ocrData.monto,
+        moneda: ocrData.moneda,
+        fecha: ocrData.fecha,
+        hora: ocrData.hora,
+        banco: ocrData.banco,
+        numero_operacion: ocrData.numero_operacion,
+        depositante: ocrData.depositante,
+        confianza: ocrData.confianza,
+        uploaded_at: ocrData.uploaded_at,
+      });
+    }
+  }, [ocrData]);
+
+  const handleSaveEdit = () => {
+    onUpdate(editData);
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    if (ocrData) {
+      setEditData({
+        monto: ocrData.monto,
+        moneda: ocrData.moneda,
+        fecha: ocrData.fecha,
+        hora: ocrData.hora,
+        banco: ocrData.banco,
+        numero_operacion: ocrData.numero_operacion,
+        depositante: ocrData.depositante,
+        confianza: ocrData.confianza,
+        uploaded_at: ocrData.uploaded_at,
+      });
+    }
+    setIsEditing(false);
+  };
 
   // Colores segun estado
   const getBorderColor = () => {
+    if (isEditing) return 'border-blue-500 border-2 border-solid';
     switch (estado) {
       case 'pendiente':
         return 'border-gray-300 border-dashed';
@@ -528,6 +599,25 @@ function VoucherCard({ voucher, index, onDelete }: VoucherCardProps) {
     }
   };
 
+  // Formatear fecha de subida para mostrar
+  const formatUploadedAt = (isoString: string | null) => {
+    if (!isoString) return null;
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleString('es-PE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch {
+      return null;
+    }
+  };
+
+  const canEdit = (estado === 'valido' || estado === 'revision' || estado === 'error') && !disabled;
+
   return (
     <div className={`border rounded-lg p-4 flex gap-4 ${getBorderColor()}`}>
       {/* Preview */}
@@ -563,22 +653,187 @@ function VoucherCard({ voucher, index, onDelete }: VoucherCardProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-2">
           <h4 className="text-sm font-semibold text-[#192c4d]">VOUCHER #{index + 1}</h4>
-          <button
-            onClick={() => onDelete(voucher.id)}
-            className="text-red-500 hover:text-red-700 transition-colors"
-            title="Eliminar"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {canEdit && !isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="text-blue-500 hover:text-blue-700 transition-colors p-1"
+                title="Editar datos"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
+            {isEditing && (
+              <>
+                <button
+                  onClick={handleSaveEdit}
+                  className="text-green-500 hover:text-green-700 transition-colors p-1"
+                  title="Guardar cambios"
+                >
+                  <Check className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="text-gray-500 hover:text-gray-700 transition-colors p-1"
+                  title="Cancelar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </>
+            )}
+            {!isEditing && (
+              <button
+                onClick={() => onDelete(voucher.id)}
+                className="text-red-500 hover:text-red-700 transition-colors p-1"
+                title="Eliminar"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
-        {estado === 'error' ? (
-          <div className="text-xs text-red-600 bg-red-50 p-2 rounded">
+        {estado === 'error' && !isEditing ? (
+          <div className="text-xs text-red-600 bg-red-50 p-2 rounded mb-2">
             {error || 'Error procesando voucher'}
+            <button
+              onClick={() => setIsEditing(true)}
+              className="ml-2 text-blue-600 underline"
+            >
+              Ingresar datos manualmente
+            </button>
           </div>
         ) : estado === 'subiendo' || estado === 'procesando' ? (
           <div className="text-xs text-gray-500">Cargando datos...</div>
+        ) : isEditing ? (
+          // ========================================
+          // MODO EDICIÓN
+          // ========================================
+          <div className="space-y-2 text-xs">
+            <div className="bg-blue-50 border border-blue-200 rounded p-2 mb-2">
+              <p className="text-blue-700 font-medium">Modo edición activo</p>
+              <p className="text-blue-600 text-[10px]">Corrige los datos si el OCR no los detectó correctamente</p>
+            </div>
+
+            {/* Monto y Moneda */}
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <label className="flex items-center gap-1 text-gray-600 mb-1">
+                  <DollarSign className="w-3 h-3 text-[#1b967a]" />
+                  Monto
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={editData.monto ?? ''}
+                  onChange={(e) => setEditData({ ...editData, monto: e.target.value ? parseFloat(e.target.value) : null })}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  className="w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="w-20">
+                <label className="text-gray-600 mb-1 block">Moneda</label>
+                <select
+                  value={editData.moneda ?? ''}
+                  onChange={(e) => setEditData({ ...editData, moneda: e.target.value as 'PEN' | 'USD' | null || null })}
+                  className="w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">--</option>
+                  <option value="PEN">PEN</option>
+                  <option value="USD">USD</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Banco */}
+            <div>
+              <label className="flex items-center gap-1 text-gray-600 mb-1">
+                <Building2 className="w-3 h-3 text-blue-500" />
+                Banco
+              </label>
+              <select
+                value={editData.banco ?? ''}
+                onChange={(e) => setEditData({ ...editData, banco: e.target.value || null })}
+                className="w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Seleccionar banco...</option>
+                <option value="BCP">BCP</option>
+                <option value="Interbank">Interbank</option>
+                <option value="BBVA">BBVA</option>
+                <option value="Scotiabank">Scotiabank</option>
+                <option value="BanBif">BanBif</option>
+                <option value="Banco de la Nación">Banco de la Nación</option>
+                <option value="Yape">Yape</option>
+                <option value="Plin">Plin</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+
+            {/* Numero Operacion */}
+            <div>
+              <label className="flex items-center gap-1 text-gray-600 mb-1">
+                <Hash className="w-3 h-3 text-purple-500" />
+                N° Operación
+              </label>
+              <input
+                type="text"
+                value={editData.numero_operacion ?? ''}
+                onChange={(e) => setEditData({ ...editData, numero_operacion: e.target.value || null })}
+                className="w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Ej: 00012345678"
+              />
+            </div>
+
+            {/* Fecha del depósito */}
+            <div>
+              <label className="flex items-center gap-1 text-gray-600 mb-1">
+                <Calendar className="w-3 h-3 text-orange-500" />
+                Fecha del depósito
+              </label>
+              <input
+                type="text"
+                value={editData.fecha ?? ''}
+                onChange={(e) => setEditData({ ...editData, fecha: e.target.value || null })}
+                className="w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Ej: 15/01/2026"
+              />
+            </div>
+
+            {/* Hora del depósito */}
+            <div>
+              <label className="flex items-center gap-1 text-gray-600 mb-1">
+                <Clock className="w-3 h-3 text-teal-500" />
+                Hora del depósito
+              </label>
+              <input
+                type="text"
+                value={editData.hora ?? ''}
+                onChange={(e) => setEditData({ ...editData, hora: e.target.value || null })}
+                className="w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Ej: 14:30"
+              />
+            </div>
+
+            {/* Depositante */}
+            <div>
+              <label className="flex items-center gap-1 text-gray-600 mb-1">
+                <User className="w-3 h-3 text-indigo-500" />
+                Depositante
+              </label>
+              <input
+                type="text"
+                value={editData.depositante ?? ''}
+                onChange={(e) => setEditData({ ...editData, depositante: e.target.value || null })}
+                className="w-full px-2 py-1 border rounded text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Nombre del depositante"
+              />
+            </div>
+          </div>
         ) : ocrData ? (
+          // ========================================
+          // MODO VISUALIZACIÓN
+          // ========================================
           <div className="space-y-1 text-xs">
             {/* Monto */}
             {ocrData.monto && ocrData.moneda && (
@@ -604,17 +859,20 @@ function VoucherCard({ voucher, index, onDelete }: VoucherCardProps) {
             {ocrData.numero_operacion && (
               <div className="flex items-center gap-1">
                 <Hash className="w-3 h-3 text-purple-500" />
-                <span className="text-gray-600">Operacion:</span>
+                <span className="text-gray-600">Operación:</span>
                 <span className="font-medium text-gray-900">{ocrData.numero_operacion}</span>
               </div>
             )}
 
-            {/* Fecha */}
+            {/* Fecha del depósito */}
             {ocrData.fecha && (
               <div className="flex items-center gap-1">
                 <Calendar className="w-3 h-3 text-orange-500" />
-                <span className="text-gray-600">Fecha:</span>
-                <span className="font-medium text-gray-900">{ocrData.fecha}</span>
+                <span className="text-gray-600">Fecha depósito:</span>
+                <span className="font-medium text-gray-900">
+                  {ocrData.fecha}
+                  {ocrData.hora && <span className="text-gray-500"> {ocrData.hora}</span>}
+                </span>
               </div>
             )}
 
@@ -627,11 +885,20 @@ function VoucherCard({ voucher, index, onDelete }: VoucherCardProps) {
               </div>
             )}
 
+            {/* Fecha de subida a la plataforma */}
+            {ocrData.uploaded_at && (
+              <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-100">
+                <Clock className="w-3 h-3 text-gray-400" />
+                <span className="text-gray-500">Subido:</span>
+                <span className="text-gray-600">{formatUploadedAt(ocrData.uploaded_at)}</span>
+              </div>
+            )}
+
             {/* Barra de Confianza */}
-            <div className="mt-2">
+            <div className="mt-2 pt-2 border-t border-gray-100">
               <div className="flex items-center gap-1 mb-1">
                 <TrendingUp className="w-3 h-3 text-gray-500" />
-                <span className="text-gray-600">Confianza: {ocrData.confianza}%</span>
+                <span className="text-gray-600">Confianza OCR: {ocrData.confianza}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-1.5">
                 <div
@@ -645,6 +912,11 @@ function VoucherCard({ voucher, index, onDelete }: VoucherCardProps) {
                   style={{ width: `${ocrData.confianza}%` }}
                 />
               </div>
+              {ocrData.confianza < 80 && (
+                <p className="text-[10px] text-yellow-600 mt-1">
+                  Confianza baja - revise los datos y edite si es necesario
+                </p>
+              )}
             </div>
           </div>
         ) : (
