@@ -822,7 +822,7 @@ export async function notifyPaymentRegistered(params: {
       cliente_nombre: params.cliente_nombre,
     },
     action_url: `/control-pagos?pago=${params.pago_id}`,
-    action_label: 'Verificar pago',
+    action_label: 'Validar pago',
     actor_name: params.registrado_por,
   });
 
@@ -830,22 +830,22 @@ export async function notifyPaymentRegistered(params: {
 }
 
 /**
- * Notificar pago verificado (al vendedor)
+ * Notificar pago validado (al vendedor)
  */
-export async function notifyPaymentVerified(params: {
+export async function notifyPaymentValidated(params: {
   vendedor_id: string;
   pago_id: string;
   monto: number;
   local_codigo: string;
-  verificado_por: string;
+  validado_por: string;
 }): Promise<NotificationActionResponse> {
   const result = await createNotification({
     user_id: params.vendedor_id,
-    type: 'payment_verified',
+    type: 'payment_validated',
     category: 'pagos',
     priority: 'normal',
-    title: 'Pago verificado',
-    message: `${params.verificado_por} verificó el pago de S/ ${params.monto.toLocaleString()} - ${params.local_codigo}`,
+    title: 'Pago validado',
+    message: `${params.validado_por} validó el pago de S/ ${params.monto.toLocaleString()} - ${params.local_codigo}`,
     metadata: {
       pago_id: params.pago_id,
       monto: params.monto,
@@ -853,7 +853,7 @@ export async function notifyPaymentVerified(params: {
     },
     action_url: `/control-pagos?pago=${params.pago_id}`,
     action_label: 'Ver pago',
-    actor_name: params.verificado_por,
+    actor_name: params.validado_por,
   });
 
   return { success: result.success, error: result.error };

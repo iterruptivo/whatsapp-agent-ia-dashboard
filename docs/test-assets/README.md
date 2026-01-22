@@ -43,6 +43,12 @@ docs/test-assets/
 │   ├── declaracion-jurada-04.md
 │   ├── declaracion-jurada-05.md
 │   └── declaracion-jurada-sintetico-01.png
+├── nota-credito/          # Notas de Crédito SUNAT
+│   ├── nota-credito-001.pdf
+│   ├── nota-credito-002.pdf
+│   ├── nota-credito-003.pdf
+│   ├── nota-credito-004.pdf
+│   └── nota-credito-005.pdf
 └── otros/                 # Otros documentos de prueba
 ```
 
@@ -278,6 +284,38 @@ Fuente: [Wikimedia Commons - Identity cards of Peru](https://commons.wikimedia.o
 >
 > **Para testing:** Usar `declaracion-jurada-sintetico-01.png` para probar el componente uploader con archivos PNG reales.
 
+### Notas de Crédito SUNAT (PDFs)
+
+**PDFs profesionales para testing:**
+- [x] `nota-credito-001.pdf` - NC01-00001 - Anulación S/ 500.00
+- [x] `nota-credito-002.pdf` - NC01-00002 - Descuento Global S/ 1,000.00
+- [x] `nota-credito-003.pdf` - NC01-00003 - Devolución Total S/ 1,500.00
+- [x] `nota-credito-004.pdf` - NC01-00004 - Anulación S/ 2,000.00
+- [x] `nota-credito-005.pdf` - NC01-00005 - Descuento Global S/ 2,500.00
+
+**Generador:** `scripts/generate-notas-credito.py`
+
+**Características de los PDFs:**
+- Formato profesional cumpliendo estándar SUNAT
+- Header con datos de ECOPLAZA INMOBILIARIA S.A.C. (RUC: 20123456789)
+- Referencia a Boleta de Venta Electrónica modificada
+- Datos del cliente (nombres peruanos ficticios)
+- Motivo de emisión claramente especificado
+- Detalle del producto/servicio (separación de locales)
+- Cálculo correcto de Op. Gravadas, IGV 18% y Total
+- QR code simulado y hash del documento
+- Pie de página con texto legal
+- Colores corporativos ECOPLAZA (Verde #1b967a, Azul #192c4d)
+
+**Clientes ficticios incluidos:**
+1. Carlos Eduardo Ramirez Torres (DNI 45678912)
+2. Maria Isabel Fernandez Chavez (DNI 23456789)
+3. Jose Antonio Gutierrez Lopez (DNI 78912345)
+4. Ana Lucia Mendoza Quispe (DNI 34567891)
+5. Roberto Carlos Vasquez Rojas (DNI 56789123)
+
+> **Para testing:** Usar estos PDFs para probar componentes de visualización de documentos, validación de PDFs, y sistemas de archivo de documentos contables.
+
 ### Pendientes (Casos Edge para pruebas OCR)
 - [ ] `dni-borroso.jpg` - DNI con baja calidad de imagen
 - [ ] `dni-rotado.jpg` - DNI con rotacion de 90 grados
@@ -345,6 +383,16 @@ Las declaraciones juradas sintéticas:
 - Fechas entre Sep 2025 y Ene 2026
 - Todas declaran el mismo domicilio
 
+### Notas de Crédito (SUNAT)
+Las notas de crédito sintéticas:
+- Formato PDF profesional siguiendo estándar SUNAT
+- Incluyen todos los elementos requeridos (RUC, serie, hash, QR simulado)
+- 5 PDFs con diferentes montos (S/ 500 a S/ 2,500)
+- Motivos variados: Anulación, Descuento Global, Devolución Total
+- Fechas de enero 2026
+- Clientes ficticios peruanos
+- Cálculo correcto de IGV (18%)
+
 ---
 
 ## Seguridad
@@ -365,6 +413,16 @@ Las imagenes deben ser proporcionadas por el equipo de EcoPlaza.
 ---
 
 ## Changelog
+
+**22 Enero 2026 - NOTAS DE CRÉDITO SUNAT:**
+- Agregadas 5 Notas de Crédito sintéticas en formato PDF profesional
+- Cumplimiento con estándar SUNAT para comprobantes electrónicos
+- Incluyen: NC01-00001 a NC01-00005
+- Montos variables: S/ 500 a S/ 2,500
+- Motivos: Anulación, Descuento Global, Devolución Total
+- Clientes ficticios con datos peruanos realistas
+- Generador automático: `scripts/generate-notas-credito.py`
+- Usa reportlab 3.6.13 (compatible Python 3.7)
 
 **13 Enero 2026 (Actualización 3) - INVESTIGACIÓN DE RECIBOS:**
 - Investigación exhaustiva completada sobre recibos de servicios en Perú
@@ -395,6 +453,6 @@ Las imagenes deben ser proporcionadas por el equipo de EcoPlaza.
 - Documentación de DNI sintéticos y vouchers
 
 ---
-**Última actualización:** 13 Enero 2026
-**Responsable:** Strategic Research Agent + Documentation Team
-**Estado:** INVESTIGACIÓN COMPLETADA - LISTO PARA IMPLEMENTACIÓN
+**Última actualización:** 22 Enero 2026
+**Responsable:** Python Data Science Engineer
+**Estado:** ASSETS DE TESTING ACTUALIZADOS - NOTAS DE CRÉDITO DISPONIBLES

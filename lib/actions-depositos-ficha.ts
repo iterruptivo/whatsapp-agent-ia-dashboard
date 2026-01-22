@@ -3,7 +3,7 @@
 // =============================================================================
 // Descripción: CRUD para depósitos en tabla normalizada depositos_ficha
 //              Incluye lectura dual (tabla + fallback JSONB) para migración gradual
-//              Y verificación por Finanzas
+//              Y validación por Finanzas
 // =============================================================================
 
 'use server';
@@ -54,12 +54,12 @@ export interface DepositoFicha {
   uploaded_at: string | null;
   uploaded_by: string | null;
 
-  // Verificación
-  verificado_finanzas: boolean;
-  verificado_finanzas_por: string | null;
-  verificado_finanzas_at: string | null;
-  verificado_finanzas_nombre: string | null;
-  notas_verificacion: string | null;
+  // Validación
+  validado_finanzas: boolean;
+  validado_finanzas_por: string | null;
+  validado_finanzas_at: string | null;
+  validado_finanzas_nombre: string | null;
+  notas_validacion: string | null;
 
   // Vínculo con Control de Pagos
   abono_pago_id: string | null;
@@ -104,10 +104,10 @@ export interface DepositoParaReporte {
   imagen_url: string | null;
   uploaded_at: string | null;
 
-  verificado_finanzas: boolean;
-  verificado_finanzas_por: string | null;
-  verificado_finanzas_at: string | null;
-  verificado_finanzas_nombre: string | null;
+  validado_finanzas: boolean;
+  validado_finanzas_por: string | null;
+  validado_finanzas_at: string | null;
+  validado_finanzas_nombre: string | null;
 }
 
 // =============================================================================
@@ -177,11 +177,11 @@ export async function getDepositosFicha(
       imagen_url: fotos && fotos[index] ? fotos[index] : null,
       uploaded_at: d.uploaded_at,
       uploaded_by: null,
-      verificado_finanzas: false, // JSONB no tiene verificación
-      verificado_finanzas_por: null,
-      verificado_finanzas_at: null,
-      verificado_finanzas_nombre: null,
-      notas_verificacion: null,
+      validado_finanzas: false, // JSONB no tiene validación
+      validado_finanzas_por: null,
+      validado_finanzas_at: null,
+      validado_finanzas_nombre: null,
+      notas_validacion: null,
       abono_pago_id: null,
       vinculado_at: null,
       created_at: d.uploaded_at || new Date().toISOString(),
@@ -203,7 +203,7 @@ export async function getDepositosParaReporte(params: {
   proyectoId?: string;
   fechaDesde?: string;
   fechaHasta?: string;
-  soloNoverificados?: boolean;
+  soloNoValidados?: boolean;
   page?: number;
   pageSize?: number;
 }): Promise<{
@@ -214,7 +214,7 @@ export async function getDepositosParaReporte(params: {
 }> {
   try {
     const supabase = await createClient();
-    const { proyectoId, fechaDesde, fechaHasta, soloNoverificados, page = 1, pageSize = 50 } = params;
+    const { proyectoId, fechaDesde, fechaHasta, soloNoValidados, page = 1, pageSize = 50 } = params;
 
     // Primero intentamos leer de la tabla nueva
     let query = supabase
@@ -244,8 +244,8 @@ export async function getDepositosParaReporte(params: {
       query = query.lte('fecha_comprobante', fechaHasta);
     }
 
-    if (soloNoverificados) {
-      query = query.eq('verificado_finanzas', false);
+    if (soloNoValidados) {
+      query = query.eq('validado_finanzas', false);
     }
 
     // Paginación
@@ -289,10 +289,10 @@ export async function getDepositosParaReporte(params: {
           depositante: d.depositante,
           imagen_url: d.imagen_url,
           uploaded_at: d.uploaded_at,
-          verificado_finanzas: d.verificado_finanzas,
-          verificado_finanzas_por: d.verificado_finanzas_por,
-          verificado_finanzas_at: d.verificado_finanzas_at,
-          verificado_finanzas_nombre: d.verificado_finanzas_nombre,
+          validado_finanzas: d.validado_finanzas,
+          validado_finanzas_por: d.validado_finanzas_por,
+          validado_finanzas_at: d.validado_finanzas_at,
+          validado_finanzas_nombre: d.validado_finanzas_nombre,
         };
       });
 
@@ -353,7 +353,7 @@ export async function crearDeposito(params: {
         imagen_url: params.imagenUrl,
         uploaded_at: new Date().toISOString(),
         uploaded_by: user.id,
-        verificado_finanzas: false,
+        validado_finanzas: false,
       })
       .select('id, indice_original')
       .single();
@@ -413,10 +413,10 @@ export async function crearDeposito(params: {
 }
 
 // =============================================================================
-// VERIFICAR DEPÓSITO POR FINANZAS
+// VALIDAR DEPÓSITO POR FINANZAS
 // =============================================================================
 
-export async function verificarDepositoFinanzas(
+export async function validarDepositoFinanzas(
   depositoId: string,
   notas?: string
 ): Promise<{ success: boolean; message: string }> {
@@ -439,15 +439,15 @@ export async function verificarDepositoFinanzas(
       return { success: false, message: 'Usuario no encontrado' };
     }
 
-    // Solo finanzas puede verificar
+    // Solo finanzas puede validar
     if (userData.rol !== 'finanzas' && userData.rol !== 'admin' && userData.rol !== 'superadmin') {
-      return { success: false, message: 'Solo Finanzas puede verificar depósitos' };
+      return { success: false, message: 'Solo Finanzas puede validar depósitos' };
     }
 
-    // Verificar que no esté ya verificado
+    // Verificar que no esté ya validado
     const { data: deposito } = await supabase
       .from('depositos_ficha')
-      .select('verificado_finanzas')
+      .select('validado_finanzas')
       .eq('id', depositoId)
       .single();
 
@@ -455,53 +455,53 @@ export async function verificarDepositoFinanzas(
       return { success: false, message: 'Depósito no encontrado' };
     }
 
-    if (deposito.verificado_finanzas) {
-      return { success: false, message: 'Este depósito ya está verificado' };
+    if (deposito.validado_finanzas) {
+      return { success: false, message: 'Este depósito ya está validado' };
     }
 
     // Obtener hora de Lima
     const limaTime = new Date().toLocaleString('en-US', {
       timeZone: 'America/Lima',
     });
-    const verificadoAt = new Date(limaTime).toISOString();
+    const validadoAt = new Date(limaTime).toISOString();
 
     // Actualizar
     const { error } = await supabase
       .from('depositos_ficha')
       .update({
-        verificado_finanzas: true,
-        verificado_finanzas_por: userData.id,
-        verificado_finanzas_at: verificadoAt,
-        verificado_finanzas_nombre: userData.nombre,
-        notas_verificacion: notas || null,
+        validado_finanzas: true,
+        validado_finanzas_por: userData.id,
+        validado_finanzas_at: validadoAt,
+        validado_finanzas_nombre: userData.nombre,
+        notas_validacion: notas || null,
       })
       .eq('id', depositoId);
 
     if (error) {
-      console.error('Error verificando depósito:', error);
-      return { success: false, message: 'Error al verificar' };
+      console.error('Error validando depósito:', error);
+      return { success: false, message: 'Error al validar' };
     }
 
-    return { success: true, message: 'Depósito verificado correctamente' };
+    return { success: true, message: 'Depósito validado correctamente' };
   } catch (error) {
-    console.error('Error verificando depósito:', error);
+    console.error('Error validando depósito:', error);
     return { success: false, message: 'Error interno' };
   }
 }
 
 // =============================================================================
-// VERIFICAR MÚLTIPLES DEPÓSITOS (bulk)
+// VALIDAR MÚLTIPLES DEPÓSITOS (bulk)
 // =============================================================================
 
-export async function verificarDepositosBulk(
+export async function validarDepositosBulk(
   depositoIds: string[]
-): Promise<{ success: boolean; message: string; verificados: number }> {
+): Promise<{ success: boolean; message: string; validados: number }> {
   try {
     const supabase = await createClient();
     const { data: { user: authUser } } = await supabase.auth.getUser();
 
     if (!authUser) {
-      return { success: false, message: 'No autenticado', verificados: 0 };
+      return { success: false, message: 'No autenticado', validados: 0 };
     }
 
     // Obtener datos del usuario
@@ -512,49 +512,49 @@ export async function verificarDepositosBulk(
       .single();
 
     if (!userData) {
-      return { success: false, message: 'Usuario no encontrado', verificados: 0 };
+      return { success: false, message: 'Usuario no encontrado', validados: 0 };
     }
 
     if (userData.rol !== 'finanzas' && userData.rol !== 'admin' && userData.rol !== 'superadmin') {
-      return { success: false, message: 'Solo Finanzas puede verificar', verificados: 0 };
+      return { success: false, message: 'Solo Finanzas puede validar', validados: 0 };
     }
 
     const limaTime = new Date().toLocaleString('en-US', {
       timeZone: 'America/Lima',
     });
-    const verificadoAt = new Date(limaTime).toISOString();
+    const validadoAt = new Date(limaTime).toISOString();
 
-    // Actualizar solo los no verificados
+    // Actualizar solo los no validados
     const { data, error } = await supabase
       .from('depositos_ficha')
       .update({
-        verificado_finanzas: true,
-        verificado_finanzas_por: userData.id,
-        verificado_finanzas_at: verificadoAt,
-        verificado_finanzas_nombre: userData.nombre,
+        validado_finanzas: true,
+        validado_finanzas_por: userData.id,
+        validado_finanzas_at: validadoAt,
+        validado_finanzas_nombre: userData.nombre,
       })
       .in('id', depositoIds)
-      .eq('verificado_finanzas', false)
+      .eq('validado_finanzas', false)
       .select('id');
 
     if (error) {
-      console.error('Error verificando depósitos:', error);
-      return { success: false, message: 'Error al verificar', verificados: 0 };
+      console.error('Error validando depósitos:', error);
+      return { success: false, message: 'Error al validar', validados: 0 };
     }
 
     return {
       success: true,
-      message: `${data?.length || 0} depósitos verificados`,
-      verificados: data?.length || 0,
+      message: `${data?.length || 0} depósitos validados`,
+      validados: data?.length || 0,
     };
   } catch (error) {
-    console.error('Error verificando depósitos:', error);
-    return { success: false, message: 'Error interno', verificados: 0 };
+    console.error('Error validando depósitos:', error);
+    return { success: false, message: 'Error interno', validados: 0 };
   }
 }
 
 // =============================================================================
-// CONTAR DEPÓSITOS PENDIENTES DE VERIFICACIÓN
+// CONTAR DEPÓSITOS PENDIENTES DE VALIDACIÓN
 // =============================================================================
 
 export async function contarDepositosPendientes(
@@ -566,7 +566,7 @@ export async function contarDepositosPendientes(
     let query = supabase
       .from('depositos_ficha')
       .select('*', { count: 'exact', head: true })
-      .eq('verificado_finanzas', false);
+      .eq('validado_finanzas', false);
 
     if (proyectoId) {
       query = query.eq('proyecto_id', proyectoId);
@@ -689,7 +689,7 @@ export async function syncDepositosFromFicha(params: {
       };
 
       if (existing) {
-        // Actualizar existente (pero NO cambiar verificado_finanzas)
+        // Actualizar existente (pero NO cambiar validado_finanzas)
         const { error } = await supabase
           .from('depositos_ficha')
           .update({
@@ -705,7 +705,7 @@ export async function syncDepositosFromFicha(params: {
           .from('depositos_ficha')
           .insert({
             ...depositoData,
-            verificado_finanzas: false,
+            validado_finanzas: false,
           });
 
         if (!error) synced++;

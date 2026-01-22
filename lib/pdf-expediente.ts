@@ -28,7 +28,7 @@ interface ExpedienteData {
     tipo: string;
     monto: number;
     fecha: string;
-    verificado: boolean;
+    validado: boolean;
   }>;
   documentos: Array<{
     tipo: string;
@@ -140,7 +140,7 @@ export function generateExpedientePDF(data: ExpedienteData): jsPDF {
       p.tipo.charAt(0).toUpperCase() + p.tipo.slice(1),
       `S/ ${p.monto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`,
       formatDate(p.fecha),
-      p.verificado ? 'Verificado' : 'Pendiente',
+      p.validado ? 'Validado' : 'Pendiente',
     ]);
 
     autoTable(doc, {
@@ -330,7 +330,7 @@ function getTipoEventoLabel(tipo: string): string {
     ficha_creada: 'Ficha Creada',
     documento_subido: 'Documento Subido',
     pago_registrado: 'Pago Registrado',
-    pago_verificado: 'Pago Verificado',
+    pago_validado: 'Pago Validado',
     constancia_generada: 'Constancia Generada',
     contrato_generado: 'Contrato Generado',
     expediente_completo: 'Expediente Completo',

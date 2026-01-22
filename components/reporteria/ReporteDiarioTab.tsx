@@ -31,9 +31,14 @@ import {
   Plus,
   ExternalLink,
   Trash2,
+  Users,
+  Search,
+  FileX,
 } from 'lucide-react';
 import VincularBoletaModal from './VincularBoletaModal';
-import VerificarDepositoModal from './VerificarDepositoModal';
+import ValidarDepositoModal from './ValidarDepositoModal';
+import SubirNotaCreditoModal from './SubirNotaCreditoModal';
+import BoletaHistorialCell from './BoletaHistorialCell';
 import { desvincularBoleta } from '@/lib/actions-fichas-reporte';
 import {
   getAbonosDiarios,
@@ -42,7 +47,7 @@ import {
   type AbonoDiarioSortColumn,
   type SortDirection
 } from '@/lib/actions-fichas-reporte';
-import { verificarDepositoFinanzas } from '@/lib/actions-depositos-ficha';
+import { validarDepositoFinanzas } from '@/lib/actions-depositos-ficha';
 import { CheckCircle2, Clock, ShieldCheck } from 'lucide-react';
 import { getProyectosForFilter } from '@/lib/actions-reporteria';
 import type { Proyecto } from '@/lib/db';
@@ -65,6 +70,18 @@ interface ReporteDiarioTabProps {
 function formatDate(dateStr: string): string {
   const [year, month, day] = dateStr.split('-');
   return `${day}/${month}/${year}`;
+}
+
+// Helper para formatear hora desde timestamp
+function formatTime(timestamp: string): string {
+  try {
+    const date = new Date(timestamp);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  } catch {
+    return '--:--';
+  }
 }
 
 // Helper para formatear fecha con hora (para modal verificación)
@@ -119,6 +136,8 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
   const [fechaHasta, setFechaHasta] = useState(defaultDates.to);
   const [proyectoId, setProyectoId] = useState<string | null>(null);
   const [incluirPruebas, setIncluirPruebas] = useState(false);
+  const [clienteSearch, setClienteSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Paginación
   const [page, setPage] = useState(1);
@@ -139,18 +158,22 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
   const [selectedAbono, setSelectedAbono] = useState<AbonoDiarioRow | null>(null);
   const [deletingBoleta, setDeletingBoleta] = useState<string | null>(null);
 
-  // Verificar si usuario puede vincular boletas
+  // Modal subir Nota de Crédito (Sesión 104)
+  const [showNCModal, setShowNCModal] = useState(false);
+  const [abonoParaNC, setAbonoParaNC] = useState<AbonoDiarioRow | null>(null);
+
+  // Validar si usuario puede vincular boletas
   const canVincularBoleta = ['superadmin', 'admin', 'finanzas'].includes(user.rol);
 
-  // Verificar si usuario puede verificar depósitos (solo finanzas o admin)
-  const canVerificarDeposito = ['superadmin', 'admin', 'finanzas'].includes(user.rol);
+  // Validar si usuario puede validar depósitos (solo finanzas o admin)
+  const canValidarDeposito = ['superadmin', 'admin', 'finanzas'].includes(user.rol);
 
-  // Estado para verificación en progreso
-  const [verificandoId, setVerificandoId] = useState<string | null>(null);
+  // Estado para validación en progreso
+  const [validandoId, setValidandoId] = useState<string | null>(null);
 
-  // Estado para modal de verificación
-  const [showVerificarModal, setShowVerificarModal] = useState(false);
-  const [abonoAVerificar, setAbonoAVerificar] = useState<AbonoDiarioRow | null>(null);
+  // Estado para modal de validación
+  const [showValidarModal, setShowValidarModal] = useState(false);
+  const [abonoAValidar, setAbonoAValidar] = useState<AbonoDiarioRow | null>(null);
 
   // Cargar proyectos al montar
   useEffect(() => {
@@ -160,6 +183,14 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
     }
     loadProyectos();
   }, []);
+
+  // Debounce para búsqueda de cliente
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(clienteSearch);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [clienteSearch]);
 
   // Función para cargar datos
   const loadData = useCallback(async () => {
@@ -172,7 +203,8 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
       pageSize,
       sortColumn,
       sortDirection,
-      incluirPruebas
+      incluirPruebas,
+      clienteSearch: debouncedSearch
     });
     setAbonos(result.data);
     setTotal(result.total);
@@ -181,7 +213,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
     setTotalPEN(result.totalPEN);
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas, refreshKey]);
+  }, [fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas, debouncedSearch, refreshKey]);
 
   // Cargar datos cuando cambian los filtros/paginación/ordenamiento
   useEffect(() => {
@@ -191,7 +223,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
   // Reset página cuando cambian filtros
   useEffect(() => {
     setPage(1);
-  }, [fechaDesde, fechaHasta, proyectoId, incluirPruebas]);
+  }, [fechaDesde, fechaHasta, proyectoId, incluirPruebas, debouncedSearch]);
 
   // Handler para cambiar ordenamiento
   const handleSort = (column: AbonoDiarioSortColumn) => {
@@ -293,6 +325,9 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
     }
   };
 
+  // Ya no filtramos client-side - el filtro se aplica server-side
+  const abonosFiltrados = abonos;
+
   // Calcular rango de registros mostrados
   const startRecord = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const endRecord = Math.min(page * pageSize, total);
@@ -301,6 +336,12 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
   const handleVincularBoleta = (abono: AbonoDiarioRow) => {
     setSelectedAbono(abono);
     setShowBoletaModal(true);
+  };
+
+  // Handler para abrir modal de subir NC
+  const handleSubirNC = (abono: AbonoDiarioRow) => {
+    setAbonoParaNC(abono);
+    setShowNCModal(true);
   };
 
   // Handler para desvincular boleta
@@ -329,30 +370,30 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
     }
   };
 
-  // Handler para abrir modal de verificación
-  const handleVerificarDeposito = (abono: AbonoDiarioRow) => {
+  // Handler para abrir modal de validación
+  const handleValidarDeposito = (abono: AbonoDiarioRow) => {
     if (!abono.deposito_id) {
-      alert('Este depósito no puede ser verificado (no está en la tabla normalizada)');
+      alert('Este depósito no puede ser validado (no está en la tabla normalizada)');
       return;
     }
 
-    if (abono.verificado_finanzas) {
-      alert('Este depósito ya está verificado');
+    if (abono.validado_finanzas) {
+      alert('Este depósito ya está validado');
       return;
     }
 
-    setAbonoAVerificar(abono);
-    setShowVerificarModal(true);
+    setAbonoAValidar(abono);
+    setShowValidarModal(true);
   };
 
-  // Handler para confirmar verificación desde el modal
-  const handleConfirmarVerificacion = async () => {
-    if (!abonoAVerificar?.deposito_id) return;
+  // Handler para confirmar validación desde el modal
+  const handleConfirmarValidacion = async () => {
+    if (!abonoAValidar?.deposito_id) return;
 
-    setVerificandoId(abonoAVerificar.deposito_id);
+    setValidandoId(abonoAValidar.deposito_id);
 
     try {
-      const result = await verificarDepositoFinanzas(abonoAVerificar.deposito_id);
+      const result = await validarDepositoFinanzas(abonoAValidar.deposito_id);
 
       if (result.success) {
         loadData(); // Recargar datos
@@ -360,10 +401,10 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
         throw new Error(result.message);
       }
     } catch (err) {
-      console.error('Error verificando depósito:', err);
+      console.error('Error validando depósito:', err);
       throw err;
     } finally {
-      setVerificandoId(null);
+      setValidandoId(null);
     }
   };
 
@@ -371,42 +412,45 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
     <div className="space-y-4">
       {/* FILTROS */}
       <div className="bg-white rounded-lg shadow-md p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Fecha Desde */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Desde
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+          {/* Fecha de Comprobante - Grupo de 2 columnas */}
+          <div className="lg:col-span-2 space-y-2">
+            <label className="block text-sm font-semibold text-[#192c4d]">
+              Fecha de Comprobante
             </label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="date"
-                value={fechaDesde}
-                onChange={(e) => setFechaDesde(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          {/* Fecha Hasta */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Hasta
-            </label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="date"
-                value={fechaHasta}
-                onChange={(e) => setFechaHasta(e.target.value)}
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              {/* Desde */}
+              <div className="space-y-1">
+                <span className="text-xs text-gray-500">Desde</span>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="date"
+                    value={fechaDesde}
+                    onChange={(e) => setFechaDesde(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
+                  />
+                </div>
+              </div>
+              {/* Hasta */}
+              <div className="space-y-1">
+                <span className="text-xs text-gray-500">Hasta</span>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="date"
+                    value={fechaHasta}
+                    onChange={(e) => setFechaHasta(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Filtro Proyecto */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-[#192c4d]">
               Proyecto
             </label>
             <div className="relative">
@@ -424,6 +468,23 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                 ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Búsqueda por Cliente */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-[#192c4d]">
+              Cliente
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar nombre o DNI..."
+                value={clienteSearch}
+                onChange={(e) => setClienteSearch(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
+              />
             </div>
           </div>
 
@@ -503,11 +564,17 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
               <p className="text-gray-600">Cargando abonos...</p>
             </div>
           </div>
-        ) : abonos.length === 0 ? (
+        ) : abonosFiltrados.length === 0 ? (
           <div className="text-center py-12">
             <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No hay abonos en este período</h3>
-            <p className="text-gray-600">Ajusta el rango de fechas para ver resultados</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {debouncedSearch ? 'No se encontraron resultados' : 'No hay abonos en este período'}
+            </h3>
+            <p className="text-gray-600">
+              {debouncedSearch
+                ? 'Intenta con otro término de búsqueda'
+                : 'Ajusta el rango de fechas para ver resultados'}
+            </p>
           </div>
         ) : (
           <>
@@ -516,16 +583,16 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
                       #
                     </th>
                     <th
-                      onClick={() => handleSort('uploaded_at')}
+                      onClick={() => handleSort('uploaded_at' as AbonoDiarioSortColumn)}
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     >
                       <div className="flex items-center gap-1">
                         F. Subida
-                        {renderSortIcon('uploaded_at')}
+                        {renderSortIcon('uploaded_at' as AbonoDiarioSortColumn)}
                       </div>
                     </th>
                     <th
@@ -542,17 +609,8 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     >
                       <div className="flex items-center gap-1">
-                        Cliente
+                        Cliente / Local
                         {renderSortIcon('cliente_nombre')}
-                      </div>
-                    </th>
-                    <th
-                      onClick={() => handleSort('local_codigo')}
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex items-center gap-1">
-                        Local
-                        {renderSortIcon('local_codigo')}
                       </div>
                     </th>
                     <th
@@ -573,20 +631,11 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                         {renderSortIcon('monto')}
                       </div>
                     </th>
-                    <th
-                      onClick={() => handleSort('banco')}
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex items-center gap-1">
-                        Banco
-                        {renderSortIcon('banco')}
-                      </div>
-                    </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-36">
                       Boleta
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
-                      Verificado
+                      Estado
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                       Acción
@@ -594,127 +643,116 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {abonos.map((abono, index) => (
+                  {abonosFiltrados.map((abono, index) => (
                     <tr key={`${abono.ficha_id}-${index}`} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                         {startRecord + index}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                        {abono.uploaded_at ? (
-                          <div className="flex flex-col">
-                            <span className="text-gray-900 text-xs">
-                              {new Date(abono.uploaded_at).toLocaleDateString('es-PE')}
-                            </span>
-                            <span className="text-gray-400 text-[10px]">
-                              {new Date(abono.uploaded_at).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-300">-</span>
-                        )}
+                      {/* COLUMNA F. SUBIDA - Stacked Fecha + Hora */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-sm text-gray-900">
+                            {abono.uploaded_at ? formatDate(abono.uploaded_at.split('T')[0]) : '-'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {abono.uploaded_at ? formatTime(abono.uploaded_at) : '--:--'}
+                          </span>
+                        </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                        <div className="flex flex-col">
-                          <span>{formatDate(abono.fecha_comprobante)}</span>
-                          {abono.hora_comprobante && (
-                            <span className="text-gray-500 text-xs">{abono.hora_comprobante}</span>
+                      {/* COLUMNA F. COMPROBANTE - Stacked Fecha + Hora */}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-sm font-medium text-gray-900">
+                            {formatDate(abono.fecha_comprobante)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {abono.hora_comprobante || '--:--'}
+                          </span>
+                        </div>
+                      </td>
+                      {/* COLUMNA CLIENTE/LOCAL - Stacked con Badge */}
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium text-sm text-gray-900 truncate max-w-[200px]" title={abono.cliente_nombre}>
+                            {abono.cliente_nombre}
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-[#192c4d] bg-[#1b967a]/10 border border-[#1b967a]/20 rounded w-fit">
+                            {abono.local_codigo}
+                          </span>
+                        </div>
+                      </td>
+                      {/* COLUMNA PROYECTO */}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                        <span className="truncate max-w-[150px] inline-block" title={abono.proyecto_nombre}>
+                          {abono.proyecto_nombre}
+                        </span>
+                      </td>
+                      {/* COLUMNA MONTO - Destacado con tooltip info adicional */}
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span className={`font-bold text-base ${abono.moneda === 'USD' ? 'text-green-600' : 'text-blue-600'}`}>
+                            {abono.moneda === 'USD' ? '$' : 'S/'} {abono.monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                          {abono.banco && (
+                            <span className="text-xs text-gray-500" title={`Banco: ${abono.banco}${abono.numero_operacion ? ' | Op: ' + abono.numero_operacion : ''}`}>
+                              {abono.banco}
+                            </span>
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {abono.cliente_nombre}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                        {abono.local_codigo}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                        {abono.proyecto_nombre}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
-                        <span className={`font-semibold ${abono.moneda === 'USD' ? 'text-green-600' : 'text-blue-600'}`}>
-                          {formatMonto(abono.monto, abono.moneda)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                        {abono.banco || '-'}
-                      </td>
-                      {/* Columna Boleta */}
+                      {/* Columna Boleta - Usa BoletaHistorialCell (Sesión 105) */}
                       <td className="px-4 py-3 whitespace-nowrap text-center">
-                        {abono.boleta_url ? (
-                          // Boleta vinculada - mostrar info
-                          <div className="flex items-center justify-center gap-1">
-                            <a
-                              href={abono.boleta_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors"
-                              title="Ver boleta"
-                            >
-                              <Receipt className="w-3 h-3" />
-                              {abono.numero_boleta}
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                            {canVincularBoleta && (
-                              <button
-                                onClick={() => handleDesvincularBoleta(abono)}
-                                disabled={deletingBoleta === `${abono.ficha_id}-${abono.voucher_index}`}
-                                className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
-                                title="Desvincular boleta"
-                              >
-                                {deletingBoleta === `${abono.ficha_id}-${abono.voucher_index}` ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-                            )}
-                          </div>
-                        ) : canVincularBoleta ? (
-                          // Sin boleta - mostrar botón para agregar (solo roles autorizados)
-                          <button
-                            onClick={() => handleVincularBoleta(abono)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors"
-                            title="Vincular boleta"
+                        <BoletaHistorialCell
+                          boletaData={abono.boleta_data}
+                          canVincular={canVincularBoleta}
+                          canSubirNC={canVincularBoleta}
+                          onVincularBoleta={() => handleVincularBoleta(abono)}
+                          onSubirNC={() => handleSubirNC(abono)}
+                          onDesvincularBoleta={() => handleDesvincularBoleta(abono)}
+                          isDeleting={deletingBoleta === `${abono.ficha_id}-${abono.voucher_index}`}
+                        />
+                        {/* Indicador de boleta compartida */}
+                        {abono.boleta_compartida && (
+                          <span
+                            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 rounded-full mt-1"
+                            title="Esta boleta cubre múltiples depósitos"
                           >
-                            <Plus className="w-3 h-3" />
-                            Agregar
-                          </button>
-                        ) : (
-                          // Sin boleta - usuario sin permisos
-                          <span className="text-xs text-gray-400">-</span>
+                            <Users className="w-2.5 h-2.5" />
+                            Compartida
+                          </span>
                         )}
                       </td>
-                      {/* Columna Verificación Finanzas */}
+                      {/* Columna Validación Finanzas - BADGES COLOR-CODED */}
                       <td className="px-4 py-3 whitespace-nowrap text-center">
-                        {abono.verificado_finanzas ? (
-                          // Verificado
+                        {abono.validado_finanzas ? (
+                          // Validado - Verde con ícono
                           <div
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-green-700 bg-green-50 rounded cursor-help"
-                            title={`Verificado por ${abono.verificado_finanzas_nombre || 'Finanzas'} el ${abono.verificado_finanzas_at ? new Date(abono.verificado_finanzas_at).toLocaleString('es-PE') : ''}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-green-700 bg-green-100 border border-green-200 rounded-lg cursor-help"
+                            title={`Validado por ${abono.validado_finanzas_nombre || 'Finanzas'} el ${abono.validado_finanzas_at ? new Date(abono.validado_finanzas_at).toLocaleString('es-PE') : ''}`}
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
-                            Verificado
+                            <span className="font-semibold">Validado</span>
                           </div>
-                        ) : canVerificarDeposito && abono.deposito_id ? (
-                          // Pendiente - mostrar botón para verificar
+                        ) : canValidarDeposito && abono.deposito_id ? (
+                          // Pendiente - mostrar botón para validar
                           <button
-                            onClick={() => handleVerificarDeposito(abono)}
-                            disabled={verificandoId === abono.deposito_id}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-50"
-                            title="Verificar depósito"
+                            onClick={() => handleValidarDeposito(abono)}
+                            disabled={validandoId === abono.deposito_id}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors disabled:opacity-50"
+                            title="Validar depósito"
                           >
-                            {verificandoId === abono.deposito_id ? (
+                            {validandoId === abono.deposito_id ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             ) : (
-                              <ShieldCheck className="w-3.5 h-3.5" />
+                              <Clock className="w-3.5 h-3.5" />
                             )}
-                            Verificar
+                            <span className="font-semibold">Pendiente</span>
                           </button>
                         ) : (
                           // Pendiente - sin permisos
-                          <div className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-500 bg-gray-100 rounded">
+                          <div className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-lg">
                             <Clock className="w-3.5 h-3.5" />
-                            Pendiente
+                            <span className="font-semibold">Pendiente</span>
                           </div>
                         )}
                       </td>
@@ -735,7 +773,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
 
             {/* Vista Mobile - Cards */}
             <div className="md:hidden divide-y divide-gray-200">
-              {abonos.map((abono, index) => (
+              {abonosFiltrados.map((abono, index) => (
                 <div key={`${abono.ficha_id}-${index}`} className="p-4 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between mb-2">
                     <div>
@@ -759,44 +797,25 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                     )}
                   </div>
 
-                  {/* Boleta en mobile */}
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="text-xs text-gray-500">Boleta:</span>
-                    {abono.boleta_url ? (
-                      <div className="flex items-center gap-1">
-                        <a
-                          href={abono.boleta_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-blue-700 bg-blue-50 rounded"
-                        >
-                          <Receipt className="w-3 h-3" />
-                          {abono.numero_boleta}
-                        </a>
-                        {canVincularBoleta && (
-                          <button
-                            onClick={() => handleDesvincularBoleta(abono)}
-                            disabled={deletingBoleta === `${abono.ficha_id}-${abono.voucher_index}`}
-                            className="p-1 text-red-500"
-                          >
-                            {deletingBoleta === `${abono.ficha_id}-${abono.voucher_index}` ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-3 h-3" />
-                            )}
-                          </button>
-                        )}
-                      </div>
-                    ) : canVincularBoleta ? (
-                      <button
-                        onClick={() => handleVincularBoleta(abono)}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-amber-700 bg-amber-50 rounded"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Agregar
-                      </button>
-                    ) : (
-                      <span className="text-xs text-gray-400">-</span>
+                  {/* Boleta en mobile - Usa BoletaHistorialCell (Sesión 105) */}
+                  <div className="mb-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-gray-500">Boleta:</span>
+                      <BoletaHistorialCell
+                        boletaData={abono.boleta_data}
+                        canVincular={canVincularBoleta}
+                        canSubirNC={canVincularBoleta}
+                        onVincularBoleta={() => handleVincularBoleta(abono)}
+                        onSubirNC={() => handleSubirNC(abono)}
+                        onDesvincularBoleta={() => handleDesvincularBoleta(abono)}
+                        isDeleting={deletingBoleta === `${abono.ficha_id}-${abono.voucher_index}`}
+                      />
+                    </div>
+                    {abono.boleta_compartida && (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 bg-purple-100 rounded-full mt-1">
+                        <Users className="w-2.5 h-2.5" />
+                        Compartida
+                      </span>
                     )}
                   </div>
 
@@ -921,27 +940,51 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
           clienteNombre={selectedAbono.cliente_nombre}
           localCodigo={selectedAbono.local_codigo}
           monto={formatMonto(selectedAbono.monto, selectedAbono.moneda)}
+          montoNumerico={selectedAbono.monto}
+          moneda={selectedAbono.moneda}
+          horaComprobante={selectedAbono.hora_comprobante}
+          fechaComprobante={selectedAbono.fecha_comprobante}
           onSuccess={() => {
             loadData(); // Recargar datos después de vincular
           }}
         />
       )}
 
-      {/* Modal Verificar Depósito */}
-      {abonoAVerificar && (
-        <VerificarDepositoModal
-          isOpen={showVerificarModal}
+      {/* Modal Validar Depósito */}
+      {abonoAValidar && (
+        <ValidarDepositoModal
+          isOpen={showValidarModal}
           onClose={() => {
-            setShowVerificarModal(false);
-            setAbonoAVerificar(null);
+            setShowValidarModal(false);
+            setAbonoAValidar(null);
           }}
-          onConfirm={handleConfirmarVerificacion}
-          monto={formatMonto(abonoAVerificar.monto, abonoAVerificar.moneda)}
-          cliente={abonoAVerificar.cliente_nombre}
-          banco={abonoAVerificar.banco}
-          fecha={formatDateWithTime(abonoAVerificar.fecha_comprobante + (abonoAVerificar.hora_comprobante ? ' ' + abonoAVerificar.hora_comprobante : ''))}
+          onConfirm={handleConfirmarValidacion}
+          monto={formatMonto(abonoAValidar.monto, abonoAValidar.moneda)}
+          cliente={abonoAValidar.cliente_nombre}
+          banco={abonoAValidar.banco}
+          fecha={formatDateWithTime(abonoAValidar.fecha_comprobante + (abonoAValidar.hora_comprobante ? ' ' + abonoAValidar.hora_comprobante : ''))}
+        />
+      )}
+
+      {/* Modal Subir Nota de Crédito */}
+      {abonoParaNC && (
+        <SubirNotaCreditoModal
+          isOpen={showNCModal}
+          onClose={() => {
+            setShowNCModal(false);
+            setAbonoParaNC(null);
+          }}
+          fichaId={abonoParaNC.ficha_id}
+          voucherIndex={abonoParaNC.voucher_index}
+          clienteNombre={abonoParaNC.cliente_nombre}
+          localCodigo={abonoParaNC.local_codigo}
+          numeroBoleta={abonoParaNC.numero_boleta || ''}
+          onSuccess={() => {
+            loadData(); // Recargar datos después de subir NC
+          }}
         />
       )}
     </div>
   );
 }
+

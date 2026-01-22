@@ -522,7 +522,7 @@ export async function buscarMatchesPosibles(
     .lte('fecha_abono', fechaMax.toISOString().split('T')[0])
     .gte('monto', montoMin)
     .lte('monto', montoMax)
-    .is('verificado_por', null); // Solo abonos no verificados
+    .is('validado_por', null); // Solo abonos no validados
 
   if (abonosError || !abonos) {
     return [];

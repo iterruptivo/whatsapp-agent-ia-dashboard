@@ -342,7 +342,7 @@ export async function getExpedienteParaPDF(controlPagoId: string): Promise<{
       tipo: string;
       monto: number;
       fecha: string;
-      verificado: boolean;
+      validado: boolean;
     }>;
     documentos: Array<{
       tipo: string;
@@ -392,7 +392,7 @@ export async function getExpedienteParaPDF(controlPagoId: string): Promise<{
     // 2. Obtener pagos
     const { data: abonos, error: abonosError } = await supabase
       .from('abonos_pago')
-      .select('id, tipo_pago, monto, fecha_pago, verificado')
+      .select('id, tipo_pago, monto, fecha_pago, validado')
       .eq('control_pago_id', controlPagoId)
       .order('fecha_pago', { ascending: true });
 
@@ -450,7 +450,7 @@ export async function getExpedienteParaPDF(controlPagoId: string): Promise<{
           tipo: a.tipo_pago,
           monto: a.monto,
           fecha: a.fecha_pago,
-          verificado: a.verificado,
+          validado: a.validado,
         })),
         documentos: docsResult.data?.documentos || [],
         eventos: timelineResult.data?.eventos || [],
@@ -524,16 +524,16 @@ export async function registrarEventoPago(input: {
   tipoPago: string;
   monto: number;
   voucherUrl?: string;
-  verificado: boolean;
+  validado: boolean;
   usuarioId: string;
 }): Promise<{
   success: boolean;
   error?: string;
 }> {
   try {
-    const tipoEvento = input.verificado ? 'pago_verificado' : 'pago_registrado';
-    const descripcion = input.verificado
-      ? `Pago de ${input.tipoPago} verificado: S/ ${input.monto.toFixed(2)}`
+    const tipoEvento = input.validado ? 'pago_validado' : 'pago_registrado';
+    const descripcion = input.validado
+      ? `Pago de ${input.tipoPago} validado: S/ ${input.monto.toFixed(2)}`
       : `Pago de ${input.tipoPago} registrado: S/ ${input.monto.toFixed(2)}`;
 
     await registrarEventoExpediente({
@@ -546,7 +546,7 @@ export async function registrarEventoPago(input: {
       metadata: {
         tipo_pago: input.tipoPago,
         monto: input.monto,
-        verificado: input.verificado,
+        validado: input.validado,
       },
       usuarioId: input.usuarioId,
     });

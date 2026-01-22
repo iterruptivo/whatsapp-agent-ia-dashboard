@@ -110,7 +110,7 @@ export default function ExpedienteDigitalPanel({
         return <FolderOpen className="w-4 h-4 text-purple-500" />;
       case 'pago_registrado':
         return <Clock className="w-4 h-4 text-yellow-500" />;
-      case 'pago_verificado':
+      case 'pago_validado':
         return <CheckCircle2 className="w-4 h-4 text-green-500" />;
       case 'constancia_generada':
         return <FileCheck className="w-4 h-4 text-teal-500" />;
@@ -129,7 +129,7 @@ export default function ExpedienteDigitalPanel({
       ficha_creada: 'Ficha Creada',
       documento_subido: 'Documento Subido',
       pago_registrado: 'Pago Registrado',
-      pago_verificado: 'Pago Verificado',
+      pago_validado: 'Pago Validado',
       constancia_generada: 'Constancia Generada',
       contrato_generado: 'Contrato Generado',
       expediente_completo: 'Expediente Completo',

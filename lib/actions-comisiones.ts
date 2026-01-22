@@ -25,7 +25,7 @@ export interface Comision {
   proyecto_nombre?: string;
   usuario_nombre?: string;
   proyecto_id?: string; // Sesión 64: Filtro por proyecto
-  inicial_verificado_finanzas?: boolean; // Sesión 67: Verificación por Finanzas
+  inicial_validado_finanzas?: boolean; // Sesión 67: Validación por Finanzas
 }
 
 export interface ComisionStats {

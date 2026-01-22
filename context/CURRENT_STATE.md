@@ -4,6 +4,143 @@
 
 ---
 
+## SESIÓN 100+ - Corrección Bug Bucket Notas de Crédito (22 Enero 2026)
+
+**Tipo:** Bugfix Frontend (Completado)
+
+**Objetivo:** Corregir bug crítico en SubirNotaCreditoModal donde se usaba bucket 'fichas' inexistente en lugar de 'documentos-ficha'.
+
+**Problema:**
+- Modal de Nota de Crédito usaba `.from('fichas')` en líneas 107 y 117
+- Bucket 'fichas' NO existe en Supabase
+- Bucket correcto: 'documentos-ficha' (público, usado para boletas y documentos)
+- Causaba error al intentar subir archivos NC
+
+**Solución:**
+- ✅ Línea 107: `.from('fichas')` → `.from('documentos-ficha')`
+- ✅ Línea 117: `.from('fichas')` → `.from('documentos-ficha')`
+- ✅ Verificado: No hay otros usos de bucket 'fichas' en el proyecto
+- ✅ Verificado: No hay otros archivos con el mismo problema
+
+**Archivo Modificado:**
+- `components/reporteria/SubirNotaCreditoModal.tsx`
+
+**Contexto:**
+- Bucket 'documentos-ficha' es público
+- Se usa para almacenar todas las boletas y documentos de fichas de inscripción
+- Path de archivo: `notas-credito/nc-{fichaId}-{voucherIndex}-{timestamp}.{ext}`
+
+**Estado:** ✅ Listo para testing
+
+---
+
+## SESIÓN 100+ - Investigación Depósitos Proyecto Pruebas (22 Enero 2026)
+
+**Tipo:** Database Investigation (Completado)
+
+**Objetivo:** Verificar la cantidad real de depósitos/abonos en el Proyecto Pruebas para validación de datos.
+
+**Resultados de Investigación:**
+
+**Proyecto Pruebas:**
+- proyecto_id: `80761314-7a78-43db-8ad5-10f16eedac87`
+- Nombre: "Proyecto Pruebas"
+
+**Estadísticas de Depósitos (depositos_ficha):**
+- **Total depósitos:** 10
+- **Fichas con depósitos:** 6 (clientes únicos)
+- **Rango de fechas:** Todos en 2026-01-02 (02 Enero 2026)
+- **Validados por Finanzas:** 2 depósitos (20%)
+- **Pendientes de validación:** 8 depósitos (80%)
+
+**Desglose por Local:**
+- A-103: 2 depósitos (1 validado, 1 pendiente)
+- A-104: 1 depósito (pendiente)
+- A-105: 1 depósito (pendiente)
+- A-106: 4 depósitos (1 validado, 3 pendientes)
+- B-207: 1 depósito (pendiente)
+- B-209: 1 depósito (pendiente)
+
+**Distribución por Moneda:**
+- USD: 5 depósitos
+- PEN: 5 depósitos
+
+**Distribución por Banco:**
+- BBVA: 5 depósitos
+- Yape: 2 depósitos (ambos validados)
+- Interbank: 1 depósito
+- BCP: 2 depósitos
+
+**Queries ejecutadas:**
+```sql
+-- Total depósitos en Proyecto Pruebas
+SELECT COUNT(*) FROM depositos_ficha df
+JOIN clientes_ficha cf ON cf.id = df.ficha_id
+JOIN locales l ON l.id = cf.local_id
+WHERE l.proyecto_id = '80761314-7a78-43db-8ad5-10f16eedac87'
+-- Resultado: 10
+
+-- Fichas con depósitos
+SELECT COUNT(DISTINCT cf.id) FROM clientes_ficha cf
+JOIN depositos_ficha df ON df.ficha_id = cf.id
+JOIN locales l ON l.id = cf.local_id
+WHERE l.proyecto_id = '80761314-7a78-43db-8ad5-10f16eedac87'
+-- Resultado: 6
+
+-- Rango de fechas
+SELECT MIN(fecha_comprobante), MAX(fecha_comprobante), COUNT(*)
+FROM depositos_ficha df
+JOIN clientes_ficha cf ON cf.id = df.ficha_id
+JOIN locales l ON l.id = cf.local_id
+WHERE l.proyecto_id = '80761314-7a78-43db-8ad5-10f16eedac87'
+-- Resultado: 2026-01-02 a 2026-01-02, total: 10
+```
+
+**Observaciones:**
+- Todos los depósitos fueron creados en la misma fecha (02 Enero 2026)
+- Esto sugiere que son datos de prueba/demostración creados en batch
+- La distribución es realista para testing (mix de monedas, bancos, estados)
+- Validación funciona correctamente (2 depósitos fueron validados)
+
+---
+
+## SESIÓN 100+ - Migración "verificado" → "validado" (21 Enero 2026)
+
+**Tipo:** Database Schema Migration (Completado)
+
+**Objetivo:** Estandarizar terminología en módulo de pagos, cambiando "verificado" a "validado" para alinearse con el flujo de negocio de Finanzas.
+
+**Tablas afectadas:**
+- `depositos_ficha` - 4 columnas renombradas
+- `abonos_pago` - 4 columnas renombradas
+
+**Ejecución:**
+- ✅ Migración SQL: `migrations/020_verificado_a_validado.sql`
+- ✅ Script ejecutor: `scripts/run-migration-020.ts`
+- ✅ Columnas renombradas exitosamente:
+  - `verificado_finanzas` → `validado_finanzas`
+  - `verificado_finanzas_por` → `validado_finanzas_por`
+  - `verificado_finanzas_at` → `validado_finanzas_at`
+  - `verificado_finanzas_nombre` → `validado_finanzas_nombre`
+- ✅ Índices renombrados:
+  - `idx_depositos_ficha_pendientes` → `idx_depositos_ficha_no_validados`
+  - `idx_abonos_verificacion_pendiente` → `idx_abonos_validacion_pendiente`
+
+**Resultados:**
+- Total depósitos (TODAS LAS TABLAS): 523 (2 validados, 521 pendientes)
+- Total abonos (TODAS LAS TABLAS): 24 (2 validados, 22 pendientes)
+- **Proyecto Pruebas específicamente:** 10 depósitos (2 validados, 8 pendientes)
+- ✅ No quedan referencias a "verificado" en esquema
+- ✅ Índices parciales funcionando correctamente
+- ✅ Comentarios actualizados
+
+**Impacto en código:**
+- ALTER COLUMN RENAME es seguro (no requiere migración de datos)
+- TypeScript debe actualizarse para usar nuevos nombres de columnas
+- Componentes de UI deben cambiar "verificar" por "validar"
+
+---
+
 ## SESIÓN 100+ - Migración Locales Excepcionales + Creación Masiva Usuarios (20 Enero 2026)
 
 ### Parte 1: Migración Locales Excepcionales

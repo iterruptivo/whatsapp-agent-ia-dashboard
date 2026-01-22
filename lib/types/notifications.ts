@@ -47,7 +47,7 @@ export type NotificationType =
   | 'pr_escalated'
   // Pagos
   | 'payment_registered'
-  | 'payment_verified'
+  | 'payment_validated'
   | 'payment_rejected'
   // Aprobaciones generales
   | 'approval_requested'
@@ -481,7 +481,7 @@ export const TYPE_TO_CATEGORY: Record<NotificationType, NotificationCategory> = 
 
   // Pagos
   payment_registered: 'pagos',
-  payment_verified: 'pagos',
+  payment_validated: 'pagos',
   payment_rejected: 'pagos',
 
   // Aprobaciones

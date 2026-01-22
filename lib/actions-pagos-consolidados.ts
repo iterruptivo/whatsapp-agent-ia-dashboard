@@ -26,9 +26,9 @@ export interface PagoConsolidado {
   numero_operacion: string | null;
   banco_origen: string | null;
   metodo_pago: string;
-  estado: 'pendiente' | 'verificado' | 'rechazado';
-  verificado_por: string | null;
-  fecha_verificacion: string | null;
+  estado: 'pendiente' | 'validado' | 'rechazado';
+  validado_por: string | null;
+  fecha_validacion: string | null;
   notas: string | null;
   created_at: string;
   created_by: string;
@@ -438,7 +438,7 @@ export async function createPagoConsolidado(
  */
 export async function getPagosConsolidados(
   proyectoId: string,
-  estado?: 'pendiente' | 'verificado' | 'rechazado'
+  estado?: 'pendiente' | 'validado' | 'rechazado'
 ): Promise<{ success: boolean; data?: PagoConsolidado[]; message?: string }> {
   const supabase = await getSupabase();
 
@@ -514,9 +514,9 @@ export async function getPagoConsolidadoConDistribucion(
 }
 
 /**
- * Verificar un pago consolidado (rol finanzas)
+ * Validar un pago consolidado (rol finanzas)
  */
-export async function verificarPagoConsolidado(
+export async function validarPagoConsolidado(
   pagoConsolidadoId: string,
   usuarioId: string
 ): Promise<{ success: boolean; message?: string }> {
@@ -528,7 +528,7 @@ export async function verificarPagoConsolidado(
       return { success: false, message: 'No autenticado' };
     }
 
-    // Verificar rol finanzas
+    // Validar rol finanzas
     const { data: userData } = await supabase
       .from('usuarios')
       .select('rol')
@@ -536,10 +536,10 @@ export async function verificarPagoConsolidado(
       .single();
 
     if (!userData || userData.rol !== 'finanzas') {
-      return { success: false, message: 'Solo el rol Finanzas puede verificar pagos' };
+      return { success: false, message: 'Solo el rol Finanzas puede validar pagos' };
     }
 
-    // Verificar que esté pendiente
+    // Validar que esté pendiente
     const { data: pago } = await supabase
       .from('pagos_consolidados')
       .select('estado')
@@ -554,18 +554,18 @@ export async function verificarPagoConsolidado(
     const { error } = await supabase
       .from('pagos_consolidados')
       .update({
-        estado: 'verificado',
-        verificado_por: usuarioId,
-        fecha_verificacion: new Date().toISOString(),
+        estado: 'validado',
+        validado_por: usuarioId,
+        fecha_validacion: new Date().toISOString(),
       })
       .eq('id', pagoConsolidadoId);
 
     if (error) {
-      console.error('[PAGOS-CONSOLIDADOS] Error verificando:', error);
-      return { success: false, message: 'Error al verificar el pago' };
+      console.error('[PAGOS-CONSOLIDADOS] Error validando:', error);
+      return { success: false, message: 'Error al validar el pago' };
     }
 
-    return { success: true, message: 'Pago verificado exitosamente' };
+    return { success: true, message: 'Pago validado exitosamente' };
   } catch (error) {
     console.error('[PAGOS-CONSOLIDADOS] Error:', error);
     return { success: false, message: 'Error inesperado' };

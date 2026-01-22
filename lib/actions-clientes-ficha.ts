@@ -286,6 +286,49 @@ export async function upsertClienteFicha(input: ClienteFichaInput): Promise<{ su
 
     const existing = await getClienteFichaByLocalId(input.local_id);
 
+    // ========================================================================
+    // VALIDACIONES: Verificar que el local existe y no tiene otra ficha
+    // ========================================================================
+
+    // 1. Verificar que el local existe
+    const { data: localExiste, error: errorLocal } = await supabase
+      .from('locales')
+      .select('id, codigo')
+      .eq('id', input.local_id)
+      .maybeSingle();
+
+    if (errorLocal) {
+      console.error('[CLIENTES_FICHA] Error verificando local:', errorLocal);
+      return {
+        success: false,
+        message: 'Error al verificar el local'
+      };
+    }
+
+    if (!localExiste) {
+      return {
+        success: false,
+        message: `El local con ID ${input.local_id} no existe`
+      };
+    }
+
+    // 2. Verificar que el local no tiene otra ficha (excepto si es la misma)
+    const { data: fichaExistente } = await supabase
+      .from('clientes_ficha')
+      .select('id, local_id')
+      .eq('local_id', input.local_id)
+      .maybeSingle();
+
+    // Si existe ficha para este local Y no es la que estamos editando
+    if (fichaExistente && fichaExistente.id !== existing?.id) {
+      return {
+        success: false,
+        message: `El local ${localExiste.codigo} ya tiene una ficha de inscripción asignada`
+      };
+    }
+
+    // ========================================================================
+
     let fichaData: ClienteFicha;
 
     if (existing) {

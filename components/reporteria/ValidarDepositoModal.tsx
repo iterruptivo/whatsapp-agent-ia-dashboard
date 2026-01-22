@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { X, ShieldCheck, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
 
-interface VerificarDepositoModalProps {
+interface ValidarDepositoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => Promise<void>;
@@ -13,7 +13,7 @@ interface VerificarDepositoModalProps {
   fecha: string;
 }
 
-export default function VerificarDepositoModal({
+export default function ValidarDepositoModal({
   isOpen,
   onClose,
   onConfirm,
@@ -21,7 +21,7 @@ export default function VerificarDepositoModal({
   cliente,
   banco,
   fecha,
-}: VerificarDepositoModalProps) {
+}: ValidarDepositoModalProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -61,10 +61,10 @@ export default function VerificarDepositoModal({
             )}
           </div>
           <h2 className="text-xl font-bold text-white">
-            {success ? '¡Verificado!' : 'Verificar Depósito'}
+            {success ? '¡Validado!' : 'Validar Depósito'}
           </h2>
           <p className="text-white/80 text-sm mt-1">
-            {success ? 'El depósito ha sido verificado correctamente' : 'Esta acción no se puede deshacer'}
+            {success ? 'El depósito ha sido validado correctamente' : 'Esta acción no se puede deshacer'}
           </p>
         </div>
 
@@ -107,7 +107,7 @@ export default function VerificarDepositoModal({
               <div className="flex items-start gap-3 mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                 <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-amber-800">
-                  Al verificar este depósito, confirmas que los datos son correctos y que el pago ha sido recibido.
+                  Al validar este depósito, confirmas que los datos son correctos y que el pago ha sido recibido.
                 </p>
               </div>
             </div>
@@ -129,12 +129,12 @@ export default function VerificarDepositoModal({
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Verificando...
+                    Validando...
                   </>
                 ) : (
                   <>
                     <ShieldCheck className="w-4 h-4" />
-                    Confirmar Verificación
+                    Confirmar Validación
                   </>
                 )}
               </button>

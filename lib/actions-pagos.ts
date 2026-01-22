@@ -28,11 +28,11 @@ export interface AbonoPago {
   notas: string | null;
   registrado_por: string;
   created_at: string;
-  // Campos de verificación por Finanzas
-  verificado_finanzas: boolean;
-  verificado_finanzas_por: string | null;
-  verificado_finanzas_at: string | null;
-  verificado_finanzas_nombre: string | null;
+  // Campos de validación por Finanzas
+  validado_finanzas: boolean;
+  validado_finanzas_por: string | null;
+  validado_finanzas_at: string | null;
+  validado_finanzas_nombre: string | null;
 }
 
 export interface PagoConAbonos extends PagoLocal {
@@ -410,10 +410,10 @@ export async function toggleSeparacionPagada(data: {
   }
 }
 
-// Verificación de abono por Finanzas (IRREVERSIBLE)
-export async function toggleVerificacionAbono(data: {
+// Validación de abono por Finanzas (IRREVERSIBLE)
+export async function validarAbonoPorFinanzas(data: {
   abonoId: string;
-  verificado: boolean;
+  validado: boolean;
   usuarioId: string;
   usuarioNombre: string;
 }) {
@@ -444,47 +444,47 @@ export async function toggleVerificacionAbono(data: {
       .single();
 
     if (!userData || userData.rol !== 'finanzas') {
-      return { success: false, message: 'Solo el rol Finanzas puede verificar abonos' };
+      return { success: false, message: 'Solo el rol Finanzas puede validar abonos' };
     }
 
-    // BLOQUEAR desverificación (acción irreversible)
-    if (!data.verificado) {
-      return { success: false, message: 'La verificación es irreversible y no puede deshacerse' };
+    // BLOQUEAR desvalidación (acción irreversible)
+    if (!data.validado) {
+      return { success: false, message: 'La validación es irreversible y no puede deshacerse' };
     }
 
-    // Verificar que el abono no esté ya verificado
+    // Verificar que el abono no esté ya validado
     const { data: abonoActual } = await supabase
       .from('abonos_pago')
-      .select('verificado_finanzas')
+      .select('validado_finanzas')
       .eq('id', data.abonoId)
       .single();
 
-    if (abonoActual?.verificado_finanzas) {
-      return { success: false, message: 'Este abono ya fue verificado' };
+    if (abonoActual?.validado_finanzas) {
+      return { success: false, message: 'Este abono ya fue validado' };
     }
 
-    // Marcar como verificado - usar fecha Lima Perú
+    // Marcar como validado - usar fecha Lima Perú
     const fechaLima = new Date().toLocaleString('en-US', { timeZone: 'America/Lima' });
-    const fechaVerificacion = new Date(fechaLima).toISOString();
+    const fechaValidacion = new Date(fechaLima).toISOString();
 
     const { error } = await supabase
       .from('abonos_pago')
       .update({
-        verificado_finanzas: true,
-        verificado_finanzas_por: data.usuarioId,
-        verificado_finanzas_at: fechaVerificacion,
-        verificado_finanzas_nombre: data.usuarioNombre,
+        validado_finanzas: true,
+        validado_finanzas_por: data.usuarioId,
+        validado_finanzas_at: fechaValidacion,
+        validado_finanzas_nombre: data.usuarioNombre,
       })
       .eq('id', data.abonoId);
 
     if (error) {
-      console.error('[PAGOS] Error verificando abono:', error);
-      return { success: false, message: 'Error al verificar abono' };
+      console.error('[PAGOS] Error validando abono:', error);
+      return { success: false, message: 'Error al validar abono' };
     }
 
-    return { success: true, message: 'Abono verificado por Finanzas' };
+    return { success: true, message: 'Abono validado por Finanzas' };
   } catch (error) {
-    console.error('[PAGOS] Error en toggleVerificacionAbono:', error);
+    console.error('[PAGOS] Error en validarAbonoPorFinanzas:', error);
     return { success: false, message: 'Error inesperado' };
   }
 }

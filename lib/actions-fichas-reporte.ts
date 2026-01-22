@@ -372,6 +372,7 @@ export interface AbonoDiarioRow {
   local_codigo: string;
   proyecto_nombre: string;
   cliente_nombre: string;
+  cliente_dni?: string;
   // Fecha/hora de subida a la plataforma
   uploaded_at: string | null;
   // Fecha y hora del comprobante (del voucher)
@@ -386,12 +387,21 @@ export interface AbonoDiarioRow {
   boleta_url: string | null;
   numero_boleta: string | null;
   boleta_tipo: 'boleta' | 'factura' | null;
-  // Campos de verificación por Finanzas (nuevos)
+  // Campos de Nota de Crédito (Sesión 104)
+  nota_credito_url?: string;
+  nota_credito_numero?: string;
+  nota_credito_at?: string;
+  nota_credito_by_nombre?: string;
+  // Campos de validación por Finanzas (nuevos)
   deposito_id: string | null; // ID en tabla depositos_ficha (null si no migrado)
-  verificado_finanzas: boolean;
-  verificado_finanzas_por: string | null;
-  verificado_finanzas_at: string | null;
-  verificado_finanzas_nombre: string | null;
+  validado_finanzas: boolean;
+  validado_finanzas_por: string | null;
+  validado_finanzas_at: string | null;
+  validado_finanzas_nombre: string | null;
+  // Indicador de boleta compartida (misma boleta para múltiples depósitos)
+  boleta_compartida: boolean;
+  // Datos completos de boleta con historial (Sesión 105)
+  boleta_data: BoletaVinculadaV2 | null;
 }
 
 // Columnas ordenables
@@ -410,6 +420,8 @@ interface GetAbonosDiariosParams {
   sortDirection?: SortDirection;
   // Filtro de proyecto pruebas (por defecto se excluye)
   incluirPruebas?: boolean;
+  // Búsqueda de cliente por nombre o DNI
+  clienteSearch?: string;
 }
 
 interface GetAbonosDiariosResult {
@@ -464,6 +476,77 @@ export interface BoletaVinculada {
   uploaded_at: string;
   uploaded_by_id: string;
   uploaded_by_nombre: string;
+  // Campos de Nota de Crédito (Sesión 104)
+  nota_credito_url?: string;
+  nota_credito_numero?: string;
+  nota_credito_at?: string;
+  nota_credito_by_id?: string;
+  nota_credito_by_nombre?: string;
+}
+
+// ============================================================================
+// HISTORIAL DE BOLETAS V2 - Sesión 105
+// ============================================================================
+
+// Nueva interface para cada entrada del historial
+export interface BoletaHistorialEntry {
+  id: string;                      // UUID único
+  boleta_url: string;
+  numero_boleta: string;
+  tipo: 'boleta' | 'factura';
+  estado: 'activa' | 'anulada_por_nc';
+  uploaded_at: string;
+  uploaded_by_id: string;
+  uploaded_by_nombre: string;
+  // NC (solo si anulada)
+  nota_credito_url?: string;
+  nota_credito_numero?: string;
+  nota_credito_at?: string;
+  nota_credito_by_id?: string;
+  nota_credito_by_nombre?: string;
+}
+
+// Nueva estructura principal con historial
+export interface BoletaVinculadaV2 {
+  voucher_index: number;
+  historial: BoletaHistorialEntry[];  // Array cronológico
+  boleta_activa_id: string | null;    // Referencia rápida a la entrada activa
+}
+
+/**
+ * Normaliza una boleta vinculada al formato V2 con historial
+ * Si ya tiene historial, retorna como está
+ * Si es formato legacy, lo convierte automáticamente (migración lazy)
+ */
+function normalizarBoletaVinculada(b: any): BoletaVinculadaV2 {
+  // Si ya tiene historial, es formato V2
+  if (b.historial && Array.isArray(b.historial)) {
+    return b as BoletaVinculadaV2;
+  }
+
+  // Migrar formato legacy a V2
+  const id = crypto.randomUUID();
+  const tieneNC = !!b.nota_credito_url;
+
+  return {
+    voucher_index: b.voucher_index,
+    boleta_activa_id: tieneNC ? null : id,
+    historial: [{
+      id,
+      boleta_url: b.boleta_url,
+      numero_boleta: b.numero_boleta,
+      tipo: b.tipo,
+      estado: tieneNC ? 'anulada_por_nc' : 'activa',
+      uploaded_at: b.uploaded_at,
+      uploaded_by_id: b.uploaded_by_id,
+      uploaded_by_nombre: b.uploaded_by_nombre,
+      nota_credito_url: b.nota_credito_url,
+      nota_credito_numero: b.nota_credito_numero,
+      nota_credito_at: b.nota_credito_at,
+      nota_credito_by_id: b.nota_credito_by_id,
+      nota_credito_by_nombre: b.nota_credito_by_nombre,
+    }]
+  };
 }
 
 async function fetchAllAbonosFiltered(
@@ -493,10 +576,10 @@ async function fetchAllAbonosFiltered(
       banco,
       numero_operacion,
       uploaded_at,
-      verificado_finanzas,
-      verificado_finanzas_por,
-      verificado_finanzas_at,
-      verificado_finanzas_nombre,
+      validado_finanzas,
+      validado_finanzas_por,
+      validado_finanzas_at,
+      validado_finanzas_nombre,
       locales!inner (
         id,
         codigo,
@@ -510,6 +593,7 @@ async function fetchAllAbonosFiltered(
         titular_nombres,
         titular_apellido_paterno,
         titular_apellido_materno,
+        titular_numero_documento,
         boletas_vinculadas
       )
     `)
@@ -547,9 +631,36 @@ async function fetchAllAbonosFiltered(
       ficha?.titular_apellido_materno
     ].filter(Boolean).join(' ') || 'Sin nombre';
 
-    // Buscar boleta vinculada
-    const boletasVinculadas = (ficha?.boletas_vinculadas || []) as BoletaVinculada[];
-    const boletaVinculada = boletasVinculadas.find(b => b.voucher_index === dep.indice_original);
+    // Buscar boleta vinculada y normalizar a V2
+    const boletasRaw = (ficha?.boletas_vinculadas || []) as any[];
+    const boletasNormalizadas = boletasRaw.map(normalizarBoletaVinculada);
+    const boletaData = boletasNormalizadas.find(b => b.voucher_index === dep.indice_original) || null;
+
+    // Extraer datos de la boleta activa o última para compatibilidad con campos legacy
+    let boletaUrl: string | null = null;
+    let numeroBoleta: string | null = null;
+    let boletaTipo: 'boleta' | 'factura' | null = null;
+    let notaCreditoUrl: string | undefined;
+    let notaCreditoNumero: string | undefined;
+    let notaCreditoAt: string | undefined;
+    let notaCreditoByNombre: string | undefined;
+
+    if (boletaData && boletaData.historial.length > 0) {
+      // Buscar la boleta activa o la última entrada
+      const boletaActiva = boletaData.boleta_activa_id
+        ? boletaData.historial.find(h => h.id === boletaData.boleta_activa_id)
+        : null;
+      const ultimaEntrada = boletaData.historial[boletaData.historial.length - 1];
+      const entradaPrincipal = boletaActiva || ultimaEntrada;
+
+      boletaUrl = entradaPrincipal.boleta_url;
+      numeroBoleta = entradaPrincipal.numero_boleta;
+      boletaTipo = entradaPrincipal.tipo;
+      notaCreditoUrl = entradaPrincipal.nota_credito_url;
+      notaCreditoNumero = entradaPrincipal.nota_credito_numero;
+      notaCreditoAt = entradaPrincipal.nota_credito_at;
+      notaCreditoByNombre = entradaPrincipal.nota_credito_by_nombre;
+    }
 
     return {
       ficha_id: dep.ficha_id || '',
@@ -557,6 +668,7 @@ async function fetchAllAbonosFiltered(
       local_codigo: local?.codigo || 'N/A',
       proyecto_nombre: proyecto?.nombre || 'N/A',
       cliente_nombre: clienteNombre,
+      cliente_dni: ficha?.titular_numero_documento,
       uploaded_at: dep.uploaded_at,
       fecha_comprobante: dep.fecha_comprobante,
       hora_comprobante: dep.hora_comprobante,
@@ -565,15 +677,24 @@ async function fetchAllAbonosFiltered(
       banco: dep.banco,
       numero_operacion: dep.numero_operacion,
       voucher_index: dep.indice_original || 0,
-      boleta_url: boletaVinculada?.boleta_url || null,
-      numero_boleta: boletaVinculada?.numero_boleta || null,
-      boleta_tipo: boletaVinculada?.tipo || null,
-      // Nuevos campos de verificación
+      boleta_url: boletaUrl,
+      numero_boleta: numeroBoleta,
+      boleta_tipo: boletaTipo,
+      // Campos de Nota de Crédito
+      nota_credito_url: notaCreditoUrl,
+      nota_credito_numero: notaCreditoNumero,
+      nota_credito_at: notaCreditoAt,
+      nota_credito_by_nombre: notaCreditoByNombre,
+      // Nuevos campos de validación
       deposito_id: dep.id,
-      verificado_finanzas: dep.verificado_finanzas || false,
-      verificado_finanzas_por: dep.verificado_finanzas_por,
-      verificado_finanzas_at: dep.verificado_finanzas_at,
-      verificado_finanzas_nombre: dep.verificado_finanzas_nombre,
+      validado_finanzas: dep.validado_finanzas || false,
+      validado_finanzas_por: dep.validado_finanzas_por,
+      validado_finanzas_at: dep.validado_finanzas_at,
+      validado_finanzas_nombre: dep.validado_finanzas_nombre,
+      // Se calcula después en getAbonosDiarios
+      boleta_compartida: false,
+      // Datos completos de boleta con historial (Sesión 105)
+      boleta_data: boletaData,
     };
   });
 
@@ -636,25 +757,51 @@ export async function getAbonosDiarios(params: GetAbonosDiariosParams): Promise<
       pageSize = 20,
       sortColumn = 'fecha_comprobante',
       sortDirection = 'desc',
-      incluirPruebas = false
+      incluirPruebas = false,
+      clienteSearch
     } = params;
 
-    console.log('[getAbonosDiarios] Parámetros:', { fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas });
+    console.log('[getAbonosDiarios] Parámetros:', { fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas, clienteSearch });
 
     // Obtener todos los abonos filtrados
     const allAbonos = await fetchAllAbonosFiltered(fechaDesde, fechaHasta, proyectoId, incluirPruebas);
 
+    // Filtrar por cliente (nombre o DNI) ANTES de paginar
+    let filteredAbonos = allAbonos;
+    if (clienteSearch && clienteSearch.trim()) {
+      const searchLower = clienteSearch.toLowerCase().trim();
+      filteredAbonos = allAbonos.filter(a =>
+        a.cliente_nombre?.toLowerCase().includes(searchLower) ||
+        a.cliente_dni?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Calcular qué boletas son compartidas (mismo numero_boleta en múltiples depósitos)
+    const boletaCount = new Map<string, number>();
+    filteredAbonos.forEach(abono => {
+      if (abono.numero_boleta) {
+        boletaCount.set(abono.numero_boleta, (boletaCount.get(abono.numero_boleta) || 0) + 1);
+      }
+    });
+
+    // Marcar boletas compartidas
+    filteredAbonos.forEach(abono => {
+      if (abono.numero_boleta && (boletaCount.get(abono.numero_boleta) || 0) > 1) {
+        abono.boleta_compartida = true;
+      }
+    });
+
     // Calcular totales (antes de paginar)
-    const totalUSD = allAbonos
+    const totalUSD = filteredAbonos
       .filter(a => a.moneda === 'USD')
       .reduce((sum, a) => sum + a.monto, 0);
 
-    const totalPEN = allAbonos
+    const totalPEN = filteredAbonos
       .filter(a => a.moneda === 'PEN')
       .reduce((sum, a) => sum + a.monto, 0);
 
-    // Ordenar
-    const sortedAbonos = sortAbonos(allAbonos, sortColumn, sortDirection);
+    // Ordenar los abonos filtrados
+    const sortedAbonos = sortAbonos(filteredAbonos, sortColumn, sortDirection);
 
     // Calcular paginación
     const total = sortedAbonos.length;
@@ -736,6 +883,10 @@ export async function getAbonosDiariosExport(params: {
 /**
  * Vincular una boleta/factura a un comprobante de pago (voucher)
  * Solo disponible para: finanzas, admin, superadmin
+ *
+ * SESIÓN 105: Ahora usa formato V2 con historial
+ * - Si existe boleta activa sin NC, rechaza la operación
+ * - Si la última boleta tiene NC, agrega al historial
  */
 export async function vincularBoleta(params: {
   fichaId: string;
@@ -781,36 +932,66 @@ export async function vincularBoleta(params: {
       return { success: false, message: 'Ficha no encontrada' };
     }
 
-    // Obtener boletas existentes
-    const boletasExistentes = (ficha.boletas_vinculadas || []) as BoletaVinculada[];
+    // Obtener boletas existentes y normalizar a V2
+    const boletasExistentes = (ficha.boletas_vinculadas || []) as any[];
+    const boletasNormalizadas: BoletaVinculadaV2[] = boletasExistentes.map(normalizarBoletaVinculada);
 
-    // Verificar si ya existe una boleta para este voucher
-    const existeIndex = boletasExistentes.findIndex(b => b.voucher_index === params.voucherIndex);
+    // Buscar si existe entrada para este voucher
+    const existeIndex = boletasNormalizadas.findIndex(b => b.voucher_index === params.voucherIndex);
 
-    const nuevaBoleta: BoletaVinculada = {
-      voucher_index: params.voucherIndex,
-      boleta_url: params.boletaUrl,
-      numero_boleta: params.numeroBoleta,
-      tipo: params.tipo,
-      uploaded_at: new Date().toISOString(),
-      uploaded_by_id: userData.id,
-      uploaded_by_nombre: userData.nombre,
-    };
-
-    let nuevasBoletasVinculadas: BoletaVinculada[];
     if (existeIndex >= 0) {
-      // Reemplazar boleta existente
-      nuevasBoletasVinculadas = [...boletasExistentes];
-      nuevasBoletasVinculadas[existeIndex] = nuevaBoleta;
+      const boletaExistente = boletasNormalizadas[existeIndex];
+
+      // Si hay boleta activa (sin NC), no permitir agregar otra
+      if (boletaExistente.boleta_activa_id) {
+        const boletaActiva = boletaExistente.historial.find(h => h.id === boletaExistente.boleta_activa_id);
+        if (boletaActiva && boletaActiva.estado === 'activa') {
+          return {
+            success: false,
+            message: `Ya existe una boleta activa (${boletaActiva.numero_boleta}). Debe subir una Nota de Crédito antes de vincular una nueva boleta.`
+          };
+        }
+      }
+
+      // Agregar nueva entrada al historial
+      const nuevaEntradaId = crypto.randomUUID();
+      const nuevaEntrada: BoletaHistorialEntry = {
+        id: nuevaEntradaId,
+        boleta_url: params.boletaUrl,
+        numero_boleta: params.numeroBoleta,
+        tipo: params.tipo,
+        estado: 'activa',
+        uploaded_at: new Date().toISOString(),
+        uploaded_by_id: userData.id,
+        uploaded_by_nombre: userData.nombre,
+      };
+
+      boletasNormalizadas[existeIndex].historial.push(nuevaEntrada);
+      boletasNormalizadas[existeIndex].boleta_activa_id = nuevaEntradaId;
     } else {
-      // Agregar nueva boleta
-      nuevasBoletasVinculadas = [...boletasExistentes, nuevaBoleta];
+      // Crear nueva entrada V2 para este voucher
+      const nuevaEntradaId = crypto.randomUUID();
+      const nuevaBoleta: BoletaVinculadaV2 = {
+        voucher_index: params.voucherIndex,
+        boleta_activa_id: nuevaEntradaId,
+        historial: [{
+          id: nuevaEntradaId,
+          boleta_url: params.boletaUrl,
+          numero_boleta: params.numeroBoleta,
+          tipo: params.tipo,
+          estado: 'activa',
+          uploaded_at: new Date().toISOString(),
+          uploaded_by_id: userData.id,
+          uploaded_by_nombre: userData.nombre,
+        }]
+      };
+      boletasNormalizadas.push(nuevaBoleta);
     }
 
     // Actualizar ficha
     const { error: updateError } = await supabase
       .from('clientes_ficha')
-      .update({ boletas_vinculadas: nuevasBoletasVinculadas })
+      .update({ boletas_vinculadas: boletasNormalizadas })
       .eq('id', params.fichaId);
 
     if (updateError) {
@@ -895,6 +1076,289 @@ export async function desvincularBoleta(params: {
   }
 }
 
+/**
+ * Vincular una boleta a MÚLTIPLES depósitos (mismo cliente, mismo día)
+ * Permite que una sola boleta cubra varios abonos
+ */
+export async function vincularBoletaMultiple(params: {
+  depositos: Array<{ fichaId: string; voucherIndex: number }>;
+  boletaUrl: string;
+  numeroBoleta: string;
+  tipo: 'boleta' | 'factura';
+}): Promise<{ success: boolean; message: string }> {
+  try {
+    const supabase = await createSupabaseServer();
+
+    // Verificar autenticación
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return { success: false, message: 'No autenticado' };
+    }
+
+    // Obtener datos del usuario
+    const { data: userData, error: userError } = await supabase
+      .from('usuarios')
+      .select('id, nombre, rol')
+      .eq('id', authUser.id)
+      .single();
+
+    if (userError || !userData) {
+      return { success: false, message: 'Usuario no encontrado' };
+    }
+
+    // Validar rol
+    const rolesAutorizados = ['superadmin', 'admin', 'finanzas'];
+    if (!rolesAutorizados.includes(userData.rol)) {
+      return { success: false, message: 'No autorizado. Solo Finanzas puede vincular boletas.' };
+    }
+
+    // Agrupar depósitos por fichaId para hacer menos queries
+    const depositosPorFicha = new Map<string, number[]>();
+    for (const dep of params.depositos) {
+      const arr = depositosPorFicha.get(dep.fichaId) || [];
+      arr.push(dep.voucherIndex);
+      depositosPorFicha.set(dep.fichaId, arr);
+    }
+
+    // Procesar cada ficha
+    let totalVinculados = 0;
+    for (const [fichaId, voucherIndexes] of depositosPorFicha) {
+      // Obtener ficha actual
+      const { data: ficha, error: fichaError } = await supabase
+        .from('clientes_ficha')
+        .select('boletas_vinculadas')
+        .eq('id', fichaId)
+        .single();
+
+      if (fichaError || !ficha) {
+        console.error(`[vincularBoletaMultiple] Ficha ${fichaId} no encontrada`);
+        continue;
+      }
+
+      // Obtener boletas existentes y normalizar a V2
+      const boletasExistentes = (ficha.boletas_vinculadas || []) as any[];
+      const boletasNormalizadas: BoletaVinculadaV2[] = boletasExistentes.map(normalizarBoletaVinculada);
+
+      // Agregar boleta para cada voucherIndex (respetando historial)
+      for (const voucherIndex of voucherIndexes) {
+        const existeIndex = boletasNormalizadas.findIndex(b => b.voucher_index === voucherIndex);
+
+        if (existeIndex >= 0) {
+          const boletaExistente = boletasNormalizadas[existeIndex];
+
+          // Si hay boleta activa (sin NC), no permitir agregar otra
+          if (boletaExistente.boleta_activa_id) {
+            const boletaActiva = boletaExistente.historial.find(h => h.id === boletaExistente.boleta_activa_id);
+            if (boletaActiva && boletaActiva.estado === 'activa') {
+              console.warn(`[vincularBoletaMultiple] Voucher ${voucherIndex} ya tiene boleta activa ${boletaActiva.numero_boleta}, saltando...`);
+              continue; // Saltar este voucher, no sobrescribir
+            }
+          }
+
+          // Agregar nueva entrada al historial (después de NC)
+          const nuevaEntradaId = crypto.randomUUID();
+          const nuevaEntrada: BoletaHistorialEntry = {
+            id: nuevaEntradaId,
+            boleta_url: params.boletaUrl,
+            numero_boleta: params.numeroBoleta,
+            tipo: params.tipo,
+            estado: 'activa',
+            uploaded_at: new Date().toISOString(),
+            uploaded_by_id: userData.id,
+            uploaded_by_nombre: userData.nombre,
+          };
+
+          boletasNormalizadas[existeIndex].historial.push(nuevaEntrada);
+          boletasNormalizadas[existeIndex].boleta_activa_id = nuevaEntradaId;
+        } else {
+          // Crear nueva entrada V2 para este voucher
+          const nuevaEntradaId = crypto.randomUUID();
+          const nuevaBoleta: BoletaVinculadaV2 = {
+            voucher_index: voucherIndex,
+            boleta_activa_id: nuevaEntradaId,
+            historial: [{
+              id: nuevaEntradaId,
+              boleta_url: params.boletaUrl,
+              numero_boleta: params.numeroBoleta,
+              tipo: params.tipo,
+              estado: 'activa',
+              uploaded_at: new Date().toISOString(),
+              uploaded_by_id: userData.id,
+              uploaded_by_nombre: userData.nombre,
+            }]
+          };
+          boletasNormalizadas.push(nuevaBoleta);
+        }
+        totalVinculados++;
+      }
+
+      const nuevasBoletasVinculadas = boletasNormalizadas;
+
+      // Actualizar ficha
+      const { error: updateError } = await supabase
+        .from('clientes_ficha')
+        .update({ boletas_vinculadas: nuevasBoletasVinculadas })
+        .eq('id', fichaId);
+
+      if (updateError) {
+        console.error(`[vincularBoletaMultiple] Error al actualizar ficha ${fichaId}:`, updateError);
+      }
+    }
+
+    console.log(`[vincularBoletaMultiple] ✅ Boleta ${params.numeroBoleta} vinculada a ${totalVinculados} depósitos por ${userData.nombre}`);
+
+    return {
+      success: true,
+      message: `Boleta ${params.numeroBoleta} vinculada a ${totalVinculados} depósito(s)`
+    };
+  } catch (error) {
+    console.error('[vincularBoletaMultiple] Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al vincular boleta' };
+  }
+}
+
+// ============================================================================
+// INTERFACE: Depósito relacionado (para modal multi-selección)
+// ============================================================================
+
+export interface DepositoRelacionadoServer {
+  ficha_id: string;
+  voucher_index: number;
+  local_codigo: string;
+  monto: number;
+  moneda: 'PEN' | 'USD';
+  hora_comprobante: string | null;
+  tiene_boleta: boolean;
+  numero_boleta: string | null;
+}
+
+/**
+ * Obtiene depósitos del mismo cliente y mismo día desde el servidor
+ * Se usa para el modal de vincular boleta con multi-selección
+ *
+ * IMPORTANTE: Busca por DNI (titular_numero_documento) en lugar de por nombre
+ * Esto es más robusto y evita problemas con variaciones en el nombre
+ */
+export async function getDepositosRelacionados(params: {
+  fichaId: string;
+  fechaComprobante: string; // YYYY-MM-DD
+}): Promise<{ success: boolean; depositos: DepositoRelacionadoServer[]; fechaReferencia: string }> {
+  try {
+    const supabase = await createSupabaseServer();
+
+    // Verificar autenticación
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return { success: false, depositos: [], fechaReferencia: '' };
+    }
+
+    console.log(`[getDepositosRelacionados] Buscando depósitos para ficha ${params.fichaId} en fecha ${params.fechaComprobante}`);
+
+    // 1. Primero obtener el DNI del cliente desde la ficha proporcionada
+    const { data: fichaCliente, error: fichaError } = await supabase
+      .from('clientes_ficha')
+      .select('titular_numero_documento')
+      .eq('id', params.fichaId)
+      .single();
+
+    if (fichaError || !fichaCliente) {
+      console.error('[getDepositosRelacionados] Error obteniendo ficha:', fichaError);
+      return { success: false, depositos: [], fechaReferencia: '' };
+    }
+
+    const dniCliente = fichaCliente.titular_numero_documento;
+    if (!dniCliente) {
+      console.log('[getDepositosRelacionados] Cliente sin DNI registrado');
+      return { success: true, depositos: [], fechaReferencia: params.fechaComprobante };
+    }
+
+    console.log(`[getDepositosRelacionados] DNI del cliente: ${dniCliente}`);
+
+    // 2. Buscar todas las fichas con el mismo DNI
+    const { data: fichasDelCliente, error: fichasError } = await supabase
+      .from('clientes_ficha')
+      .select('id')
+      .eq('titular_numero_documento', dniCliente);
+
+    if (fichasError) {
+      console.error('[getDepositosRelacionados] Error buscando fichas por DNI:', fichasError);
+      return { success: false, depositos: [], fechaReferencia: '' };
+    }
+
+    const fichaIds = fichasDelCliente?.map(f => f.id) || [];
+    console.log(`[getDepositosRelacionados] Fichas del cliente: ${fichaIds.length}`);
+
+    if (fichaIds.length === 0) {
+      return { success: true, depositos: [], fechaReferencia: params.fechaComprobante };
+    }
+
+    // 3. Buscar depósitos de esas fichas en la fecha indicada
+    const { data: depositos, error: depositosError } = await supabase
+      .from('depositos_ficha')
+      .select(`
+        id,
+        ficha_id,
+        indice_original,
+        monto,
+        moneda,
+        hora_comprobante,
+        fecha_comprobante,
+        clientes_ficha!inner (
+          id,
+          boletas_vinculadas,
+          locales!inner (
+            codigo
+          )
+        )
+      `)
+      .in('ficha_id', fichaIds)
+      .eq('fecha_comprobante', params.fechaComprobante);
+
+    if (depositosError) {
+      console.error('[getDepositosRelacionados] Error consultando depósitos:', depositosError);
+      return { success: false, depositos: [], fechaReferencia: '' };
+    }
+
+    if (!depositos || depositos.length === 0) {
+      console.log('[getDepositosRelacionados] No se encontraron depósitos para la fecha');
+      return { success: true, depositos: [], fechaReferencia: params.fechaComprobante };
+    }
+
+    console.log(`[getDepositosRelacionados] Encontrados ${depositos.length} depósitos del cliente`);
+
+    // Mapear a la estructura esperada
+    const resultado: DepositoRelacionadoServer[] = depositos.map(dep => {
+      const ficha = dep.clientes_ficha as any;
+      const boletasVinculadas = (ficha?.boletas_vinculadas || []) as BoletaVinculada[];
+      const boletaVinculada = boletasVinculadas.find(b => b.voucher_index === dep.indice_original);
+
+      return {
+        ficha_id: dep.ficha_id || '',
+        voucher_index: dep.indice_original || 0,
+        local_codigo: ficha?.locales?.codigo || 'N/A',
+        monto: Number(dep.monto) || 0,
+        moneda: (dep.moneda || 'USD') as 'PEN' | 'USD',
+        hora_comprobante: dep.hora_comprobante,
+        tiene_boleta: !!boletaVinculada,
+        numero_boleta: boletaVinculada?.numero_boleta || null,
+      };
+    });
+
+    // Formatear fecha para mostrar
+    const [year, month, day] = params.fechaComprobante.split('-');
+    const fechaFormateada = `${day}/${month}/${year}`;
+
+    return {
+      success: true,
+      depositos: resultado,
+      fechaReferencia: fechaFormateada
+    };
+  } catch (error) {
+    console.error('[getDepositosRelacionados] Error inesperado:', error);
+    return { success: false, depositos: [], fechaReferencia: '' };
+  }
+}
+
 // ============================================================================
 // OBTENER LOCAL CON PROYECTO (para modal de ficha editable)
 // ============================================================================
@@ -962,5 +1426,125 @@ export async function getLocalConProyecto(localId: string): Promise<LocalConProy
   } catch (error) {
     console.error('[getLocalConProyecto] Error inesperado:', error);
     return null;
+  }
+}
+
+// ============================================================================
+// SESIÓN 104: NOTAS DE CRÉDITO
+// ============================================================================
+
+/**
+ * Sube una Nota de Crédito a una boleta existente
+ * Solo disponible para: finanzas, admin, superadmin
+ *
+ * SESIÓN 105: Ahora usa formato V2 con historial
+ * - Busca la boleta activa en el historial
+ * - Cambia su estado a 'anulada_por_nc'
+ * - Permite después agregar una nueva boleta
+ */
+export async function subirNotaCredito(params: {
+  fichaId: string;
+  voucherIndex: number;
+  notaCreditoUrl: string;
+  notaCreditoNumero: string;
+}): Promise<{ success: boolean; message: string }> {
+  try {
+    const supabase = await createSupabaseServer();
+
+    // Verificar autenticación
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return { success: false, message: 'No autenticado' };
+    }
+
+    // Obtener datos del usuario
+    const { data: userData, error: userError } = await supabase
+      .from('usuarios')
+      .select('id, nombre, rol')
+      .eq('id', authUser.id)
+      .single();
+
+    if (userError || !userData) {
+      return { success: false, message: 'Usuario no encontrado' };
+    }
+
+    // Validar rol
+    const rolesAutorizados = ['superadmin', 'admin', 'finanzas'];
+    if (!rolesAutorizados.includes(userData.rol)) {
+      return { success: false, message: 'No autorizado. Solo Finanzas puede subir Notas de Crédito.' };
+    }
+
+    // Obtener ficha actual
+    const { data: ficha, error: fichaError } = await supabase
+      .from('clientes_ficha')
+      .select('boletas_vinculadas')
+      .eq('id', params.fichaId)
+      .single();
+
+    if (fichaError || !ficha) {
+      return { success: false, message: 'Ficha no encontrada' };
+    }
+
+    // Obtener boletas existentes y normalizar a V2
+    const boletasExistentes = (ficha.boletas_vinculadas || []) as any[];
+    const boletasNormalizadas: BoletaVinculadaV2[] = boletasExistentes.map(normalizarBoletaVinculada);
+
+    // Buscar la boleta para el voucher indicado
+    const boletaIndex = boletasNormalizadas.findIndex(b => b.voucher_index === params.voucherIndex);
+
+    if (boletaIndex < 0) {
+      return { success: false, message: 'No existe una boleta vinculada para este depósito' };
+    }
+
+    const boleta = boletasNormalizadas[boletaIndex];
+
+    // Verificar que haya una boleta activa
+    if (!boleta.boleta_activa_id) {
+      return { success: false, message: 'No hay boleta activa para anular' };
+    }
+
+    // Buscar la entrada activa en el historial
+    const entradaActivaIndex = boleta.historial.findIndex(h => h.id === boleta.boleta_activa_id);
+    if (entradaActivaIndex < 0) {
+      return { success: false, message: 'No se encontró la boleta activa en el historial' };
+    }
+
+    // Actualizar la entrada activa con los datos de NC
+    boleta.historial[entradaActivaIndex] = {
+      ...boleta.historial[entradaActivaIndex],
+      estado: 'anulada_por_nc',
+      nota_credito_url: params.notaCreditoUrl,
+      nota_credito_numero: params.notaCreditoNumero,
+      nota_credito_at: new Date().toISOString(),
+      nota_credito_by_id: userData.id,
+      nota_credito_by_nombre: userData.nombre,
+    };
+
+    // Quitar referencia a boleta activa (ya no hay boleta activa)
+    boleta.boleta_activa_id = null;
+
+    // Actualizar el array de boletas
+    boletasNormalizadas[boletaIndex] = boleta;
+
+    // Actualizar ficha
+    const { error: updateError } = await supabase
+      .from('clientes_ficha')
+      .update({ boletas_vinculadas: boletasNormalizadas })
+      .eq('id', params.fichaId);
+
+    if (updateError) {
+      console.error('[subirNotaCredito] Error al actualizar:', updateError);
+      return { success: false, message: 'Error al subir Nota de Crédito' };
+    }
+
+    console.log(`[subirNotaCredito] ✅ NC ${params.notaCreditoNumero} vinculada al voucher ${params.voucherIndex} por ${userData.nombre}`);
+
+    return {
+      success: true,
+      message: `Nota de Crédito ${params.notaCreditoNumero} vinculada correctamente`
+    };
+  } catch (error) {
+    console.error('[subirNotaCredito] Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al subir Nota de Crédito' };
   }
 }
