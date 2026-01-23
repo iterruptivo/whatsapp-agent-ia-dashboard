@@ -418,6 +418,20 @@ async function checkPermissionLegacy(
       return false;
     }
 
+    // Vendedor externo: solo locales y comisiones
+    if (rol === 'vendedor_externo') {
+      if (modulo === 'locales' && ['read', 'cambiar_estado'].includes(accion)) return true;
+      if (modulo === 'comisiones' && accion === 'read') return true;
+      return false;
+    }
+
+    // Postventa: similar a finanzas, acceso a control de pagos
+    if (rol === 'postventa') {
+      if (modulo === 'control_pagos') return true;
+      if (modulo === 'locales' && accion === 'read') return true;
+      return false;
+    }
+
     return false;
   } catch (error) {
     console.error('[RBAC] Error en checkPermissionLegacy:', error);

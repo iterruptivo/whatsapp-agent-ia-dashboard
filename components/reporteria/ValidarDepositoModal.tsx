@@ -30,14 +30,20 @@ export default function ValidarDepositoModal({
   const handleConfirm = async () => {
     setLoading(true);
     try {
-      await onConfirm();
+      await onConfirm(); // Esto ejecuta handleConfirmarValidacion del padre (incluye loadData())
       setSuccess(true);
+      // Esperar un poco más para que el usuario vea el mensaje de éxito
+      // y dar tiempo al refresh de datos
       setTimeout(() => {
         setSuccess(false);
+        setLoading(false);
         onClose();
-      }, 1500);
+      }, 2000); // Aumentado a 2 segundos para mejor UX
     } catch (error) {
+      console.error('Error al validar:', error);
+      alert('Error al validar el depósito. Por favor intente nuevamente.');
       setLoading(false);
+      setSuccess(false);
     }
   };
 

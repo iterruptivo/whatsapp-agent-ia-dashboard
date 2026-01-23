@@ -54,6 +54,7 @@ export interface VoucherItem {
   ocrData: VoucherOCRData | null;
   estado: 'pendiente' | 'subiendo' | 'procesando' | 'valido' | 'revision' | 'error';
   error?: string;
+  depositoId?: string; // ID del registro en depositos_ficha para persistencia
 }
 
 interface VoucherCardUploaderProps {
@@ -62,6 +63,7 @@ interface VoucherCardUploaderProps {
   initialVouchers?: VoucherItem[];
   disabled?: boolean;
   maxVouchers?: number;
+  onSaveToDatabase?: (voucherId: string, data: VoucherOCRData, depositoId?: string) => Promise<void>;
 }
 
 // ============================================================================
@@ -167,6 +169,7 @@ export default function VoucherCardUploader({
   initialVouchers = [],
   disabled = false,
   maxVouchers = 10,
+  onSaveToDatabase,
 }: VoucherCardUploaderProps) {
   const [vouchers, setVouchers] = useState<VoucherItem[]>(initialVouchers);
   const [isDragging, setIsDragging] = useState(false);
@@ -421,6 +424,7 @@ export default function VoucherCardUploader({
               setVouchers(updatedVouchers);
               onVouchersChange(updatedVouchers);
             }}
+            onSaveToDatabase={onSaveToDatabase}
             disabled={disabled}
           />
         ))}
@@ -476,10 +480,11 @@ interface VoucherCardProps {
   index: number;
   onDelete: (id: string) => void;
   onUpdate: (ocrData: VoucherOCRData) => void;
+  onSaveToDatabase?: (voucherId: string, data: VoucherOCRData, depositoId?: string) => Promise<void>;
   disabled?: boolean;
 }
 
-function VoucherCard({ voucher, index, onDelete, onUpdate, disabled }: VoucherCardProps) {
+function VoucherCard({ voucher, index, onDelete, onUpdate, onSaveToDatabase, disabled }: VoucherCardProps) {
   const { estado, previewUrl, ocrData, error } = voucher;
   const [showPreview, setShowPreview] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -514,8 +519,21 @@ function VoucherCard({ voucher, index, onDelete, onUpdate, disabled }: VoucherCa
     }
   }, [ocrData]);
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
+    // 1. Actualizar estado local inmediatamente (UX responsive)
     onUpdate(editData);
+
+    // 2. Persistir en BD si está disponible y hay depositoId
+    if (onSaveToDatabase && voucher.depositoId) {
+      try {
+        await onSaveToDatabase(voucher.id, editData, voucher.depositoId);
+        // Toast de éxito se muestra en el padre (FichaInscripcionModal)
+      } catch (error) {
+        console.error('Error al guardar en BD:', error);
+        // Toast de error se muestra en el padre
+      }
+    }
+
     setIsEditing(false);
   };
 

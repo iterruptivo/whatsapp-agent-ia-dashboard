@@ -413,6 +413,111 @@ export async function crearDeposito(params: {
 }
 
 // =============================================================================
+// ACTUALIZAR CAMPOS EDITABLES DE UN DEPÓSITO
+// =============================================================================
+
+export async function updateDepositoFicha(params: {
+  depositoId: string;
+  monto?: number | null;
+  moneda?: 'USD' | 'PEN' | null;
+  fechaComprobante?: string | null;
+  horaComprobante?: string | null;
+  banco?: string | null;
+  numeroOperacion?: string | null;
+  depositante?: string | null;
+}): Promise<{ success: boolean; message: string }> {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, message: 'No autenticado' };
+    }
+
+    // 1. Obtener el depósito actual para verificar que existe y obtener ficha_id
+    const { data: depositoActual, error: fetchError } = await supabase
+      .from('depositos_ficha')
+      .select('id, ficha_id, indice_original')
+      .eq('id', params.depositoId)
+      .single();
+
+    if (fetchError || !depositoActual) {
+      console.error('Error obteniendo depósito:', fetchError);
+      return { success: false, message: 'Depósito no encontrado' };
+    }
+
+    // 2. Construir objeto de actualización (solo campos proporcionados)
+    const updateData: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (params.monto !== undefined) updateData.monto = params.monto;
+    if (params.moneda !== undefined) updateData.moneda = params.moneda;
+    if (params.fechaComprobante !== undefined) updateData.fecha_comprobante = params.fechaComprobante;
+    if (params.horaComprobante !== undefined) updateData.hora_comprobante = params.horaComprobante;
+    if (params.banco !== undefined) updateData.banco = params.banco;
+    if (params.numeroOperacion !== undefined) updateData.numero_operacion = params.numeroOperacion;
+    if (params.depositante !== undefined) updateData.depositante = params.depositante;
+
+    // 3. Actualizar en tabla depositos_ficha
+    const { error: updateError } = await supabase
+      .from('depositos_ficha')
+      .update(updateData)
+      .eq('id', params.depositoId);
+
+    if (updateError) {
+      console.error('Error actualizando depósito:', updateError);
+      return { success: false, message: 'Error al actualizar depósito' };
+    }
+
+    // 4. También actualizar JSONB en clientes_ficha para compatibilidad
+    if (depositoActual.ficha_id && depositoActual.indice_original !== null) {
+      const { data: ficha } = await supabase
+        .from('clientes_ficha')
+        .select('comprobante_deposito_ocr')
+        .eq('id', depositoActual.ficha_id)
+        .single();
+
+      if (ficha?.comprobante_deposito_ocr) {
+        const ocrArray = ficha.comprobante_deposito_ocr as Array<{
+          monto: number | null;
+          moneda: string | null;
+          fecha: string | null;
+          hora: string | null;
+          banco: string | null;
+          numero_operacion: string | null;
+          depositante: string | null;
+          confianza: number;
+          uploaded_at: string | null;
+        }>;
+
+        const idx = depositoActual.indice_original;
+        if (idx >= 0 && idx < ocrArray.length) {
+          // Actualizar solo los campos proporcionados en el JSONB
+          if (params.monto !== undefined) ocrArray[idx].monto = params.monto;
+          if (params.moneda !== undefined) ocrArray[idx].moneda = params.moneda;
+          if (params.fechaComprobante !== undefined) ocrArray[idx].fecha = params.fechaComprobante;
+          if (params.horaComprobante !== undefined) ocrArray[idx].hora = params.horaComprobante;
+          if (params.banco !== undefined) ocrArray[idx].banco = params.banco;
+          if (params.numeroOperacion !== undefined) ocrArray[idx].numero_operacion = params.numeroOperacion;
+          if (params.depositante !== undefined) ocrArray[idx].depositante = params.depositante;
+
+          await supabase
+            .from('clientes_ficha')
+            .update({ comprobante_deposito_ocr: ocrArray })
+            .eq('id', depositoActual.ficha_id);
+        }
+      }
+    }
+
+    return { success: true, message: 'Depósito actualizado correctamente' };
+  } catch (error) {
+    console.error('Error actualizando depósito:', error);
+    return { success: false, message: 'Error interno' };
+  }
+}
+
+// =============================================================================
 // VALIDAR DEPÓSITO POR FINANZAS
 // =============================================================================
 

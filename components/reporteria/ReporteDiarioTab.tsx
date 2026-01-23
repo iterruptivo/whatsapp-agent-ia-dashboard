@@ -45,7 +45,8 @@ import {
   getAbonosDiariosExport,
   type AbonoDiarioRow,
   type AbonoDiarioSortColumn,
-  type SortDirection
+  type SortDirection,
+  type FiltroValidacion
 } from '@/lib/actions-fichas-reporte';
 import { validarDepositoFinanzas } from '@/lib/actions-depositos-ficha';
 import { CheckCircle2, Clock, ShieldCheck } from 'lucide-react';
@@ -138,6 +139,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
   const [incluirPruebas, setIncluirPruebas] = useState(false);
   const [clienteSearch, setClienteSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [filtroValidacion, setFiltroValidacion] = useState<FiltroValidacion>('pendientes');
 
   // Paginación
   const [page, setPage] = useState(1);
@@ -204,7 +206,8 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
       sortColumn,
       sortDirection,
       incluirPruebas,
-      clienteSearch: debouncedSearch
+      clienteSearch: debouncedSearch,
+      filtroValidacion
     });
     setAbonos(result.data);
     setTotal(result.total);
@@ -213,7 +216,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
     setTotalPEN(result.totalPEN);
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas, debouncedSearch, refreshKey]);
+  }, [fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas, debouncedSearch, filtroValidacion, refreshKey]);
 
   // Cargar datos cuando cambian los filtros/paginación/ordenamiento
   useEffect(() => {
@@ -223,7 +226,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
   // Reset página cuando cambian filtros
   useEffect(() => {
     setPage(1);
-  }, [fechaDesde, fechaHasta, proyectoId, incluirPruebas, debouncedSearch]);
+  }, [fechaDesde, fechaHasta, proyectoId, incluirPruebas, debouncedSearch, filtroValidacion]);
 
   // Handler para cambiar ordenamiento
   const handleSort = (column: AbonoDiarioSortColumn) => {
@@ -261,7 +264,8 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
         proyectoId,
         sortColumn,
         sortDirection,
-        incluirPruebas
+        incluirPruebas,
+        filtroValidacion
       });
 
       const exportData = allAbonos.map((abono, index) => ({
@@ -396,7 +400,8 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
       const result = await validarDepositoFinanzas(abonoAValidar.deposito_id);
 
       if (result.success) {
-        loadData(); // Recargar datos
+        await loadData(); // Recargar datos (await para asegurar que termine)
+        // Toast se muestra desde el modal ValidarDepositoModal
       } else {
         throw new Error(result.message);
       }
@@ -528,30 +533,56 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
             </div>
           </div>
 
-          {/* Toggle Incluir Pruebas - Discreto pero accesible */}
-          <button
-            onClick={() => setIncluirPruebas(!incluirPruebas)}
-            className={`
-              flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200
-              ${incluirPruebas
-                ? 'bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200'
-                : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200 hover:text-gray-700'
-              }
-            `}
-            title={incluirPruebas ? 'Click para excluir datos de prueba' : 'Click para incluir datos de prueba'}
-          >
-            <FlaskConical className="w-3.5 h-3.5" />
-            <span>{incluirPruebas ? 'Pruebas incluidas' : 'Sin pruebas'}</span>
-            <div className={`
-              w-8 h-4 rounded-full relative transition-colors duration-200
-              ${incluirPruebas ? 'bg-amber-400' : 'bg-gray-300'}
-            `}>
-              <div className={`
-                absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-all duration-200
-                ${incluirPruebas ? 'left-4' : 'left-0.5'}
-              `} />
+          {/* Filtros de estado - Validación */}
+          <div className="flex items-center gap-3">
+            {/* Filtro de Validación */}
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-gray-400" />
+              <select
+                value={filtroValidacion}
+                onChange={(e) => setFiltroValidacion(e.target.value as FiltroValidacion)}
+                className={`
+                  px-3 py-1.5 rounded-lg text-xs font-medium border transition-all duration-200 cursor-pointer
+                  focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent
+                  ${filtroValidacion === 'pendientes'
+                    ? 'bg-amber-50 text-amber-700 border-amber-300'
+                    : filtroValidacion === 'validados'
+                    ? 'bg-green-50 text-green-700 border-green-300'
+                    : 'bg-gray-50 text-gray-600 border-gray-300'
+                  }
+                `}
+              >
+                <option value="pendientes">Pendientes</option>
+                <option value="validados">Validados</option>
+                <option value="todos">Todos</option>
+              </select>
             </div>
-          </button>
+
+            {/* Toggle Incluir Pruebas - Discreto pero accesible */}
+            <button
+              onClick={() => setIncluirPruebas(!incluirPruebas)}
+              className={`
+                flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200
+                ${incluirPruebas
+                  ? 'bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200'
+                  : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200 hover:text-gray-700'
+                }
+              `}
+              title={incluirPruebas ? 'Click para excluir datos de prueba' : 'Click para incluir datos de prueba'}
+            >
+              <FlaskConical className="w-3.5 h-3.5" />
+              <span>{incluirPruebas ? 'Pruebas incluidas' : 'Sin pruebas'}</span>
+              <div className={`
+                w-8 h-4 rounded-full relative transition-colors duration-200
+                ${incluirPruebas ? 'bg-amber-400' : 'bg-gray-300'}
+              `}>
+                <div className={`
+                  absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-all duration-200
+                  ${incluirPruebas ? 'left-4' : 'left-0.5'}
+                `} />
+              </div>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -635,7 +666,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                       Boleta
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-28">
-                      Estado
+                      Validado
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                       Acción

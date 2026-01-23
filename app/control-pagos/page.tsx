@@ -35,8 +35,8 @@ export default function ControlPagosPage() {
           const canRead = await canCurrentUser('control_pagos', 'read');
           setHasAccess(canRead);
         } else {
-          // Fallback legacy: admin, jefe_ventas, finanzas
-          const hasLegacyAccess = user.rol === 'admin' || user.rol === 'jefe_ventas' || user.rol === 'finanzas';
+          // Fallback legacy: admin, jefe_ventas, finanzas, coordinador, postventa
+          const hasLegacyAccess = user.rol === 'admin' || user.rol === 'superadmin' || user.rol === 'jefe_ventas' || user.rol === 'finanzas' || user.rol === 'coordinador' || user.rol === 'postventa';
           setHasAccess(hasLegacyAccess);
         }
       }

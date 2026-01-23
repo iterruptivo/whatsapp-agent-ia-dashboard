@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check, AlertCircle, CheckCircle, User } from 'lucide-react';
+import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check, AlertCircle, CheckCircle, User, FileText } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario, getUsuarioById } from '@/lib/actions-clientes-ficha';
@@ -9,6 +9,7 @@ import { analizarCicloVenta, obtenerDatosClienteAnterior } from '@/lib/actions-c
 import { getProyectoConfiguracion, getProyectoLegalData } from '@/lib/proyecto-config';
 import { procesarVentaLocal } from '@/lib/actions-control-pagos';
 import { updateMontoVenta } from '@/lib/actions-locales';
+import { updateDepositoFicha } from '@/lib/actions-depositos-ficha';
 import { useAuth } from '@/lib/auth-context';
 import PhoneInputCustom from '@/components/shared/PhoneInputCustom';
 import AlertModal from '@/components/shared/AlertModal';
@@ -19,6 +20,7 @@ import DNIPairUploader, { DNIPair, DNIOCRData as DNIFrenteOCRData, DNIReversoOCR
 import VoucherCardUploader, { VoucherItem } from '@/components/shared/VoucherCardUploader';
 import OCRValidationAlert, { PersonDiscrepancies } from '@/components/shared/OCRValidationAlert';
 import { useOCRValidation } from '@/hooks/useOCRValidation';
+import { toast } from 'sonner';
 
 interface FichaInscripcionModalProps {
   isOpen: boolean;
@@ -3259,10 +3261,65 @@ export default function FichaInscripcionModal({
                         comprobante_deposito_ocr: ocrDataArray.length > 0 ? ocrDataArray : null,
                       }));
                     }}
+                    onSaveToDatabase={async (voucherId, data, depositoId) => {
+                      // Persistir cambios en BD cuando el usuario edita un voucher
+                      if (!depositoId) {
+                        toast.error('No se puede guardar: falta el ID del depósito');
+                        return;
+                      }
+
+                      try {
+                        const result = await updateDepositoFicha({
+                          depositoId: depositoId,
+                          monto: data.monto,
+                          moneda: data.moneda,
+                          fechaComprobante: data.fecha,
+                          horaComprobante: data.hora,
+                          banco: data.banco,
+                          numeroOperacion: data.numero_operacion,
+                          depositante: data.depositante,
+                        });
+
+                        if (result.success) {
+                          toast.success('Voucher actualizado correctamente');
+                        } else {
+                          toast.error(result.message || 'Error al actualizar voucher');
+                        }
+                      } catch (error) {
+                        console.error('Error al actualizar voucher:', error);
+                        toast.error('Error al guardar los cambios');
+                      }
+                    }}
                     disabled={loading}
                     maxVouchers={20}
                   />
                 </div>
+              </div>
+
+              {/* ===================== BOLETAS / FACTURAS ===================== */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText className="w-5 h-5 text-[#1b967a]" />
+                  <h3 className="text-lg font-semibold text-gray-800">BOLETAS / FACTURAS</h3>
+                </div>
+
+                {/* Lista de boletas desde los depósitos */}
+                {formData.comprobante_deposito_ocr && formData.comprobante_deposito_ocr.length > 0 ? (
+                  <div className="space-y-2">
+                    {/* Por ahora mostrar mensaje placeholder - las boletas se vinculan desde Reporte Diario */}
+                    <p className="text-sm text-gray-500 italic">
+                      Las boletas se vinculan desde el módulo Reporte Diario (Finanzas).
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No hay boletas vinculadas aún</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Las boletas se vinculan desde el módulo Reporte Diario
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Marketing */}

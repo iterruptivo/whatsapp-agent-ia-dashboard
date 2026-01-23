@@ -206,6 +206,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       };
     }
 
+    // vendedor_externo SOLO ve Locales y Comisiones (para cargar ficha y ver sus comisiones)
+    if (user?.rol === 'vendedor_externo') {
+      return {
+        directItems: [
+          { href: '/locales', label: 'Gestión de Locales', icon: Home },
+          { href: '/comisiones', label: 'Comisiones', icon: DollarSign },
+        ],
+        categories: [],
+        bottomItems: [] as MenuItem[],
+      };
+    }
+
     // finanzas ve Control de Pagos, Validación Bancaria y Reportería
     if (user?.rol === 'finanzas') {
       const reporteriaCategory: MenuCategory = {
@@ -355,6 +367,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               ? 'Legal'
               : user?.rol === 'corredor'
               ? 'Corredor'
+              : user?.rol === 'postventa'
+              ? 'Postventa'
+              : user?.rol === 'vendedor_externo'
+              ? 'Vendedor Externo'
               : 'Finanzas'}
           </span>
         </div>

@@ -14,7 +14,7 @@ interface Usuario {
   id: string;
   email: string;
   nombre: string;
-  rol: 'superadmin' | 'admin' | 'gerencia' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | 'corredor' | 'legal';
+  rol: 'superadmin' | 'admin' | 'gerencia' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | 'corredor' | 'legal' | 'vendedor_externo' | 'postventa';
   vendedor_id: string | null;
   activo: boolean;
 }
@@ -612,9 +612,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push('/');
       } else if (userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta') {
         router.push('/operativo');
-      } else if (userData.rol === 'coordinador') {
+      } else if (userData.rol === 'coordinador' || userData.rol === 'vendedor_externo') {
         router.push('/locales');
-      } else if (userData.rol === 'finanzas') {
+      } else if (userData.rol === 'finanzas' || userData.rol === 'postventa') {
         router.push('/control-pagos');
       }
 

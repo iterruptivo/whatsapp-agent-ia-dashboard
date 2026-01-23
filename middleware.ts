@@ -113,6 +113,14 @@ export async function middleware(req: NextRequest) {
   }
 
   // ============================================================================
+  // DEV API ROUTES - Only in development
+  // ============================================================================
+  if (pathname.startsWith('/api/dev/') && process.env.NODE_ENV !== 'production') {
+    // Rutas de desarrollo para debugging (cache clear, etc.)
+    return res;
+  }
+
+  // ============================================================================
   // SWAGGER/DOCS ROUTES - Allow with their own auth
   // ============================================================================
   if (pathname.startsWith('/api/docs')) {
@@ -166,9 +174,9 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/', req.url));
       } else if (userData?.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
-      } else if (userData?.rol === 'vendedor_caseta' || userData?.rol === 'coordinador') {
+      } else if (userData?.rol === 'vendedor_caseta' || userData?.rol === 'coordinador' || userData?.rol === 'vendedor_externo') {
         return NextResponse.redirect(new URL('/locales', req.url));
-      } else if (userData?.rol === 'finanzas') {
+      } else if (userData?.rol === 'finanzas' || userData?.rol === 'postventa') {
         return NextResponse.redirect(new URL('/control-pagos', req.url));
       }
     }
@@ -268,11 +276,11 @@ export async function middleware(req: NextRequest) {
     } else if (userData.rol === 'vendedor') {
       // Vendedor trying to access admin dashboard - redirect to operativo
       return NextResponse.redirect(new URL('/operativo', req.url));
-    } else if (userData.rol === 'finanzas') {
-      // Finanzas SOLO puede acceder a /control-pagos
+    } else if (userData.rol === 'finanzas' || userData.rol === 'postventa') {
+      // Finanzas/Postventa SOLO puede acceder a /control-pagos
       return NextResponse.redirect(new URL('/control-pagos', req.url));
-    } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
-      // Caseta/Coordinador trying to access admin - redirect to locales
+    } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador' || userData.rol === 'vendedor_externo') {
+      // Caseta/Coordinador/Externo trying to access admin - redirect to locales
       return NextResponse.redirect(new URL('/locales', req.url));
     }
     return res;
@@ -284,11 +292,11 @@ export async function middleware(req: NextRequest) {
       // Non-admin trying to access configuracion - redirect based on role
       if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
-      } else if (userData.rol === 'finanzas') {
+      } else if (userData.rol === 'finanzas' || userData.rol === 'postventa') {
         return NextResponse.redirect(new URL('/control-pagos', req.url));
       } else if (userData.rol === 'marketing') {
         return NextResponse.redirect(new URL('/', req.url));
-      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador' || userData.rol === 'vendedor_externo') {
         return NextResponse.redirect(new URL('/locales', req.url));
       }
     }
@@ -302,8 +310,8 @@ export async function middleware(req: NextRequest) {
     if (userData.rol === 'superadmin' || userData.rol === 'admin' || userData.rol === 'jefe_ventas' || userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta' || userData.rol === 'marketing' || userData.rol === 'coordinador') {
       return res;
     }
-    // Finanzas SOLO puede acceder a /control-pagos
-    if (userData.rol === 'finanzas') {
+    // Finanzas/Postventa SOLO puede acceder a /control-pagos
+    if (userData.rol === 'finanzas' || userData.rol === 'postventa') {
       return NextResponse.redirect(new URL('/control-pagos', req.url));
     }
     return res;
@@ -311,8 +319,8 @@ export async function middleware(req: NextRequest) {
 
   // LOCALES ROUTES (/locales)
   if (isLocalesRoute) {
-    // Finanzas SOLO puede acceder a /control-pagos
-    if (userData.rol === 'finanzas') {
+    // Finanzas/Postventa SOLO puede acceder a /control-pagos
+    if (userData.rol === 'finanzas' || userData.rol === 'postventa') {
       return NextResponse.redirect(new URL('/control-pagos', req.url));
     }
     // Marketing SOLO puede acceder a / y /operativo
@@ -323,10 +331,10 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  // CONTROL DE PAGOS ROUTES (/control-pagos) - Admin, jefe_ventas and finanzas
+  // CONTROL DE PAGOS ROUTES (/control-pagos) - Admin, jefe_ventas, finanzas, coordinador and postventa
   if (isControlPagosRoute) {
-    // Admin, jefe_ventas and finanzas can access
-    if (userData.rol === 'superadmin' || userData.rol === 'admin' || userData.rol === 'jefe_ventas' || userData.rol === 'finanzas') {
+    // Admin, jefe_ventas, finanzas, coordinador and postventa can access
+    if (userData.rol === 'superadmin' || userData.rol === 'admin' || userData.rol === 'jefe_ventas' || userData.rol === 'finanzas' || userData.rol === 'coordinador' || userData.rol === 'postventa') {
       return res;
     }
     // Non-authorized user trying to access control-pagos - redirect based on role
@@ -334,7 +342,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(new URL('/operativo', req.url));
     } else if (userData.rol === 'marketing') {
       return NextResponse.redirect(new URL('/', req.url));
-    } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+    } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'vendedor_externo') {
       return NextResponse.redirect(new URL('/locales', req.url));
     }
     return res;
@@ -342,8 +350,8 @@ export async function middleware(req: NextRequest) {
 
   // COMISIONES ROUTES (/comisiones)
   if (isComisionesRoute) {
-    // Finanzas SOLO puede acceder a /control-pagos
-    if (userData.rol === 'finanzas') {
+    // Finanzas/Postventa SOLO puede acceder a /control-pagos
+    if (userData.rol === 'finanzas' || userData.rol === 'postventa') {
       return NextResponse.redirect(new URL('/control-pagos', req.url));
     }
     // Marketing SOLO puede acceder a / y /operativo
@@ -361,11 +369,11 @@ export async function middleware(req: NextRequest) {
       // Non-authorized user trying to access repulse - redirect based on role
       if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
-      } else if (userData.rol === 'finanzas') {
+      } else if (userData.rol === 'finanzas' || userData.rol === 'postventa') {
         return NextResponse.redirect(new URL('/control-pagos', req.url));
       } else if (userData.rol === 'marketing') {
         return NextResponse.redirect(new URL('/', req.url));
-      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador' || userData.rol === 'vendedor_externo') {
         return NextResponse.redirect(new URL('/locales', req.url));
       }
     }
@@ -379,11 +387,11 @@ export async function middleware(req: NextRequest) {
       // Non-authorized user trying to access reuniones - redirect based on role
       if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
-      } else if (userData.rol === 'finanzas') {
+      } else if (userData.rol === 'finanzas' || userData.rol === 'postventa') {
         return NextResponse.redirect(new URL('/control-pagos', req.url));
       } else if (userData.rol === 'marketing') {
         return NextResponse.redirect(new URL('/', req.url));
-      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador' || userData.rol === 'vendedor_externo') {
         return NextResponse.redirect(new URL('/locales', req.url));
       } else if (userData.rol === 'corredor') {
         return NextResponse.redirect(new URL('/expansion', req.url));
@@ -402,8 +410,10 @@ export async function middleware(req: NextRequest) {
       // Non-authorized user trying to access reporteria - redirect based on role
       if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
-      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador' || userData.rol === 'vendedor_externo') {
         return NextResponse.redirect(new URL('/locales', req.url));
+      } else if (userData.rol === 'postventa') {
+        return NextResponse.redirect(new URL('/control-pagos', req.url));
       }
     }
     // Admin, jefe_ventas, marketing and finanzas can access
@@ -418,9 +428,9 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/', req.url));
       } else if (userData.rol === 'vendedor') {
         return NextResponse.redirect(new URL('/operativo', req.url));
-      } else if (userData.rol === 'finanzas') {
+      } else if (userData.rol === 'finanzas' || userData.rol === 'postventa') {
         return NextResponse.redirect(new URL('/control-pagos', req.url));
-      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador') {
+      } else if (userData.rol === 'vendedor_caseta' || userData.rol === 'coordinador' || userData.rol === 'vendedor_externo') {
         return NextResponse.redirect(new URL('/locales', req.url));
       } else if (userData.rol === 'corredor') {
         return NextResponse.redirect(new URL('/expansion', req.url));
@@ -451,7 +461,7 @@ export async function middleware(req: NextRequest) {
     // Otros roles no tienen acceso - redirect según rol
     if (userData.rol === 'vendedor') {
       return NextResponse.redirect(new URL('/operativo', req.url));
-    } else if (userData.rol === 'finanzas') {
+    } else if (userData.rol === 'finanzas' || userData.rol === 'postventa') {
       return NextResponse.redirect(new URL('/control-pagos', req.url));
     } else if (userData.rol === 'marketing' || userData.rol === 'jefe_ventas') {
       return NextResponse.redirect(new URL('/', req.url));
@@ -460,11 +470,15 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // SOLICITUDES DE COMPRA ROUTES (/solicitudes-compra) - Todos EXCEPTO corredor
+  // SOLICITUDES DE COMPRA ROUTES (/solicitudes-compra) - Todos EXCEPTO corredor y postventa
   if (isSolicitudesCompraRoute) {
     // Corredor NO tiene acceso - redirect a su módulo
     if (userData.rol === 'corredor') {
       return NextResponse.redirect(new URL('/expansion', req.url));
+    }
+    // Postventa SOLO puede acceder a /control-pagos
+    if (userData.rol === 'postventa') {
+      return NextResponse.redirect(new URL('/control-pagos', req.url));
     }
     // Otros roles tienen acceso
     return res;
