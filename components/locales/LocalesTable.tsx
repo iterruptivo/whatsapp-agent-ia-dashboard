@@ -20,7 +20,8 @@ import FinanciamientoModal from './FinanciamientoModal'; // SESIÓN 52: Modal pa
 import DatosRegistroVentaModal from './DatosRegistroVentaModal'; // SESIÓN 52C: Modal previo para capturar datos faltantes
 import TimerCountdown from './TimerCountdown'; // OPT: Componente separado para evitar re-render global
 import FichaInscripcionModal from './FichaInscripcionModal'; // SESIÓN 65: Modal ficha de inscripción
-import { FileText } from 'lucide-react'; // SESIÓN 65: Icono para enlace ficha
+import ExtenderPlazoModal from './ExtenderPlazoModal'; // SESIÓN 106: Modal para extender plazo de reserva
+import { FileText, Plus } from 'lucide-react'; // SESIÓN 65: Icono para enlace ficha
 import { toast } from 'sonner'; // SESIÓN 102: Para notificaciones de eliminar
 
 interface LocalesTableProps {
@@ -160,6 +161,15 @@ export default function LocalesTable({
     isOpen: false,
     local: null,
     mode: 'ficha',
+  });
+
+  // SESIÓN 106: State para modal de extensión de plazo (solo jefe_ventas)
+  const [extenderModal, setExtenderModal] = useState<{
+    isOpen: boolean;
+    local: Local | null;
+  }>({
+    isOpen: false,
+    local: null,
   });
 
   // OPT: Timer ahora usa componente separado (TimerCountdown) que se re-renderiza solo
@@ -1105,7 +1115,22 @@ export default function LocalesTable({
                       {renderSalirNegociacion(local)}
                       {renderIniciarFinanciamiento(local)}
                       {/* OPT: Componente separado para timer (solo se re-renderiza él, no toda la tabla) */}
-                      {local.estado === 'naranja' && <TimerCountdown naranjaTimestamp={local.naranja_timestamp} />}
+                      {local.estado === 'naranja' && (
+                        <TimerCountdown
+                          naranjaTimestamp={local.naranja_timestamp}
+                          extensionDias={local.extension_dias || 0}
+                        />
+                      )}
+                      {/* SESIÓN 106: Botón para extender plazo (solo jefe_ventas, solo si no ha usado extensión) */}
+                      {local.estado === 'naranja' && local.naranja_timestamp && user?.rol === 'jefe_ventas' && (local.extension_dias || 0) === 0 && (
+                        <button
+                          onClick={() => setExtenderModal({ isOpen: true, local })}
+                          className="mt-1 flex items-center gap-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-0.5 hover:bg-blue-100 transition-colors"
+                        >
+                          <Plus className="w-3 h-3" />
+                          <span>Extender +5 días</span>
+                        </button>
+                      )}
                       {/* SESIÓN 65: Enlace para iniciar ficha de inscripción (solo en NARANJA con timer activo) */}
                       {/* SESIÓN 66: Agregado mode='ficha' para solo guardar (no procesar a control-pagos) */}
                       {local.estado === 'naranja' && local.naranja_timestamp && (
@@ -1228,6 +1253,27 @@ export default function LocalesTable({
         mode={fichaModal.mode}
         onClose={() => setFichaModal({ isOpen: false, local: null, mode: 'ficha' })}
       />
+
+      {/* SESIÓN 106: Modal Extender Plazo de Reserva (solo jefe_ventas) */}
+      {extenderModal.local && user?.id && (
+        <ExtenderPlazoModal
+          isOpen={extenderModal.isOpen}
+          local={{
+            id: extenderModal.local.id,
+            codigo: extenderModal.local.codigo,
+            lead_nombre: extenderModal.local.lead_nombre,
+            vendedor_actual_nombre: extenderModal.local.vendedor_actual_nombre,
+            naranja_timestamp: extenderModal.local.naranja_timestamp,
+            extension_dias: extenderModal.local.extension_dias || 0,
+          }}
+          usuarioId={user.id}
+          onClose={() => setExtenderModal({ isOpen: false, local: null })}
+          onSuccess={() => {
+            // Refrescar la página para ver los cambios
+            window.location.reload();
+          }}
+        />
+      )}
 
       {/* SESIÓN 56: Modal Confirmación Precio Base */}
       <ConfirmModal

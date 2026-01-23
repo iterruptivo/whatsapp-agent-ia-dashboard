@@ -10,6 +10,7 @@
 import { revalidatePath } from 'next/cache';
 import { supabase } from './supabase';
 import { createServerClient } from '@supabase/ssr'; // SESIÓN 52D: Para Server Actions con auth
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'; // SESIÓN 106: Para admin client
 import { cookies } from 'next/headers'; // SESIÓN 52D: Para Server Actions con auth
 import {
   updateLocalEstadoQuery,
@@ -23,6 +24,27 @@ import {
 } from './locales';
 import { createManualLead } from './actions';
 import { trackLocalStatusChanged, trackVentaCerrada } from './analytics/posthog-server';
+
+// ============================================================================
+// HELPER: Crear cliente Admin (service role) - BYPASA RLS
+// SESIÓN 106: Para operaciones que necesitan bypass de RLS
+// ============================================================================
+
+function createAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+  if (!serviceRoleKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY no está configurada');
+  }
+
+  return createSupabaseClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  });
+}
 
 // ============================================================================
 // UPDATE ESTADO DE LOCAL
@@ -435,25 +457,32 @@ export async function autoLiberarLocalesExpirados() {
   try {
     console.log('[AUTO-LIBERACIÓN] Iniciando verificación de locales expirados...');
 
-    // PASO 1: Calcular timestamp de hace 120 horas
-    const hace120horas = new Date();
-    hace120horas.setHours(hace120horas.getHours() - 120);
-    const timestamp120h = hace120horas.toISOString();
-
-    // PASO 2: Buscar locales en NARANJA que superaron 120 horas
-    const { data: localesExpirados, error: fetchError } = await supabase
+    // PASO 1: Buscar TODOS los locales en NARANJA con timestamp
+    // (necesitamos traerlos todos para considerar extensiones individuales)
+    const { data: localesNaranja, error: fetchError } = await supabase
       .from('locales')
-      .select('id, codigo, naranja_timestamp, vendedor_actual_id')
+      .select('id, codigo, naranja_timestamp, vendedor_actual_id, extension_dias')
       .eq('estado', 'naranja')
-      .not('naranja_timestamp', 'is', null)
-      .lt('naranja_timestamp', timestamp120h);
+      .not('naranja_timestamp', 'is', null);
 
     if (fetchError) {
-      console.error('[AUTO-LIBERACIÓN] ❌ Error fetching locales expirados:', fetchError);
+      console.error('[AUTO-LIBERACIÓN] ❌ Error fetching locales:', fetchError);
       return { liberados: 0, errores: 1 };
     }
 
-    if (!localesExpirados || localesExpirados.length === 0) {
+    // PASO 2: Filtrar los que realmente expiraron (considerando extensiones)
+    const ahora = new Date();
+    const localesExpirados = (localesNaranja || []).filter(local => {
+      if (!local.naranja_timestamp) return false;
+
+      const inicio = new Date(local.naranja_timestamp);
+      const horasTotales = 120 + ((local.extension_dias || 0) * 120); // 120h base + 120h por extensión
+      const fin = new Date(inicio.getTime() + horasTotales * 60 * 60 * 1000);
+
+      return ahora > fin;
+    });
+
+    if (localesExpirados.length === 0) {
       // No hay locales expirados - todo OK
       return { liberados: 0, errores: 0 };
     }
@@ -491,6 +520,11 @@ export async function autoLiberarLocalesExpirados() {
             fecha_paso_rojo: null,
             vendedor_cerro_venta_id: null,
             fecha_cierre_venta: null,
+            // SESIÓN 106: Limpiar campos de extensión
+            extension_dias: 0,
+            extension_usuario_id: null,
+            extension_motivo: null,
+            extension_at: null,
           })
           .eq('id', local.id);
 
@@ -501,6 +535,7 @@ export async function autoLiberarLocalesExpirados() {
         }
 
         // Registrar en historial (usuario_id = NULL porque es automático)
+        const horasTotales = 120 + ((local.extension_dias || 0) * 120);
         const { error: historialError } = await supabase
           .from('locales_historial')
           .insert({
@@ -508,7 +543,9 @@ export async function autoLiberarLocalesExpirados() {
             usuario_id: null, // Sistema automático (no hay usuario)
             estado_anterior: 'naranja',
             estado_nuevo: 'verde',
-            accion: 'Local liberado automáticamente por vencimiento de tiempo (120 horas)',
+            accion: local.extension_dias > 0
+              ? `Local liberado automáticamente por vencimiento de tiempo (${horasTotales} horas, incluye extensión)`
+              : 'Local liberado automáticamente por vencimiento de tiempo (120 horas)',
           });
 
         if (historialError) {
@@ -535,6 +572,107 @@ export async function autoLiberarLocalesExpirados() {
   } catch (error) {
     console.error('[AUTO-LIBERACIÓN] ❌ Error inesperado en proceso de auto-liberación:', error);
     return { liberados: 0, errores: 1 };
+  }
+}
+
+// ============================================================================
+// SESIÓN 105: EXTENDER PLAZO DE RESERVA (NARANJA)
+// ============================================================================
+
+/**
+ * Extender plazo de reserva de un local en estado NARANJA
+ * Solo puede ser ejecutado por jefe_ventas
+ * Máximo 1 extensión de 5 días (120 horas adicionales)
+ */
+export async function extenderPlazoReserva(
+  localId: string,
+  usuarioId: string,
+  motivo: string
+): Promise<{ success: boolean; message: string }> {
+  try {
+    // SESIÓN 106: Usar admin client para bypass RLS en server action
+    const supabaseAdmin = createAdminClient();
+
+    // 1. Obtener datos del local
+    const { data: local, error: fetchError } = await supabaseAdmin
+      .from('locales')
+      .select('id, codigo, estado, extension_dias, naranja_timestamp')
+      .eq('id', localId)
+      .single();
+
+    if (fetchError || !local) {
+      return { success: false, message: 'Local no encontrado' };
+    }
+
+    // 2. Validar que esté en NARANJA
+    if (local.estado !== 'naranja') {
+      return { success: false, message: 'Solo se puede extender plazo de locales en estado NARANJA' };
+    }
+
+    // 3. Validar que no haya expirado
+    if (local.naranja_timestamp) {
+      const fin = new Date(local.naranja_timestamp);
+      fin.setHours(fin.getHours() + 120 + (local.extension_dias * 120));
+      if (new Date() > fin) {
+        return { success: false, message: 'El plazo ya expiró, no se puede extender' };
+      }
+    }
+
+    // 4. Validar que no haya usado la extensión
+    if (local.extension_dias >= 1) {
+      return { success: false, message: 'Este local ya usó su extensión máxima de plazo' };
+    }
+
+    // 5. Validar que el usuario sea jefe_ventas
+    const { data: usuario, error: userError } = await supabaseAdmin
+      .from('usuarios')
+      .select('rol, nombre')
+      .eq('id', usuarioId)
+      .single();
+
+    if (userError || !usuario) {
+      console.error('[EXTENSION] Error buscando usuario:', userError, 'ID:', usuarioId);
+      return { success: false, message: 'Usuario no encontrado' };
+    }
+
+    if (usuario.rol !== 'jefe_ventas') {
+      return { success: false, message: 'Solo jefes de venta pueden extender el plazo' };
+    }
+
+    // 6. Actualizar el local con la extensión
+    const { error: updateError } = await supabaseAdmin
+      .from('locales')
+      .update({
+        extension_dias: 1,
+        extension_usuario_id: usuarioId,
+        extension_motivo: motivo,
+        extension_at: new Date().toISOString(),
+      })
+      .eq('id', localId);
+
+    if (updateError) {
+      console.error('[EXTENSION] Error actualizando local:', updateError);
+      return { success: false, message: 'Error al guardar la extensión' };
+    }
+
+    // 7. Registrar en historial
+    await supabaseAdmin
+      .from('locales_historial')
+      .insert({
+        local_id: localId,
+        usuario_id: usuarioId,
+        estado_anterior: 'naranja',
+        estado_nuevo: 'naranja',
+        accion: `Jefe de ventas ${usuario.nombre} extendió el plazo 5 días más. Motivo: ${motivo}`,
+      });
+
+    console.log(`[EXTENSION] ✅ Local ${local.codigo} extendido por ${usuario.nombre}`);
+
+    revalidatePath('/locales');
+    return { success: true, message: 'Plazo extendido exitosamente (+5 días)' };
+  } catch (error) {
+    console.error('[EXTENSION] Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al extender plazo' };
   }
 }
 

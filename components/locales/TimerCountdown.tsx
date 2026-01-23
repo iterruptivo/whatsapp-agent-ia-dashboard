@@ -12,9 +12,10 @@ import { Clock } from 'lucide-react';
 
 interface TimerCountdownProps {
   naranjaTimestamp: string | null;
+  extensionDias?: number; // 0 = sin extensión, 1 = +5 días (120h adicionales)
 }
 
-export default function TimerCountdown({ naranjaTimestamp }: TimerCountdownProps) {
+export default function TimerCountdown({ naranjaTimestamp, extensionDias = 0 }: TimerCountdownProps) {
   // HYDRATION FIX: Iniciar con null para evitar mismatch servidor/cliente
   const [currentTime, setCurrentTime] = useState<number | null>(null);
   const [isClient, setIsClient] = useState(false);
@@ -42,32 +43,36 @@ export default function TimerCountdown({ naranjaTimestamp }: TimerCountdownProps
 
     const inicio = new Date(naranjaTimestamp);
     const ahora = new Date(currentTime);
-    const fin = new Date(inicio.getTime() + 120 * 60 * 60 * 1000); // +120 horas
+
+    // Calcular horas totales considerando extensiones
+    // 120h base + 120h por cada extensión de 5 días
+    const horasTotales = 120 + (extensionDias * 120);
+    const fin = new Date(inicio.getTime() + horasTotales * 60 * 60 * 1000);
 
     const msRestantes = fin.getTime() - ahora.getTime();
 
     // Si ya expiró
     if (msRestantes <= 0) {
-      return { expired: true, text: 'Expirado', percent: 0 };
+      return { expired: true, text: 'Expirado', percent: 0, hasExtension: extensionDias > 0 };
     }
 
     // Calcular tiempo restante con segundos
     const segundosTotales = Math.floor(msRestantes / 1000);
     const minutosTotales = Math.floor(segundosTotales / 60);
-    const horasTotales = Math.floor(minutosTotales / 60);
+    const horasRestantes = Math.floor(minutosTotales / 60);
 
-    const diasRestantes = Math.floor(horasTotales / 24);
-    const horasRestantes = horasTotales % 24;
+    const diasRestantes = Math.floor(horasRestantes / 24);
+    const horasRestantesMod = horasRestantes % 24;
     const minutosRestantes = minutosTotales % 60;
     const segundosRestantes = segundosTotales % 60;
 
     // Porcentaje de timer (0-100%)
-    const porcentaje = (horasTotales / 120) * 100;
+    const porcentaje = (horasRestantes / horasTotales) * 100;
 
     // Texto para badge con segundos
     let text = '';
     if (diasRestantes > 0) {
-      text = `Quedan ${diasRestantes}d ${horasRestantes}h ${minutosRestantes}m ${segundosRestantes}s`;
+      text = `Quedan ${diasRestantes}d ${horasRestantesMod}h ${minutosRestantes}m ${segundosRestantes}s`;
     } else if (horasRestantes > 0) {
       text = `Quedan ${horasRestantes}h ${minutosRestantes}m ${segundosRestantes}s`;
     } else {
@@ -78,6 +83,7 @@ export default function TimerCountdown({ naranjaTimestamp }: TimerCountdownProps
       expired: false,
       text,
       percent: porcentaje,
+      hasExtension: extensionDias > 0,
     };
   };
 
@@ -96,10 +102,15 @@ export default function TimerCountdown({ naranjaTimestamp }: TimerCountdownProps
         />
       </div>
 
-      {/* Badge con tiempo restante */}
-      <div className="flex items-center gap-1 text-xs text-blue-700">
+      {/* Badge con tiempo restante y extensión */}
+      <div className="flex items-center gap-1.5 text-xs text-blue-700">
         <Clock className="w-3 h-3" />
         <span className="font-medium">{tiempo.text}</span>
+        {tiempo.hasExtension && (
+          <span className="px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-semibold">
+            +5d
+          </span>
+        )}
       </div>
     </div>
   );

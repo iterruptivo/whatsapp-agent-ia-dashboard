@@ -41,6 +41,11 @@ export interface Local {
   fecha_paso_naranja: string | null;
   usuario_paso_rojo_id: string | null;
   fecha_paso_rojo: string | null;
+  // SESIÓN 106: Extensión de plazo para reservas (solo jefe_ventas)
+  extension_dias: number; // 0 = sin extensión, 1 = extendido +5 días
+  extension_usuario_id: string | null;
+  extension_motivo: string | null;
+  extension_at: string | null;
   // SESIÓN 102: Locales excepcionales (para regularizar ventas duplicadas)
   es_excepcional: boolean;
   created_at: string;

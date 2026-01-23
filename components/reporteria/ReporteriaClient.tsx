@@ -727,6 +727,11 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
               fecha_paso_naranja: null,
               usuario_paso_rojo_id: null,
               fecha_paso_rojo: null,
+              // SESIÓN 106: Campos de extensión de plazo
+              extension_dias: 0,
+              extension_usuario_id: null,
+              extension_motivo: null,
+              extension_at: null,
               es_excepcional: false,
               created_at: '',
               updated_at: '',
