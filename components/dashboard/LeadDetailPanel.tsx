@@ -2,11 +2,11 @@
 
 import { Lead } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
-import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check, Zap, Ban, CircleSlash, Tag } from 'lucide-react';
+import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check, Zap, Ban, CircleSlash, Tag, FileText } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import EvidenciasSection from '@/components/leads/EvidenciasSection';
 import SearchDropdown from '@/components/shared/SearchDropdown';
-import { updateLeadTipificacion } from '@/lib/actions-tipificacion';
+import { updateLeadTipificacion, updateLeadObservaciones } from '@/lib/actions-tipificacion';
 import { getTipificacionesN1Client, getTipificacionesN2Client, getTipificacionesN3Client } from '@/lib/tipificaciones-client';
 
 // ============================================================================
@@ -203,6 +203,10 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
   const [nivel3, setNivel3] = useState<string | null>(null);
   const [isSavingTipificacion, setIsSavingTipificacion] = useState(false);
 
+  // State for observaciones del vendedor
+  const [observaciones, setObservaciones] = useState<string>('');
+  const [isSavingObservaciones, setIsSavingObservaciones] = useState(false);
+
   // State for tipificaciones from DB (with fallbacks)
   const [tipifN1Options, setTipifN1Options] = useState<{ value: string; label: string }[]>(FALLBACK_TIPIFICACION_NIVEL_1);
   const [tipifN2Map, setTipifN2Map] = useState<Record<string, { value: string; label: string }[]>>(FALLBACK_TIPIFICACION_NIVEL_2);
@@ -260,8 +264,9 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
       setNivel1(lead.tipificacion_nivel_1 || null);
       setNivel2(lead.tipificacion_nivel_2 || null);
       setNivel3(lead.tipificacion_nivel_3 || null);
+      setObservaciones(lead.observaciones_vendedor || '');
     }
-  }, [lead?.id, lead?.tipificacion_nivel_1, lead?.tipificacion_nivel_2, lead?.tipificacion_nivel_3]);
+  }, [lead?.id, lead?.tipificacion_nivel_1, lead?.tipificacion_nivel_2, lead?.tipificacion_nivel_3, lead?.observaciones_vendedor]);
 
   // Get nivel2 options based on nivel1 (from DB or fallback)
   const nivel2Options = nivel1 ? tipifN2Map[nivel1] || [] : [];
@@ -311,6 +316,18 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
       setIsSavingTipificacion(false);
     }
   }, [lead, nivel1, nivel2, onLeadUpdate]);
+
+  // Handle observaciones save (con debounce implícito - se guarda al perder foco)
+  const handleObservacionesBlur = useCallback(async () => {
+    if (lead && observaciones !== (lead.observaciones_vendedor || '')) {
+      setIsSavingObservaciones(true);
+      await updateLeadObservaciones(lead.id, observaciones || null);
+      if (onLeadUpdate) {
+        await onLeadUpdate();
+      }
+      setIsSavingObservaciones(false);
+    }
+  }, [lead, observaciones, onLeadUpdate]);
 
   // ESC key handler
   useEffect(() => {
@@ -521,6 +538,25 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
                 colorScheme="lime"
               />
             </div>
+          </section>
+
+          {/* Observaciones del Vendedor Section */}
+          <section>
+            <h3 className="text-base font-bold text-gray-900 uppercase tracking-wide mb-4 border-b border-gray-200 pb-2 flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Observaciones
+              {isSavingObservaciones && (
+                <span className="text-xs font-normal text-gray-500 animate-pulse">Guardando...</span>
+              )}
+            </h3>
+            <textarea
+              value={observaciones}
+              onChange={(e) => setObservaciones(e.target.value)}
+              onBlur={handleObservacionesBlur}
+              placeholder="Notas post-conversación con el lead..."
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+              rows={3}
+            />
           </section>
 
           {/* Business Section */}

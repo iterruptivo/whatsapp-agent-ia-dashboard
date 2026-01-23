@@ -59,7 +59,7 @@ export interface Usuario {
   id: string;
   nombre: string;
   email: string;
-  rol: 'admin' | 'gerencia' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing';
+  rol: 'admin' | 'gerencia' | 'jefe_ventas' | 'vendedor' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | 'superadmin' | 'corredor' | 'legal' | 'vendedor_externo' | 'postventa';
   vendedor_id: string | null;
   activo: boolean;
 }

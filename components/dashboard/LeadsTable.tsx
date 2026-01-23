@@ -14,7 +14,7 @@ interface LeadsTableProps {
   vendedores?: VendedorActivo[]; // Incluye coordinadores (Sesión 74)
   currentUserId?: string | null; // ID del usuario logueado (usuarios.id)
   onAssignLead?: (leadId: string, vendedorId: string) => Promise<void>;
-  userRole?: 'admin' | 'superadmin' | 'gerencia' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | 'corredor' | 'legal' | null;
+  userRole?: 'admin' | 'superadmin' | 'gerencia' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | 'corredor' | 'legal' | 'vendedor_externo' | 'postventa' | null;
   // Repulse multi-select
   showRepulseSelection?: boolean;
   selectedLeadIds?: string[];
@@ -331,8 +331,8 @@ export default function LeadsTable({
                 </td>
                 <td className="py-3 px-4">{getEstadoBadge(lead.estado)}</td>
                 <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                  {(userRole === 'admin' || userRole === 'jefe_ventas') && vendedores && onAssignLead ? (
-                    // ADMIN/JEFE_VENTAS: Dropdown con búsqueda (puede reasignar o liberar)
+                  {(userRole === 'admin' || userRole === 'jefe_ventas' || userRole === 'coordinador') && vendedores && onAssignLead ? (
+                    // ADMIN/JEFE_VENTAS/COORDINADOR: Dropdown con búsqueda (puede reasignar o liberar)
                     <VendedorSearchDropdown
                       vendedores={vendedores.filter(v => v.activo && v.vendedor_id).map(v => ({
                         id: v.vendedor_id, // Usar vendedor_id (tabla vendedores), no usuarios.id

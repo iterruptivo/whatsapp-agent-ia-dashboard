@@ -30,7 +30,7 @@ interface Usuario {
   id: string;
   email: string;
   nombre: string;
-  rol: 'admin' | 'superadmin' | 'gerencia' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | 'corredor' | 'legal';
+  rol: 'admin' | 'superadmin' | 'gerencia' | 'vendedor' | 'jefe_ventas' | 'vendedor_caseta' | 'coordinador' | 'finanzas' | 'marketing' | 'corredor' | 'legal' | 'vendedor_externo' | 'postventa';
   vendedor_id: string | null;
   activo: boolean;
 }

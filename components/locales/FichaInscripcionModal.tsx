@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check, AlertCircle, CheckCircle, User, FileText } from 'lucide-react';
+import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check, AlertCircle, CheckCircle, User, FileText, ExternalLink } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario, getUsuarioById } from '@/lib/actions-clientes-ficha';
@@ -379,6 +379,19 @@ export default function FichaInscripcionModal({
   const [initialDniPairs, setInitialDniPairs] = useState<DNIPair[]>([]);
   const [initialVouchers, setInitialVouchers] = useState<VoucherItem[]>([]);
 
+  // Estado para boletas vinculadas (readonly - se vinculan desde Finanzas)
+  const [boletasVinculadas, setBoletasVinculadas] = useState<Array<{
+    voucher_index: number;
+    boleta_url: string;
+    numero_boleta: string;
+    tipo: 'boleta' | 'factura';
+    uploaded_at: string;
+    uploaded_by_id: string;
+    uploaded_by_nombre: string;
+    nota_credito_url?: string;
+    nota_credito_numero?: string;
+  }>>([]);
+
   // Estado para controlar visibilidad de alerta de validación OCR
   const [showOCRValidation, setShowOCRValidation] = useState(true);
 
@@ -733,6 +746,37 @@ export default function FichaInscripcionModal({
             existingFicha.comprobante_deposito_ocr
           );
           setInitialVouchers(reconstructedVouchers);
+        }
+
+        // Cargar boletas vinculadas (readonly - se vinculan desde Finanzas)
+        // Normalizar formato V2 (historial) al formato esperado por el componente
+        if (existingFicha.boletas_vinculadas && existingFicha.boletas_vinculadas.length > 0) {
+          const normalizedBoletas = (existingFicha.boletas_vinculadas as any[]).map((b: any) => {
+            // Si tiene historial (formato V2), extraer la boleta activa
+            if (b.historial && Array.isArray(b.historial)) {
+              const boletaActiva = b.historial.find((h: any) => h.estado === 'activa')
+                || b.historial[b.historial.length - 1]; // Fallback: última del historial
+
+              if (boletaActiva) {
+                return {
+                  voucher_index: b.voucher_index,
+                  boleta_url: boletaActiva.boleta_url,
+                  numero_boleta: boletaActiva.numero_boleta,
+                  tipo: boletaActiva.tipo,
+                  uploaded_at: boletaActiva.uploaded_at,
+                  uploaded_by_id: boletaActiva.uploaded_by_id,
+                  uploaded_by_nombre: boletaActiva.uploaded_by_nombre,
+                  nota_credito_url: boletaActiva.nota_credito_url,
+                  nota_credito_numero: boletaActiva.nota_credito_numero,
+                };
+              }
+              return null;
+            }
+            // Formato legacy - retornar como está
+            return b;
+          }).filter(Boolean);
+
+          setBoletasVinculadas(normalizedBoletas);
         }
       } else {
         // Pre-llenar con datos del lead vinculado
@@ -3301,22 +3345,65 @@ export default function FichaInscripcionModal({
                 <div className="flex items-center gap-2 mb-4">
                   <FileText className="w-5 h-5 text-[#1b967a]" />
                   <h3 className="text-lg font-semibold text-gray-800">BOLETAS / FACTURAS</h3>
+                  {boletasVinculadas.length > 0 && (
+                    <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                      {boletasVinculadas.length}
+                    </span>
+                  )}
                 </div>
 
-                {/* Lista de boletas desde los depósitos */}
-                {formData.comprobante_deposito_ocr && formData.comprobante_deposito_ocr.length > 0 ? (
-                  <div className="space-y-2">
-                    {/* Por ahora mostrar mensaje placeholder - las boletas se vinculan desde Reporte Diario */}
-                    <p className="text-sm text-gray-500 italic">
-                      Las boletas se vinculan desde el módulo Reporte Diario (Finanzas).
-                    </p>
+                {/* Lista de boletas vinculadas */}
+                {boletasVinculadas.length > 0 ? (
+                  <div className="space-y-3">
+                    {boletasVinculadas.map((boleta, index) => (
+                      <div key={`${boleta.voucher_index}-${index}`} className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-green-600 flex-shrink-0" />
+                          <div>
+                            <a
+                              href={boleta.boleta_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-green-700 hover:text-green-800 hover:underline flex items-center gap-1"
+                            >
+                              {boleta.numero_boleta}
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                            <p className="text-xs text-gray-500">
+                              Voucher #{boleta.voucher_index + 1} • Subida por {boleta.uploaded_by_nombre}
+                            </p>
+                            {boleta.nota_credito_url && (
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className="text-xs text-orange-600 font-medium">NC:</span>
+                                <a
+                                  href={boleta.nota_credito_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-orange-600 hover:text-orange-700 hover:underline flex items-center gap-1"
+                                >
+                                  {boleta.nota_credito_numero || 'Ver NC'}
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <span className={`px-2 py-1 text-xs font-medium rounded ${
+                          boleta.tipo === 'boleta'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-purple-100 text-purple-700'
+                        }`}>
+                          {boleta.tipo === 'boleta' ? 'Boleta' : 'Factura'}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center py-4">
                     <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                     <p className="text-sm text-gray-500">No hay boletas vinculadas aún</p>
                     <p className="text-xs text-gray-400 mt-1">
-                      Las boletas se vinculan desde el módulo Reporte Diario
+                      Las boletas se vinculan desde el módulo Reporte Diario (Finanzas)
                     </p>
                   </div>
                 )}

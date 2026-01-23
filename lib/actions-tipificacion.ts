@@ -30,3 +30,32 @@ export async function updateLeadTipificacion(
     return { success: false, message: 'Error inesperado' };
   }
 }
+
+/**
+ * Actualiza las observaciones del vendedor para un lead
+ * Campo de "wrap-up" post-conversación similar a marcadores predictivos
+ */
+export async function updateLeadObservaciones(
+  leadId: string,
+  observaciones: string | null
+) {
+  try {
+    const { error } = await supabase
+      .from('leads')
+      .update({
+        observaciones_vendedor: observaciones || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', leadId);
+
+    if (error) {
+      console.error('Error updating observaciones:', error);
+      return { success: false, message: error.message };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('Exception updating observaciones:', err);
+    return { success: false, message: 'Error inesperado' };
+  }
+}
