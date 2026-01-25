@@ -32,6 +32,7 @@ interface LocalesTableProps {
   totalLocales: number;
   onPageChange: (page: number) => void;
   onShowHistorial: (local: Local) => void;
+  tienePisos?: boolean;
 }
 
 export default function LocalesTable({
@@ -42,6 +43,7 @@ export default function LocalesTable({
   totalLocales,
   onPageChange,
   onShowHistorial,
+  tienePisos = false,
 }: LocalesTableProps) {
   const { user } = useAuth();
   const [changingLocalId, setChangingLocalId] = useState<string | null>(null);
@@ -1038,6 +1040,7 @@ export default function LocalesTable({
           <thead className="bg-gray-50 border-b">
             <tr>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Código</th>
+              {tienePisos && <th className="text-left py-3 px-4 text-gray-600 font-medium">Piso</th>}
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Precio Base</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Proyecto</th>
               <th className="text-left py-3 px-4 text-gray-600 font-medium">Metraje</th>
@@ -1050,7 +1053,7 @@ export default function LocalesTable({
           <tbody>
             {locales.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-gray-500">
+                <td colSpan={tienePisos ? 9 : 8} className="text-center py-8 text-gray-500">
                   No hay locales para mostrar
                 </td>
               </tr>
@@ -1069,6 +1072,19 @@ export default function LocalesTable({
                         )}
                       </div>
                     </td>
+
+                    {/* Piso (condicional) */}
+                    {tienePisos && (
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {local.piso ? (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm font-medium">
+                            {local.piso}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                    )}
 
                     {/* SESIÓN 56: Precio Base - Input + Botón actualizar */}
                     <td className="py-3 px-4">

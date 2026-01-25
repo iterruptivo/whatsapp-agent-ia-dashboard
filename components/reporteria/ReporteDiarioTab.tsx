@@ -272,7 +272,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
         '#': index + 1,
         'Fecha': formatDate(abono.fecha_comprobante),
         'Cliente': abono.cliente_nombre,
-        'Local': abono.local_codigo,
+        'Local': abono.local_piso ? `${abono.local_codigo} (${abono.local_piso})` : abono.local_codigo,
         'Proyecto': abono.proyecto_nombre,
         'Monto': abono.monto,
         'Moneda': abono.moneda,
@@ -709,6 +709,11 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                           </span>
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium text-[#192c4d] bg-[#1b967a]/10 border border-[#1b967a]/20 rounded w-fit">
                             {abono.local_codigo}
+                            {abono.local_piso && (
+                              <span className="text-[10px] text-gray-500 font-normal">
+                                ({abono.local_piso})
+                              </span>
+                            )}
                           </span>
                         </div>
                       </td>
@@ -821,7 +826,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                   <div className="mb-2">
                     <p className="font-semibold text-gray-900">{abono.cliente_nombre}</p>
                     <p className="text-sm text-gray-500">
-                      {abono.local_codigo} • {abono.proyecto_nombre}
+                      {abono.local_codigo}{abono.local_piso && ` (${abono.local_piso})`} • {abono.proyecto_nombre}
                     </p>
                     {abono.banco && (
                       <p className="text-xs text-gray-400 mt-1">Banco: {abono.banco}</p>

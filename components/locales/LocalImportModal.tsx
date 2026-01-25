@@ -115,6 +115,14 @@ export default function LocalImportModal({
                 local.precio_base = null; // Vacío = dejar para entrada manual
               }
 
+              // SESIÓN 98: Columna piso opcional
+              if (row.piso || row.PISO) {
+                const pisoValue = String(row.piso || row.PISO).trim();
+                if (pisoValue) {
+                  local.piso = pisoValue;
+                }
+              }
+
               return local;
             });
             resolve(locales);
@@ -168,6 +176,14 @@ export default function LocalImportModal({
               local.precio_base = null; // Vacío = dejar para entrada manual
             }
 
+            // SESIÓN 98: Columna piso opcional
+            if (row.piso || row.PISO) {
+              const pisoValue = String(row.piso || row.PISO).trim();
+              if (pisoValue) {
+                local.piso = pisoValue;
+              }
+            }
+
             return local;
           });
 
@@ -184,9 +200,11 @@ export default function LocalImportModal({
   // ====== DOWNLOAD TEMPLATE ======
   const handleDownloadTemplate = () => {
     // SESIÓN 56: Datos de ejemplo con precio_base opcional
+    // SESIÓN 98: Agregar columna piso opcional
     const templateData = [
-      { codigo: 'A-101', metraje: 45.5, estado: 'verde', precio_base: 15000 },
-      { codigo: 'B-205', metraje: 67.2, estado: 'verde', precio_base: '' }, // Vacío = entrada manual
+      { codigo: 'A-101', metraje: 45.5, estado: 'verde', precio_base: 15000, piso: 'P1' },
+      { codigo: 'B-205', metraje: 67.2, estado: 'verde', precio_base: '', piso: 'P2' }, // Vacío = entrada manual
+      { codigo: 'C-301', metraje: 50.0, estado: 'verde', precio_base: 18000, piso: '' }, // Sin piso
     ];
 
     // Crear workbook y worksheet
@@ -357,6 +375,9 @@ export default function LocalImportModal({
                 </li>
                 <li>
                   <strong>precio_base:</strong> Precio base en USD (ej: 15000). Si es 0 se rechaza. Si está vacío se puede ingresar manualmente después.
+                </li>
+                <li>
+                  <strong>piso:</strong> Opcional. Valores válidos: S1, S2, S3, SS, P1, P2, P3 (ej: P1, S2)
                 </li>
               </ul>
               <p className="text-xs text-blue-700 mt-2">

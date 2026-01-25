@@ -1116,6 +1116,7 @@ export async function crearLocalExcepcional(data: {
   proyecto_id: string;
   metraje: number;
   precio_base: number;
+  piso?: string | null;
 }): Promise<{ success: boolean; message: string; local?: { id: string; codigo: string } }> {
   try {
     // Crear Server Client con autenticación (patrón Sesión 51)
@@ -1170,12 +1171,13 @@ export async function crearLocalExcepcional(data: {
       return { success: false, message: 'El precio base debe ser mayor a 0' };
     }
 
-    // Verificar que el código no exista en el proyecto
+    // Verificar que el código no exista en el proyecto (considerando piso)
     const { data: existente } = await supabase
       .from('locales')
       .select('id')
       .eq('proyecto_id', data.proyecto_id)
       .eq('codigo', data.codigo.trim())
+      .eq('piso', data.piso || null)
       .single();
 
     if (existente) {
@@ -1190,6 +1192,7 @@ export async function crearLocalExcepcional(data: {
         proyecto_id: data.proyecto_id,
         metraje: data.metraje,
         precio_base: data.precio_base,
+        piso: data.piso || null,
         estado: 'verde',
         bloqueado: false,
         es_excepcional: true,
@@ -1205,12 +1208,13 @@ export async function crearLocalExcepcional(data: {
     }
 
     // Registrar en historial
+    const pisoInfo = data.piso ? `, piso: ${data.piso}` : '';
     await supabase.from('locales_historial').insert({
       local_id: nuevoLocal.id,
       usuario_id: userData.id,
       estado_anterior: 'verde',
       estado_nuevo: 'verde',
-      accion: `Local excepcional creado: ${data.codigo} (metraje: ${data.metraje}m², precio: $${data.precio_base})`,
+      accion: `Local excepcional creado: ${data.codigo}${pisoInfo} (metraje: ${data.metraje}m², precio: $${data.precio_base})`,
     });
 
     console.log(`[LOCAL EXCEPCIONAL] ✅ Creado: ${data.codigo} por ${userData.nombre}`);

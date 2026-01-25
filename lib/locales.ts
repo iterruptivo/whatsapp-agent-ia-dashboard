@@ -17,6 +17,7 @@ export interface Local {
   proyecto_id: string;
   proyecto_nombre?: string; // Via JOIN (opcional)
   metraje: number; // 4.5, 6.0, etc.
+  piso: string | null; // S1, S2, SS, P1, P2, P3, etc. NULL = sin piso
   precio_base: number | null; // SESIÓN 56: Precio base de referencia del local
   estado: 'verde' | 'amarillo' | 'naranja' | 'rojo';
   bloqueado: boolean;
@@ -67,6 +68,7 @@ export interface LocalHistorial {
 export interface LocalImportRow {
   codigo: string;
   metraje: number;
+  piso?: string | null; // S1, S2, SS, P1, P2, P3, etc. Opcional
   estado?: 'verde' | 'amarillo' | 'naranja' | 'rojo'; // Opcional: default = 'verde'
   precio_base?: number | null; // SESIÓN 56: Opcional - si es 0 se rechaza, si está vacío se deja null
 }
@@ -111,6 +113,7 @@ export function removerVendedorNegociando(
 export async function getAllLocales(options?: {
   proyectoId?: string;
   estado?: string;
+  piso?: string;
   metrajeMin?: number;
   metrajeMax?: number;
   page?: number;
@@ -143,6 +146,10 @@ export async function getAllLocales(options?: {
 
     if (options?.estado) {
       query = query.eq('estado', options.estado);
+    }
+
+    if (options?.piso) {
+      query = query.eq('piso', options.piso);
     }
 
     if (options?.metrajeMin !== undefined) {
@@ -590,16 +597,19 @@ export async function importLocalesQuery(locales: LocalImportRow[], proyectoId: 
 
     for (const local of locales) {
 
-      // Verificar si código ya existe EN ESTE PROYECTO
+      // Verificar si código ya existe EN ESTE PROYECTO CON EL MISMO PISO
+      // IMPORTANTE: La combinación codigo + proyecto_id + piso debe ser única
       const { data: existente } = await supabase
         .from('locales')
         .select('id')
         .eq('codigo', local.codigo)
         .eq('proyecto_id', proyectoId)
+        .eq('piso', local.piso || null)
         .maybeSingle();
 
       if (existente) {
-        errors.push(`Local ${local.codigo} ya existe en proyecto ${proyecto.nombre} (skipped)`);
+        const pisoTexto = local.piso ? ` piso ${local.piso}` : ' sin piso';
+        errors.push(`Local ${local.codigo}${pisoTexto} ya existe en proyecto ${proyecto.nombre} (skipped)`);
         skipped++;
         continue;
       }
@@ -630,6 +640,7 @@ export async function importLocalesQuery(locales: LocalImportRow[], proyectoId: 
         codigo: local.codigo,
         proyecto_id: proyectoId,
         metraje: local.metraje,
+        piso: local.piso || null, // Incluir piso (null si no viene)
         estado: estado,
         bloqueado: bloqueado,
       };

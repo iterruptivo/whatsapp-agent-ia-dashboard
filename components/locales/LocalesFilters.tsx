@@ -18,10 +18,13 @@ interface LocalesFiltersProps {
   metrajeMax: number | undefined;
   defaultProyectoId?: string; // Proyecto del login para comparar default
   selectedProyectoNombre?: string; // SESIÓN 55: Nombre del proyecto seleccionado en login
+  pisosDisponibles?: string[];
+  pisoFilter?: string;
   onProyectoChange: (value: string) => void;
   onEstadosChange: (estados: string[]) => void; // Ahora recibe array
   onMetrajeMinChange: (value: number | undefined) => void;
   onMetrajeMaxChange: (value: number | undefined) => void;
+  onPisoChange?: (piso: string) => void;
   onClearFilters: () => void;
 }
 
@@ -33,10 +36,13 @@ export default function LocalesFilters({
   metrajeMax,
   defaultProyectoId,
   selectedProyectoNombre,
+  pisosDisponibles,
+  pisoFilter,
   onProyectoChange,
   onEstadosChange,
   onMetrajeMinChange,
   onMetrajeMaxChange,
+  onPisoChange,
   onClearFilters,
 }: LocalesFiltersProps) {
   // Defaults: verde, amarillo, naranja
@@ -97,8 +103,8 @@ export default function LocalesFilters({
         </div>
       </div>
 
-      {/* SEGUNDA FILA: Proyecto y Metrajes */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      {/* SEGUNDA FILA: Proyecto, Piso y Metrajes */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         {/* SESIÓN 55: Proyecto fijo (no editable) - mostrar nombre del proyecto seleccionado en login */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -108,6 +114,25 @@ export default function LocalesFilters({
             {selectedProyectoNombre || 'Cargando...'}
           </div>
         </div>
+
+        {/* Filtro Piso - Solo si hay pisos disponibles */}
+        {pisosDisponibles && pisosDisponibles.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Piso
+            </label>
+            <select
+              value={pisoFilter || ''}
+              onChange={(e) => onPisoChange?.(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary"
+            >
+              <option value="">Todos los pisos</option>
+              {pisosDisponibles.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Filtro Metraje Mín */}
         <div>

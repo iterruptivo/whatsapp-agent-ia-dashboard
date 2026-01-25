@@ -4,6 +4,161 @@
 
 ---
 
+## SESIÓN 100+ - Campo PISO en Modal de Local Excepcional (23 Enero 2026)
+
+**Tipo:** Feature Frontend (Completado)
+
+**Problema Resuelto:**
+El modal de creación de Local Excepcional no tenía campo para seleccionar el piso del local, aunque la función backend `crearLocalExcepcional` ya aceptaba el parámetro `piso`.
+
+### Implementación
+
+**Archivo Modificado:** `components/locales/CrearLocalExcepcionalModal.tsx`
+
+**Cambios Realizados:**
+1. ✅ Agregado campo `piso: ''` al estado del formulario
+2. ✅ Nuevo estado `pisosDisponibles` para cargar pisos dinámicamente
+3. ✅ `useEffect` que consulta `proyecto_configuraciones.configuraciones_extra.pisos_disponibles`
+4. ✅ Validación de código duplicado actualizada para considerar el piso
+5. ✅ Campo select de piso en el formulario (opcional)
+6. ✅ Pasar piso a la función `crearLocalExcepcional`
+
+### Comportamiento
+
+| Escenario | Resultado |
+|-----------|-----------|
+| Proyecto sin pisos configurados | Campo de piso NO se muestra |
+| Proyecto con pisos (ej: P1, P2) | Campo de piso SE muestra con opciones |
+| Usuario no selecciona piso | Se envía `null` (sin piso) |
+| Usuario selecciona piso | Se envía el piso seleccionado |
+| Validación de código duplicado | Considera el piso (mismo código en diferente piso = OK) |
+
+### Validación de Duplicados
+
+**Antes:** Solo validaba `codigo + proyecto_id`
+**Ahora:** Valida `codigo + proyecto_id + piso`
+
+Ejemplo:
+- Local "A-101" en P1 → Permitido
+- Local "A-101" en P2 → Permitido (diferente piso)
+- Local "A-101" en P1 de nuevo → Bloqueado (duplicado)
+
+### UI del Campo
+
+```tsx
+{pisosDisponibles.length > 0 && (
+  <div>
+    <label>Piso (opcional)</label>
+    <select>
+      <option value="">Sin piso</option>
+      {pisosDisponibles.map((piso) => (
+        <option key={piso} value={piso}>{piso}</option>
+      ))}
+    </select>
+  </div>
+)}
+```
+
+### Estado Final
+
+- ✅ Campo de piso agregado al formulario
+- ✅ Carga dinámica de pisos desde configuración del proyecto
+- ✅ Validación de duplicados actualizada
+- ✅ TypeScript compila sin errores
+- ⏳ Pendiente: QA con Playwright para verificar funcionamiento
+
+---
+
+## SESIÓN 100+ - Soporte de PISOS para Gestión de Locales (23 Enero 2026)
+
+**Tipo:** Feature Completo (Backend + Frontend + Migración SQL)
+
+**Problema Resuelto:**
+Proyectos como Wilson y Huancayo tienen múltiples pisos (sótanos, semisótano, piso 1, 2, 3). Los códigos de locales se repiten entre pisos (ej: "A-101" existe en P1 y P2). El constraint UNIQUE(codigo) era global e impedía duplicados.
+
+### Nomenclatura de Pisos
+| Código | Significado |
+|--------|-------------|
+| S1, S2, S3 | Sótano 1, 2, 3 |
+| SS | Semisótano |
+| P1, P2, P3 | Piso 1, 2, 3 |
+
+### Migración SQL Ejecutada
+
+**Archivo:** `migrations/024_soporte_pisos_locales.sql`
+
+```sql
+-- Columna piso
+ALTER TABLE locales ADD COLUMN piso VARCHAR(10) DEFAULT NULL;
+
+-- Índice para filtrado
+CREATE INDEX idx_locales_piso ON locales(piso);
+
+-- Eliminar constraint global
+ALTER TABLE locales DROP CONSTRAINT IF EXISTS locales_codigo_key;
+
+-- Nuevo UNIQUE compuesto
+CREATE UNIQUE INDEX uq_locales_codigo_proyecto_piso
+ON locales(codigo, proyecto_id, COALESCE(piso, ''));
+```
+
+### Archivos Modificados
+
+| Archivo | Cambios |
+|---------|---------|
+| `migrations/024_soporte_pisos_locales.sql` | NUEVO - Migración SQL |
+| `lib/locales.ts` | Interface Local + filtro piso + validación importación |
+| `lib/actions-locales.ts` | crearLocalExcepcional con soporte piso |
+| `lib/actions-fichas-reporte.ts` | Interface LocalConProyecto + query con piso |
+| `components/locales/LocalesClient.tsx` | Estados + useEffect + filtrado por piso |
+| `components/locales/LocalesFilters.tsx` | Dropdown de piso condicional |
+| `components/locales/LocalesTable.tsx` | Columna piso condicional (badge azul) |
+| `components/locales/LocalImportModal.tsx` | Soporte columna piso en CSV/Excel |
+| `components/reporteria/ReporteriaClient.tsx` | Campo piso en objeto Local |
+
+### Configuración de Prueba
+
+**Proyecto Pruebas** configurado con pisos P1 y P2:
+- proyecto_id: `80761314-7a78-43db-8ad5-10f16eedac87`
+- Pisos disponibles: `["P1", "P2"]`
+- Almacenado en: `proyecto_configuraciones.configuraciones_extra.pisos_disponibles`
+
+```sql
+INSERT INTO proyecto_configuraciones (proyecto_id, configuraciones_extra)
+VALUES ('80761314-7a78-43db-8ad5-10f16eedac87', '{"pisos_disponibles": ["P1", "P2"]}')
+ON CONFLICT (proyecto_id) DO UPDATE SET
+  configuraciones_extra = COALESCE(proyecto_configuraciones.configuraciones_extra, '{}'::jsonb)
+  || '{"pisos_disponibles": ["P1", "P2"]}'::jsonb
+```
+
+### Comportamiento del Sistema
+
+| Escenario | Resultado |
+|-----------|-----------|
+| Crear local "A-101" en P1 | ✅ Permitido |
+| Crear local "A-101" en P2 | ✅ Permitido (diferente piso) |
+| Crear local "A-101" en P1 de nuevo | ❌ Bloqueado (duplicado) |
+| Proyecto sin config de pisos | Funciona igual que antes (sin filtro ni columna) |
+| Importación CSV sin columna piso | piso = NULL (compatible) |
+
+### Estado Final
+
+- ✅ Migración SQL ejecutada y verificada
+- ✅ Backend actualizado (interfaces, queries, validaciones)
+- ✅ Frontend actualizado (filtros, tabla, importación)
+- ✅ TypeScript compila sin errores
+- ✅ Proyecto Pruebas configurado con P1, P2
+- ✅ **QA con Playwright - VERIFICADO:**
+  - Filtro de Piso aparece con opciones P1, P2
+  - Columna Piso visible en tabla
+  - Filtrado por piso funciona correctamente
+  - Screenshot: `.playwright-mcp/locales-pisos-filter-debug.png`
+
+### Nota sobre Timing
+Hay una race condition menor donde el filtro tarda ~1s en aparecer después de cargar la página (espera sincronización de auth). No bloquea funcionalidad.
+
+---
+
 ## SESIÓN 100+ - Corrección Bug Bucket Notas de Crédito (22 Enero 2026)
 
 **Tipo:** Bugfix Frontend (Completado)

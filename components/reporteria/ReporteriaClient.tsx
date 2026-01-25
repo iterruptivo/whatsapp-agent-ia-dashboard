@@ -712,6 +712,7 @@ export default function ReporteriaClient({ user }: ReporteriaClientProps) {
               proyecto_id: selectedLocalData.proyecto_id,
               proyecto_nombre: selectedLocalData.proyecto.nombre,
               monto_venta: selectedLocalData.monto_venta ?? null,
+              piso: selectedLocalData.piso ?? null,
               // Campos requeridos por el tipo Local con valores por defecto
               bloqueado: false,
               monto_separacion: null,

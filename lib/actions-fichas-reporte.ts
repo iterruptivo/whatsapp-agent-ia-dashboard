@@ -61,6 +61,41 @@ export interface FichaReporteRow {
 }
 
 // ============================================================================
+// PAGINACIÓN SERVER-SIDE PARA REPORTE DE FICHAS
+// ============================================================================
+
+// Columnas ordenables para Fichas
+export type FichaReporteSortColumn =
+  | 'fecha_creacion'
+  | 'titular_nombre'
+  | 'local_codigo'
+  | 'proyecto_nombre'
+  | 'monto_voucher_usd'
+  | 'monto_voucher_pen';
+
+// Parámetros de la función paginada
+export interface GetFichasReporteParams {
+  proyectoId?: string | null;
+  page?: number;
+  pageSize?: number;
+  sortColumn?: FichaReporteSortColumn;
+  sortDirection?: 'asc' | 'desc';
+  incluirPruebas?: boolean;
+  fichaSearch?: string;  // Busca en titular, DNI, local código
+}
+
+// Resultado paginado
+export interface GetFichasReporteResult {
+  data: FichaReporteRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  totalVouchersUSD: number;  // Suma total de monto_voucher_usd
+  totalVouchersPEN: number;  // Suma total de monto_voucher_pen
+}
+
+// ============================================================================
 // OBTENER FICHAS PARA REPORTE
 // ============================================================================
 
@@ -361,6 +396,149 @@ export async function getFichasParaReporte(proyectoId?: string, incluirPruebas: 
 }
 
 // ============================================================================
+// FUNCIONES PAGINADAS PARA REPORTE DE FICHAS
+// ============================================================================
+
+// Helper de ordenamiento para fichas
+function sortFichasReporte(
+  data: FichaReporteRow[],
+  column: FichaReporteSortColumn,
+  direction: 'asc' | 'desc'
+): FichaReporteRow[] {
+  return [...data].sort((a, b) => {
+    let valueA: any, valueB: any;
+
+    switch (column) {
+      case 'fecha_creacion':
+        valueA = a.fecha_creacion || '';
+        valueB = b.fecha_creacion || '';
+        break;
+      case 'titular_nombre':
+        valueA = a.titular_nombre || '';
+        valueB = b.titular_nombre || '';
+        break;
+      case 'local_codigo':
+        valueA = a.local_codigo || '';
+        valueB = b.local_codigo || '';
+        break;
+      case 'proyecto_nombre':
+        valueA = a.proyecto_nombre || '';
+        valueB = b.proyecto_nombre || '';
+        break;
+      case 'monto_voucher_usd':
+        valueA = a.monto_voucher_usd || 0;
+        valueB = b.monto_voucher_usd || 0;
+        break;
+      case 'monto_voucher_pen':
+        valueA = a.monto_voucher_pen || 0;
+        valueB = b.monto_voucher_pen || 0;
+        break;
+      default:
+        return 0;
+    }
+
+    if (typeof valueA === 'string') {
+      const cmp = valueA.localeCompare(valueB);
+      return direction === 'asc' ? cmp : -cmp;
+    }
+
+    return direction === 'asc' ? valueA - valueB : valueB - valueA;
+  });
+}
+
+/**
+ * Obtiene fichas de inscripción con paginación, ordenamiento y búsqueda server-side
+ * Reutiliza getFichasParaReporte() para obtener datos base
+ */
+export async function getFichasParaReportePaginado(
+  params: GetFichasReporteParams
+): Promise<GetFichasReporteResult> {
+  const {
+    proyectoId,
+    page = 1,
+    pageSize = 20,
+    sortColumn = 'fecha_creacion',
+    sortDirection = 'desc',
+    incluirPruebas = false,
+    fichaSearch,
+  } = params;
+
+  // 1. Obtener todos los datos base
+  const allData = await getFichasParaReporte(proyectoId || undefined, incluirPruebas);
+
+  // 2. Filtrar por búsqueda (titular, DNI, local)
+  let filtered = allData;
+  if (fichaSearch && fichaSearch.trim()) {
+    const search = fichaSearch.toLowerCase().trim();
+    filtered = allData.filter(f =>
+      f.titular_nombre?.toLowerCase().includes(search) ||
+      f.titular_documento?.toLowerCase().includes(search) ||
+      f.local_codigo?.toLowerCase().includes(search)
+    );
+  }
+
+  // 3. Calcular totales antes de paginar
+  const totalVouchersUSD = filtered.reduce((sum, f) => sum + (f.monto_voucher_usd || 0), 0);
+  const totalVouchersPEN = filtered.reduce((sum, f) => sum + (f.monto_voucher_pen || 0), 0);
+
+  // 4. Ordenar
+  const sorted = sortFichasReporte(filtered, sortColumn, sortDirection);
+
+  // 5. Paginar
+  const total = sorted.length;
+  const totalPages = Math.ceil(total / pageSize);
+  const startIndex = (page - 1) * pageSize;
+  const paginatedData = sorted.slice(startIndex, startIndex + pageSize);
+
+  return {
+    data: paginatedData,
+    total,
+    page,
+    pageSize,
+    totalPages,
+    totalVouchersUSD,
+    totalVouchersPEN,
+  };
+}
+
+/**
+ * Obtiene TODAS las fichas para exportar a Excel (sin paginación)
+ * Mantiene filtros y ordenamiento aplicados
+ */
+export async function getFichasParaReporteExport(params: {
+  proyectoId?: string | null;
+  sortColumn?: FichaReporteSortColumn;
+  sortDirection?: 'asc' | 'desc';
+  incluirPruebas?: boolean;
+  fichaSearch?: string;
+}): Promise<FichaReporteRow[]> {
+  const {
+    proyectoId,
+    sortColumn = 'fecha_creacion',
+    sortDirection = 'desc',
+    incluirPruebas = false,
+    fichaSearch,
+  } = params;
+
+  // Obtener todos los datos base
+  const allData = await getFichasParaReporte(proyectoId || undefined, incluirPruebas);
+
+  // Filtrar por búsqueda
+  let filtered = allData;
+  if (fichaSearch && fichaSearch.trim()) {
+    const search = fichaSearch.toLowerCase().trim();
+    filtered = allData.filter(f =>
+      f.titular_nombre?.toLowerCase().includes(search) ||
+      f.titular_documento?.toLowerCase().includes(search) ||
+      f.local_codigo?.toLowerCase().includes(search)
+    );
+  }
+
+  // Ordenar y retornar
+  return sortFichasReporte(filtered, sortColumn, sortDirection);
+}
+
+// ============================================================================
 // REPORTE DIARIO - Abonos por cliente ordenados por fecha
 // Session 101 - Nuevo reporte para Finanzas
 // Con paginación y ordenamiento server-side
@@ -370,6 +548,7 @@ export interface AbonoDiarioRow {
   ficha_id: string;
   local_id: string;
   local_codigo: string;
+  local_piso: string | null;
   proyecto_nombre: string;
   cliente_nombre: string;
   cliente_dni?: string;
@@ -588,6 +767,7 @@ async function fetchAllAbonosFiltered(
       locales!inner (
         id,
         codigo,
+        piso,
         proyectos!inner (
           id,
           nombre
@@ -671,6 +851,7 @@ async function fetchAllAbonosFiltered(
       ficha_id: dep.ficha_id || '',
       local_id: dep.local_id,
       local_codigo: local?.codigo || 'N/A',
+      local_piso: local?.piso || null,
       proyecto_nombre: proyecto?.nombre || 'N/A',
       cliente_nombre: clienteNombre,
       cliente_dni: ficha?.titular_numero_documento,
@@ -1394,6 +1575,7 @@ export interface LocalConProyecto {
   precio_base: number | null;
   proyecto_id: string;
   monto_venta: number | null;
+  piso: string | null;
   proyecto: {
     id: string;
     nombre: string;
@@ -1418,6 +1600,7 @@ export async function getLocalConProyecto(localId: string): Promise<LocalConProy
         precio_base,
         proyecto_id,
         monto_venta,
+        piso,
         proyectos!inner (
           id,
           nombre
@@ -1441,6 +1624,7 @@ export async function getLocalConProyecto(localId: string): Promise<LocalConProy
       precio_base: data.precio_base,
       proyecto_id: data.proyecto_id,
       monto_venta: data.monto_venta,
+      piso: data.piso,
       proyecto: {
         id: proyecto.id,
         nombre: proyecto.nombre,

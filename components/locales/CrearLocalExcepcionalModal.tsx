@@ -69,7 +69,9 @@ export default function CrearLocalExcepcionalModal({
     proyecto_id: '',
     metraje: '',
     precio_base: '',
+    piso: '',
   });
+  const [pisosDisponibles, setPisosDisponibles] = useState<string[]>([]);
 
   // Estado para validación de código duplicado
   const [codigoValidation, setCodigoValidation] = useState<{
@@ -92,6 +94,33 @@ export default function CrearLocalExcepcionalModal({
     }
   }, [isOpen, selectedProyectoId]);
 
+  // Efecto para cargar pisos disponibles cuando cambia el proyecto
+  useEffect(() => {
+    async function fetchPisosDisponibles() {
+      if (!formData.proyecto_id) {
+        setPisosDisponibles([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('proyecto_configuraciones')
+        .select('configuraciones_extra')
+        .eq('proyecto_id', formData.proyecto_id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error al cargar pisos disponibles:', error);
+        setPisosDisponibles([]);
+        return;
+      }
+
+      const pisos = data?.configuraciones_extra?.pisos_disponibles || [];
+      setPisosDisponibles(pisos);
+    }
+
+    fetchPisosDisponibles();
+  }, [formData.proyecto_id]);
+
   // Reset form cuando se cierra
   useEffect(() => {
     if (!isOpen) {
@@ -100,17 +129,19 @@ export default function CrearLocalExcepcionalModal({
         proyecto_id: selectedProyectoId || '',
         metraje: '',
         precio_base: '',
+        piso: '',
       });
       setCodigoValidation({
         checking: false,
         isValid: null,
         message: '',
       });
+      setPisosDisponibles([]);
     }
   }, [isOpen, selectedProyectoId]);
 
-  // Validar código duplicado con debounce
-  const checkCodigoDuplicado = useCallback(async (codigo: string, proyectoId: string) => {
+  // Validar código duplicado con debounce (considerando piso)
+  const checkCodigoDuplicado = useCallback(async (codigo: string, proyectoId: string, piso: string) => {
     if (!codigo.trim() || !proyectoId) {
       setCodigoValidation({ checking: false, isValid: null, message: '' });
       return;
@@ -119,12 +150,20 @@ export default function CrearLocalExcepcionalModal({
     setCodigoValidation({ checking: true, isValid: null, message: 'Verificando...' });
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('locales')
-        .select('id, codigo')
+        .select('id, codigo, piso')
         .eq('proyecto_id', proyectoId)
-        .eq('codigo', codigo.trim().toUpperCase())
-        .maybeSingle();
+        .eq('codigo', codigo.trim().toUpperCase());
+
+      // Filtrar por piso si está presente
+      if (piso) {
+        query = query.eq('piso', piso);
+      } else {
+        query = query.is('piso', null);
+      }
+
+      const { data, error } = await query.maybeSingle();
 
       if (error) {
         setCodigoValidation({ checking: false, isValid: null, message: '' });
@@ -132,10 +171,11 @@ export default function CrearLocalExcepcionalModal({
       }
 
       if (data) {
+        const pisoMsg = piso ? ` en piso ${piso}` : '';
         setCodigoValidation({
           checking: false,
           isValid: false,
-          message: `El código "${codigo}" ya existe en este proyecto`,
+          message: `El código "${codigo}"${pisoMsg} ya existe en este proyecto`,
         });
       } else {
         setCodigoValidation({
@@ -149,16 +189,16 @@ export default function CrearLocalExcepcionalModal({
     }
   }, []);
 
-  // Efecto para validar código cuando cambia
+  // Efecto para validar código cuando cambia (incluyendo piso)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (formData.codigo && formData.proyecto_id) {
-        checkCodigoDuplicado(formData.codigo, formData.proyecto_id);
+        checkCodigoDuplicado(formData.codigo, formData.proyecto_id, formData.piso);
       }
     }, 500); // Debounce 500ms
 
     return () => clearTimeout(timeoutId);
-  }, [formData.codigo, formData.proyecto_id, checkCodigoDuplicado]);
+  }, [formData.codigo, formData.proyecto_id, formData.piso, checkCodigoDuplicado]);
 
   if (!isOpen) return null;
 
@@ -179,6 +219,7 @@ export default function CrearLocalExcepcionalModal({
         proyecto_id: formData.proyecto_id,
         metraje: parseFloat(formData.metraje),
         precio_base: parseCurrency(formData.precio_base),
+        piso: formData.piso || null,
       });
 
       if (result.success) {
@@ -340,6 +381,31 @@ export default function CrearLocalExcepcionalModal({
               disabled={loading}
             />
           </div>
+
+          {/* Piso (opcional, solo si el proyecto tiene pisos configurados) */}
+          {pisosDisponibles.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Piso (opcional)
+              </label>
+              <select
+                value={formData.piso}
+                onChange={(e) => handleChange('piso', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                disabled={loading}
+              >
+                <option value="">Sin piso</option>
+                {pisosDisponibles.map((piso) => (
+                  <option key={piso} value={piso}>
+                    {piso}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Seleccione el piso donde se encuentra el local
+              </p>
+            </div>
+          )}
 
           {/* Precio Base con formato de moneda */}
           <div>

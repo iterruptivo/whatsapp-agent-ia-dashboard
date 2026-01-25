@@ -1134,6 +1134,18 @@ export default function FichaInscripcionModal({
     setFormData(prev => ({ ...prev, dni_fotos: urls }));
   }, []);
 
+  // Handler para cambios en pares de DNI
+  const handleDNIPairsChange = useCallback((pairs: DNIPair[]) => {
+    // Guardar pares completos para validación
+    setDniPairs(pairs);
+    // Guardar URLs de las imágenes en formData.dni_fotos
+    const urls = pairs.flatMap(p => [
+      p.frente?.url,
+      p.reverso?.url
+    ].filter(Boolean) as string[]);
+    setFormData(prev => ({ ...prev, dni_fotos: urls }));
+  }, []);
+
   // Handler para DNIPairUploader - Auto-llenar campos según persona
   const handleDNIPairDatosExtraidos = useCallback((datos: {
     frente: DNIFrenteOCRData;
@@ -1874,7 +1886,8 @@ export default function FichaInscripcionModal({
 
       // Proyecto
       'PROYECTO_NOMBRE': local.proyecto_nombre || '-',
-      'CODIGO_LOCAL': local.codigo || '-',
+      'CODIGO_LOCAL': local.piso ? `${local.codigo} (${local.piso})` : (local.codigo || '-'),
+      'PISO_LOCAL': local.piso || '-',
 
       // Datos legales del proyecto (para header y footer)
       'EMPRESA_RAZON_SOCIAL': proyectoLegalData.razon_social || 'EcoPlaza Inmobiliaria S.A.C.',
@@ -2477,7 +2490,7 @@ export default function FichaInscripcionModal({
         {/* Header */}
         <div className="sticky top-0 z-10 bg-[#1b967a] text-white px-6 py-4 rounded-t-lg flex items-center justify-between">
           <h2 className="text-lg font-semibold">
-            Ficha de Inscripción - {local.codigo}
+            Ficha de Inscripción - {local.codigo}{local.piso && ` (${local.piso})`}
           </h2>
           <button onClick={onClose} className="text-white hover:text-gray-200 transition-colors">
             <X className="w-6 h-6" />
@@ -2499,7 +2512,10 @@ export default function FichaInscripcionModal({
 
                 {/* Info básica del local */}
                 <div className="grid grid-cols-4 gap-3 text-sm mb-4 pb-3 border-b border-gray-200">
-                  <div><span className="text-gray-500">Código:</span> <strong>{local.codigo}</strong></div>
+                  <div>
+                    <span className="text-gray-500">Código:</span> <strong>{local.codigo}</strong>
+                    {local.piso && <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">{local.piso}</span>}
+                  </div>
                   <div><span className="text-gray-500">Proyecto:</span> <strong>{local.proyecto_nombre}</strong></div>
                   <div><span className="text-gray-500">Metraje:</span> <strong>{local.metraje} m²</strong></div>
 
@@ -3261,16 +3277,7 @@ export default function FichaInscripcionModal({
                   <DNIPairUploader
                     localId={local?.id || ''}
                     initialPairs={initialDniPairs}
-                    onPairsChange={(pairs) => {
-                      // Guardar pares completos para validación
-                      setDniPairs(pairs);
-                      // Guardar URLs de las imágenes en formData.dni_fotos
-                      const urls = pairs.flatMap(p => [
-                        p.frente?.url,
-                        p.reverso?.url
-                      ].filter(Boolean) as string[]);
-                      setFormData(prev => ({ ...prev, dni_fotos: urls }));
-                    }}
+                    onPairsChange={handleDNIPairsChange}
                     onDatosExtraidos={handleDNIPairDatosExtraidos}
                     tieneConyuge={formData.tiene_conyuge || formData.titular_estado_civil === 'Casado(a)'}
                     numeroCopropietarios={(formData.copropietarios || []).length}

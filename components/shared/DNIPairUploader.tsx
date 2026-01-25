@@ -840,9 +840,42 @@ export default function DNIPairUploader({
   // ========================================
   // SINCRONIZAR initialPairs cuando cambia (para persistencia al reabrir)
   // ========================================
+  const isInitialSyncRef = useRef(false);
+
+  // Ref para trackear qué pares ya fueron notificados a onDatosExtraidos
+  const notifiedPairsRef = useRef<Set<string>>(new Set());
+
+  // Inicializar ref con pares que ya vienen completos de initialPairs (evita popup al cargar ficha existente)
+  const isFirstRenderRef = useRef(true);
+  if (isFirstRenderRef.current) {
+    isFirstRenderRef.current = false;
+    initialPairs.forEach((pair) => {
+      if (
+        pair.frente?.estado === 'listo' &&
+        pair.reverso?.estado === 'listo' &&
+        pair.frente.ocrData &&
+        pair.reverso.ocrData
+      ) {
+        notifiedPairsRef.current.add(pair.id);
+      }
+    });
+  }
+
   useEffect(() => {
     if (initialPairs && initialPairs.length > 0) {
+      isInitialSyncRef.current = true; // Marcar que viene de sync
       setPairs(initialPairs);
+      // Marcar pares ya completos como notificados (evita popup al recargar ficha)
+      initialPairs.forEach((pair) => {
+        if (
+          pair.frente?.estado === 'listo' &&
+          pair.reverso?.estado === 'listo' &&
+          pair.frente.ocrData &&
+          pair.reverso.ocrData
+        ) {
+          notifiedPairsRef.current.add(pair.id);
+        }
+      });
     }
   }, [initialPairs]);
 
@@ -956,8 +989,8 @@ export default function DNIPairUploader({
       }
 
       // Exito
-      setPairs((prev) => {
-        const updated = prev.map((p) =>
+      setPairs((prev) =>
+        prev.map((p) =>
           p.id === pairId && p[lado]
             ? {
                 ...p,
@@ -969,33 +1002,10 @@ export default function DNIPairUploader({
                 },
               }
             : p
-        );
-
-        // Notificar si tenemos ambos lados completos
-        const updatedPair = updated.find((p) => p.id === pairId);
-        if (
-          updatedPair &&
-          updatedPair.frente?.estado === 'listo' &&
-          updatedPair.reverso?.estado === 'listo' &&
-          updatedPair.frente.ocrData &&
-          updatedPair.reverso.ocrData
-        ) {
-          const personaLabel =
-            updatedPair.persona === 'copropietario'
-              ? `copropietario-${updatedPair.personaIndex}`
-              : updatedPair.persona;
-
-          onDatosExtraidos?.({
-            frente: updatedPair.frente.ocrData as DNIOCRData,
-            reverso: updatedPair.reverso.ocrData as DNIReversoOCRData,
-            persona: personaLabel,
-          });
-        }
-
-        return updated;
-      });
+        )
+      );
     },
-    [localId, pairs, onDatosExtraidos]
+    [localId, pairs]
   );
 
   // ========================================
@@ -1066,13 +1076,64 @@ export default function DNIPairUploader({
   // EFFECTS
   // ========================================
 
+  // Ref para evitar notificar en el primer render (causa "setState during render")
+  const isFirstRender = useRef(true);
+
   // Notificar cambios al padre
   // Nota: onPairsChange se quita de dependencias porque es una arrow function
   // que se recrea en cada render del padre, causando loops infinitos
+  // IMPORTANTE: No notificar en el primer render para evitar "Cannot update component while rendering"
   React.useEffect(() => {
-    onPairsChange(pairs);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    // Si el cambio viene de la sincronización de initialPairs, no notificar
+    if (isInitialSyncRef.current) {
+      isInitialSyncRef.current = false;
+      return;
+    }
+
+    // Diferir la notificación al siguiente tick para evitar setState durante render
+    const timeoutId = setTimeout(() => {
+      onPairsChange(pairs);
+    }, 0);
+
+    return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pairs]);
+
+  // Efecto para detectar pares completos y notificar
+  useEffect(() => {
+    pairs.forEach((pair) => {
+      // Solo notificar si ambos lados están completos y no fue notificado antes
+      if (
+        pair.frente?.estado === 'listo' &&
+        pair.reverso?.estado === 'listo' &&
+        pair.frente.ocrData &&
+        pair.reverso.ocrData &&
+        !notifiedPairsRef.current.has(pair.id)
+      ) {
+        // Marcar como notificado
+        notifiedPairsRef.current.add(pair.id);
+
+        const personaLabel =
+          pair.persona === 'copropietario'
+            ? `copropietario-${pair.personaIndex}`
+            : pair.persona;
+
+        // Diferir al siguiente tick para evitar setState durante render
+        setTimeout(() => {
+          onDatosExtraidos?.({
+            frente: pair.frente!.ocrData as DNIOCRData,
+            reverso: pair.reverso!.ocrData as DNIReversoOCRData,
+            persona: personaLabel,
+          });
+        }, 0);
+      }
+    });
+  }, [pairs, onDatosExtraidos]);
 
   // Agregar/eliminar conyuge segun prop
   React.useEffect(() => {

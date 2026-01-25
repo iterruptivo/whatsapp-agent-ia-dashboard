@@ -76,6 +76,8 @@ export default function LocalesClient({
   const [metrajeMax, setMetrajeMax] = useState<number | undefined>(undefined);
   const [searchInput, setSearchInput] = useState<string>(''); // Lo que el usuario escribe
   const [searchCodigo, setSearchCodigo] = useState<string>(''); // Filtro aplicado al hacer clic en Buscar
+  const [pisoFilter, setPisoFilter] = useState<string>('');
+  const [pisosDisponibles, setPisosDisponibles] = useState<string[]>([]);
 
   // Paginación REAL
   const [currentPage, setCurrentPage] = useState(1);
@@ -120,6 +122,38 @@ export default function LocalesClient({
     // CRITICAL: Solo depender de selectedProyecto.id, NO de proyectoFilter
     // Si incluimos proyectoFilter, se crea un loop que resetea el filtro cada vez que el usuario lo cambia
   }, [selectedProyecto?.id]);
+
+  // ====== CARGAR CONFIGURACIÓN DE PISOS DEL PROYECTO ======
+  // IMPORTANTE: Usar proyectoFilter (el proyecto seleccionado en el dropdown)
+  // NO selectedProyecto (que es el proyecto del login/auth)
+  useEffect(() => {
+    if (!proyectoFilter) {
+      setPisosDisponibles([]);
+      setPisoFilter('');
+      return;
+    }
+
+    const loadPisosConfig = async () => {
+      const { data, error } = await supabase
+        .from('proyecto_configuraciones')
+        .select('configuraciones_extra')
+        .eq('proyecto_id', proyectoFilter)
+        .single();
+
+      if (error) {
+        // Proyecto sin configuración de pisos - es válido
+        setPisosDisponibles([]);
+        setPisoFilter('');
+        return;
+      }
+
+      const pisos = data?.configuraciones_extra?.pisos_disponibles || [];
+      setPisosDisponibles(pisos);
+      setPisoFilter(''); // Reset al cambiar proyecto
+    };
+
+    loadPisosConfig();
+  }, [proyectoFilter]);
 
   // ====== SUPABASE REALTIME SUBSCRIPTION ======
   useEffect(() => {
@@ -284,8 +318,13 @@ export default function LocalesClient({
       filtered = filtered.filter((local) => local.metraje <= metrajeMax);
     }
 
+    // Filtro por piso
+    if (pisoFilter) {
+      filtered = filtered.filter((local) => local.piso === pisoFilter);
+    }
+
     return filtered;
-  }, [locales, searchCodigo, proyectoFilter, estadosFilter, metrajeMin, metrajeMax]);
+  }, [locales, searchCodigo, proyectoFilter, estadosFilter, metrajeMin, metrajeMax, pisoFilter]);
 
   // ====== PAGINACIÓN ======
 
@@ -391,6 +430,7 @@ export default function LocalesClient({
     setEstadosFilter(['verde', 'amarillo', 'naranja']); // Resetear a defaults
     setMetrajeMin(undefined);
     setMetrajeMax(undefined);
+    setPisoFilter('');
     setCurrentPage(1);
   };
 
@@ -479,6 +519,9 @@ export default function LocalesClient({
               onMetrajeMinChange={setMetrajeMin}
               onMetrajeMaxChange={setMetrajeMax}
               onClearFilters={handleClearFilters}
+              pisosDisponibles={pisosDisponibles}
+              pisoFilter={pisoFilter}
+              onPisoChange={(piso) => setPisoFilter(piso)}
             />
           </div>
 
@@ -538,7 +581,8 @@ export default function LocalesClient({
             JSON.stringify([...estadosFilter].sort()) === JSON.stringify([...defaults].sort()) &&
             !proyectoFilter &&
             metrajeMin === undefined &&
-            metrajeMax === undefined;
+            metrajeMax === undefined &&
+            !pisoFilter;
 
           const hasActiveFilters = !isDefaultState || searchCodigo;
 
@@ -559,6 +603,7 @@ export default function LocalesClient({
         totalLocales={filteredLocales.length}
         onPageChange={setCurrentPage}
         onShowHistorial={handleShowHistorial}
+        tienePisos={pisosDisponibles.length > 0}
       />
 
       {/* Modal Importar CSV */}
