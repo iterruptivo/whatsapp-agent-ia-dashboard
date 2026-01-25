@@ -245,6 +245,7 @@ export default function DashboardClient({
         <div className="mb-6">
           <DistribucionLeads
             leads={initialLeadsGlobales}
+            usuarios={usuarios}
             userRole={user.rol}
           />
         </div>
