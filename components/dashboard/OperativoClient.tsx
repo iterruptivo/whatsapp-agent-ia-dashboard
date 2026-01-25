@@ -151,11 +151,12 @@ export default function OperativoClient({
   }, [initialLeads]);
 
   // Create vendedor options for ComboboxFilter (only active vendedores)
+  // NOTA: Usa vendedor_id (no id de usuario) porque lead.vendedor_asignado_id guarda vendedor_id
   const vendedorOptions = useMemo(() => {
     return vendedores
-      .filter((v) => v.activo)
+      .filter((v) => v.activo && v.vendedor_id)
       .sort((a, b) => a.nombre.localeCompare(b.nombre))
-      .map((v) => ({ value: v.id, label: v.nombre }));
+      .map((v) => ({ value: v.vendedor_id, label: v.nombre }));
   }, [vendedores]);
 
   // Calculate unique RUBRO values dynamically from leads
@@ -719,6 +720,7 @@ export default function OperativoClient({
             {/* ROW 3: Estado Filter (full width on mobile) */}
             <ComboboxFilter
               options={[
+                { value: 'lead_manual', label: 'Lead Manual' },
                 { value: 'lead_completo', label: 'Lead Completo' },
                 { value: 'lead_incompleto', label: 'Lead Incompleto' },
                 { value: 'en_conversacion', label: 'En Conversación' },

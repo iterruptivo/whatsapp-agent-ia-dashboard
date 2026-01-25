@@ -4,6 +4,66 @@
 
 ---
 
+## SESIÓN 101 - UX Mejorado: Dashboard con Carga Progresiva (25 Enero 2026)
+
+**Tipo:** Arquitectura + Mejora de UX (En Planificación)
+
+**Problema Identificado:**
+La página principal del dashboard (`/`) tiene una experiencia de usuario deficiente:
+- Pantalla en blanco durante 2-5 segundos mientras carga TODOS los datos
+- `app/page.tsx` es un Client Component que hace fetch completo antes de renderizar
+- Todos los componentes dependen de que `initialLeads` esté completo
+- No hay indicadores visuales de carga progresiva
+- Mala UX comparado con plataformas modernas (Vercel, Stripe, Linear)
+
+**Requerimiento del Usuario:**
+- Carga instantánea de la página (shell UI visible inmediatamente)
+- Cada componente carga independientemente con skeleton loaders
+- Experiencia progresiva tipo Vercel Dashboard o Stripe Dashboard
+- Aprovechar React 19 + Next.js 15 features (Suspense, streaming)
+
+**Archivos Clave Identificados:**
+- `app/page.tsx` - Client Component con fetch bloqueante
+- `components/dashboard/DashboardClient.tsx` - Componente monolítico con toda la lógica
+- `components/dashboard/StatsCard.tsx` - Card de estadísticas
+- `components/dashboard/ControlProductividad.tsx` - Tabla de vendedores
+- `components/dashboard/DistribucionLeads.tsx` - Pie charts de distribución
+- `components/dashboard/ResumenProyectos.tsx` - Resumen por proyecto
+
+**Estado Actual:**
+- ✅ Análisis completo de arquitectura actual
+- ✅ Identificación de bottlenecks
+- ✅ Diseño de nueva arquitectura completo
+- ✅ **Server Actions optimizadas creadas** (`lib/actions-dashboard.ts`)
+- ⏳ Pendiente: Implementación frontend (skeleton loaders)
+- ⏳ Pendiente: Refactorización de componentes
+- ⏳ Pendiente: Testing
+
+**Server Actions Implementadas (25 Enero 2026):**
+1. ✅ `getDashboardStats()` - Stats principales con COUNT queries paralelas
+2. ✅ `getChartData()` - Datos para 3 charts (estados, asistencias, UTM)
+3. ✅ `getDistribucionLeads()` - Stats de distribución de leads
+4. ✅ `getControlProductividad()` - Stats de vendedores con aggregations
+5. ✅ `getResumenProyectos()` - Stats agregados por proyecto
+6. ✅ Versiones cached con `unstable_cache` (TTL 60s)
+
+**Características de las Server Actions:**
+- Usan `createServerClient` con cookies para auth context
+- Queries optimizadas con COUNT en lugar de fetch completo
+- `Promise.all` para ejecución paralela de queries
+- Manejo de errores graceful (retorna datos vacíos)
+- Cache integrado con Next.js 15 (`unstable_cache`)
+- Filtrado obligatorio por `proyecto_id` donde aplica
+- TypeScript estricto con interfaces exportadas
+
+**Próximos Pasos:**
+1. ✅ Backend-dev implementa Server Actions optimizados ← COMPLETADO
+2. ⏳ Frontend-dev crea skeleton loaders y refactoriza componentes
+3. ⏳ Frontend-dev convierte app/page.tsx a Server Component con Suspense
+4. ⏳ QA valida con Playwright la mejora de UX
+
+---
+
 ## SESIÓN 100+ - Campo PISO en Modal de Local Excepcional (23 Enero 2026)
 
 **Tipo:** Feature Frontend (Completado)
@@ -1104,9 +1164,10 @@ components/expansion/
 
 ## Fase Actual
 
-**Sesión:** 100+
-**Módulo:** Investigación UX + Módulo Terrenos (AMBOS COMPLETADOS)
-**Estado:** PRODUCCIÓN ACTIVA + NUEVA INVESTIGACIÓN ESTRATÉGICA
+**Sesión:** 101
+**Módulo:** Dashboard / Estadísticas
+**Estado:** ANÁLISIS + PLANIFICACIÓN ARQUITECTÓNICA
+**Focus:** Mejora UX con carga progresiva
 
 ---
 
@@ -1122,15 +1183,15 @@ components/expansion/
 | Vendedor | alonso@ecoplaza.com | Q0KlC36J4M_y | Leads, reuniones |
 | Caseta | leocaseta@ecoplaza.com | y62$3904h%$$3 | Captura leads |
 | Finanzas | rosaquispef@ecoplaza.com | u$432##faYh1 | Control pagos, comisiones |
-| **Corredor** | *(crear nuevo)* | *(asignar)* | Expansión/terrenos |
+| **Corredor** | yajuppoucivi-3372@yopmail.com | Corredor2026 | Expansión/terrenos |
 
 ---
 
 ## Tecnologías del Stack
 
 **Core:**
-- Next.js 14+ (App Router)
-- React 18+
+- Next.js 15 (App Router)
+- React 19
 - TypeScript
 - Tailwind CSS
 
@@ -1181,4 +1242,4 @@ components/expansion/
 
 ---
 
-**Última actualización:** 18 Enero 2026 - Investigación UX completada
+**Última actualización:** 25 Enero 2026 - Sesión 101: Análisis arquitectura Dashboard

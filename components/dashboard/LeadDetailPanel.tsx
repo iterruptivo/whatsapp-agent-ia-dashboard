@@ -2,9 +2,10 @@
 
 import { Lead } from '@/lib/db';
 import { formatVisitTimestamp, getVisitStatus, getVisitStatusClasses, getVisitStatusLabel } from '@/lib/formatters';
-import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check, Zap, Ban, CircleSlash, Tag, FileText } from 'lucide-react';
+import { X, User, Phone, Mail, Briefcase, Clock, Calendar, MessageSquare, Info, ChevronDown, ChevronUp, RefreshCw, RotateCcw, Bell, CalendarCheck, Check, Zap, Ban, CircleSlash, Tag, FileText, History } from 'lucide-react';
 import { useEffect, useState, useCallback } from 'react';
 import EvidenciasSection from '@/components/leads/EvidenciasSection';
+import LeadHistorialPanel from '@/components/leads/LeadHistorialPanel';
 import SearchDropdown from '@/components/shared/SearchDropdown';
 import { updateLeadTipificacion, updateLeadObservaciones } from '@/lib/actions-tipificacion';
 import { getTipificacionesN1Client, getTipificacionesN2Client, getTipificacionesN3Client } from '@/lib/tipificaciones-client';
@@ -196,6 +197,9 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
   // State for dropdown toggles
   const [isHistorialRecienteOpen, setIsHistorialRecienteOpen] = useState(false);
   const [isHistorialCompletoOpen, setIsHistorialCompletoOpen] = useState(false);
+
+  // State for audit historial panel (only for superadmin/admin)
+  const [isHistorialAuditoriaOpen, setIsHistorialAuditoriaOpen] = useState(false);
 
   // State for tipificación
   const [nivel1, setNivel1] = useState<string | null>(null);
@@ -421,13 +425,26 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
           <h2 id="panel-title" className="text-xl font-semibold text-gray-900">
             Detalle del Lead
           </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Cerrar panel"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Botón Historial de Cambios - Solo superadmin y admin */}
+            {(usuarioRol === 'superadmin' || usuarioRol === 'admin') && (
+              <button
+                onClick={() => setIsHistorialAuditoriaOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
+                title="Ver historial de cambios"
+              >
+                <History className="w-4 h-4" />
+                <span className="hidden sm:inline">Historial</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Cerrar panel"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -912,6 +929,16 @@ export default function LeadDetailPanel({ lead, isOpen, onClose, onSendToRepulse
           )}
         </div>
       </div>
+
+      {/* Panel de Historial de Cambios (Auditoría) - Solo superadmin y admin */}
+      {(usuarioRol === 'superadmin' || usuarioRol === 'admin') && (
+        <LeadHistorialPanel
+          leadId={lead.id}
+          leadNombre={lead.nombre || lead.telefono}
+          isOpen={isHistorialAuditoriaOpen}
+          onClose={() => setIsHistorialAuditoriaOpen(false)}
+        />
+      )}
     </>
   );
 }

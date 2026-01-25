@@ -4,6 +4,261 @@
 
 ---
 
+## PRIORIDAD ALTA: Dashboard con Carga Progresiva (25 Enero 2026)
+
+**Sesión:** 101
+**Objetivo:** Implementar carga progresiva en dashboard para mejorar UX dramáticamente
+**Estimación:** 20 horas (5 días)
+**Documentación:**
+- `docs/architecture/DASHBOARD_PROGRESSIVE_LOADING.md` (Completo, 1,500 líneas)
+- `docs/architecture/DASHBOARD_PROGRESSIVE_LOADING_RESUMEN.md` (Resumen ejecutivo, 5 min)
+
+### Contexto
+
+**Problema actual:**
+- Pantalla en blanco 2-5 segundos mientras carga datos
+- Mala UX comparado con dashboards modernos (Vercel, Stripe)
+- Usuario no sabe si está cargando o roto
+
+**Solución propuesta:**
+- Convertir a Server Components con Suspense
+- Cada sección carga independientemente
+- Skeleton loaders bonitos
+- Shell UI visible <100ms
+
+**Impacto esperado:**
+- Time to First Paint: 2-5s → <100ms (95% mejora)
+- Bundle Size: 640 KB → <100 KB (84% reducción)
+- User Satisfaction: 60% → 90%+ (+50%)
+
+### Fase 1: Setup Base (4 horas)
+
+**Objetivo:** Crear infraestructura de Server Actions y Skeleton system
+
+**Tareas:**
+- [ ] **Crear `lib/actions-dashboard.ts`**
+  - [ ] Función `getDashboardStats()` con Promise.all paralelo
+  - [ ] Función `getDashboardChartData()` optimizada
+  - [ ] Función `getControlProductividadData()` con cache
+  - [ ] Función `getResumenProyectosData()` con cache
+
+- [ ] **Crear estructura de carpetas**
+  - [ ] `components/dashboard/skeletons/`
+  - [ ] `components/ui/` (si no existe)
+
+- [ ] **Crear componente base**
+  - [ ] `components/ui/SkeletonBox.tsx` - Skeleton reutilizable con shimmer
+
+- [ ] **Testing unitario**
+  - [ ] Test de `getDashboardStats()`
+  - [ ] Test de `getDashboardChartData()`
+  - [ ] Verificar que Server Actions funcionan en isolation
+
+**Entregable:** Server Actions funcionando + Skeleton system base
+
+---
+
+### Fase 2: Stats Section (3 horas)
+
+**Objetivo:** Implementar carga progresiva para stats cards
+
+**Tareas:**
+- [ ] **Crear `components/dashboard/StatsSection.tsx`**
+  - [ ] Async Server Component
+  - [ ] Fetch con `getDashboardStats()`
+  - [ ] Renderizar 5 stats cards
+  - [ ] Mantener mini-tabla (Manual/Incompleto/Abandonado)
+
+- [ ] **Crear `components/dashboard/skeletons/StatsSkeleton.tsx`**
+  - [ ] 5 card skeletons con shimmer
+  - [ ] Dimensiones exactas de StatsCard real
+
+- [ ] **Refactorizar `app/page.tsx`**
+  - [ ] Convertir a Server Component (remover 'use client')
+  - [ ] Auth check en servidor
+  - [ ] Agregar Suspense boundary para stats
+  - [ ] `<Suspense fallback={<StatsSkeleton />}>`
+
+- [ ] **Testing visual**
+  - [ ] Verificar skeleton aparece primero
+  - [ ] Verificar animación shimmer
+  - [ ] Verificar transición skeleton → datos
+
+**Entregable:** Stats con carga progresiva funcional
+
+---
+
+### Fase 3: Charts Section (3 horas)
+
+**Objetivo:** Implementar carga progresiva para gráficos
+
+**Tareas:**
+- [ ] **Crear `components/dashboard/ChartsSection.tsx`**
+  - [ ] Async Server Component
+  - [ ] Fetch con `getDashboardChartData()`
+  - [ ] Renderizar 3 charts (Estados, Asistencias, UTM)
+  - [ ] Mantener lógica de colores
+
+- [ ] **Crear `components/dashboard/skeletons/ChartsSkeleton.tsx`**
+  - [ ] 3 chart skeletons
+  - [ ] Círculo skeleton para pie charts
+  - [ ] Legend skeleton
+
+- [ ] **Integrar en `app/page.tsx`**
+  - [ ] Agregar Suspense boundary para charts
+  - [ ] `<Suspense fallback={<ChartsSkeleton />}>`
+
+- [ ] **Testing de parallel loading**
+  - [ ] Verificar stats y charts cargan en paralelo
+  - [ ] Verificar que stats puede aparecer antes que charts
+  - [ ] Medir tiempo de carga con DevTools
+
+**Entregable:** Charts con carga progresiva funcional
+
+---
+
+### Fase 4: Admin Sections (4 horas)
+
+**Objetivo:** Refactorizar secciones admin (Productividad, Resumen Proyectos, Distribución)
+
+**Tareas:**
+- [ ] **Refactorizar ControlProductividad**
+  - [ ] Convertir a async Server Component
+  - [ ] Fetch con `getControlProductividadData()`
+  - [ ] Agregar caching (5 min TTL)
+
+- [ ] **Crear `skeletons/ProductividadSkeleton.tsx`**
+  - [ ] Tabla skeleton con filas
+  - [ ] Header skeleton
+
+- [ ] **Refactorizar ResumenProyectos**
+  - [ ] Convertir a async Server Component
+  - [ ] Fetch con `getResumenProyectosData()`
+
+- [ ] **Crear `skeletons/ProyectosSkeleton.tsx`**
+  - [ ] Cards skeleton
+
+- [ ] **Refactorizar DistribucionLeads**
+  - [ ] Convertir a async Server Component
+  - [ ] Simplificar lógica
+
+- [ ] **Integrar en `app/page.tsx`**
+  - [ ] Suspense para cada sección admin
+  - [ ] Grid con 2 columnas (Productividad + Proyectos)
+
+**Entregable:** Todas las secciones admin con carga progresiva
+
+---
+
+### Fase 5: Optimización & Polish (3 horas)
+
+**Objetivo:** Optimizar performance y pulir detalles
+
+**Tareas:**
+- [ ] **Agregar caching con `unstable_cache`**
+  - [ ] Cache stats (60s TTL)
+  - [ ] Cache control productividad (300s TTL)
+  - [ ] Cache resumen proyectos (300s TTL)
+
+- [ ] **Crear índices de BD necesarios**
+  - [ ] `idx_leads_proyecto_fecha` para filtrado por proyecto + fecha
+  - [ ] `idx_leads_proyecto_estado` para conteo por estado
+  - [ ] `idx_leads_proyecto_asistio` para filtro de asistencias
+  - [ ] Ejecutar con `scripts/run-migration-generic.js`
+
+- [ ] **Lighthouse performance audit**
+  - [ ] Medir FCP (First Contentful Paint) < 500ms
+  - [ ] Medir LCP (Largest Contentful Paint) < 1.5s
+  - [ ] Medir CLS (Cumulative Layout Shift) < 0.1
+  - [ ] Generar reporte
+
+- [ ] **Ajustar animaciones de skeleton**
+  - [ ] Verificar shimmer effect funciona bien
+  - [ ] Ajustar timing si es necesario
+  - [ ] Consistencia en todos los skeletons
+
+**Entregable:** Performance optimizada + métricas validadas
+
+---
+
+### Fase 6: QA & Deploy (3 horas)
+
+**Objetivo:** Testing exhaustivo y deploy a producción
+
+**Tareas:**
+- [ ] **Testing E2E con Playwright**
+  - [ ] Test: Shell UI aparece <100ms
+  - [ ] Test: Skeleton aparece mientras carga
+  - [ ] Test: Datos reales reemplazan skeleton
+  - [ ] Test: Secciones cargan independientemente
+  - [ ] Test: Error en una sección no bloquea otras
+
+- [ ] **Testing en diferentes roles**
+  - [ ] Superadmin: Ve todas las secciones
+  - [ ] Admin: Ve todas las secciones
+  - [ ] Jefe Ventas: Ve secciones admin
+  - [ ] Vendedor: Solo ve stats y charts básicos
+  - [ ] Caseta: Solo ve stats y charts básicos
+
+- [ ] **Testing en diferentes navegadores**
+  - [ ] Chrome (latest)
+  - [ ] Firefox (latest)
+  - [ ] Safari (latest)
+  - [ ] Edge (latest)
+
+- [ ] **Deploy staging**
+  - [ ] Merge a branch `staging`
+  - [ ] Verificar build exitoso
+  - [ ] Smoke testing completo
+
+- [ ] **Deploy producción**
+  - [ ] Merge a `main`
+  - [ ] Verificar deploy Vercel
+  - [ ] Monitoreo activo 24h
+  - [ ] Revisar Vercel Analytics
+
+**Entregable:** Feature en producción con métricas validadas
+
+---
+
+### Archivos Involucrados
+
+**Nuevos:**
+- `lib/actions-dashboard.ts` - Server Actions para data fetching
+- `components/dashboard/StatsSection.tsx` - Stats async component
+- `components/dashboard/ChartsSection.tsx` - Charts async component
+- `components/dashboard/ProductividadSection.tsx` - Productividad async
+- `components/dashboard/ProyectosSection.tsx` - Proyectos async
+- `components/dashboard/skeletons/StatsSkeleton.tsx` - Skeleton loader
+- `components/dashboard/skeletons/ChartsSkeleton.tsx` - Skeleton loader
+- `components/dashboard/skeletons/ProductividadSkeleton.tsx` - Skeleton loader
+- `components/dashboard/skeletons/ProyectosSkeleton.tsx` - Skeleton loader
+- `components/ui/SkeletonBox.tsx` - Base skeleton component
+- `migrations/026_dashboard_performance_indices.sql` - Índices de BD
+
+**Modificados:**
+- `app/page.tsx` - Convertir a Server Component + Suspense
+- `components/dashboard/DashboardClient.tsx` - Dividir en secciones (o deprecar)
+
+---
+
+### Checklist de Validación
+
+**Pre-Deploy:**
+- [ ] 0 errores TypeScript
+- [ ] 0 warnings ESLint
+- [ ] All tests passing (unit + E2E)
+- [ ] Lighthouse score > 90
+- [ ] Bundle size < 150 KB
+
+**Post-Deploy:**
+- [ ] Time to First Paint < 200ms (Vercel Analytics)
+- [ ] User satisfaction > 85% (si hay survey)
+- [ ] No errores en Sentry/logs
+- [ ] Performance estable 24h
+
+---
+
 ## NUEVO: Módulo Expansión Terrenos - Completar Funcionalidad (17 Enero 2026)
 
 **Prioridad:** MEDIA - Módulo base implementado, extras opcionales
@@ -1075,5 +1330,5 @@ ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
 
 ---
 
-**Ultima Actualizacion:** 16 Enero 2026
-**Sesion:** 97 - Script Migraciones SQL Genéricas COMPLETADO. Fix RLS aplicado, pendiente validación usuario.
+**Ultima Actualizacion:** 25 Enero 2026
+**Sesion:** 101 - Dashboard con Carga Progresiva - Arquitectura Completada

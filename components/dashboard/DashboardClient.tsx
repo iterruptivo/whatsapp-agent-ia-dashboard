@@ -4,7 +4,9 @@ import { useState, useMemo, useEffect } from 'react';
 import StatsCard from '@/components/dashboard/StatsCard';
 import PieChartComponent from '@/components/dashboard/PieChart';
 import HorizontalBarChart from '@/components/dashboard/HorizontalBarChart';
-import VendedoresMiniTable from '@/components/dashboard/VendedoresMiniTable';
+import ControlProductividad from '@/components/dashboard/ControlProductividad';
+import ResumenProyectos from '@/components/dashboard/ResumenProyectos';
+import DistribucionLeads from '@/components/dashboard/DistribucionLeads';
 import DateRangeFilter from '@/components/dashboard/DateRangeFilter';
 import { Lead, Vendedor, Usuario, getAllVendedores, getAllUsuarios } from '@/lib/db';
 import { assignLeadToVendedor } from '@/lib/actions';
@@ -15,6 +17,8 @@ import { useConfirmDialog } from '@/hooks/useConfirmDialog';
 
 interface DashboardClientProps {
   initialLeads: Lead[];
+  initialLeadsGlobales?: Lead[];
+  proyectosActivos?: {id: string, nombre: string}[];
   initialDateFrom?: string;
   initialDateTo?: string;
   onRefresh?: (dateFrom: string, dateTo: string) => Promise<void>;
@@ -22,6 +26,8 @@ interface DashboardClientProps {
 
 export default function DashboardClient({
   initialLeads,
+  initialLeadsGlobales = [],
+  proyectosActivos = [],
   initialDateFrom = '',
   initialDateTo = '',
   onRefresh,
@@ -174,33 +180,6 @@ export default function DashboardClient({
     }));
   }, [filteredLeads]);
 
-  // Calculate leads per vendedor (vendedor + vendedor_caseta roles)
-  const vendedoresLeadsData = useMemo(() => {
-    const vendedorUsuarios = usuarios.filter(
-      (u) => (u.rol === 'vendedor' || u.rol === 'vendedor_caseta') && u.activo
-    );
-
-    return vendedorUsuarios.map((usuario) => {
-      const assignedLeads = filteredLeads.filter(
-        (lead) => lead.vendedor_asignado_id === usuario.vendedor_id
-      );
-
-      const leadsManuales = assignedLeads.filter(
-        (lead) => lead.estado === 'lead_manual'
-      ).length;
-      const leadsAutomaticos = assignedLeads.length - leadsManuales;
-
-      return {
-        id: usuario.id,
-        nombre: usuario.nombre,
-        rol: usuario.rol as 'vendedor' | 'vendedor_caseta',
-        leadsManuales,
-        leadsAutomaticos,
-        total: assignedLeads.length,
-      };
-    });
-  }, [usuarios, filteredLeads]);
-
   const handleClearFilters = () => {
     setDateFrom(initialDateFrom);
     setDateTo(initialDateTo);
@@ -261,6 +240,34 @@ export default function DashboardClient({
         onRefresh={onRefresh ? async () => await onRefresh(dateFrom, dateTo) : undefined}
       />
 
+      {/* Distribución de Leads - Solo admins */}
+      {user && initialLeadsGlobales.length > 0 && (
+        <div className="mb-6">
+          <DistribucionLeads
+            leads={initialLeadsGlobales}
+            userRole={user.rol}
+          />
+        </div>
+      )}
+
+      {/* Control de Productividad y Resumen por Proyecto - Grid responsivo */}
+      {user && initialLeadsGlobales.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <ControlProductividad
+            leads={initialLeadsGlobales}
+            usuarios={usuarios}
+            proyectos={proyectosActivos}
+            userRole={user.rol}
+          />
+          <ResumenProyectos
+            leads={initialLeadsGlobales}
+            proyectos={proyectosActivos}
+            usuarios={usuarios}
+            userRole={user.rol}
+          />
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <StatsCard title="Total Leads" value={stats.total} icon={Users} color="primary" />
@@ -314,15 +321,6 @@ export default function DashboardClient({
         <HorizontalBarChart
           data={utmData}
           title="Distribución por UTM"
-        />
-      </div>
-
-      {/* Mini Table: Leads por Vendedor - Full width */}
-      <div className="mb-8">
-        <VendedoresMiniTable
-          data={vendedoresLeadsData}
-          title="Leads por Vendedor"
-          userRole={user?.rol}
         />
       </div>
 

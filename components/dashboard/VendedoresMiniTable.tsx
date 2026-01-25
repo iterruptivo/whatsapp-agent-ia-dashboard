@@ -21,6 +21,8 @@ interface VendedorLeadsData {
   leadsManuales: number;
   leadsAutomaticos: number;
   total: number;
+  trabajados: number;
+  sinTrabajar: number;
 }
 
 interface VendedoresMiniTableProps {
@@ -52,6 +54,8 @@ export default function VendedoresMiniTable({
   const totalLeads = data.reduce((sum, v) => sum + v.total, 0);
   const totalManuales = data.reduce((sum, v) => sum + v.leadsManuales, 0);
   const totalAutomaticos = data.reduce((sum, v) => sum + v.leadsAutomaticos, 0);
+  const totalTrabajados = data.reduce((sum, v) => sum + v.trabajados, 0);
+  const totalSinTrabajar = data.reduce((sum, v) => sum + v.sinTrabajar, 0);
 
   // Función para exportar a Excel
   const handleExportToExcel = () => {
@@ -59,9 +63,11 @@ export default function VendedoresMiniTable({
     const excelData = sortedData.map((v, index) => ({
       '#': index + 1,
       'Vendedor': v.nombre,
-      'Rol': v.rol === 'vendedor_caseta' ? 'Vendedor Caseta' : 'Vendedor',
+      'Rol': v.rol === 'vendedor_caseta' ? 'Vendedor Caseta' : 'Call Center',
       'Lead Manual': v.leadsManuales,
       'NO Manual': v.leadsAutomaticos,
+      'Trabajados': v.trabajados,
+      'Pendientes': v.sinTrabajar,
       'Total': v.total,
     }));
 
@@ -72,6 +78,8 @@ export default function VendedoresMiniTable({
       'Rol': '',
       'Lead Manual': totalManuales,
       'NO Manual': totalAutomaticos,
+      'Trabajados': totalTrabajados,
+      'Pendientes': totalSinTrabajar,
       'Total': totalLeads,
     });
 
@@ -87,6 +95,8 @@ export default function VendedoresMiniTable({
       { wch: 18 },  // Rol
       { wch: 12 },  // Lead Manual
       { wch: 12 },  // NO Manual
+      { wch: 12 },  // Trabajados
+      { wch: 12 },  // Pendientes
       { wch: 10 },  // Total
     ];
 
@@ -138,7 +148,7 @@ export default function VendedoresMiniTable({
                     <div className="flex items-center gap-3 text-gray-400 font-normal">
                       <div className="flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                        <span>Vendedor</span>
+                        <span>Call Center</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full bg-sky-500"></span>
@@ -149,6 +159,8 @@ export default function VendedoresMiniTable({
                 </th>
                 <th className="text-right py-2 w-20">Lead Manual</th>
                 <th className="text-right py-2 w-20">NO Manual</th>
+                <th className="text-right py-2 w-20">Trabajados</th>
+                <th className="text-right py-2 w-20">Pendientes</th>
                 <th className="text-right py-2 w-16">Total</th>
                 <th className="py-2 w-32"></th>
               </tr>
@@ -188,6 +200,16 @@ export default function VendedoresMiniTable({
                     <td className="py-2 text-right">
                       <span className="text-sm text-[#1b967a] font-medium">
                         {vendedor.leadsAutomaticos}
+                      </span>
+                    </td>
+                    <td className="py-2 text-right">
+                      <span className="text-sm text-blue-600 font-medium">
+                        {vendedor.trabajados}
+                      </span>
+                    </td>
+                    <td className="py-2 text-right">
+                      <span className={`text-sm font-medium ${vendedor.sinTrabajar > 0 ? 'text-orange-500' : 'text-gray-400'}`}>
+                        {vendedor.sinTrabajar}
                       </span>
                     </td>
                     <td className="py-2 text-right">
@@ -247,7 +269,7 @@ export default function VendedoresMiniTable({
 
       {/* Summary Footer */}
       <div className="mt-4 pt-3 border-t border-gray-200">
-        <div className="grid grid-cols-3 gap-4 text-center">
+        <div className="grid grid-cols-5 gap-4 text-center">
           <div>
             <p className="text-xs text-gray-500">Lead Manual</p>
             <p className="text-lg font-bold text-purple-600">{totalManuales}</p>
@@ -255,6 +277,14 @@ export default function VendedoresMiniTable({
           <div>
             <p className="text-xs text-gray-500">NO Manual</p>
             <p className="text-lg font-bold text-[#1b967a]">{totalAutomaticos}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Trabajados</p>
+            <p className="text-lg font-bold text-blue-600">{totalTrabajados}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500">Pendientes</p>
+            <p className="text-lg font-bold text-orange-500">{totalSinTrabajar}</p>
           </div>
           <div>
             <p className="text-xs text-gray-500">Total</p>

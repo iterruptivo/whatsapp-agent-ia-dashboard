@@ -469,3 +469,140 @@ export async function searchLeadByPhone(telefono: string, proyectoId?: string): 
     return null;
   }
 }
+
+// ============================================================================
+// GLOBAL LEADS (cross-proyecto para vistas de admin)
+// ============================================================================
+
+/**
+ * Obtener leads de TODOS los proyectos (sin filtro de proyecto_id)
+ * Usa keyset pagination para manejar grandes volúmenes
+ * @param dateFrom Fecha inicial del rango (fecha_captura)
+ * @param dateTo Fecha final del rango (fecha_captura)
+ * @returns Array de leads con datos enriquecidos de vendedor y proyecto
+ */
+export async function getAllLeadsGlobal(
+  dateFrom: Date,
+  dateTo: Date
+): Promise<Lead[]> {
+  try {
+    console.log('[DB] getAllLeadsGlobal() - Keyset pagination (cross-proyecto)');
+
+    // STEP 1: Fetch ALL leads using keyset pagination (batches of 1000)
+    // NO FILTRAR POR proyecto_id - esto es para vistas globales
+    const allLeads: any[] = [];
+    let hasMore = true;
+    let lastCreatedAt: string | null = null;
+    let batchNumber = 0;
+    const BATCH_SIZE = 1000;
+
+    while (hasMore) {
+      batchNumber++;
+
+      // Build query for current batch
+      let leadsQuery = supabase
+        .from('leads')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(0, BATCH_SIZE - 1); // 0-999 = 1000 records
+
+      // Apply date range filters
+      leadsQuery = leadsQuery.gte('fecha_captura', dateFrom.toISOString());
+      leadsQuery = leadsQuery.lte('fecha_captura', dateTo.toISOString());
+
+      // Keyset pagination: fetch records after last created_at
+      if (lastCreatedAt) {
+        leadsQuery = leadsQuery.lt('created_at', lastCreatedAt);
+      }
+
+      const { data: batchData, error: batchError } = await leadsQuery;
+
+      if (batchError) {
+        console.error(`[DB] Error fetching batch ${batchNumber}:`, batchError);
+        break; // Stop on error but return what we have
+      }
+
+      const batchCount = batchData?.length || 0;
+
+      if (batchCount === 0) {
+        // No more records
+        hasMore = false;
+      } else {
+        allLeads.push(...batchData);
+
+        // Check if we got less than BATCH_SIZE (means we're done)
+        if (batchCount < BATCH_SIZE) {
+          hasMore = false;
+        } else {
+          // Update cursor for next batch
+          lastCreatedAt = batchData[batchData.length - 1].created_at;
+        }
+      }
+    }
+
+    const leadsData = allLeads;
+
+    // STEP 2: Fetch vendedores separately (small table, cacheable)
+    const { data: vendedoresData, error: vendedoresError } = await supabase
+      .from('vendedores')
+      .select('id, nombre');
+
+    if (vendedoresError) {
+      console.warn('[DB] ⚠️ Error fetching vendedores (will proceed without):', vendedoresError);
+    }
+
+    // STEP 3: Fetch proyectos separately (small table, cacheable)
+    const { data: proyectosData, error: proyectosError } = await supabase
+      .from('proyectos')
+      .select('id, nombre, color');
+
+    if (proyectosError) {
+      console.warn('[DB] ⚠️ Error fetching proyectos (will proceed without):', proyectosError);
+    }
+
+    // STEP 4: Enrich leads with vendedor/proyecto info (replaces JOIN logic)
+    const enrichedLeads = (leadsData || []).map(lead => {
+      const vendedor = vendedoresData?.find(v => v.id === lead.vendedor_asignado_id);
+      const proyecto = proyectosData?.find(p => p.id === lead.proyecto_id);
+
+      return {
+        ...lead,
+        vendedor_nombre: vendedor?.nombre || null,
+        proyecto_nombre: proyecto?.nombre || null,
+        proyecto_color: proyecto?.color || null,
+      };
+    });
+
+    console.log(`[DB] getAllLeadsGlobal() - Fetched ${enrichedLeads.length} leads total`);
+
+    return enrichedLeads as Lead[];
+  } catch (error) {
+    console.error('[DB] ❌ Error in getAllLeadsGlobal:', error);
+    return [];
+  }
+}
+
+/**
+ * Obtener lista de proyectos activos (id y nombre solamente)
+ * Útil para selectores y agrupaciones en vistas globales
+ * @returns Array de objetos {id, nombre} ordenados por nombre
+ */
+export async function getProyectosActivos(): Promise<{id: string, nombre: string}[]> {
+  try {
+    const { data, error } = await supabase
+      .from('proyectos')
+      .select('id, nombre')
+      .eq('activo', true)
+      .order('nombre', { ascending: true });
+
+    if (error) {
+      console.error('[DB] Error fetching proyectos activos:', error);
+      return [];
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error('[DB] Error in getProyectosActivos:', error);
+    return [];
+  }
+}
