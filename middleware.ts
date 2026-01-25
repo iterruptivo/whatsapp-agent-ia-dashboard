@@ -268,14 +268,11 @@ export async function middleware(req: NextRequest) {
   const isExpansionRoute = pathname.startsWith('/expansion');
   const isSolicitudesCompraRoute = pathname.startsWith('/solicitudes-compra');
 
-  // ADMIN ROUTES (/) - Admin, Marketing and Jefe Ventas can access
+  // ADMIN ROUTES (/) - Estadísticas - Accessible by most roles
   if (isAdminRoute) {
-    if (userData.rol === 'superadmin' || userData.rol === 'admin' || userData.rol === 'marketing' || userData.rol === 'jefe_ventas') {
-      // Admin, Marketing and Jefe Ventas can access Insights
+    if (userData.rol === 'superadmin' || userData.rol === 'admin' || userData.rol === 'marketing' || userData.rol === 'jefe_ventas' || userData.rol === 'vendedor' || userData.rol === 'vendedor_caseta') {
+      // Superadmin, Admin, Marketing, Jefe Ventas, Vendedor, Vendedor Caseta can access Estadísticas
       return res;
-    } else if (userData.rol === 'vendedor') {
-      // Vendedor trying to access admin dashboard - redirect to operativo
-      return NextResponse.redirect(new URL('/operativo', req.url));
     } else if (userData.rol === 'finanzas' || userData.rol === 'postventa') {
       // Finanzas/Postventa SOLO puede acceder a /control-pagos
       return NextResponse.redirect(new URL('/control-pagos', req.url));

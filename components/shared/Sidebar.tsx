@@ -156,6 +156,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (user?.rol === 'vendedor' || user?.rol === 'vendedor_caseta') {
       return {
         directItems: [
+          { href: '/', label: 'Estadísticas', icon: LayoutDashboard },
           { href: '/operativo', label: 'Dashboard Operativo', icon: Users },
           { href: '/mis-pendientes', label: 'Mis Pendientes', icon: CheckSquare },
           { href: '/solicitudes-compra', label: 'Solicitudes de Compra', icon: ShoppingCart },
