@@ -9,7 +9,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, AlertTriangle, Plus, Loader2, CheckCircle, XCircle } from 'lucide-react';
-import { crearLocalExcepcional } from '@/lib/actions-locales';
+import { crearLocalExcepcional, actualizarPisosDisponibles } from '@/lib/actions-locales';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 
@@ -223,6 +223,17 @@ export default function CrearLocalExcepcionalModal({
       });
 
       if (result.success) {
+        // SESIÓN 107: Si el local tiene piso, actualizar pisos_disponibles automáticamente
+        if (formData.piso && formData.piso.trim() !== '') {
+          console.log('[LOCAL EXCEPCIONAL] Actualizando pisos disponibles:', formData.piso);
+          const pisosResult = await actualizarPisosDisponibles(formData.proyecto_id, [formData.piso]);
+          if (pisosResult.success) {
+            console.log('[LOCAL EXCEPCIONAL] ✅ Pisos actualizados correctamente');
+          } else {
+            console.warn('[LOCAL EXCEPCIONAL] ⚠️ Error actualizando pisos:', pisosResult.message);
+          }
+        }
+
         toast.success(result.message);
         onSuccess();
         onClose();

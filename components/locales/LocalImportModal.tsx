@@ -9,7 +9,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { importLocales } from '@/lib/actions-locales';
+import { importLocales, actualizarPisosDisponibles } from '@/lib/actions-locales';
 // SESIÓN 55: Ya no necesitamos importar Proyecto (viene del login)
 import type { LocalImportRow } from '@/lib/locales';
 import Papa from 'papaparse';
@@ -292,6 +292,25 @@ export default function LocalImportModal({
       // Llamar Server Action con proyectoId
       const importResult = await importLocales(locales, selectedProyectoId);
       setResult(importResult);
+
+      // SESIÓN 107: Actualizar pisos_disponibles automáticamente si hay pisos en los locales importados
+      if (importResult.success && importResult.inserted > 0) {
+        const pisosUnicos = [...new Set(
+          locales
+            .map(l => l.piso)
+            .filter((p): p is string => !!p && p.trim() !== '')
+        )];
+
+        if (pisosUnicos.length > 0) {
+          console.log('[IMPORT] Actualizando pisos disponibles:', pisosUnicos);
+          const pisosResult = await actualizarPisosDisponibles(selectedProyectoId, pisosUnicos);
+          if (pisosResult.success) {
+            console.log('[IMPORT] ✅ Pisos actualizados correctamente');
+          } else {
+            console.warn('[IMPORT] ⚠️ Error actualizando pisos:', pisosResult.message);
+          }
+        }
+      }
 
       // Usuario controlará cuándo cerrar con botón "Terminar importación"
     } catch (error) {

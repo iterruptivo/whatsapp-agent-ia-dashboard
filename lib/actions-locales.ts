@@ -1102,6 +1102,96 @@ export async function updatePrecioBase(
 }
 
 // ============================================================================
+// SESIÓN 107: ACTUALIZAR PISOS DISPONIBLES AUTOMÁTICAMENTE
+// ============================================================================
+// Cuando se importan locales o se crea un local excepcional con piso,
+// esta función actualiza automáticamente proyecto_configuraciones.pisos_disponibles
+// ============================================================================
+
+/**
+ * Actualiza pisos_disponibles en proyecto_configuraciones
+ * Si el proyecto no tiene configuración, la crea
+ * Si ya tiene pisos, solo agrega los nuevos (sin duplicados)
+ */
+export async function actualizarPisosDisponibles(
+  proyectoId: string,
+  pisosNuevos: string[]
+): Promise<{ success: boolean; message: string }> {
+  try {
+    // Filtrar pisos vacíos
+    const pisosValidos = pisosNuevos.filter(p => p && p.trim() !== '');
+
+    if (pisosValidos.length === 0) {
+      return { success: true, message: 'No hay pisos nuevos para agregar' };
+    }
+
+    console.log(`[PISOS CONFIG] Actualizando pisos para proyecto ${proyectoId}:`, pisosValidos);
+
+    // 1. Obtener configuración actual
+    const { data: config, error: getError } = await supabase
+      .from('proyecto_configuraciones')
+      .select('configuraciones_extra')
+      .eq('proyecto_id', proyectoId)
+      .maybeSingle();
+
+    // 2. Preparar el array de pisos (existentes + nuevos, sin duplicados, ordenados)
+    const pisosExistentes = config?.configuraciones_extra?.pisos_disponibles || [];
+    const todosLosPisos = [...new Set([...pisosExistentes, ...pisosValidos])].sort();
+
+    // Si no hay cambios, no hacer nada
+    if (JSON.stringify(pisosExistentes.sort()) === JSON.stringify(todosLosPisos)) {
+      console.log('[PISOS CONFIG] Sin cambios en pisos');
+      return { success: true, message: 'Pisos ya configurados' };
+    }
+
+    // 3. Si no hay config, crear una nueva
+    if (!config) {
+      console.log('[PISOS CONFIG] Creando nueva configuración con pisos:', todosLosPisos);
+      const { error: insertError } = await supabase
+        .from('proyecto_configuraciones')
+        .insert({
+          proyecto_id: proyectoId,
+          configuraciones_extra: {
+            pisos_disponibles: todosLosPisos,
+            cuotas_con_interes: [],
+            cuotas_sin_interes: [],
+            porcentajes_inicial: []
+          }
+        });
+
+      if (insertError) {
+        console.error('[PISOS CONFIG] ❌ Error al crear configuración:', insertError);
+        return { success: false, message: `Error al crear configuración: ${insertError.message}` };
+      }
+      console.log('[PISOS CONFIG] ✅ Configuración creada con pisos:', todosLosPisos);
+      return { success: true, message: `Configuración creada con pisos: ${todosLosPisos.join(', ')}` };
+    }
+
+    // 4. Si ya existe, actualizar
+    const newConfigExtra = {
+      ...config.configuraciones_extra,
+      pisos_disponibles: todosLosPisos
+    };
+
+    const { error: updateError } = await supabase
+      .from('proyecto_configuraciones')
+      .update({ configuraciones_extra: newConfigExtra })
+      .eq('proyecto_id', proyectoId);
+
+    if (updateError) {
+      console.error('[PISOS CONFIG] ❌ Error al actualizar:', updateError);
+      return { success: false, message: `Error al actualizar: ${updateError.message}` };
+    }
+
+    console.log('[PISOS CONFIG] ✅ Pisos actualizados:', todosLosPisos);
+    return { success: true, message: `Pisos actualizados: ${todosLosPisos.join(', ')}` };
+  } catch (error) {
+    console.error('[PISOS CONFIG] ❌ Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al actualizar pisos' };
+  }
+}
+
+// ============================================================================
 // SESIÓN 102: LOCALES EXCEPCIONALES
 // ============================================================================
 // Para regularizar ventas duplicadas históricas (ej: A-107-1, A-107-2)
