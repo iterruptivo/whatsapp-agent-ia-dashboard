@@ -52,6 +52,7 @@ export interface FichasAtribucionStats {
 export interface FichaAtribucion {
   ficha_id: string;
   fecha_ficha: string;
+  fecha_lead: string;
   cliente_nombre: string;
   cliente_dni: string;
   local_codigo: string;
@@ -59,6 +60,7 @@ export interface FichaAtribucion {
   proyecto_nombre: string;
   proyecto_id: string;
   lead_id: string;
+  lead_telefono: string;
   lead_utm: string;
   lead_estado: string;
   total_abonado_usd: number;
@@ -102,8 +104,8 @@ function esLeadVictoria(utm: string | null, estado: string | null): boolean {
 
   const utmLower = utm.toLowerCase();
 
-  // 2. UTM contiene "form"
-  if (utmLower.includes('form')) {
+  // 2. UTM contiene "facebook_form" (formularios de Meta/Facebook)
+  if (utmLower.includes('facebook_form')) {
     return true;
   }
 
@@ -280,6 +282,8 @@ export async function getFichasAtribucionPaginated(
         local_id,
         leads!inner (
           id,
+          created_at,
+          telefono,
           utm,
           estado
         ),
@@ -362,6 +366,7 @@ export async function getFichasAtribucionPaginated(
       return {
         ficha_id: ficha.id,
         fecha_ficha: ficha.created_at,
+        fecha_lead: lead?.created_at || '',
         cliente_nombre: nombreCompleto || 'Sin nombre',
         cliente_dni: ficha.titular_numero_documento || '',
         local_codigo: local?.codigo || '',
@@ -369,6 +374,7 @@ export async function getFichasAtribucionPaginated(
         proyecto_nombre: proyecto?.nombre || '',
         proyecto_id: proyecto?.id || '',
         lead_id: lead?.id || '',
+        lead_telefono: lead?.telefono || '',
         lead_utm: lead?.utm || '',
         lead_estado: lead?.estado || '',
         total_abonado_usd: totalUSD,

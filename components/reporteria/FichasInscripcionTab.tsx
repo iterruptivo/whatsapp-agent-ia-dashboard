@@ -82,13 +82,22 @@ function formatMontoPEN(monto: number): string {
   }).format(monto);
 }
 
-// Helper para formatear fecha
+// Helper para formatear fecha (sin conversión de timezone)
+// Extrae directamente del string ISO para evitar bugs de timezone
 function formatFecha(fecha: string): string {
-  const date = new Date(fecha);
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const year = date.getFullYear();
+  if (!fecha) return '-';
+  // Extraer solo la parte de fecha (YYYY-MM-DD) del string ISO
+  const datePart = fecha.split('T')[0];
+  const [year, month, day] = datePart.split('-');
   return `${day}/${month}/${year}`;
+}
+
+// Helper para formatear fecha corta (dd/mm) sin timezone
+function formatFechaCorta(fecha: string): string {
+  if (!fecha) return '-';
+  const datePart = fecha.split('T')[0];
+  const [, month, day] = datePart.split('-');
+  return `${day}/${month}`;
 }
 
 // Helper para obtener label de rol
@@ -527,9 +536,7 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
 
                       {/* F.Separación */}
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                        {ficha.fecha_separacion
-                          ? new Date(ficha.fecha_separacion).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })
-                          : '-'}
+                        {ficha.fecha_separacion ? formatFecha(ficha.fecha_separacion) : '-'}
                       </td>
 
                       {/* Local */}

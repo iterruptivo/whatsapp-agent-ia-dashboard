@@ -182,7 +182,7 @@ export default function AtribucionIATab({ user, proyectoId }: AtribucionIATabPro
   const [activeView, setActiveView] = useState<'victoria' | 'otras'>('victoria');
 
   // Modal para ver historial de conversación
-  const [selectedLead, setSelectedLead] = useState<{ id: string; nombre: string } | null>(null);
+  const [selectedLead, setSelectedLead] = useState<{ id: string; nombre: string; telefono: string } | null>(null);
 
   // Refs para evitar llamadas duplicadas
   const isInitialMount = useRef(true);
@@ -376,16 +376,18 @@ export default function AtribucionIATab({ user, proyectoId }: AtribucionIATabPro
       );
 
       const exportData = data.map(f => ({
-        'Fecha Ficha': new Date(f.fecha_ficha).toLocaleDateString('es-PE'),
+        'Separación': new Date(f.fecha_ficha).toLocaleDateString('es-PE'),
+        'Captura': f.fecha_lead ? new Date(f.fecha_lead).toLocaleDateString('es-PE') : '',
         'Cliente': f.cliente_nombre,
         'DNI': f.cliente_dni,
+        'Celular': f.lead_telefono,
         'Local': f.local_codigo,
         'Proyecto': f.proyecto_nombre,
         'UTM': f.lead_utm,
-        'Estado Lead': f.lead_estado,
-        'Abonado USD': f.total_abonado_usd,
-        'Abonado PEN': f.total_abonado_pen,
-        'Atribución': f.es_victoria ? 'Victoria' : 'Otro Canal'
+        'Estado': f.lead_estado,
+        'USD': f.total_abonado_usd,
+        'PEN': f.total_abonado_pen,
+        'Canal': f.es_victoria ? 'Victoria' : 'Otro'
       }));
 
       const ws = XLSX.utils.json_to_sheet(exportData);
@@ -770,7 +772,8 @@ export default function AtribucionIATab({ user, proyectoId }: AtribucionIATabPro
                   <table className="w-full">
                     <thead>
                       <tr className="bg-[#1b967a]/5 text-left">
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Separación</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Captura</th>
                         <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Cliente</th>
                         <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Local</th>
                         <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">UTM / Estado</th>
@@ -781,12 +784,18 @@ export default function AtribucionIATab({ user, proyectoId }: AtribucionIATabPro
                     <tbody className="divide-y divide-gray-100">
                       {fichasVictoria.data.map((ficha) => (
                         <tr key={ficha.ficha_id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-sm text-gray-600">
+                          <td className="px-3 py-3 text-sm text-gray-700">
                             {new Date(ficha.fecha_ficha).toLocaleDateString('es-PE')}
+                          </td>
+                          <td className="px-3 py-3 text-sm text-gray-500">
+                            {ficha.fecha_lead ? new Date(ficha.fecha_lead).toLocaleDateString('es-PE') : '-'}
                           </td>
                           <td className="px-4 py-3">
                             <div className="text-sm font-medium text-gray-800">{ficha.cliente_nombre}</div>
                             <div className="text-xs text-gray-500">{ficha.cliente_dni}</div>
+                            {ficha.lead_telefono && (
+                              <div className="text-xs text-gray-600 mt-0.5">{ficha.lead_telefono}</div>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <div className="text-sm font-mono text-gray-800">{ficha.local_codigo}</div>
@@ -819,7 +828,7 @@ export default function AtribucionIATab({ user, proyectoId }: AtribucionIATabPro
                           <td className="px-4 py-3 text-center">
                             {ficha.lead_id ? (
                               <button
-                                onClick={() => setSelectedLead({ id: ficha.lead_id, nombre: ficha.cliente_nombre })}
+                                onClick={() => setSelectedLead({ id: ficha.lead_id, nombre: ficha.cliente_nombre, telefono: ficha.lead_telefono })}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-[#1b967a] bg-[#1b967a]/10 rounded-lg hover:bg-[#1b967a]/20 transition-colors"
                                 title="Ver historial de conversación"
                               >
@@ -882,7 +891,8 @@ export default function AtribucionIATab({ user, proyectoId }: AtribucionIATabPro
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50 text-left">
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Separación</th>
+                        <th className="px-3 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Captura</th>
                         <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Cliente</th>
                         <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Local</th>
                         <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Canal / UTM</th>
@@ -893,12 +903,18 @@ export default function AtribucionIATab({ user, proyectoId }: AtribucionIATabPro
                     <tbody className="divide-y divide-gray-100">
                       {fichasOtras.data.map((ficha) => (
                         <tr key={ficha.ficha_id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-sm text-gray-600">
+                          <td className="px-3 py-3 text-sm text-gray-700">
                             {new Date(ficha.fecha_ficha).toLocaleDateString('es-PE')}
+                          </td>
+                          <td className="px-3 py-3 text-sm text-gray-500">
+                            {ficha.fecha_lead ? new Date(ficha.fecha_lead).toLocaleDateString('es-PE') : '-'}
                           </td>
                           <td className="px-4 py-3">
                             <div className="text-sm font-medium text-gray-800">{ficha.cliente_nombre}</div>
                             <div className="text-xs text-gray-500">{ficha.cliente_dni}</div>
+                            {ficha.lead_telefono && (
+                              <div className="text-xs text-gray-600 mt-0.5">{ficha.lead_telefono}</div>
+                            )}
                           </td>
                           <td className="px-4 py-3">
                             <div className="text-sm font-mono text-gray-800">{ficha.local_codigo}</div>
@@ -931,7 +947,7 @@ export default function AtribucionIATab({ user, proyectoId }: AtribucionIATabPro
                           <td className="px-4 py-3 text-center">
                             {ficha.lead_id ? (
                               <button
-                                onClick={() => setSelectedLead({ id: ficha.lead_id, nombre: ficha.cliente_nombre })}
+                                onClick={() => setSelectedLead({ id: ficha.lead_id, nombre: ficha.cliente_nombre, telefono: ficha.lead_telefono })}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                                 title="Ver historial de conversación"
                               >
@@ -989,6 +1005,7 @@ export default function AtribucionIATab({ user, proyectoId }: AtribucionIATabPro
         isOpen={!!selectedLead}
         leadId={selectedLead?.id || ''}
         leadNombre={selectedLead?.nombre}
+        leadTelefono={selectedLead?.telefono}
         onClose={() => setSelectedLead(null)}
       />
     </div>
