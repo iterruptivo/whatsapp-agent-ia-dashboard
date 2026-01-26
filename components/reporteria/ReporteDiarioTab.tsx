@@ -34,6 +34,7 @@ import {
   Users,
   Search,
   FileX,
+  Image,
 } from 'lucide-react';
 import VincularBoletaModal from './VincularBoletaModal';
 import ValidarDepositoModal from './ValidarDepositoModal';
@@ -791,13 +792,33 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center">
-                        <button
-                          onClick={() => onVerFicha(abono.ficha_id, abono.local_id)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-[#1b967a] bg-[#1b967a]/10 rounded-lg hover:bg-[#1b967a]/20 transition-colors"
-                        >
-                          <FileText className="w-3.5 h-3.5" />
-                          Ver Ficha
-                        </button>
+                        <div className="flex items-center justify-center gap-2">
+                          {/* Botón Ver Voucher */}
+                          {abono.imagen_url ? (
+                            <button
+                              onClick={() => window.open(abono.imagen_url!, '_blank')}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                              title="Ver imagen del voucher"
+                            >
+                              <Image className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-gray-400"
+                              title="Sin imagen de voucher"
+                            >
+                              <Image className="w-3.5 h-3.5" />
+                            </span>
+                          )}
+                          {/* Botón Ver Ficha */}
+                          <button
+                            onClick={() => onVerFicha(abono.ficha_id, abono.local_id)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-[#1b967a] bg-[#1b967a]/10 rounded-lg hover:bg-[#1b967a]/20 transition-colors"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            Ficha
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -853,13 +874,31 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                     )}
                   </div>
 
-                  <button
-                    onClick={() => onVerFicha(abono.ficha_id, abono.local_id)}
-                    className="w-full mt-2 flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-[#1b967a] bg-[#1b967a]/10 rounded-lg hover:bg-[#1b967a]/20 transition-colors"
-                  >
-                    <FileText className="w-4 h-4" />
-                    Ver Ficha
-                  </button>
+                  <div className="flex gap-2 mt-2">
+                    {/* Botón Ver Voucher - Mobile */}
+                    {abono.imagen_url ? (
+                      <button
+                        onClick={() => window.open(abono.imagen_url!, '_blank')}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        <Image className="w-4 h-4" />
+                        Voucher
+                      </button>
+                    ) : (
+                      <span className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm text-gray-400 bg-gray-50 rounded-lg">
+                        <Image className="w-4 h-4" />
+                        Sin imagen
+                      </span>
+                    )}
+                    {/* Botón Ver Ficha - Mobile */}
+                    <button
+                      onClick={() => onVerFicha(abono.ficha_id, abono.local_id)}
+                      className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-[#1b967a] bg-[#1b967a]/10 rounded-lg hover:bg-[#1b967a]/20 transition-colors"
+                    >
+                      <FileText className="w-4 h-4" />
+                      Ficha
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

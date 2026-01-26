@@ -708,6 +708,8 @@ export interface AbonoDiarioRow {
   cliente_dni?: string;
   // Fecha/hora de subida a la plataforma
   uploaded_at: string | null;
+  // URL de la imagen del voucher/comprobante
+  imagen_url: string | null;
   // Fecha y hora del comprobante (del voucher)
   fecha_comprobante: string;
   hora_comprobante: string | null;
@@ -918,6 +920,7 @@ async function fetchAllAbonosFiltered(
       banco,
       numero_operacion,
       uploaded_at,
+      imagen_url,
       validado_finanzas,
       validado_finanzas_por,
       validado_finanzas_at,
@@ -1017,6 +1020,7 @@ async function fetchAllAbonosFiltered(
       cliente_nombre: clienteNombre,
       cliente_dni: ficha?.titular_numero_documento,
       uploaded_at: dep.uploaded_at,
+      imagen_url: dep.imagen_url || null,
       fecha_comprobante: dep.fecha_comprobante,
       hora_comprobante: dep.hora_comprobante,
       monto: Number(dep.monto) || 0,

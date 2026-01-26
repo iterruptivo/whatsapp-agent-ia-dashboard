@@ -261,44 +261,53 @@ export async function importManualLeads(
         continue;
       }
 
-      // Validar que el vendedor existe y tenga rol válido para asignar leads
-      // Use server client with cookies (authenticated role) - RLS allows access
-      const { data: usuarios, error: usuarioError } = await supabaseServer
-        .from('usuarios')
-        .select('id, vendedor_id, rol')
-        .eq('email', lead.email_vendedor)
-        .limit(1);
+      // SESIÓN 109: Vendedor es OPCIONAL - si no se proporciona, el lead queda disponible (null)
+      let vendedorIdParaAsignar: string | null = null;
 
-      const usuario = usuarios?.[0];
+      // Solo validar vendedor si se proporcionó uno
+      if (lead.email_vendedor && lead.email_vendedor.trim() !== '') {
+        // Validar que el vendedor existe y tenga rol válido para asignar leads
+        // Use server client with cookies (authenticated role) - RLS allows access
+        const { data: usuarios, error: usuarioError } = await supabaseServer
+          .from('usuarios')
+          .select('id, vendedor_id, rol')
+          .eq('email', lead.email_vendedor)
+          .limit(1);
 
-      // SESIÓN 74: Agregar 'coordinador' a roles válidos para importar leads
-      // SESIÓN 102: Agregar 'jefe_ventas' para que pueda asignarse leads a sí mismo
-      const rolesValidosParaAsignar = ['vendedor', 'vendedor_caseta', 'coordinador', 'jefe_ventas'];
-      if (
-        usuarioError ||
-        !usuario ||
-        !rolesValidosParaAsignar.includes(usuario.rol) ||
-        !usuario.vendedor_id
-      ) {
-        // Determinar razón específica del fallo
-        let failReason = 'desconocido';
-        if (usuarioError) {
-          failReason = `Error DB: ${usuarioError.message}`;
-        } else if (!usuario) {
-          failReason = 'Usuario no existe en BD';
-        } else if (!rolesValidosParaAsignar.includes(usuario.rol)) {
-          failReason = `Rol inválido: ${usuario.rol}`;
-        } else if (!usuario.vendedor_id) {
-          failReason = 'Sin vendedor_id';
+        const usuario = usuarios?.[0];
+
+        // SESIÓN 74: Agregar 'coordinador' a roles válidos para importar leads
+        // SESIÓN 102: Agregar 'jefe_ventas' para que pueda asignarse leads a sí mismo
+        const rolesValidosParaAsignar = ['vendedor', 'vendedor_caseta', 'coordinador', 'jefe_ventas'];
+        if (
+          usuarioError ||
+          !usuario ||
+          !rolesValidosParaAsignar.includes(usuario.rol) ||
+          !usuario.vendedor_id
+        ) {
+          // Determinar razón específica del fallo
+          let failReason = 'desconocido';
+          if (usuarioError) {
+            failReason = `Error DB: ${usuarioError.message}`;
+          } else if (!usuario) {
+            failReason = 'Usuario no existe en BD';
+          } else if (!rolesValidosParaAsignar.includes(usuario.rol)) {
+            failReason = `Rol inválido: ${usuario.rol}`;
+          } else if (!usuario.vendedor_id) {
+            failReason = 'Sin vendedor_id';
+          }
+
+          console.error(`[IMPORT] Invalid vendor at row ${rowNum}:`, {
+            email: lead.email_vendedor,
+            reason: failReason,
+          });
+          invalidVendors.push({ email: lead.email_vendedor, row: rowNum, reason: failReason });
+          continue;
         }
 
-        console.error(`[IMPORT] Invalid vendor at row ${rowNum}:`, {
-          email: lead.email_vendedor,
-          reason: failReason,
-        });
-        invalidVendors.push({ email: lead.email_vendedor, row: rowNum, reason: failReason });
-        continue;
+        vendedorIdParaAsignar = usuario.vendedor_id;
       }
+      // Si no se proporcionó vendedor, vendedorIdParaAsignar queda null (lead disponible)
 
       // Verificar si ya existe un lead con ese teléfono en este proyecto
       // Usar .limit(1) en vez de .maybeSingle() para evitar PGRST116 cuando hay duplicados
@@ -322,7 +331,7 @@ export async function importManualLeads(
         email: lead.email || null,
         rubro: lead.rubro || null,
         estado: 'lead_manual',
-        vendedor_asignado_id: usuario.vendedor_id,
+        vendedor_asignado_id: vendedorIdParaAsignar, // null si no se asignó vendedor (lead disponible)
         utm: lead.utm.trim(), // UTM requerido para leads manuales
       };
 

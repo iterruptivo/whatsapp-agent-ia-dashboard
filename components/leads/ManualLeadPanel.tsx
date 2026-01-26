@@ -142,10 +142,7 @@ export default function ManualLeadPanel({
       }
     }
 
-    if (!currentForm.email_vendedor) {
-      setVendedorError('Debes seleccionar un vendedor');
-      return;
-    }
+    // Vendedor es OPCIONAL - el lead queda disponible si no se asigna
 
     // Validar UTM (REQUERIDO para leads manuales)
     if (!currentForm.utm.trim()) {
@@ -415,7 +412,7 @@ export default function ManualLeadPanel({
               {/* Dropdown: Vendedor con búsqueda */}
               <div ref={vendedorDropdownRef}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Vendedor asignado <span className="text-red-500">*</span>
+                  Vendedor asignado <span className="text-gray-400">(opcional)</span>
                 </label>
                 <div className="relative">
                   <button
