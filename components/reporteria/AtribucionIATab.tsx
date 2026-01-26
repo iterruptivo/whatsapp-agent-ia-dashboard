@@ -1,41 +1,42 @@
 'use client';
 
 /**
- * AtribucionIATab - Victoria Sales Attribution Dashboard
- * Session 74 - Sistema de Atribución de Ventas IA
+ * AtribucionIATab - Atribución de Fichas a Victoria
  *
- * Features:
- * - Import Excel sales from call center
- * - KPI cards with Victoria attribution
- * - Paginated tables with lazy loading
- * - Lead detail modal
+ * Muestra las Fichas de Inscripción (ventas reales) y su atribución a Victoria.
+ *
+ * Un lead es de Victoria si:
+ * - Estado: en_conversacion, lead_completo, lead_incompleto, conversacion_abandonada
+ * - UTM contiene "form", "victoria", o es numérico (IDs Meta)
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Upload,
   Bot,
   Users,
-  HelpCircle,
   Calendar,
   ChevronLeft,
   ChevronRight,
-  FileSpreadsheet,
   RefreshCw,
+  Check,
+  FileText,
+  Download,
+  Search,
+  X,
   Eye,
-  Check
+  MessageCircle
 } from 'lucide-react';
+import ChatHistoryModal from '@/components/shared/ChatHistoryModal';
 import {
-  getVentasStats,
-  getVentasPaginated,
-  getVentasStatsByMonth,
-  getAvailableMonths,
-  type VentasStats,
-  type VentaExterna,
-  type PaginatedResult
-} from '@/lib/actions-ventas-ia';
-import ImportVentasModal from './ImportVentasModal';
-import LeadDetalleModal from './LeadDetalleModal';
+  getFichasAtribucionStats,
+  getFichasAtribucionPaginated,
+  getFichasAtribucionByMonth,
+  getFichasAtribucionExport,
+  type FichasAtribucionStats,
+  type FichaAtribucion,
+  type PaginatedFichasResult,
+  type StatsByMonth
+} from '@/lib/actions-atribucion-fichas';
 import {
   BarChart,
   Bar,
@@ -49,6 +50,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import * as XLSX from 'xlsx';
 
 interface Usuario {
   id: string;
@@ -58,13 +60,13 @@ interface Usuario {
 
 interface AtribucionIATabProps {
   user: Usuario;
+  proyectoId?: string;
 }
 
 // Colores para gráficos
 const COLORS = {
   victoria: '#1b967a',   // Verde EcoPlaza
-  otroUtm: '#3b82f6',    // Azul
-  sinLead: '#9ca3af',    // Gris
+  otros: '#6b7280',      // Gris
 };
 
 // Helper para formatear mes
@@ -75,8 +77,7 @@ function formatMes(mes: string): string {
 }
 
 // Helper para formatear monto
-function formatMonto(monto: number | null): string {
-  if (!monto) return '-';
+function formatMonto(monto: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
@@ -148,12 +149,12 @@ function generateMonthOptions(): Array<{ value: string; label: string }> {
   return options;
 }
 
-export default function AtribucionIATab({ user }: AtribucionIATabProps) {
+export default function AtribucionIATab({ user, proyectoId }: AtribucionIATabProps) {
   // Estados de datos
-  const [stats, setStats] = useState<VentasStats | null>(null);
-  const [ventasVictoria, setVentasVictoria] = useState<PaginatedResult<VentaExterna> | null>(null);
-  const [ventasOtras, setVentasOtras] = useState<PaginatedResult<VentaExterna> | null>(null);
-  const [statsByMonth, setStatsByMonth] = useState<Array<{ mes: string; victoria: number; otros: number; sinLead: number }>>([]);
+  const [stats, setStats] = useState<FichasAtribucionStats | null>(null);
+  const [fichasVictoria, setFichasVictoria] = useState<PaginatedFichasResult | null>(null);
+  const [fichasOtras, setFichasOtras] = useState<PaginatedFichasResult | null>(null);
+  const [statsByMonth, setStatsByMonth] = useState<StatsByMonth[]>([]);
 
   // Loading independiente por sección
   const [loadingStats, setLoadingStats] = useState(true);
@@ -161,12 +162,15 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
   const [loadingVictoria, setLoadingVictoria] = useState(true);
   const [loadingOtras, setLoadingOtras] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Filtros - Default: Últimos 6 meses
   const [selectedPreset, setSelectedPreset] = useState<string>('last6');
   const [mesDesde, setMesDesde] = useState<string>(() => getPresetDates('last6').desde);
   const [mesHasta, setMesHasta] = useState<string>(() => getPresetDates('last6').hasta);
   const [showCustomRange, setShowCustomRange] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const monthOptions = generateMonthOptions();
 
   // Paginación
@@ -174,122 +178,151 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
   const [pageOtras, setPageOtras] = useState(1);
   const pageSize = 10;
 
-  // Modales
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [selectedVenta, setSelectedVenta] = useState<{ leadId: string; ventaId: string } | null>(null);
-
   // Vista activa (victoria vs otras)
   const [activeView, setActiveView] = useState<'victoria' | 'otras'>('victoria');
 
+  // Modal para ver historial de conversación
+  const [selectedLead, setSelectedLead] = useState<{ id: string; nombre: string } | null>(null);
+
   // Refs para evitar llamadas duplicadas
   const isInitialMount = useRef(true);
-  const currentFilters = useRef({ mesDesde, mesHasta });
+  const currentFilters = useRef({ mesDesde, mesHasta, proyectoId });
+
+  // Debounce para búsqueda
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset página al cambiar búsqueda
+  useEffect(() => {
+    setPageVictoria(1);
+    setPageOtras(1);
+  }, [debouncedSearch]);
 
   // Cargar stats (KPI cards)
   const loadStats = useCallback(async () => {
     setLoadingStats(true);
     try {
-      const statsData = await getVentasStats(mesDesde || undefined, mesHasta || undefined);
+      const statsData = await getFichasAtribucionStats(
+        mesDesde || undefined,
+        mesHasta || undefined,
+        proyectoId
+      );
       setStats(statsData);
     } catch (error) {
       console.error('Error loading stats:', error);
     } finally {
       setLoadingStats(false);
     }
-  }, [mesDesde, mesHasta]);
+  }, [mesDesde, mesHasta, proyectoId]);
 
   // Cargar charts (gráficos)
   const loadCharts = useCallback(async () => {
     setLoadingCharts(true);
     try {
-      const monthData = await getVentasStatsByMonth(mesDesde || undefined, mesHasta || undefined);
+      const monthData = await getFichasAtribucionByMonth(
+        mesDesde || undefined,
+        mesHasta || undefined,
+        proyectoId
+      );
       setStatsByMonth(monthData);
     } catch (error) {
       console.error('Error loading charts:', error);
     } finally {
       setLoadingCharts(false);
     }
-  }, [mesDesde, mesHasta]);
+  }, [mesDesde, mesHasta, proyectoId]);
 
-  // Cargar solo tabla victoria
+  // Cargar tabla victoria
   const loadVictoriaTable = useCallback(async () => {
     setLoadingVictoria(true);
     try {
-      const victoriaData = await getVentasPaginated(
-        'victoria', pageVictoria, pageSize,
-        mesDesde || undefined, mesHasta || undefined
+      const result = await getFichasAtribucionPaginated(
+        'victoria',
+        pageVictoria,
+        pageSize,
+        mesDesde || undefined,
+        mesHasta || undefined,
+        proyectoId,
+        debouncedSearch || undefined
       );
-      setVentasVictoria(victoriaData);
+      setFichasVictoria(result);
     } catch (error) {
       console.error('Error loading victoria table:', error);
     } finally {
       setLoadingVictoria(false);
     }
-  }, [mesDesde, mesHasta, pageVictoria]);
+  }, [mesDesde, mesHasta, proyectoId, pageVictoria, debouncedSearch]);
 
-  // Cargar solo tabla otras
+  // Cargar tabla otras
   const loadOtrasTable = useCallback(async () => {
     setLoadingOtras(true);
     try {
-      const otrasData = await getVentasPaginated(
-        'all', pageOtras, pageSize,
-        mesDesde || undefined, mesHasta || undefined
+      const result = await getFichasAtribucionPaginated(
+        'otros',
+        pageOtras,
+        pageSize,
+        mesDesde || undefined,
+        mesHasta || undefined,
+        proyectoId,
+        debouncedSearch || undefined
       );
-      setVentasOtras(otrasData);
+      setFichasOtras(result);
     } catch (error) {
       console.error('Error loading otras table:', error);
     } finally {
       setLoadingOtras(false);
     }
-  }, [mesDesde, mesHasta, pageOtras]);
+  }, [mesDesde, mesHasta, proyectoId, pageOtras, debouncedSearch]);
 
-  // Carga inicial - cada sección carga en paralelo con su propio loading
+  // Carga inicial
   useEffect(() => {
-    // Disparar todas las cargas en paralelo (cada una maneja su propio loading)
     loadStats();
     loadCharts();
     loadVictoriaTable();
     loadOtrasTable();
 
-    // Marcar que ya no es el mount inicial después de un tick
     const timer = setTimeout(() => {
       isInitialMount.current = false;
     }, 100);
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Solo en mount inicial
+  }, []);
 
-  // Cuando cambian filtros de fecha, recargar todo
+  // Cuando cambian filtros de fecha o proyecto, recargar todo
   useEffect(() => {
     if (isInitialMount.current) return;
 
-    // Verificar si realmente cambiaron los filtros
-    if (currentFilters.current.mesDesde === mesDesde &&
-        currentFilters.current.mesHasta === mesHasta) {
+    if (
+      currentFilters.current.mesDesde === mesDesde &&
+      currentFilters.current.mesHasta === mesHasta &&
+      currentFilters.current.proyectoId === proyectoId
+    ) {
       return;
     }
 
-    currentFilters.current = { mesDesde, mesHasta };
+    currentFilters.current = { mesDesde, mesHasta, proyectoId };
 
-    // Cada función maneja su propio loading state
     loadStats();
     loadCharts();
     loadVictoriaTable();
     loadOtrasTable();
-  }, [mesDesde, mesHasta, loadStats, loadCharts, loadVictoriaTable, loadOtrasTable]);
+  }, [mesDesde, mesHasta, proyectoId, loadStats, loadCharts, loadVictoriaTable, loadOtrasTable]);
 
-  // Cuando cambia página victoria, solo recargar esa tabla
+  // Cuando cambia página o búsqueda
   useEffect(() => {
     if (isInitialMount.current) return;
     loadVictoriaTable();
-  }, [pageVictoria, loadVictoriaTable]);
+  }, [pageVictoria, debouncedSearch, loadVictoriaTable]);
 
-  // Cuando cambia página otras, solo recargar esa tabla
   useEffect(() => {
     if (isInitialMount.current) return;
     loadOtrasTable();
-  }, [pageOtras, loadOtrasTable]);
+  }, [pageOtras, debouncedSearch, loadOtrasTable]);
 
   // Handler para cambiar preset
   const handlePresetChange = (presetId: string) => {
@@ -320,10 +353,9 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
     setPageOtras(1);
   };
 
-  // Handler para refrescar manual
+  // Handler para refrescar
   const handleRefresh = () => {
     setRefreshing(true);
-    // Disparar todas las cargas en paralelo
     Promise.all([
       loadStats(),
       loadCharts(),
@@ -332,38 +364,53 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
     ]).finally(() => setRefreshing(false));
   };
 
-  // Handlers de paginación
-  const handlePageChangeVictoria = (newPage: number) => {
-    setPageVictoria(newPage);
-  };
+  // Handler para exportar Excel
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const data = await getFichasAtribucionExport(
+        activeView === 'victoria' ? 'victoria' : 'otros',
+        mesDesde || undefined,
+        mesHasta || undefined,
+        proyectoId
+      );
 
-  const handlePageChangeOtras = (newPage: number) => {
-    setPageOtras(newPage);
-  };
+      const exportData = data.map(f => ({
+        'Fecha Ficha': new Date(f.fecha_ficha).toLocaleDateString('es-PE'),
+        'Cliente': f.cliente_nombre,
+        'DNI': f.cliente_dni,
+        'Local': f.local_codigo,
+        'Proyecto': f.proyecto_nombre,
+        'UTM': f.lead_utm,
+        'Estado Lead': f.lead_estado,
+        'Abonado USD': f.total_abonado_usd,
+        'Abonado PEN': f.total_abonado_pen,
+        'Atribución': f.es_victoria ? 'Victoria' : 'Otro Canal'
+      }));
 
-  // Handler para después de importar
-  const handleImportComplete = () => {
-    setShowImportModal(false);
-    handleRefresh();
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Atribución');
+      XLSX.writeFile(wb, `atribucion-${activeView}-${new Date().toISOString().split('T')[0]}.xlsx`);
+    } catch (error) {
+      console.error('Error exporting:', error);
+    } finally {
+      setExporting(false);
+    }
   };
 
   // Datos para gráfico de pie
   const pieData = stats ? [
-    { name: 'Victoria', value: stats.victoria, color: COLORS.victoria },
-    { name: 'Otros UTM', value: stats.otroUtm, color: COLORS.otroUtm },
-    { name: 'Sin Lead', value: stats.sinLead, color: COLORS.sinLead },
+    { name: 'Victoria', value: stats.fichasVictoria, color: COLORS.victoria },
+    { name: 'Otros Canales', value: stats.fichasOtros, color: COLORS.otros },
   ].filter(d => d.value > 0) : [];
 
   // Datos para gráfico de barras
   const barData = statsByMonth.map(item => ({
     mes: formatMes(item.mes),
     Victoria: item.victoria,
-    'Otros UTM': item.otros,
-    'Sin Lead': item.sinLead,
+    'Otros': item.otros,
   }));
-
-  // Verificar si puede importar
-  const canImport = user.rol === 'admin' || user.rol === 'jefe_ventas';
 
   // Skeleton para KPI cards
   const KPICardSkeleton = () => (
@@ -375,16 +422,6 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
           <div className="h-3 bg-gray-200 rounded w-20"></div>
         </div>
         <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
-      </div>
-    </div>
-  );
-
-  // Skeleton para gráficos
-  const ChartSkeleton = () => (
-    <div className="bg-white rounded-xl shadow-md p-5 animate-pulse">
-      <div className="h-5 bg-gray-200 rounded w-48 mb-4"></div>
-      <div className="h-64 bg-gray-100 rounded flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-300"></div>
       </div>
     </div>
   );
@@ -407,7 +444,7 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header con botón importar */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-[#192c4d] flex items-center gap-2">
@@ -415,11 +452,31 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
             Atribución de Ventas a Victoria
           </h2>
           <p className="text-sm text-gray-600 mt-1">
-            Cruce de ventas del call center con leads capturados por la IA
+            Fichas de inscripción atribuidas a la IA vs otros canales
           </p>
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Búsqueda */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar cliente..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#1b967a] focus:border-transparent w-48"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
           {/* Botón Refrescar */}
           <button
             onClick={handleRefresh}
@@ -430,20 +487,19 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
             <span className="hidden sm:inline">Actualizar</span>
           </button>
 
-          {/* Botón Importar (solo admin/jefe_ventas) */}
-          {canImport && (
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a64] transition-colors shadow-md"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Importar Excel</span>
-            </button>
-          )}
+          {/* Botón Exportar */}
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1b967a] text-white rounded-lg hover:bg-[#157a64] transition-colors shadow-md disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            <span>{exporting ? 'Exportando...' : 'Exportar'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Filtros por rango - PRESETS + PERSONALIZADO */}
+      {/* Filtros por rango */}
       <div className="bg-white rounded-xl shadow-md p-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 text-sm text-gray-600 mr-2">
@@ -500,9 +556,9 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
               <select
                 value={mesDesde}
                 onChange={(e) => handleCustomMonthChange('desde', e.target.value)}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent bg-white"
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a]"
               >
-                <option value="">Seleccionar mes</option>
+                <option value="">Seleccionar</option>
                 {monthOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
@@ -514,15 +570,14 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
               <select
                 value={mesHasta}
                 onChange={(e) => handleCustomMonthChange('hasta', e.target.value)}
-                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent bg-white"
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a]"
               >
-                <option value="">Seleccionar mes</option>
+                <option value="">Seleccionar</option>
                 {monthOptions.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
 
-              {/* Mostrar rango seleccionado */}
               {mesDesde && mesHasta && (
                 <div className="ml-auto text-sm font-medium text-[#1b967a]">
                   {formatMes(mesDesde)} → {formatMes(mesHasta)}
@@ -544,25 +599,26 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
           </>
         ) : (
           <>
-            {/* Total Ventas */}
+            {/* Total Fichas */}
             <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-gray-400">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Total Ventas</p>
-                  <p className="text-3xl font-bold text-gray-800 mt-1">{stats?.total || 0}</p>
+                  <p className="text-sm font-medium text-gray-500">Total Fichas</p>
+                  <p className="text-3xl font-bold text-gray-800 mt-1">{stats?.totalFichas || 0}</p>
+                  <p className="text-xs text-gray-500 mt-1">Con lead vinculado</p>
                 </div>
                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <FileSpreadsheet className="w-6 h-6 text-gray-500" />
+                  <FileText className="w-6 h-6 text-gray-500" />
                 </div>
               </div>
             </div>
 
-            {/* Ventas Victoria */}
+            {/* Fichas Victoria */}
             <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-[#1b967a]">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Ventas Victoria</p>
-                  <p className="text-3xl font-bold text-[#1b967a] mt-1">{stats?.victoria || 0}</p>
+                  <p className="text-sm font-medium text-gray-500">Fichas Victoria</p>
+                  <p className="text-3xl font-bold text-[#1b967a] mt-1">{stats?.fichasVictoria || 0}</p>
                   <p className="text-sm text-[#1b967a] font-medium mt-1">
                     {stats?.porcentajeVictoria || 0}% del total
                   </p>
@@ -571,7 +627,6 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
                   <Bot className="w-6 h-6 text-[#1b967a]" />
                 </div>
               </div>
-              {/* Barra de progreso */}
               <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-[#1b967a] rounded-full transition-all duration-500"
@@ -580,34 +635,38 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
               </div>
             </div>
 
-            {/* Otros Canales */}
-            <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-blue-500">
+            {/* Monto Victoria */}
+            <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-green-400">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Otros Canales</p>
-                  <p className="text-3xl font-bold text-blue-600 mt-1">{stats?.otroUtm || 0}</p>
-                  <p className="text-sm text-blue-600 font-medium mt-1">
-                    {stats?.total ? Math.round((stats.otroUtm / stats.total) * 100) : 0}% del total
+                  <p className="text-sm font-medium text-gray-500">Abonos Victoria</p>
+                  <p className="text-2xl font-bold text-green-600 mt-1">
+                    {formatMonto(stats?.montoVictoriaUSD || 0)}
                   </p>
+                  {(stats?.montoVictoriaPEN || 0) > 0 && (
+                    <p className="text-sm text-blue-600 font-medium mt-1">
+                      S/ {(stats?.montoVictoriaPEN || 0).toLocaleString()}
+                    </p>
+                  )}
                 </div>
-                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                  <Users className="w-6 h-6 text-blue-600" />
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                  <Bot className="w-6 h-6 text-green-600" />
                 </div>
               </div>
             </div>
 
-            {/* Sin Lead */}
+            {/* Otros Canales */}
             <div className="bg-white rounded-xl shadow-md p-5 border-l-4 border-gray-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Sin Lead</p>
-                  <p className="text-3xl font-bold text-gray-600 mt-1">{stats?.sinLead || 0}</p>
+                  <p className="text-sm font-medium text-gray-500">Otros Canales</p>
+                  <p className="text-3xl font-bold text-gray-600 mt-1">{stats?.fichasOtros || 0}</p>
                   <p className="text-sm text-gray-500 font-medium mt-1">
-                    {stats?.total ? Math.round((stats.sinLead / stats.total) * 100) : 0}% del total
+                    {stats?.totalFichas ? Math.round(((stats.fichasOtros || 0) / stats.totalFichas) * 100) : 0}% del total
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                  <HelpCircle className="w-6 h-6 text-gray-500" />
+                  <Users className="w-6 h-6 text-gray-500" />
                 </div>
               </div>
             </div>
@@ -616,12 +675,7 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
       </div>
 
       {/* Gráficos */}
-      {loadingCharts ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ChartSkeleton />
-          <ChartSkeleton />
-        </div>
-      ) : stats && stats.total > 0 ? (
+      {!loadingCharts && stats && stats.totalFichas > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Pie Chart */}
           <div className="bg-white rounded-xl shadow-md p-5">
@@ -643,28 +697,23 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip
-                    formatter={(value: number) => [value, 'Ventas']}
-                  />
+                  <Tooltip formatter={(value: number) => [value, 'Fichas']} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <div className="flex justify-center gap-4 mt-4">
               {pieData.map((item) => (
                 <div key={item.name} className="flex items-center gap-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: item.color }}
-                  />
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                   <span className="text-sm text-gray-600">{item.name}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Bar Chart por Mes */}
+          {/* Bar Chart */}
           <div className="bg-white rounded-xl shadow-md p-5">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Ventas por Mes</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Fichas por Mes</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={barData}>
@@ -674,14 +723,13 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
                   <Tooltip />
                   <Legend />
                   <Bar dataKey="Victoria" fill={COLORS.victoria} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Otros UTM" fill={COLORS.otroUtm} radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="Sin Lead" fill={COLORS.sinLead} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Otros" fill={COLORS.otros} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
-      ) : null}
+      )}
 
       {/* Tabs para tablas */}
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
@@ -696,18 +744,18 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
             }`}
           >
             <Bot className="w-4 h-4" />
-            <span>Ventas Victoria ({stats?.victoria || 0})</span>
+            <span>Fichas Victoria ({stats?.fichasVictoria || 0})</span>
           </button>
           <button
             onClick={() => setActiveView('otras')}
             className={`flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 transition-colors ${
               activeView === 'otras'
-                ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-500'
+                ? 'bg-gray-100 text-gray-700 border-b-2 border-gray-400'
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Todas las Ventas ({stats?.total || 0})</span>
+            <span>Otros Canales ({stats?.fichasOtros || 0})</span>
           </button>
         </div>
 
@@ -716,42 +764,70 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
           <div className="p-4">
             {loadingVictoria ? (
               <TableSkeleton />
-            ) : ventasVictoria && ventasVictoria.data.length > 0 ? (
+            ) : fichasVictoria && fichasVictoria.data.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="bg-[#1b967a]/5 text-left">
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Teléfono</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha</th>
                         <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Cliente</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Mes Venta</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Monto</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Lead Victoria</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Detalle</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Local</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">UTM / Estado</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Abonado</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {ventasVictoria.data.map((venta) => (
-                        <tr key={venta.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-sm font-mono text-gray-800">{venta.telefono}</td>
-                          <td className="px-4 py-3 text-sm text-gray-800">{venta.nombre_cliente || '-'}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{formatMes(venta.mes_venta)}</td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-800">{formatMonto(venta.monto_venta)}</td>
+                      {fichasVictoria.data.map((ficha) => (
+                        <tr key={ficha.ficha_id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {new Date(ficha.fecha_ficha).toLocaleDateString('es-PE')}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="text-sm font-medium text-gray-800">{ficha.cliente_nombre}</div>
+                            <div className="text-xs text-gray-500">{ficha.cliente_dni}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="text-sm font-mono text-gray-800">{ficha.local_codigo}</div>
+                            <div className="text-xs text-gray-500">{ficha.proyecto_nombre}</div>
+                          </td>
                           <td className="px-4 py-3">
                             <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-[#1b967a]/10 text-[#1b967a]">
                               <Bot className="w-3 h-3" />
-                              {venta.lead_nombre || 'Lead Victoria'}
+                              Victoria
                             </span>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {ficha.lead_utm || ficha.lead_estado}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {ficha.total_abonado_usd > 0 && (
+                              <div className="text-sm font-medium text-green-600">
+                                $ {ficha.total_abonado_usd.toLocaleString()}
+                              </div>
+                            )}
+                            {ficha.total_abonado_pen > 0 && (
+                              <div className="text-sm font-medium text-blue-600">
+                                S/ {ficha.total_abonado_pen.toLocaleString()}
+                              </div>
+                            )}
+                            {ficha.total_abonado_usd === 0 && ficha.total_abonado_pen === 0 && (
+                              <span className="text-gray-400">-</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            {venta.lead_id && (
+                            {ficha.lead_id ? (
                               <button
-                                onClick={() => setSelectedVenta({ leadId: venta.lead_id!, ventaId: venta.id })}
+                                onClick={() => setSelectedLead({ id: ficha.lead_id, nombre: ficha.cliente_nombre })}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-[#1b967a] bg-[#1b967a]/10 rounded-lg hover:bg-[#1b967a]/20 transition-colors"
+                                title="Ver historial de conversación"
                               >
-                                <Eye className="w-3 h-3" />
+                                <MessageCircle className="w-3.5 h-3.5" />
                                 Ver Lead
                               </button>
+                            ) : (
+                              <span className="text-gray-400 text-xs">-</span>
                             )}
                           </td>
                         </tr>
@@ -763,22 +839,22 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
                 {/* Paginación */}
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
                   <p className="text-sm text-gray-600">
-                    Mostrando {((pageVictoria - 1) * pageSize) + 1} - {Math.min(pageVictoria * pageSize, ventasVictoria.totalCount)} de {ventasVictoria.totalCount}
+                    Mostrando {((pageVictoria - 1) * pageSize) + 1} - {Math.min(pageVictoria * pageSize, fichasVictoria.totalCount)} de {fichasVictoria.totalCount}
                   </p>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handlePageChangeVictoria(pageVictoria - 1)}
+                      onClick={() => setPageVictoria(p => p - 1)}
                       disabled={pageVictoria === 1}
                       className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
                     <span className="text-sm text-gray-600">
-                      Página {pageVictoria} de {ventasVictoria.totalPages}
+                      Página {pageVictoria} de {fichasVictoria.totalPages}
                     </span>
                     <button
-                      onClick={() => handlePageChangeVictoria(pageVictoria + 1)}
-                      disabled={pageVictoria >= ventasVictoria.totalPages}
+                      onClick={() => setPageVictoria(p => p + 1)}
+                      disabled={pageVictoria >= fichasVictoria.totalPages}
                       className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -789,73 +865,81 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
             ) : (
               <div className="text-center py-12">
                 <Bot className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">No hay ventas atribuidas a Victoria</p>
-                {canImport && (
-                  <button
-                    onClick={() => setShowImportModal(true)}
-                    className="mt-4 text-[#1b967a] hover:underline text-sm"
-                  >
-                    Importar ventas del call center
-                  </button>
-                )}
+                <p className="text-gray-500">No hay fichas atribuidas a Victoria en este período</p>
               </div>
             )}
           </div>
         )}
 
-        {/* Tabla Otras Ventas */}
+        {/* Tabla Otros Canales */}
         {activeView === 'otras' && (
           <div className="p-4">
             {loadingOtras ? (
               <TableSkeleton />
-            ) : ventasOtras && ventasOtras.data.length > 0 ? (
+            ) : fichasOtras && fichasOtras.data.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="bg-gray-50 text-left">
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Teléfono</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Fecha</th>
                         <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Cliente</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Mes Venta</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Monto</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Atribución</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Detalle</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Local</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider">Canal / UTM</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider text-right">Abonado</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-gray-600 uppercase tracking-wider text-center">Acciones</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {ventasOtras.data.map((venta) => (
-                        <tr key={venta.id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3 text-sm font-mono text-gray-800">{venta.telefono}</td>
-                          <td className="px-4 py-3 text-sm text-gray-800">{venta.nombre_cliente || '-'}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{formatMes(venta.mes_venta)}</td>
-                          <td className="px-4 py-3 text-sm font-medium text-gray-800">{formatMonto(venta.monto_venta)}</td>
+                      {fichasOtras.data.map((ficha) => (
+                        <tr key={ficha.ficha_id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {new Date(ficha.fecha_ficha).toLocaleDateString('es-PE')}
+                          </td>
                           <td className="px-4 py-3">
-                            {venta.match_type === 'victoria' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-[#1b967a]/10 text-[#1b967a]">
-                                <Bot className="w-3 h-3" />
-                                Victoria
-                              </span>
-                            ) : venta.match_type === 'otro_utm' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                <Users className="w-3 h-3" />
-                                {venta.lead_utm || 'Otro canal'}
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                <HelpCircle className="w-3 h-3" />
-                                Sin Lead
-                              </span>
+                            <div className="text-sm font-medium text-gray-800">{ficha.cliente_nombre}</div>
+                            <div className="text-xs text-gray-500">{ficha.cliente_dni}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="text-sm font-mono text-gray-800">{ficha.local_codigo}</div>
+                            <div className="text-xs text-gray-500">{ficha.proyecto_nombre}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                              <Users className="w-3 h-3" />
+                              {ficha.lead_utm || 'Sin UTM'}
+                            </span>
+                            {ficha.lead_estado && ficha.lead_estado !== ficha.lead_utm && (
+                              <div className="text-xs text-gray-500 mt-1">{ficha.lead_estado}</div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {ficha.total_abonado_usd > 0 && (
+                              <div className="text-sm font-medium text-green-600">
+                                $ {ficha.total_abonado_usd.toLocaleString()}
+                              </div>
+                            )}
+                            {ficha.total_abonado_pen > 0 && (
+                              <div className="text-sm font-medium text-blue-600">
+                                S/ {ficha.total_abonado_pen.toLocaleString()}
+                              </div>
+                            )}
+                            {ficha.total_abonado_usd === 0 && ficha.total_abonado_pen === 0 && (
+                              <span className="text-gray-400">-</span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-center">
-                            {venta.lead_id && (
+                            {ficha.lead_id ? (
                               <button
-                                onClick={() => setSelectedVenta({ leadId: venta.lead_id!, ventaId: venta.id })}
+                                onClick={() => setSelectedLead({ id: ficha.lead_id, nombre: ficha.cliente_nombre })}
                                 className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                title="Ver historial de conversación"
                               >
-                                <Eye className="w-3 h-3" />
+                                <MessageCircle className="w-3.5 h-3.5" />
                                 Ver Lead
                               </button>
+                            ) : (
+                              <span className="text-gray-400 text-xs">-</span>
                             )}
                           </td>
                         </tr>
@@ -867,22 +951,22 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
                 {/* Paginación */}
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
                   <p className="text-sm text-gray-600">
-                    Mostrando {((pageOtras - 1) * pageSize) + 1} - {Math.min(pageOtras * pageSize, ventasOtras.totalCount)} de {ventasOtras.totalCount}
+                    Mostrando {((pageOtras - 1) * pageSize) + 1} - {Math.min(pageOtras * pageSize, fichasOtras.totalCount)} de {fichasOtras.totalCount}
                   </p>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => handlePageChangeOtras(pageOtras - 1)}
+                      onClick={() => setPageOtras(p => p - 1)}
                       disabled={pageOtras === 1}
                       className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
                     <span className="text-sm text-gray-600">
-                      Página {pageOtras} de {ventasOtras.totalPages}
+                      Página {pageOtras} de {fichasOtras.totalPages}
                     </span>
                     <button
-                      onClick={() => handlePageChangeOtras(pageOtras + 1)}
-                      disabled={pageOtras >= ventasOtras.totalPages}
+                      onClick={() => setPageOtras(p => p + 1)}
+                      disabled={pageOtras >= fichasOtras.totalPages}
                       className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -892,38 +976,21 @@ export default function AtribucionIATab({ user }: AtribucionIATabProps) {
               </>
             ) : (
               <div className="text-center py-12">
-                <FileSpreadsheet className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">No hay ventas importadas</p>
-                {canImport && (
-                  <button
-                    onClick={() => setShowImportModal(true)}
-                    className="mt-4 text-[#1b967a] hover:underline text-sm"
-                  >
-                    Importar ventas del call center
-                  </button>
-                )}
+                <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No hay fichas de otros canales en este período</p>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Modal Importar */}
-      {showImportModal && (
-        <ImportVentasModal
-          onClose={() => setShowImportModal(false)}
-          onImportComplete={handleImportComplete}
-        />
-      )}
-
-      {/* Modal Detalle Lead */}
-      {selectedVenta && (
-        <LeadDetalleModal
-          leadId={selectedVenta.leadId}
-          ventaId={selectedVenta.ventaId}
-          onClose={() => setSelectedVenta(null)}
-        />
-      )}
+      {/* Modal para ver historial de conversación */}
+      <ChatHistoryModal
+        isOpen={!!selectedLead}
+        leadId={selectedLead?.id || ''}
+        leadNombre={selectedLead?.nombre}
+        onClose={() => setSelectedLead(null)}
+      />
     </div>
   );
 }

@@ -176,6 +176,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
   // Estado para modal de validación
   const [showValidarModal, setShowValidarModal] = useState(false);
   const [abonoAValidar, setAbonoAValidar] = useState<AbonoDiarioRow | null>(null);
+  const [modalReadOnly, setModalReadOnly] = useState(false);
 
   // Cargar proyectos al montar
   useEffect(() => {
@@ -374,19 +375,15 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
     }
   };
 
-  // Handler para abrir modal de validación
-  const handleValidarDeposito = (abono: AbonoDiarioRow) => {
+  // Handler para abrir modal de validación (o ver validación en modo readonly)
+  const handleValidarDeposito = (abono: AbonoDiarioRow, readOnly = false) => {
     if (!abono.deposito_id) {
       alert('Este depósito no puede ser validado (no está en la tabla normalizada)');
       return;
     }
 
-    if (abono.validado_finanzas) {
-      alert('Este depósito ya está validado');
-      return;
-    }
-
     setAbonoAValidar(abono);
+    setModalReadOnly(readOnly || abono.validado_finanzas);
     setShowValidarModal(true);
   };
 
@@ -761,14 +758,15 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                       {/* Columna Validación Finanzas - BADGES COLOR-CODED */}
                       <td className="px-4 py-3 whitespace-nowrap text-center">
                         {abono.validado_finanzas ? (
-                          // Validado - Verde con ícono
-                          <div
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-green-700 bg-green-100 border border-green-200 rounded-lg cursor-help"
-                            title={`Validado por ${abono.validado_finanzas_nombre || 'Finanzas'} el ${abono.validado_finanzas_at ? new Date(abono.validado_finanzas_at).toLocaleString('es-PE') : ''}`}
+                          // Validado - Verde con ícono - Clickeable para ver detalles
+                          <button
+                            onClick={() => handleValidarDeposito(abono, true)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-green-700 bg-green-100 border border-green-200 rounded-lg hover:bg-green-200 transition-colors cursor-pointer"
+                            title={`Ver detalles - Validado por ${abono.validado_finanzas_nombre || 'Finanzas'}`}
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             <span className="font-semibold">Validado</span>
-                          </div>
+                          </button>
                         ) : canValidarDeposito && abono.deposito_id ? (
                           // Pendiente - mostrar botón para validar
                           <button
@@ -986,19 +984,39 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
         />
       )}
 
-      {/* Modal Validar Depósito */}
-      {abonoAValidar && (
+      {/* Modal Validar Depósito con OCR de Movimiento Bancario */}
+      {abonoAValidar && abonoAValidar.deposito_id && (
         <ValidarDepositoModal
           isOpen={showValidarModal}
           onClose={() => {
             setShowValidarModal(false);
             setAbonoAValidar(null);
+            setModalReadOnly(false);
           }}
-          onConfirm={handleConfirmarValidacion}
-          monto={formatMonto(abonoAValidar.monto, abonoAValidar.moneda)}
-          cliente={abonoAValidar.cliente_nombre}
-          banco={abonoAValidar.banco}
-          fecha={formatDateWithTime(abonoAValidar.fecha_comprobante + (abonoAValidar.hora_comprobante ? ' ' + abonoAValidar.hora_comprobante : ''))}
+          deposito={{
+            id: abonoAValidar.deposito_id,
+            cliente_nombre: abonoAValidar.cliente_nombre,
+            monto: abonoAValidar.monto,
+            moneda: abonoAValidar.moneda,
+            banco: abonoAValidar.banco || '',
+            numero_operacion: abonoAValidar.numero_operacion || '',
+            fecha_comprobante: abonoAValidar.fecha_comprobante + (abonoAValidar.hora_comprobante ? ' ' + abonoAValidar.hora_comprobante : ''),
+            // Campos de validación para modo readonly
+            validado_finanzas: abonoAValidar.validado_finanzas,
+            validado_finanzas_nombre: abonoAValidar.validado_finanzas_nombre,
+            validado_finanzas_at: abonoAValidar.validado_finanzas_at,
+            imagen_movimiento_bancario_url: abonoAValidar.imagen_movimiento_bancario_url,
+            numero_operacion_banco: abonoAValidar.numero_operacion_banco,
+            notas_validacion: abonoAValidar.notas_validacion,
+          }}
+          onSuccess={async () => {
+            // Solo recargar datos - el modal ya validó con validarDepositoConMovimientoBancario
+            await loadData();
+            setShowValidarModal(false);
+            setAbonoAValidar(null);
+            setModalReadOnly(false);
+          }}
+          readOnly={modalReadOnly}
         />
       )}
 

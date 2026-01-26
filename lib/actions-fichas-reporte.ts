@@ -8,6 +8,7 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getAsesoresFichasBatch } from './actions-asesores-ficha';
 
 // Helper para crear cliente Supabase con contexto de servidor
 async function createSupabaseServer() {
@@ -50,6 +51,7 @@ export interface FichaReporteRow {
   jefe_ventas_nombre: string | null;
   vendedor_caseta_nombre: string | null; // si aplica
   total_abonado: number;
+  total_abonado_pen: number;
   fecha_creacion: string;
   // Campos para indicador de nuevo abono
   tiene_nuevo_abono: boolean;
@@ -58,6 +60,33 @@ export interface FichaReporteRow {
   // Campos de montos extraídos por OCR de vouchers (separación)
   monto_voucher_usd: number;
   monto_voucher_pen: number;
+
+  // ============================================================================
+  // NUEVOS CAMPOS - Sesión 108 (Módulo 4)
+  // ============================================================================
+
+  // Fecha del primer abono (separación)
+  fecha_separacion: string | null;
+
+  // Datos del local
+  local_metraje: number | null;
+  local_piso: string | null;
+
+  // Precio de venta
+  precio_venta: number | null;
+
+  // Estado de pago calculado
+  estado_pago: 'CANCELADO' | 'PENDIENTE';
+
+  // Datos del contrato
+  contrato_firmado: boolean;
+  contrato_fecha_firma: string | null;
+
+  // Equipo de venta (reemplaza vendedor individual)
+  asesores: {
+    nombre: string;
+    rol: 'asesor_1' | 'asesor_2' | 'asesor_3' | 'jefatura';
+  }[];
 }
 
 // ============================================================================
@@ -65,13 +94,19 @@ export interface FichaReporteRow {
 // ============================================================================
 
 // Columnas ordenables para Fichas
+// SESIÓN 108: Agregadas nuevas columnas ordenables
 export type FichaReporteSortColumn =
   | 'fecha_creacion'
   | 'titular_nombre'
   | 'local_codigo'
   | 'proyecto_nombre'
   | 'monto_voucher_usd'
-  | 'monto_voucher_pen';
+  | 'monto_voucher_pen'
+  | 'fecha_separacion'
+  | 'local_metraje'
+  | 'precio_venta'
+  | 'total_abonado'
+  | 'estado_pago';
 
 // Parámetros de la función paginada
 export interface GetFichasReporteParams {
@@ -129,6 +164,7 @@ export async function getFichasParaReporte(proyectoId?: string, incluirPruebas: 
 
     // PASO 1: Obtener todas las fichas con datos de local y proyecto
     // Incluye comprobante_deposito_ocr para calcular montos por moneda
+    // SESIÓN 108: Agregados campos de contrato, metraje, piso, precio
     let fichasQuery = supabase
       .from('clientes_ficha')
       .select(`
@@ -141,11 +177,17 @@ export async function getFichasParaReporte(proyectoId?: string, incluirPruebas: 
         vendedor_id,
         created_at,
         comprobante_deposito_ocr,
+        contrato_firmado,
+        contrato_fecha_firma,
         locales!inner (
           id,
           codigo,
           estado,
           proyecto_id,
+          metraje,
+          piso,
+          monto_venta,
+          precio_base,
           proyectos!inner (
             id,
             nombre
@@ -212,8 +254,58 @@ export async function getFichasParaReporte(proyectoId?: string, incluirPruebas: 
       (jefesVentasData || []).map(j => [j.vendedor_id, j.nombre])
     );
 
-    // PASO 5: Obtener IDs de locales para calcular total abonado
+    // PASO 5: Obtener IDs de locales y fichas para calcular total abonado y fecha separación
     const localIds = fichasData.map(f => f.local_id);
+    const fichaIds = fichasData.map(f => f.id);
+
+    // PASO 5.1: Obtener fecha de separación (primer abono) desde depositos_ficha
+    // SESIÓN 108: Fecha del primer abono registrado
+    const { data: depositosData, error: depositosError } = await supabase
+      .from('depositos_ficha')
+      .select('ficha_id, fecha_comprobante')
+      .in('ficha_id', fichaIds)
+      .order('fecha_comprobante', { ascending: true });
+
+    if (depositosError) {
+      console.warn('[getFichasParaReporte] Error obteniendo depositos:', depositosError);
+    }
+
+    // Crear mapa de ficha_id -> fecha_separacion (primer depósito)
+    const fechaSeparacionMap = new Map<string, string>();
+    (depositosData || []).forEach(dep => {
+      if (!fechaSeparacionMap.has(dep.ficha_id)) {
+        fechaSeparacionMap.set(dep.ficha_id, dep.fecha_comprobante);
+      }
+    });
+
+    // ============================================================================
+    // NUEVO: Obtener suma de depósitos desde depositos_ficha para total_abonado
+    // ============================================================================
+    const { data: depositosSuma } = await supabase
+      .from('depositos_ficha')
+      .select('ficha_id, monto, moneda, fecha_comprobante, created_at')
+      .in('ficha_id', fichaIds);
+
+    const depositosPorFichaMap = new Map<string, number>();
+    const depositosPorFichaMapPEN = new Map<string, number>();
+    const ultimoDepositoMap = new Map<string, string>();
+    const depositosCountMap = new Map<string, number>();
+
+    (depositosSuma || []).forEach(dep => {
+      const fichaId = dep.ficha_id;
+      const montoUSD = dep.moneda === 'USD' ? Number(dep.monto) || 0 : 0;
+      const montoPEN = dep.moneda === 'PEN' ? Number(dep.monto) || 0 : 0;
+
+      depositosPorFichaMap.set(fichaId, (depositosPorFichaMap.get(fichaId) || 0) + montoUSD);
+      depositosPorFichaMapPEN.set(fichaId, (depositosPorFichaMapPEN.get(fichaId) || 0) + montoPEN);
+      depositosCountMap.set(fichaId, (depositosCountMap.get(fichaId) || 0) + 1);
+
+      const fecha = dep.fecha_comprobante || dep.created_at;
+      const currentFecha = ultimoDepositoMap.get(fichaId);
+      if (fecha && (!currentFecha || new Date(fecha) > new Date(currentFecha))) {
+        ultimoDepositoMap.set(fichaId, fecha);
+      }
+    });
 
     // PASO 6: Obtener control_pagos para cada local
     const { data: controlPagosData, error: controlPagosError } = await supabase
@@ -285,7 +377,10 @@ export async function getFichasParaReporte(proyectoId?: string, incluirPruebas: 
       }
     });
 
-    // PASO 9: Construir resultado final
+    // PASO 9: Obtener asesores de todas las fichas en batch (SESIÓN 108)
+    const asesoresMap = await getAsesoresFichasBatch(fichaIds);
+
+    // PASO 10: Construir resultado final
     const resultado: FichaReporteRow[] = fichasData.map(ficha => {
       // Extraer datos del local y proyecto (desde JOIN)
       const local = ficha.locales as any;
@@ -311,27 +406,36 @@ export async function getFichasParaReporte(proyectoId?: string, incluirPruebas: 
       // Buscar jefe de ventas (por ahora null, se puede extender)
       const jefeVentasNombre = null; // TODO: Implementar lógica si se agrega relación vendedor -> jefe
 
-      // Calcular total abonado, fecha último abono y count
-      const controlPagoId = ficha.local_id ? controlPagosMap.get(ficha.local_id) : null;
-      let totalAbonado = 0;
-      let fechaUltimoAbono: string | null = null;
-      let abonosCount = 0;
+      // ============================================================================
+      // NUEVO CÁLCULO: Usar depositos_ficha en lugar de abonos_pago
+      // ============================================================================
+      let totalAbonado = depositosPorFichaMap.get(ficha.id) || 0;
+      let fechaUltimoAbono: string | null = ultimoDepositoMap.get(ficha.id) || null;
+      let abonosCount = depositosCountMap.get(ficha.id) || 0;
 
-      if (controlPagoId) {
-        const pagoIdsDeLocal = pagosLocalMap.get(controlPagoId) || [];
-
-        pagoIdsDeLocal.forEach(pagoId => {
-          // Sumar monto
-          totalAbonado += abonosPorPagoMap.get(pagoId) || 0;
-          // Sumar count
-          abonosCount += abonosCountPorPagoMap.get(pagoId) || 0;
-          // Encontrar fecha más reciente
-          const fechaPago = ultimoAbonoPorPagoMap.get(pagoId);
-          if (fechaPago && (!fechaUltimoAbono || new Date(fechaPago) > new Date(fechaUltimoAbono))) {
-            fechaUltimoAbono = fechaPago;
-          }
-        });
-      }
+      // ============================================================================
+      // CÓDIGO ANTIGUO (COMENTADO): Usaba abonos_pago -> control_pagos
+      // ============================================================================
+      // const controlPagoId = ficha.local_id ? controlPagosMap.get(ficha.local_id) : null;
+      // let totalAbonado = 0;
+      // let fechaUltimoAbono: string | null = null;
+      // let abonosCount = 0;
+      //
+      // if (controlPagoId) {
+      //   const pagoIdsDeLocal = pagosLocalMap.get(controlPagoId) || [];
+      //
+      //   pagoIdsDeLocal.forEach(pagoId => {
+      //     // Sumar monto
+      //     totalAbonado += abonosPorPagoMap.get(pagoId) || 0;
+      //     // Sumar count
+      //     abonosCount += abonosCountPorPagoMap.get(pagoId) || 0;
+      //     // Encontrar fecha más reciente
+      //     const fechaPago = ultimoAbonoPorPagoMap.get(pagoId);
+      //     if (fechaPago && (!fechaUltimoAbono || new Date(fechaPago) > new Date(fechaUltimoAbono))) {
+      //       fechaUltimoAbono = fechaPago;
+      //     }
+      //   });
+      // }
 
       // Determinar si tiene nuevo abono (últimos 7 días)
       let tieneNuevoAbono = false;
@@ -362,6 +466,22 @@ export async function getFichasParaReporte(proyectoId?: string, incluirPruebas: 
         });
       }
 
+      // Obtener asesores de esta ficha (SESIÓN 108)
+      const asesores = (asesoresMap.get(ficha.id) || []).map(a => ({
+        nombre: a.usuario_nombre || 'Sin nombre',
+        rol: a.rol,
+      }));
+
+      // Calcular precio de venta (prioridad: monto_venta, sino precio_base)
+      const precioVenta = local?.monto_venta || local?.precio_base || 0;
+
+      // Calcular estado de pago
+      const estadoPago: 'CANCELADO' | 'PENDIENTE' =
+        totalAbonado >= precioVenta ? 'CANCELADO' : 'PENDIENTE';
+
+      // Obtener fecha de separación
+      const fechaSeparacion = fechaSeparacionMap.get(ficha.id) || null;
+
       return {
         ficha_id: ficha.id,
         local_id: ficha.local_id,
@@ -377,12 +497,25 @@ export async function getFichasParaReporte(proyectoId?: string, incluirPruebas: 
         jefe_ventas_nombre: jefeVentasNombre,
         vendedor_caseta_nombre: vendedorCasetaNombre,
         total_abonado: totalAbonado,
+        total_abonado_pen: depositosPorFichaMapPEN.get(ficha.id) || 0,
         fecha_creacion: ficha.created_at,
         tiene_nuevo_abono: tieneNuevoAbono,
         fecha_ultimo_abono: fechaUltimoAbono,
         abonos_count: abonosCount,
         monto_voucher_usd: montoVoucherUsd,
         monto_voucher_pen: montoVoucherPen,
+
+        // ============================================================================
+        // NUEVOS CAMPOS - Sesión 108
+        // ============================================================================
+        fecha_separacion: fechaSeparacion,
+        local_metraje: local?.metraje || null,
+        local_piso: local?.piso || null,
+        precio_venta: precioVenta,
+        estado_pago: estadoPago,
+        contrato_firmado: ficha.contrato_firmado || false,
+        contrato_fecha_firma: ficha.contrato_fecha_firma || null,
+        asesores: asesores,
       };
     });
 
@@ -400,6 +533,7 @@ export async function getFichasParaReporte(proyectoId?: string, incluirPruebas: 
 // ============================================================================
 
 // Helper de ordenamiento para fichas
+// SESIÓN 108: Agregados casos de ordenamiento para nuevas columnas
 function sortFichasReporte(
   data: FichaReporteRow[],
   column: FichaReporteSortColumn,
@@ -432,6 +566,26 @@ function sortFichasReporte(
       case 'monto_voucher_pen':
         valueA = a.monto_voucher_pen || 0;
         valueB = b.monto_voucher_pen || 0;
+        break;
+      case 'fecha_separacion':
+        valueA = a.fecha_separacion || '';
+        valueB = b.fecha_separacion || '';
+        break;
+      case 'local_metraje':
+        valueA = a.local_metraje || 0;
+        valueB = b.local_metraje || 0;
+        break;
+      case 'precio_venta':
+        valueA = a.precio_venta || 0;
+        valueB = b.precio_venta || 0;
+        break;
+      case 'total_abonado':
+        valueA = a.total_abonado || 0;
+        valueB = b.total_abonado || 0;
+        break;
+      case 'estado_pago':
+        valueA = a.estado_pago || '';
+        valueB = b.estado_pago || '';
         break;
       default:
         return 0;
@@ -577,6 +731,10 @@ export interface AbonoDiarioRow {
   validado_finanzas_por: string | null;
   validado_finanzas_at: string | null;
   validado_finanzas_nombre: string | null;
+  // Campos adicionales de validación (para ver detalles)
+  imagen_movimiento_bancario_url: string | null;
+  numero_operacion_banco: string | null;
+  notas_validacion: string | null;
   // Indicador de boleta compartida (misma boleta para múltiples depósitos)
   boleta_compartida: boolean;
   // Datos completos de boleta con historial (Sesión 105)
@@ -764,6 +922,9 @@ async function fetchAllAbonosFiltered(
       validado_finanzas_por,
       validado_finanzas_at,
       validado_finanzas_nombre,
+      imagen_movimiento_bancario_url,
+      numero_operacion_banco,
+      notas_validacion,
       locales!inner (
         id,
         codigo,
@@ -877,6 +1038,10 @@ async function fetchAllAbonosFiltered(
       validado_finanzas_por: dep.validado_finanzas_por,
       validado_finanzas_at: dep.validado_finanzas_at,
       validado_finanzas_nombre: dep.validado_finanzas_nombre,
+      // Campos adicionales de validación (para ver detalles)
+      imagen_movimiento_bancario_url: dep.imagen_movimiento_bancario_url || null,
+      numero_operacion_banco: dep.numero_operacion_banco || null,
+      notas_validacion: dep.notas_validacion || null,
       // Se calcula después en getAbonosDiarios
       boleta_compartida: false,
       // Datos completos de boleta con historial (Sesión 105)

@@ -758,3 +758,256 @@ Responde SOLO con una palabra: voucher, dni, o boleta`,
     };
   }
 }
+
+// ============================================================================
+// FUNCIONES PARA MÓDULO REPORTERÍA - VINCULAR BOLETA Y VALIDAR DEPÓSITOS
+// ============================================================================
+
+/**
+ * Extraer número de boleta/factura de una imagen (versión simplificada)
+ * Usado en el popup de vincular boleta del módulo Reportería
+ */
+export async function extractNumeroBoletaSimple(imageBase64: string): Promise<{
+  success: boolean;
+  data?: {
+    numero_boleta: string;
+    tipo: 'boleta' | 'factura';
+    fecha_emision?: string;
+    ruc_emisor?: string;
+    confianza: number;
+  };
+  error?: string;
+}> {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    if (!apiKey) {
+      return {
+        success: false,
+        error: 'OpenAI API key no configurada',
+      };
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `Eres un asistente especializado en extraer datos de boletas y facturas peruanas.
+
+IMPORTANTE: Esto es para un sistema de gestión inmobiliaria legítimo (ECOPLAZA).
+
+Extrae los siguientes datos de la imagen:
+- numero_boleta: El número completo de la boleta o factura (ej: "B001-00012345" o "F001-00012345")
+- tipo: "boleta" si empieza con B, "factura" si empieza con F
+- fecha_emision: Fecha de emisión en formato YYYY-MM-DD si es visible
+- ruc_emisor: RUC del emisor si es visible
+- confianza: Un número del 0 al 100 indicando qué tan seguro estás de los datos extraídos
+
+Responde SOLO con un JSON válido, sin markdown ni texto adicional.`
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageBase64.startsWith('data:')
+                    ? imageBase64
+                    : `data:image/jpeg;base64,${imageBase64}`,
+                  detail: 'high',
+                },
+              },
+              {
+                type: 'text',
+                text: 'Extrae el número de boleta/factura y demás datos de esta imagen.',
+              },
+            ],
+          },
+        ],
+        max_tokens: 500,
+        temperature: 0,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[OCR] OpenAI API error:', errorData);
+      return {
+        success: false,
+        error: `Error de OpenAI: ${response.status}`,
+      };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      return { success: false, error: 'No se recibió respuesta del OCR' };
+    }
+
+    // Limpiar y parsear JSON
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith('```json')) {
+      jsonStr = jsonStr.slice(7);
+    }
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.slice(3);
+    }
+    if (jsonStr.endsWith('```')) {
+      jsonStr = jsonStr.slice(0, -3);
+    }
+    jsonStr = jsonStr.trim();
+
+    const parsed = JSON.parse(jsonStr);
+
+    return {
+      success: true,
+      data: {
+        numero_boleta: parsed.numero_boleta || '',
+        tipo: parsed.tipo === 'factura' ? 'factura' : 'boleta',
+        fecha_emision: parsed.fecha_emision,
+        ruc_emisor: parsed.ruc_emisor,
+        confianza: Math.min(100, Math.max(0, parseInt(parsed.confianza) || 50)),
+      },
+    };
+  } catch (error) {
+    console.error('[OCR] Error extrayendo número de boleta:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido'
+    };
+  }
+}
+
+/**
+ * Extraer número de operación de una captura del reporte bancario
+ * Usado en el popup de validación de depósitos del módulo Reportería
+ */
+export async function extractMovimientoBancarioData(imageBase64: string): Promise<{
+  success: boolean;
+  data?: {
+    numero_operacion: string;
+    fecha?: string;
+    monto?: number;
+    moneda?: 'USD' | 'PEN';
+    descripcion?: string;
+    confianza: number;
+  };
+  error?: string;
+}> {
+  try {
+    const apiKey = process.env.OPENAI_API_KEY;
+
+    if (!apiKey) {
+      return {
+        success: false,
+        error: 'OpenAI API key no configurada',
+      };
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `Eres un asistente especializado en extraer datos de reportes bancarios peruanos.
+
+IMPORTANTE: Esto es para validación de pagos en un sistema inmobiliario legítimo (ECOPLAZA).
+
+Extrae los siguientes datos de la captura del movimiento bancario:
+- numero_operacion: El número de operación o referencia de la transacción
+- fecha: Fecha de la operación en formato YYYY-MM-DD
+- monto: Monto de la transacción (solo número, sin símbolos)
+- moneda: "USD" o "PEN" según corresponda
+- descripcion: Descripción o concepto de la operación si es visible
+- confianza: Un número del 0 al 100 indicando qué tan seguro estás de los datos extraídos
+
+Responde SOLO con un JSON válido, sin markdown ni texto adicional.`
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageBase64.startsWith('data:')
+                    ? imageBase64
+                    : `data:image/jpeg;base64,${imageBase64}`,
+                  detail: 'high',
+                },
+              },
+              {
+                type: 'text',
+                text: 'Extrae el número de operación y demás datos de este movimiento bancario.',
+              },
+            ],
+          },
+        ],
+        max_tokens: 500,
+        temperature: 0,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('[OCR] OpenAI API error:', errorData);
+      return {
+        success: false,
+        error: `Error de OpenAI: ${response.status}`,
+      };
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      return { success: false, error: 'No se recibió respuesta del OCR' };
+    }
+
+    // Limpiar y parsear JSON
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith('```json')) {
+      jsonStr = jsonStr.slice(7);
+    }
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.slice(3);
+    }
+    if (jsonStr.endsWith('```')) {
+      jsonStr = jsonStr.slice(0, -3);
+    }
+    jsonStr = jsonStr.trim();
+
+    const parsed = JSON.parse(jsonStr);
+
+    return {
+      success: true,
+      data: {
+        numero_operacion: parsed.numero_operacion || '',
+        fecha: parsed.fecha,
+        monto: parsed.monto ? parseFloat(parsed.monto) : undefined,
+        moneda: parsed.moneda === 'PEN' ? 'PEN' : 'USD',
+        descripcion: parsed.descripcion,
+        confianza: Math.min(100, Math.max(0, parseInt(parsed.confianza) || 50)),
+      },
+    };
+  } catch (error) {
+    console.error('[OCR] Error extrayendo datos de movimiento bancario:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido'
+    };
+  }
+}

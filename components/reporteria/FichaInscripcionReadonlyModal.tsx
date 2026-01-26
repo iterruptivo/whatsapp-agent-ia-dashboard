@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, FileText, User, Users, DollarSign, Image as ImageIcon, Loader2, Receipt, CreditCard, Calendar, Building2, ExternalLink } from 'lucide-react';
+import { X, FileText, User, Users, DollarSign, Image as ImageIcon, Loader2, Receipt, CreditCard, Calendar, Building2, ExternalLink, UserCheck, Crown } from 'lucide-react';
 import { getClienteFichaByLocalId, ClienteFicha, getAbonosByLocalId, AbonoControlPago } from '@/lib/actions-clientes-ficha';
+import { getAsesoresFicha, AsesorFicha, RolAsesor } from '@/lib/actions-asesores-ficha';
 
 interface FichaInscripcionReadonlyModalProps {
   isOpen: boolean;
@@ -19,6 +20,18 @@ export default function FichaInscripcionReadonlyModal({
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<ClienteFicha | null>(null);
   const [abonos, setAbonos] = useState<AbonoControlPago[]>([]);
+  const [asesores, setAsesores] = useState<AsesorFicha[]>([]);
+
+  // Helper para obtener el label del rol
+  const getRolLabel = (rol: RolAsesor): string => {
+    switch (rol) {
+      case 'asesor_1': return 'Asesor Principal';
+      case 'asesor_2': return 'Asesor 2';
+      case 'asesor_3': return 'Asesor 3';
+      case 'jefatura': return 'Jefatura';
+      default: return rol;
+    }
+  };
 
   useEffect(() => {
     if (isOpen && localId) {
@@ -31,6 +44,7 @@ export default function FichaInscripcionReadonlyModal({
       setLoading(true);
       setError(null);
       setAbonos([]);
+      setAsesores([]);
 
       // Cargar ficha y abonos en paralelo
       const [fichaResult, abonosResult] = await Promise.all([
@@ -45,6 +59,12 @@ export default function FichaInscripcionReadonlyModal({
 
       setData(fichaResult);
       setAbonos(abonosResult);
+
+      // Cargar asesores de la ficha
+      const asesoresResult = await getAsesoresFicha(fichaResult.id);
+      if (asesoresResult.success) {
+        setAsesores(asesoresResult.data);
+      }
     } catch (err) {
       setError('Error al cargar la ficha de inscripción');
       console.error(err);
@@ -227,6 +247,59 @@ export default function FichaInscripcionReadonlyModal({
                             <label className="text-sm font-medium text-gray-600">Email</label>
                             <p className="text-gray-900">{coprop.email || '-'}</p>
                           </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Sección Equipo de Venta */}
+              {asesores.length > 0 && (
+                <section className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <UserCheck className="h-5 w-5 text-[#1b967a]" />
+                    <h3 className="text-lg font-semibold text-[#192c4d]">
+                      Equipo de Venta ({asesores.length})
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {asesores.map((asesor) => (
+                      <div
+                        key={asesor.id}
+                        className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg p-3"
+                      >
+                        {/* Icono según rol */}
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          asesor.rol === 'jefatura'
+                            ? 'bg-amber-100'
+                            : asesor.rol === 'asesor_1'
+                            ? 'bg-[#1b967a]/10'
+                            : 'bg-gray-100'
+                        }`}>
+                          {asesor.rol === 'jefatura' ? (
+                            <Crown className={`w-5 h-5 text-amber-600`} />
+                          ) : (
+                            <User className={`w-5 h-5 ${
+                              asesor.rol === 'asesor_1' ? 'text-[#1b967a]' : 'text-gray-500'
+                            }`} />
+                          )}
+                        </div>
+
+                        {/* Datos del asesor */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate">
+                            {asesor.usuario_nombre || 'Sin nombre'}
+                          </p>
+                          <p className={`text-xs ${
+                            asesor.rol === 'jefatura'
+                              ? 'text-amber-600 font-medium'
+                              : asesor.rol === 'asesor_1'
+                              ? 'text-[#1b967a] font-medium'
+                              : 'text-gray-500'
+                          }`}>
+                            {getRolLabel(asesor.rol)}
+                          </p>
                         </div>
                       </div>
                     ))}

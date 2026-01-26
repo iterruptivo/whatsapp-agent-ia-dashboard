@@ -1,10 +1,11 @@
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
-import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check, AlertCircle, CheckCircle, User, FileText, ExternalLink } from 'lucide-react';
+import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check, AlertCircle, CheckCircle, User, FileText, ExternalLink, Users } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario, getUsuarioById } from '@/lib/actions-clientes-ficha';
+import { getAsesoresFicha, saveAsesoresFicha, type AsesorFichaInput } from '@/lib/actions-asesores-ficha';
+import { getAllUsuarios, type UsuarioConDatos } from '@/lib/actions-usuarios';
 import { analizarCicloVenta, obtenerDatosClienteAnterior } from '@/lib/actions-clientes-ficha-logic';
 import { getProyectoConfiguracion, getProyectoLegalData } from '@/lib/proyecto-config';
 import { procesarVentaLocal } from '@/lib/actions-control-pagos';
@@ -17,6 +18,7 @@ import ConfirmModal from '@/components/shared/ConfirmModal';
 import DocumentUploader from '@/components/shared/DocumentUploader';
 import DocumentoOCRUploader, { DNIOCRData, VoucherOCRData } from '@/components/shared/DocumentoOCRUploader';
 import DNIPairUploader, { DNIPair, DNIOCRData as DNIFrenteOCRData, DNIReversoOCRData } from '@/components/shared/DNIPairUploader';
+import UserAutocomplete from '@/components/shared/UserAutocomplete';
 import VoucherCardUploader, { VoucherItem } from '@/components/shared/VoucherCardUploader';
 import OCRValidationAlert, { PersonDiscrepancies } from '@/components/shared/OCRValidationAlert';
 import { useOCRValidation } from '@/hooks/useOCRValidation';
@@ -345,6 +347,20 @@ export default function FichaInscripcionModal({
 
   // Datos del asesor (vendedor que confirmó NARANJA)
   const [asesorData, setAsesorData] = useState<{ nombre: string; email: string }>({ nombre: '', email: '' });
+
+  // Estados para Equipo de Venta (múltiples asesores + jefatura)
+  const [asesoresEquipo, setAsesoresEquipo] = useState<{
+    asesor_1: string;
+    asesor_2: string;
+    asesor_3: string;
+    jefatura: string;
+  }>({
+    asesor_1: '',
+    asesor_2: '',
+    asesor_3: '',
+    jefatura: '',
+  });
+  const [usuariosDisponibles, setUsuariosDisponibles] = useState<UsuarioConDatos[]>([]);
 
   // AlertModal state
   const [alertModal, setAlertModal] = useState<{ isOpen: boolean; title: string; message: string; variant: 'success' | 'danger' | 'warning' | 'info' }>({
@@ -861,6 +877,52 @@ export default function FichaInscripcionModal({
     }
 
     fetchProyectoConfig();
+  }, [isOpen, local]);
+
+  // ============================================================================
+  // USEEFFECT: Cargar usuarios disponibles y asesores existentes
+  // ============================================================================
+  useEffect(() => {
+    if (!isOpen) return;
+
+    async function loadUsuariosYAsesores() {
+      // Cargar todos los usuarios disponibles para los selectores
+      const usuarios = await getAllUsuarios();
+      setUsuariosDisponibles(usuarios);
+
+      // Si hay una ficha existente, cargar los asesores asignados
+      if (local) {
+        const existingFicha = await getClienteFichaByLocalId(local.id);
+
+        if (existingFicha?.id) {
+          const result = await getAsesoresFicha(existingFicha.id);
+
+          if (result.success && result.data.length > 0) {
+            const map: Record<string, string> = {};
+            result.data.forEach(a => {
+              map[a.rol] = a.usuario_id;
+            });
+
+            setAsesoresEquipo({
+              asesor_1: map['asesor_1'] || '',
+              asesor_2: map['asesor_2'] || '',
+              asesor_3: map['asesor_3'] || '',
+              jefatura: map['jefatura'] || '',
+            });
+          }
+        } else {
+          // Si no hay ficha, inicializar asesor_1 con el vendedor actual
+          if (local.usuario_paso_naranja_id) {
+            setAsesoresEquipo(prev => ({
+              ...prev,
+              asesor_1: local.usuario_paso_naranja_id || '',
+            }));
+          }
+        }
+      }
+    }
+
+    loadUsuariosYAsesores();
   }, [isOpen, local]);
 
   const handleChange = (field: keyof ClienteFichaInput, value: string | boolean | null | Copropietario[] | number | string[]) => {
@@ -1521,6 +1583,45 @@ export default function FichaInscripcionModal({
     setSaving(false);
 
     if (result.success) {
+      // ============================================================================
+      // GUARDAR EQUIPO DE VENTA (asesores + jefatura)
+      // ============================================================================
+      if (result.data?.id) {
+        const asesoresInput: AsesorFichaInput[] = [];
+
+        // Validar que asesor_1 esté presente
+        if (!asesoresEquipo.asesor_1) {
+          setAlertModal({
+            isOpen: true,
+            title: 'Asesor requerido',
+            message: 'Debe asignar al menos un asesor principal.',
+            variant: 'warning',
+          });
+          return;
+        }
+
+        // Agregar asesores seleccionados
+        if (asesoresEquipo.asesor_1) {
+          asesoresInput.push({ rol: 'asesor_1', usuario_id: asesoresEquipo.asesor_1 });
+        }
+        if (asesoresEquipo.asesor_2) {
+          asesoresInput.push({ rol: 'asesor_2', usuario_id: asesoresEquipo.asesor_2 });
+        }
+        if (asesoresEquipo.asesor_3) {
+          asesoresInput.push({ rol: 'asesor_3', usuario_id: asesoresEquipo.asesor_3 });
+        }
+        if (asesoresEquipo.jefatura) {
+          asesoresInput.push({ rol: 'jefatura', usuario_id: asesoresEquipo.jefatura });
+        }
+
+        const asesoresResult = await saveAsesoresFicha(result.data.id, asesoresInput);
+
+        if (!asesoresResult.success) {
+          console.error('[FichaModal] Error guardando asesores:', asesoresResult.message);
+          // No mostramos error al usuario, la ficha se guardó correctamente
+        }
+      }
+
       setAlertModal({
         isOpen: true,
         title: 'Ficha guardada',
@@ -1618,6 +1719,44 @@ export default function FichaInscripcionModal({
         });
         setIsProcessing(false);
         return;
+      }
+
+      // PASO 1.5: Guardar equipo de venta (asesores + jefatura)
+      if (result.data?.id) {
+        const asesoresInput: AsesorFichaInput[] = [];
+
+        // Validar que asesor_1 esté presente
+        if (!asesoresEquipo.asesor_1) {
+          setAlertModal({
+            isOpen: true,
+            title: 'Asesor requerido',
+            message: 'Debe asignar al menos un asesor principal.',
+            variant: 'warning',
+          });
+          setIsProcessing(false);
+          return;
+        }
+
+        // Agregar asesores seleccionados
+        if (asesoresEquipo.asesor_1) {
+          asesoresInput.push({ rol: 'asesor_1', usuario_id: asesoresEquipo.asesor_1 });
+        }
+        if (asesoresEquipo.asesor_2) {
+          asesoresInput.push({ rol: 'asesor_2', usuario_id: asesoresEquipo.asesor_2 });
+        }
+        if (asesoresEquipo.asesor_3) {
+          asesoresInput.push({ rol: 'asesor_3', usuario_id: asesoresEquipo.asesor_3 });
+        }
+        if (asesoresEquipo.jefatura) {
+          asesoresInput.push({ rol: 'jefatura', usuario_id: asesoresEquipo.jefatura });
+        }
+
+        const asesoresResult = await saveAsesoresFicha(result.data.id, asesoresInput);
+
+        if (!asesoresResult.success) {
+          console.error('[FichaModal] Error guardando asesores:', asesoresResult.message);
+          // Continuamos con el proceso aunque falle guardar asesores
+        }
       }
 
       // PASO 2: Calcular valores para procesar venta
@@ -1880,6 +2019,19 @@ export default function FichaInscripcionModal({
     const hora = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
     const pdfFilename = `FICHA-INSCRIPCION-${local.codigo}-${fecha}-${hora}`;
 
+    // Helper para obtener nombre de usuario por ID
+    const getUsuarioNombre = (userId: string): string => {
+      if (!userId) return '';
+      const usuario = usuariosDisponibles.find(u => u.id === userId);
+      return usuario?.nombre || '';
+    };
+
+    const getUsuarioCodigo = (userId: string): string => {
+      if (!userId) return '';
+      const usuario = usuariosDisponibles.find(u => u.id === userId);
+      return usuario?.email?.split('@')[0] || '';
+    };
+
     const placeholders: Record<string, string> = {
       // PDF Filename
       'PDF_FILENAME': pdfFilename,
@@ -1997,6 +2149,8 @@ export default function FichaInscripcionModal({
       'FECHA_INICIO_PAGO': formatDate(formData.fecha_inicio_pago),
       'COMPROMISO_PAGO': formData.compromiso_pago || '-',
       'RUBRO_NEGOCIO': formData.rubro || '-',
+      // Mostrar campos de financiamiento solo cuando es financiado
+      'MOSTRAR_CAMPOS_FINANCIAMIENTO': formData.modalidad_pago === 'financiado' ? '' : 'display: none;',
 
       // Marketing
       'UTM_FACEBOOK': utmChecks.facebook.checked,
@@ -2040,9 +2194,24 @@ export default function FichaInscripcionModal({
       })(),
       'MOSTRAR_COPROPIETARIOS': (formData.copropietarios || []).length > 0 ? '' : 'display: none;',
 
-      // Asesor - datos del vendedor que confirmó NARANJA
+      // Asesor - datos del vendedor que confirmó NARANJA (mantener por compatibilidad)
       'ASESOR_NOMBRE': asesorData.nombre || '-',
       'ASESOR_CODIGO': asesorData.email ? asesorData.email.split('@')[0] : '-',
+
+      // Equipo de Venta completo
+      'ASESOR_1_NOMBRE': getUsuarioNombre(asesoresEquipo.asesor_1),
+      'ASESOR_1_CODIGO': getUsuarioCodigo(asesoresEquipo.asesor_1),
+      'ASESOR_2_NOMBRE': getUsuarioNombre(asesoresEquipo.asesor_2),
+      'ASESOR_2_CODIGO': getUsuarioCodigo(asesoresEquipo.asesor_2),
+      'ASESOR_3_NOMBRE': getUsuarioNombre(asesoresEquipo.asesor_3),
+      'ASESOR_3_CODIGO': getUsuarioCodigo(asesoresEquipo.asesor_3),
+      'JEFATURA_NOMBRE': getUsuarioNombre(asesoresEquipo.jefatura),
+      'JEFATURA_CODIGO': getUsuarioCodigo(asesoresEquipo.jefatura),
+      // Para mostrar/ocultar secciones
+      'MOSTRAR_ASESOR_2': asesoresEquipo.asesor_2 ? '' : 'display: none;',
+      'MOSTRAR_ASESOR_3': asesoresEquipo.asesor_3 ? '' : 'display: none;',
+      'MOSTRAR_JEFATURA': asesoresEquipo.jefatura ? '' : 'display: none;',
+
       // Fecha actual usando patrón de timezone local (igual que FinanciamientoModal)
       'FECHA_REGISTRO': (() => {
         const now = new Date();
@@ -2113,7 +2282,7 @@ export default function FichaInscripcionModal({
           </div>
         `;
       })(),
-      'MOSTRAR_CALENDARIO_CUOTAS': calendarioCuotas.length > 0 ? '' : 'display: none;',
+      'MOSTRAR_CALENDARIO_CUOTAS': formData.modalidad_pago === 'financiado' && calendarioCuotas.length > 0 ? '' : 'display: none;',
     };
 
     // Template HTML embebido
@@ -2338,6 +2507,10 @@ export default function FichaInscripcionModal({
           <div class="form-group"><span class="form-label">Monto de Separación (USD)</span><span class="form-value">{{MONTO_SEPARACION}}</span></div>
           <div class="form-group"><span class="form-label">Separación (S/)</span><span class="form-value">{{SEPARACION_SOLES}}</span></div>
           <div class="form-group"><span class="form-label">Fecha de Separación</span><span class="form-value">{{FECHA_SEPARACION}}</span></div>
+          <div class="form-group"><span class="form-label">Entidad Bancaria</span><span class="form-value">{{ENTIDAD_BANCARIA}}</span></div>
+        </div>
+        <!-- Campos de financiamiento (solo se muestran cuando es financiado) -->
+        <div class="form-grid" style="{{MOSTRAR_CAMPOS_FINANCIAMIENTO}}">
           <div class="form-group"><span class="form-label">Cuota Inicial (USD)</span><span class="form-value">{{CUOTA_INICIAL}}</span></div>
           <div class="form-group"><span class="form-label">Porcentaje Inicial (%)</span><span class="form-value">{{PORCENTAJE_INICIAL}}</span></div>
           <div class="form-group"><span class="form-label">Inicial Restante (USD)</span><span class="form-value">{{INICIAL_RESTANTE}}</span></div>
@@ -2346,7 +2519,9 @@ export default function FichaInscripcionModal({
           <div class="form-group"><span class="form-label">TEA (%)</span><span class="form-value">{{TEA}}</span></div>
           <div class="form-group"><span class="form-label">Cuota Mensual (USD)</span><span class="form-value">{{CUOTA_MENSUAL}}</span></div>
           <div class="form-group"><span class="form-label">Fecha Inicio de Pago</span><span class="form-value">{{FECHA_INICIO_PAGO}}</span></div>
-          <div class="form-group"><span class="form-label">Entidad Bancaria</span><span class="form-value">{{ENTIDAD_BANCARIA}}</span></div>
+        </div>
+        <!-- Campos adicionales (siempre visibles) -->
+        <div class="form-grid">
           <div class="form-group"><span class="form-label">Rubro del Negocio</span><span class="form-value">{{RUBRO_NEGOCIO}}</span></div>
           <div class="form-group full-width"><span class="form-label">Compromiso de Pago</span><span class="form-value">{{COMPROMISO_PAGO}}</span></div>
         </div>
@@ -2378,12 +2553,26 @@ export default function FichaInscripcionModal({
     </section>
 
     <section class="section">
-      <div class="section-header secondary">7. Datos del Asesor de Ventas</div>
+      <div class="section-header secondary">7. Equipo de Venta</div>
       <div class="section-content">
-        <div class="form-grid three-cols">
-          <div class="form-group"><span class="form-label">Nombre del Asesor</span><span class="form-value">{{ASESOR_NOMBRE}}</span></div>
-          <div class="form-group"><span class="form-label">Código / ID</span><span class="form-value">{{ASESOR_CODIGO}}</span></div>
+        <div class="form-grid">
+          <div class="form-group"><span class="form-label">Asesor Principal</span><span class="form-value">{{ASESOR_1_NOMBRE}} ({{ASESOR_1_CODIGO}})</span></div>
           <div class="form-group"><span class="form-label">Fecha de Registro</span><span class="form-value">{{FECHA_REGISTRO}}</span></div>
+        </div>
+        <!-- Asesor 2 (si existe) -->
+        <div class="form-grid" style="{{MOSTRAR_ASESOR_2}} margin-top: 8px;">
+          <div class="form-group"><span class="form-label">Asesor 2</span><span class="form-value">{{ASESOR_2_NOMBRE}} ({{ASESOR_2_CODIGO}})</span></div>
+          <div class="form-group"></div>
+        </div>
+        <!-- Asesor 3 (si existe) -->
+        <div class="form-grid" style="{{MOSTRAR_ASESOR_3}} margin-top: 8px;">
+          <div class="form-group"><span class="form-label">Asesor 3</span><span class="form-value">{{ASESOR_3_NOMBRE}} ({{ASESOR_3_CODIGO}})</span></div>
+          <div class="form-group"></div>
+        </div>
+        <!-- Jefatura (si existe) -->
+        <div class="form-grid" style="{{MOSTRAR_JEFATURA}} margin-top: 8px; border-top: 1px solid #eee; padding-top: 8px;">
+          <div class="form-group"><span class="form-label">Jefatura</span><span class="form-value">{{JEFATURA_NOMBRE}} ({{JEFATURA_CODIGO}})</span></div>
+          <div class="form-group"></div>
         </div>
       </div>
     </section>
@@ -2395,8 +2584,8 @@ export default function FichaInscripcionModal({
         <div class="signature-grid">
           <div class="signature-box"><div class="signature-line"><div class="signature-label">{{CLIENTE_NOMBRE_COMPLETO}}</div><div class="signature-sublabel">Cliente / Titular</div><div class="signature-sublabel">DNI: {{CLIENTE_NUMERO_DOCUMENTO}}</div></div></div>
           <div class="signature-box" style="{{MOSTRAR_FIRMA_CONYUGE}}"><div class="signature-line"><div class="signature-label">{{CONYUGE_NOMBRE_COMPLETO}}</div><div class="signature-sublabel">Cónyuge</div><div class="signature-sublabel">DNI: {{CONYUGE_NUMERO_DOCUMENTO}}</div></div></div>
-          <div class="signature-box"><div class="signature-line"><div class="signature-label">{{ASESOR_NOMBRE}}</div><div class="signature-sublabel">Asesor de Ventas</div></div></div>
-          <div class="signature-box"><div class="signature-line"><div class="signature-label">Jefe de Ventas</div><div class="signature-sublabel">V°B° Supervisión</div></div></div>
+          <div class="signature-box"><div class="signature-line"><div class="signature-label">{{ASESOR_1_NOMBRE}}</div><div class="signature-sublabel">Asesor Principal</div></div></div>
+          <div class="signature-box" style="{{MOSTRAR_JEFATURA}}"><div class="signature-line"><div class="signature-label">{{JEFATURA_NOMBRE}}</div><div class="signature-sublabel">Jefatura</div></div></div>
         </div>
       </div>
     </section>
@@ -3444,6 +3633,80 @@ export default function FichaInscripcionModal({
                   onChange={e => handleChange('observaciones', e.target.value)}
                   placeholder="Notas adicionales..."
                 />
+              </div>
+
+              {/* ============================================ */}
+              {/* SECCIÓN: EQUIPO DE VENTA */}
+              {/* ============================================ */}
+              <div className="border-t border-gray-200 pt-6 mt-6">
+                <h3 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-blue-600" />
+                  Equipo de Venta
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Asesor 1 (Principal) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Asesor Principal <span className="text-red-500">*</span>
+                    </label>
+                    <UserAutocomplete
+                      usuarios={usuariosDisponibles}
+                      value={asesoresEquipo.asesor_1}
+                      onChange={(id) => setAsesoresEquipo(prev => ({ ...prev, asesor_1: id }))}
+                      placeholder="Buscar asesor..."
+                      allowedRoles={['vendedor', 'vendedor_caseta', 'coordinador', 'jefe_ventas']}
+                    />
+                  </div>
+
+                  {/* Asesor 2 (Opcional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Asesor 2 (opcional)
+                    </label>
+                    <UserAutocomplete
+                      usuarios={usuariosDisponibles}
+                      value={asesoresEquipo.asesor_2}
+                      onChange={(id) => setAsesoresEquipo(prev => ({ ...prev, asesor_2: id }))}
+                      placeholder="Buscar asesor..."
+                      allowedRoles={['vendedor', 'vendedor_caseta', 'coordinador', 'jefe_ventas']}
+                      excludeIds={[asesoresEquipo.asesor_1].filter(Boolean)}
+                    />
+                  </div>
+
+                  {/* Asesor 3 (Opcional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Asesor 3 (opcional)
+                    </label>
+                    <UserAutocomplete
+                      usuarios={usuariosDisponibles}
+                      value={asesoresEquipo.asesor_3}
+                      onChange={(id) => setAsesoresEquipo(prev => ({ ...prev, asesor_3: id }))}
+                      placeholder="Buscar asesor..."
+                      allowedRoles={['vendedor', 'vendedor_caseta', 'coordinador', 'jefe_ventas']}
+                      excludeIds={[asesoresEquipo.asesor_1, asesoresEquipo.asesor_2].filter(Boolean)}
+                    />
+                  </div>
+
+                  {/* Jefatura - Solo coordinadores y jefes de ventas */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Jefatura <span className="text-red-500">*</span>
+                    </label>
+                    <UserAutocomplete
+                      usuarios={usuariosDisponibles}
+                      value={asesoresEquipo.jefatura}
+                      onChange={(id) => setAsesoresEquipo(prev => ({ ...prev, jefatura: id }))}
+                      placeholder="Buscar jefe de ventas..."
+                      allowedRoles={['coordinador', 'jefe_ventas']}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-500 mt-3">
+                  Registre todos los asesores que participaron en esta venta
+                </p>
               </div>
             </>
           )}

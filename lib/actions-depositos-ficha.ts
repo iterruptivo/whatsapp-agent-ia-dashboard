@@ -387,7 +387,7 @@ export async function crearDeposito(params: {
       uploaded_at: new Date().toISOString(),
     };
 
-    await supabase
+    const { error: jsonbError } = await supabase
       .from('clientes_ficha')
       .update({
         comprobante_deposito_fotos: [...fotosActuales, params.imagenUrl],
@@ -395,11 +395,26 @@ export async function crearDeposito(params: {
       })
       .eq('id', params.fichaId);
 
+    if (jsonbError) {
+      console.error('[DEPOSITOS_FICHA] Error actualizando JSONB, haciendo rollback:', jsonbError);
+      // Rollback: eliminar el depósito insertado para evitar datos huérfanos
+      await supabase
+        .from('depositos_ficha')
+        .delete()
+        .eq('id', deposito.id);
+      return { success: false, message: 'Error al sincronizar depósito con ficha' };
+    }
+
     // 3. Actualizar indice_original en tabla
-    await supabase
+    const { error: indexError } = await supabase
       .from('depositos_ficha')
       .update({ indice_original: ocrActual.length })
       .eq('id', deposito.id);
+
+    if (indexError) {
+      console.error('[DEPOSITOS_FICHA] Error actualizando indice_original:', indexError);
+      // El depósito ya existe, pero sin índice correcto - no es crítico, continuar
+    }
 
     return {
       success: true,
@@ -821,5 +836,172 @@ export async function syncDepositosFromFicha(params: {
   } catch (error) {
     console.error('[SYNC_DEPOSITOS] Error:', error);
     return { success: false, synced: 0, message: 'Error sincronizando' };
+  }
+}
+
+// =============================================================================
+// VALIDAR DEPÓSITO CON MOVIMIENTO BANCARIO
+// =============================================================================
+
+/**
+ * Validar depósito con movimiento bancario adjunto
+ * Usado en el popup de validación de Reporte Diario
+ */
+export async function validarDepositoConMovimientoBancario(
+  depositoId: string,
+  data: {
+    imagenMovimientoBancarioUrl?: string;
+    numeroOperacionBanco?: string;
+    numeroOperacionBancoEditado?: boolean;
+    numeroOperacionBancoConfianza?: number;
+    notas?: string;
+  }
+): Promise<{ success: boolean; message: string }> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+
+  try {
+    // Obtener usuario actual
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return { success: false, message: 'Usuario no autenticado' };
+    }
+
+    // Obtener datos del usuario para el snapshot
+    const { data: userData } = await supabase
+      .from('usuarios')
+      .select('nombre, rol')
+      .eq('id', user.id)
+      .single();
+
+    // Verificar rol (solo finanzas, admin, superadmin)
+    const rolesPermitidos = ['finanzas', 'admin', 'superadmin'];
+    if (!userData || !rolesPermitidos.includes(userData.rol)) {
+      return { success: false, message: 'No tienes permiso para validar depósitos' };
+    }
+
+    // Obtener hora de Lima
+    const limaTime = new Date().toLocaleString('en-US', {
+      timeZone: 'America/Lima',
+    });
+    const validadoAt = new Date(limaTime).toISOString();
+
+    // Actualizar depósito
+    const updateData: Record<string, any> = {
+      validado_finanzas: true,
+      validado_finanzas_por: user.id,
+      validado_finanzas_at: validadoAt,
+      validado_finanzas_nombre: userData.nombre,
+    };
+
+    // Agregar datos del movimiento bancario si se proporcionan
+    if (data.imagenMovimientoBancarioUrl) {
+      updateData.imagen_movimiento_bancario_url = data.imagenMovimientoBancarioUrl;
+    }
+    if (data.numeroOperacionBanco) {
+      updateData.numero_operacion_banco = data.numeroOperacionBanco;
+    }
+    if (data.numeroOperacionBancoEditado !== undefined) {
+      updateData.numero_operacion_banco_editado = data.numeroOperacionBancoEditado;
+    }
+    if (data.numeroOperacionBancoConfianza !== undefined) {
+      updateData.numero_operacion_banco_confianza = data.numeroOperacionBancoConfianza;
+    }
+    if (data.notas) {
+      updateData.notas_validacion = data.notas;
+    }
+
+    const { error } = await supabase
+      .from('depositos_ficha')
+      .update(updateData)
+      .eq('id', depositoId);
+
+    if (error) {
+      console.error('[DEPOSITOS_FICHA] Error validando con movimiento:', error);
+      return { success: false, message: 'Error al validar depósito' };
+    }
+
+    console.log('[DEPOSITOS_FICHA] Depósito validado con movimiento bancario:', depositoId);
+    return { success: true, message: 'Depósito validado correctamente' };
+  } catch (error) {
+    console.error('[DEPOSITOS_FICHA] Error inesperado:', error);
+    return { success: false, message: 'Error inesperado al validar depósito' };
+  }
+}
+
+// =============================================================================
+// GUARDAR BOLETA CON OCR
+// =============================================================================
+
+/**
+ * Guardar imagen de boleta y datos OCR
+ * Usado en el popup de vincular boleta
+ */
+export async function guardarBoletaConOCR(
+  depositoId: string,
+  data: {
+    boletaImagenUrl?: string;
+    numeroBoleta: string;
+    tipoBoleta?: 'boleta' | 'factura';
+    numeroBoletaEditado?: boolean;
+    numeroBoletaConfianza?: number;
+  }
+): Promise<{ success: boolean; message: string }> {
+  const cookieStore = await cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+      },
+    }
+  );
+
+  try {
+    const updateData: Record<string, any> = {
+      numero_boleta: data.numeroBoleta,
+    };
+
+    if (data.boletaImagenUrl) {
+      updateData.boleta_imagen_url = data.boletaImagenUrl;
+    }
+    if (data.tipoBoleta) {
+      updateData.boleta_tipo = data.tipoBoleta;
+    }
+    if (data.numeroBoletaEditado !== undefined) {
+      updateData.numero_boleta_editado = data.numeroBoletaEditado;
+    }
+    if (data.numeroBoletaConfianza !== undefined) {
+      updateData.numero_boleta_confianza = data.numeroBoletaConfianza;
+    }
+
+    const { error } = await supabase
+      .from('depositos_ficha')
+      .update(updateData)
+      .eq('id', depositoId);
+
+    if (error) {
+      console.error('[DEPOSITOS_FICHA] Error guardando boleta:', error);
+      return { success: false, message: 'Error al guardar boleta' };
+    }
+
+    console.log('[DEPOSITOS_FICHA] Boleta guardada:', depositoId);
+    return { success: true, message: 'Boleta vinculada correctamente' };
+  } catch (error) {
+    console.error('[DEPOSITOS_FICHA] Error inesperado:', error);
+    return { success: false, message: 'Error inesperado' };
   }
 }

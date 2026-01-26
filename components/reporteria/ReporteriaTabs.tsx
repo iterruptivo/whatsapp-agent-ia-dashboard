@@ -46,7 +46,7 @@ export default function ReporteriaTabs({
       label: 'Leads por Vendedor',
       icon: Users,
       description: 'Análisis de leads por vendedor',
-      visible: true
+      visible: false // Oculto temporalmente
     },
     {
       id: 'atribucion_ia' as ReporteriaTab,

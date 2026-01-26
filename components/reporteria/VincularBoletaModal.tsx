@@ -17,15 +17,18 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  AlertTriangle,
   Users,
   Calendar,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
 import {
   vincularBoletaMultiple,
   getDepositosRelacionados,
   type DepositoRelacionadoServer
 } from '@/lib/actions-fichas-reporte';
+import { extractNumeroBoletaSimple } from '@/lib/actions-ocr';
 
 interface VincularBoletaModalProps {
   isOpen: boolean;
@@ -72,6 +75,11 @@ export default function VincularBoletaModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Estados para OCR
+  const [extractingOCR, setExtractingOCR] = useState(false);
+  const [confianzaOCR, setConfianzaOCR] = useState<number | null>(null);
+  const [fueEditado, setFueEditado] = useState(false);
 
   // Estado para carga de depósitos relacionados desde el servidor
   const [loadingDepositos, setLoadingDepositos] = useState(false);
@@ -158,7 +166,7 @@ export default function VincularBoletaModal({
     setSelectedDepositos(newSet);
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
@@ -175,12 +183,44 @@ export default function VincularBoletaModal({
 
     setFile(selectedFile);
     setError(null);
+    setConfianzaOCR(null);
+    setFueEditado(false);
 
     if (selectedFile.type.startsWith('image/')) {
       setPreviewUrl(URL.createObjectURL(selectedFile));
+
+      // Extraer número de boleta con OCR
+      setExtractingOCR(true);
+      try {
+        const base64 = await fileToBase64(selectedFile);
+        const ocrResult = await extractNumeroBoletaSimple(base64);
+
+        if (ocrResult.success && ocrResult.data) {
+          if (ocrResult.data.numero_boleta) {
+            setNumeroBoleta(ocrResult.data.numero_boleta);
+            toast.success('Número de boleta extraído automáticamente');
+          }
+          if (ocrResult.data.tipo) {
+            setTipo(ocrResult.data.tipo);
+          }
+          setConfianzaOCR(ocrResult.data.confianza);
+        } else {
+          toast.warning('No se pudo extraer el número. Ingréselo manualmente.');
+        }
+      } catch (err) {
+        console.error('Error en OCR:', err);
+        toast.warning('No se pudo extraer el número. Ingréselo manualmente.');
+      } finally {
+        setExtractingOCR(false);
+      }
     } else {
       setPreviewUrl(null);
     }
+  };
+
+  const handleNumeroBoletaChange = (value: string) => {
+    setNumeroBoleta(value);
+    setFueEditado(true);
   };
 
   const handleSubmit = async () => {
@@ -276,6 +316,8 @@ export default function VincularBoletaModal({
     setSelectedDepositos(new Set());
     setDepositosRelacionados([]);
     setFechaReferencia('');
+    setConfianzaOCR(null);
+    setFueEditado(false);
     onClose();
   };
 
@@ -348,14 +390,43 @@ export default function VincularBoletaModal({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Número de {tipo === 'boleta' ? 'Boleta' : 'Factura'}
+              {extractingOCR && (
+                <Loader2 className="w-4 h-4 inline ml-2 animate-spin text-[#1b967a]" />
+              )}
             </label>
             <input
               type="text"
               value={numeroBoleta}
-              onChange={(e) => setNumeroBoleta(e.target.value)}
+              onChange={(e) => handleNumeroBoletaChange(e.target.value)}
               placeholder="Ej: B001-00123"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a]/20 focus:border-[#1b967a] transition-colors"
+              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a]/20 focus:border-[#1b967a] transition-colors font-mono"
             />
+
+            {/* Barra de confianza OCR */}
+            {confianzaOCR !== null && (
+              <div className="mt-2">
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                  <span>Confianza OCR</span>
+                  <span>{confianzaOCR}%</span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${
+                      confianzaOCR >= 80 ? 'bg-green-500' :
+                      confianzaOCR >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${confianzaOCR}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {fueEditado && (
+              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                Valor editado manualmente
+              </p>
+            )}
           </div>
 
           {/* Upload área */}
@@ -586,4 +657,14 @@ export default function VincularBoletaModal({
       </div>
     </div>
   );
+}
+
+// Helper para convertir File a base64
+async function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }

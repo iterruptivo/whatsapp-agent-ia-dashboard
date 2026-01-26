@@ -43,6 +43,9 @@ import {
 import { getProyectosConFichas } from '@/lib/actions-reporteria';
 import type { Proyecto } from '@/lib/db';
 import * as XLSX from 'xlsx';
+import EquipoVentaCell from './EquipoVentaCell';
+import EstadoPagoCell from './EstadoPagoCell';
+import ContratoCell from './ContratoCell';
 
 // Tipo Usuario
 interface Usuario {
@@ -429,12 +432,30 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
                       #
                     </th>
                     <th
+                      onClick={() => handleSort('fecha_separacion')}
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        F.Separación
+                        {renderSortIcon('fecha_separacion')}
+                      </div>
+                    </th>
+                    <th
                       onClick={() => handleSort('local_codigo')}
                       className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     >
                       <div className="flex items-center gap-1">
                         Local
                         {renderSortIcon('local_codigo')}
+                      </div>
+                    </th>
+                    <th
+                      onClick={() => handleSort('local_metraje')}
+                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-1">
+                        m²
+                        {renderSortIcon('local_metraje')}
                       </div>
                     </th>
                     <th
@@ -456,46 +477,43 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
                       </div>
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Vendedor/Asesor
+                      DNI
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Jefe Ventas
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Caseta
+                      Equipo
                     </th>
                     <th
-                      onClick={() => handleSort('monto_voucher_usd')}
+                      onClick={() => handleSort('precio_venta')}
                       className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     >
                       <div className="flex items-center justify-end gap-1">
-                        Monto USD
-                        {renderSortIcon('monto_voucher_usd')}
+                        Precio
+                        {renderSortIcon('precio_venta')}
                       </div>
                     </th>
                     <th
-                      onClick={() => handleSort('monto_voucher_pen')}
+                      onClick={() => handleSort('total_abonado')}
                       className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     >
                       <div className="flex items-center justify-end gap-1">
-                        Monto PEN
-                        {renderSortIcon('monto_voucher_pen')}
+                        Abonado
+                        {renderSortIcon('total_abonado')}
                       </div>
                     </th>
                     <th
-                      onClick={() => handleSort('fecha_creacion')}
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+                      onClick={() => handleSort('estado_pago')}
+                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
                     >
-                      <div className="flex items-center gap-1">
-                        Fecha
-                        {renderSortIcon('fecha_creacion')}
+                      <div className="flex items-center justify-center gap-1">
+                        Estado
+                        {renderSortIcon('estado_pago')}
                       </div>
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nuevo Abono
+                      Contrato
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
+                      Ver
                     </th>
                   </tr>
                 </thead>
@@ -507,9 +525,26 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
                         {startRecord + index}
                       </td>
 
+                      {/* F.Separación */}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                        {ficha.fecha_separacion
+                          ? new Date(ficha.fecha_separacion).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' })
+                          : '-'}
+                      </td>
+
                       {/* Local */}
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {ficha.local_codigo}
+                        <span className="font-medium">{ficha.local_codigo}</span>
+                        {ficha.local_piso && (
+                          <span className="ml-1 text-[10px] bg-blue-100 text-blue-700 px-1 rounded">
+                            {ficha.local_piso}
+                          </span>
+                        )}
+                      </td>
+
+                      {/* m² */}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                        {ficha.local_metraje?.toFixed(2) || '-'}
                       </td>
 
                       {/* Proyecto */}
@@ -518,74 +553,69 @@ export default function FichasInscripcionTab({ user: _user, onVerFicha }: Fichas
                       </td>
 
                       {/* Titular */}
-                      <td className="px-4 py-3 text-sm text-gray-900">
-                        <div className="max-w-xs truncate" title={ficha.titular_nombre}>
-                          {ficha.titular_nombre}
+                      <td className="px-4 py-3 text-sm text-gray-900 truncate max-w-[120px]" title={ficha.titular_nombre}>
+                        {ficha.titular_nombre}
+                      </td>
+
+                      {/* DNI */}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                        {ficha.titular_documento}
+                      </td>
+
+                      {/* Equipo */}
+                      <td className="px-4 py-3 text-sm">
+                        <EquipoVentaCell asesores={ficha.asesores || []} />
+                      </td>
+
+                      {/* Precio */}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-gray-900">
+                        {ficha.precio_venta ? `$${ficha.precio_venta.toLocaleString()}` : '-'}
+                      </td>
+
+                      {/* Abonado */}
+                      <td className="px-4 py-3 text-sm text-right">
+                        <div className="flex flex-col gap-0.5">
+                          {(ficha.total_abonado || 0) > 0 && (
+                            <span className="text-green-600 font-medium">
+                              $ {(ficha.total_abonado || 0).toLocaleString()}
+                            </span>
+                          )}
+                          {(ficha.total_abonado_pen || 0) > 0 && (
+                            <span className="text-blue-600 font-medium">
+                              S/ {(ficha.total_abonado_pen || 0).toLocaleString()}
+                            </span>
+                          )}
+                          {(ficha.total_abonado || 0) === 0 && (ficha.total_abonado_pen || 0) === 0 && (
+                            <span className="text-gray-400">-</span>
+                          )}
                         </div>
                       </td>
 
-                      {/* Vendedor/Asesor */}
-                      <td className="px-4 py-3 text-sm">
-                        {ficha.vendedor_nombre ? (
-                          <div>
-                            <div className="font-medium text-gray-900">{ficha.vendedor_nombre}</div>
-                            <div className="text-xs text-gray-500">{getRolLabel(ficha.vendedor_rol)}</div>
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-
-                      {/* Jefe Ventas */}
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                        {ficha.jefe_ventas_nombre || '-'}
-                      </td>
-
-                      {/* Caseta */}
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                        {ficha.vendedor_caseta_nombre || '-'}
-                      </td>
-
-                      {/* Monto USD (de vouchers OCR) */}
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                        {ficha.monto_voucher_usd > 0 ? formatMonto(ficha.monto_voucher_usd) : '-'}
-                      </td>
-
-                      {/* Monto PEN (de vouchers OCR) */}
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900">
-                        {ficha.monto_voucher_pen > 0 ? formatMontoPEN(ficha.monto_voucher_pen) : '-'}
-                      </td>
-
-                      {/* Fecha */}
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                        {formatFecha(ficha.fecha_creacion)}
-                      </td>
-
-                      {/* Nuevo Abono */}
+                      {/* Estado */}
                       <td className="px-4 py-3 whitespace-nowrap text-center">
-                        {ficha.tiene_nuevo_abono ? (
-                          <div className="inline-flex items-center gap-1 px-2 py-1 bg-[#1b967a]/10 text-[#1b967a] rounded-full text-xs font-medium">
-                            <Bell className="w-3 h-3" />
-                            <span>Nuevo</span>
-                          </div>
-                        ) : ficha.abonos_count > 0 ? (
-                          <div className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-500 rounded-full text-xs">
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>{ficha.abonos_count}</span>
-                          </div>
-                        ) : (
-                          <span className="text-gray-300">-</span>
-                        )}
+                        <EstadoPagoCell
+                          estado={ficha.estado_pago || 'PENDIENTE'}
+                          precioVenta={ficha.precio_venta}
+                          totalAbonado={ficha.total_abonado}
+                        />
                       </td>
 
-                      {/* Acciones */}
+                      {/* Contrato */}
+                      <td className="px-4 py-3 whitespace-nowrap text-center">
+                        <ContratoCell
+                          firmado={ficha.contrato_firmado || false}
+                          fechaFirma={ficha.contrato_fecha_firma}
+                        />
+                      </td>
+
+                      {/* Ver */}
                       <td className="px-4 py-3 whitespace-nowrap text-center">
                         <button
                           onClick={() => onVerFicha(ficha.ficha_id, ficha.local_id)}
                           className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-[#1b967a] bg-[#1b967a]/10 rounded-lg hover:bg-[#1b967a]/20 transition-colors"
                         >
                           <Eye className="w-3 h-3" />
-                          Ver Ficha
+                          Ver
                         </button>
                       </td>
                     </tr>
