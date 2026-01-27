@@ -140,6 +140,8 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
   const [incluirPruebas, setIncluirPruebas] = useState(false);
   const [clienteSearch, setClienteSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [localSearch, setLocalSearch] = useState('');
+  const [debouncedLocalSearch, setDebouncedLocalSearch] = useState('');
   const [filtroValidacion, setFiltroValidacion] = useState<FiltroValidacion>('pendientes');
 
   // Paginación
@@ -196,6 +198,14 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
     return () => clearTimeout(timer);
   }, [clienteSearch]);
 
+  // Debounce para búsqueda de local
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedLocalSearch(localSearch);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localSearch]);
+
   // Función para cargar datos
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -209,6 +219,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
       sortDirection,
       incluirPruebas,
       clienteSearch: debouncedSearch,
+      localSearch: debouncedLocalSearch,
       filtroValidacion
     });
     setAbonos(result.data);
@@ -218,7 +229,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
     setTotalPEN(result.totalPEN);
     setLoading(false);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas, debouncedSearch, filtroValidacion, refreshKey]);
+  }, [fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas, debouncedSearch, debouncedLocalSearch, filtroValidacion, refreshKey]);
 
   // Cargar datos cuando cambian los filtros/paginación/ordenamiento
   useEffect(() => {
@@ -228,7 +239,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
   // Reset página cuando cambian filtros
   useEffect(() => {
     setPage(1);
-  }, [fechaDesde, fechaHasta, proyectoId, incluirPruebas, debouncedSearch, filtroValidacion]);
+  }, [fechaDesde, fechaHasta, proyectoId, incluirPruebas, debouncedSearch, debouncedLocalSearch, filtroValidacion]);
 
   // Handler para cambiar ordenamiento
   const handleSort = (column: AbonoDiarioSortColumn) => {
@@ -267,6 +278,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
         sortColumn,
         sortDirection,
         incluirPruebas,
+        localSearch: debouncedLocalSearch,
         filtroValidacion
       });
 
@@ -415,7 +427,7 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
     <div className="space-y-4">
       {/* FILTROS */}
       <div className="bg-white rounded-lg shadow-md p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
           {/* Fecha de Comprobante - Grupo de 2 columnas */}
           <div className="lg:col-span-2 space-y-2">
             <label className="block text-sm font-semibold text-[#192c4d]">
@@ -486,6 +498,23 @@ export default function ReporteDiarioTab({ user, onVerFicha, refreshKey }: Repor
                 placeholder="Buscar nombre o DNI..."
                 value={clienteSearch}
                 onChange={(e) => setClienteSearch(e.target.value)}
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Búsqueda por Local */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-[#192c4d]">
+              Buscar Local
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Ej: P-213"
+                value={localSearch}
+                onChange={(e) => setLocalSearch(e.target.value)}
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1b967a] focus:border-transparent"
               />
             </div>

@@ -163,7 +163,7 @@ const PROMPT_VOUCHER = `Analiza esta imagen de un voucher/comprobante bancario p
 
 1. Monto de la operacion (solo el numero, sin simbolos)
 2. Moneda (USD o PEN)
-3. Fecha de la operacion (formato YYYY-MM-DD)
+3. Fecha de la operacion (formato DD-MM-YYYY, ejemplo: 26-01-2026 para 26 de enero de 2026)
 4. Hora de la operacion (formato HH:MM en 24 horas, solo si es visible en el comprobante)
 5. Nombre del banco
 6. Numero de operacion/transaccion
@@ -173,7 +173,7 @@ const PROMPT_VOUCHER = `Analiza esta imagen de un voucher/comprobante bancario p
 IMPORTANTE:
 - Si no puedes leer algun dato claramente, usa "N/A"
 - El monto debe ser un numero decimal (ej: 5000.00)
-- La fecha debe estar en formato YYYY-MM-DD
+- La fecha debe estar en formato DD-MM-YYYY (día-mes-año). Los vouchers peruanos usan este formato.
 - La hora debe estar en formato HH:MM (24 horas). Si no es visible o no se puede extraer, usa null
 - Incluye un campo "confianza" del 0 al 100 indicando que tan seguro estas de los datos
 
@@ -181,7 +181,7 @@ Responde SOLO con JSON valido en este formato exacto:
 {
   "monto": 5000.00,
   "moneda": "USD",
-  "fecha": "2025-01-01",
+  "fecha": "01-01-2025",
   "hora": "14:30",
   "banco": "Interbank",
   "numero_operacion": "804263",
@@ -571,6 +571,9 @@ export async function extractDocumentData(
         .trim();
 
       const parsedData = JSON.parse(jsonStr);
+
+      // La fecha se mantiene en formato DD-MM-YYYY como viene del OCR
+      // La conversión a YYYY-MM-DD para la BD se hace en crearDeposito()
 
       // Verificar si el documento es valido (para DNI frente y reverso)
       if (parsedData.es_documento_valido === false) {

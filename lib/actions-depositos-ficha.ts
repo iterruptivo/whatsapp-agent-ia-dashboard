@@ -334,6 +334,16 @@ export async function crearDeposito(params: {
       return { success: false, message: 'No autenticado' };
     }
 
+    // Convertir fecha de DD-MM-YYYY a YYYY-MM-DD para el campo DATE de PostgreSQL
+    let fechaParaDB: string | null = params.fechaComprobante;
+    if (params.fechaComprobante) {
+      const parts = params.fechaComprobante.split('-');
+      if (parts.length === 3 && parts[0].length === 2) {
+        // Es formato DD-MM-YYYY, convertir a YYYY-MM-DD
+        fechaParaDB = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+    }
+
     // 1. Insertar en tabla nueva
     const { data: deposito, error: insertError } = await supabase
       .from('depositos_ficha')
@@ -343,7 +353,7 @@ export async function crearDeposito(params: {
         proyecto_id: params.proyectoId,
         monto: params.monto,
         moneda: params.moneda,
-        fecha_comprobante: params.fechaComprobante,
+        fecha_comprobante: fechaParaDB,
         hora_comprobante: params.horaComprobante,
         banco: params.banco,
         numero_operacion: params.numeroOperacion,
@@ -468,7 +478,17 @@ export async function updateDepositoFicha(params: {
 
     if (params.monto !== undefined) updateData.monto = params.monto;
     if (params.moneda !== undefined) updateData.moneda = params.moneda;
-    if (params.fechaComprobante !== undefined) updateData.fecha_comprobante = params.fechaComprobante;
+    if (params.fechaComprobante !== undefined) {
+      // Convertir fecha de DD-MM-YYYY a YYYY-MM-DD para el campo DATE de PostgreSQL
+      let fechaParaDB = params.fechaComprobante;
+      if (params.fechaComprobante) {
+        const parts = params.fechaComprobante.split('-');
+        if (parts.length === 3 && parts[0].length === 2) {
+          fechaParaDB = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+      }
+      updateData.fecha_comprobante = fechaParaDB;
+    }
     if (params.horaComprobante !== undefined) updateData.hora_comprobante = params.horaComprobante;
     if (params.banco !== undefined) updateData.banco = params.banco;
     if (params.numeroOperacion !== undefined) updateData.numero_operacion = params.numeroOperacion;

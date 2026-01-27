@@ -4,6 +4,55 @@
 
 ---
 
+## SESIÓN 109 - Filtro de Búsqueda por Local en Reporte Diario (26 Enero 2026)
+
+**Tipo:** Feature (Completado)
+
+**Objetivo:** Agregar filtro de búsqueda por código de local/puesto en el Reporte Diario de abonos.
+
+### Cambios Implementados
+
+**Backend: `lib/actions-fichas-reporte.ts`**
+- ✅ Agregado parámetro `localSearch?: string` a interface `GetAbonosDiariosParams`
+- ✅ Modificada función `fetchAllAbonosFiltered()` para aceptar `localSearch`
+- ✅ Filtro server-side con `.ilike('locales.codigo', `%${localSearch.trim()}%`)` en query de Supabase
+- ✅ Filtro client-side adicional para asegurar consistencia
+- ✅ Actualizada función `getAbonosDiarios()` para pasar `localSearch`
+- ✅ Actualizada función `getAbonosDiariosExport()` para incluir filtro en exportación
+
+**Frontend: `components/reporteria/ReporteDiarioTab.tsx`**
+- ✅ Agregados estados `localSearch` y `debouncedLocalSearch`
+- ✅ Implementado debounce de 300ms (consistente con `clienteSearch`)
+- ✅ Input de búsqueda con icono Search y placeholder "Ej: P-213"
+- ✅ Grid ajustado de `lg:grid-cols-5` a `lg:grid-cols-6` para acomodar nuevo campo
+- ✅ Filtro integrado con paginación y reset de página
+- ✅ Exportación Excel incluye filtro de local
+
+### Características del Filtro
+
+- **Case-insensitive:** Busca en mayúsculas y minúsculas
+- **Partial match:** Encuentra "P-2" en "P-213"
+- **Debounced:** Espera 300ms después del último keystroke
+- **Server-side:** Query optimizada en Supabase
+- **Exportación:** Respeta el filtro al exportar a Excel
+
+### Estado Final
+
+- ✅ TypeScript compila sin errores
+- ✅ Patrón consistente con filtro `clienteSearch` existente
+- ✅ UI responsive y coherente con diseño actual
+- ✅ Funciona en combinación con otros filtros (fecha, proyecto, cliente, validación)
+- ⏳ Pendiente: Testing funcional con Playwright
+
+### Archivos Modificados
+
+| Archivo | Líneas Cambiadas |
+|---------|------------------|
+| `lib/actions-fichas-reporte.ts` | 7 secciones (params, firma función, query, filtros) |
+| `components/reporteria/ReporteDiarioTab.tsx` | 5 secciones (estados, debounce, loadData, UI, export) |
+
+---
+
 ## SESIÓN 108 - Migraciones SQL: Mejoras Reportería y Fichas (26 Enero 2026)
 
 **Tipo:** Database Schema Migration (Completado)

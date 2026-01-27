@@ -764,6 +764,8 @@ interface GetAbonosDiariosParams {
   incluirPruebas?: boolean;
   // Búsqueda de cliente por nombre o DNI
   clienteSearch?: string;
+  // Búsqueda por código de local
+  localSearch?: string;
   // Filtro de estado de validación (por defecto 'pendientes')
   filtroValidacion?: FiltroValidacion;
 }
@@ -897,7 +899,8 @@ async function fetchAllAbonosFiltered(
   fechaDesde: string,
   fechaHasta: string,
   proyectoId?: string | null,
-  incluirPruebas: boolean = false
+  incluirPruebas: boolean = false,
+  localSearch?: string
 ): Promise<AbonoDiarioRow[]> {
   const supabase = await createSupabaseServer();
 
@@ -954,6 +957,11 @@ async function fetchAllAbonosFiltered(
     depositosQuery = depositosQuery.eq('proyecto_id', proyectoId);
   } else if (!incluirPruebas) {
     depositosQuery = depositosQuery.neq('proyecto_id', PROYECTO_PRUEBAS_ID);
+  }
+
+  // Filtrar por código de local
+  if (localSearch && localSearch.trim()) {
+    depositosQuery = depositosQuery.ilike('locales.codigo', `%${localSearch.trim()}%`);
   }
 
   const { data: depositos, error } = await depositosQuery;
@@ -1114,13 +1122,14 @@ export async function getAbonosDiarios(params: GetAbonosDiariosParams): Promise<
       sortDirection = 'desc',
       incluirPruebas = false,
       clienteSearch,
+      localSearch,
       filtroValidacion = 'pendientes'
     } = params;
 
-    console.log('[getAbonosDiarios] Parámetros:', { fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas, clienteSearch, filtroValidacion });
+    console.log('[getAbonosDiarios] Parámetros:', { fechaDesde, fechaHasta, proyectoId, page, pageSize, sortColumn, sortDirection, incluirPruebas, clienteSearch, localSearch, filtroValidacion });
 
     // Obtener todos los abonos filtrados
-    const allAbonos = await fetchAllAbonosFiltered(fechaDesde, fechaHasta, proyectoId, incluirPruebas);
+    const allAbonos = await fetchAllAbonosFiltered(fechaDesde, fechaHasta, proyectoId, incluirPruebas, localSearch);
 
     // Filtrar por estado de validación ANTES de otros filtros
     let filteredAbonos = allAbonos;
@@ -1137,6 +1146,14 @@ export async function getAbonosDiarios(params: GetAbonosDiariosParams): Promise<
       filteredAbonos = filteredAbonos.filter(a =>
         a.cliente_nombre?.toLowerCase().includes(searchLower) ||
         a.cliente_dni?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Filtrar por código de local ANTES de paginar
+    if (localSearch && localSearch.trim()) {
+      const searchLower = localSearch.toLowerCase().trim();
+      filteredAbonos = filteredAbonos.filter(a =>
+        a.local_codigo?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -1212,6 +1229,7 @@ export async function getAbonosDiariosExport(params: {
   sortColumn?: AbonoDiarioSortColumn;
   sortDirection?: SortDirection;
   incluirPruebas?: boolean;
+  localSearch?: string;
   filtroValidacion?: FiltroValidacion;
 }): Promise<AbonoDiarioRow[]> {
   try {
@@ -1222,13 +1240,14 @@ export async function getAbonosDiariosExport(params: {
       sortColumn = 'fecha_comprobante',
       sortDirection = 'desc',
       incluirPruebas = false,
+      localSearch,
       filtroValidacion = 'pendientes'
     } = params;
 
-    console.log('[getAbonosDiariosExport] Exportando todos los abonos...', { incluirPruebas, filtroValidacion });
+    console.log('[getAbonosDiariosExport] Exportando todos los abonos...', { incluirPruebas, localSearch, filtroValidacion });
 
     // Obtener todos los abonos filtrados
-    let allAbonos = await fetchAllAbonosFiltered(fechaDesde, fechaHasta, proyectoId, incluirPruebas);
+    let allAbonos = await fetchAllAbonosFiltered(fechaDesde, fechaHasta, proyectoId, incluirPruebas, localSearch);
 
     // Filtrar por estado de validación
     if (filtroValidacion === 'pendientes') {
