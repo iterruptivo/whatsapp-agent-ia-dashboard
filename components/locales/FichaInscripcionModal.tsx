@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check, AlertCircle, CheckCircle, User, FileText, ExternalLink, Users } from 'lucide-react';
+import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check, AlertCircle, CheckCircle, User, FileText, ExternalLink, Users, History, UserCog, Store } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
 import { getClienteFichaByLocalId, upsertClienteFicha, ClienteFichaInput, Copropietario, getUsuarioById } from '@/lib/actions-clientes-ficha';
@@ -23,6 +23,9 @@ import VoucherCardUploader, { VoucherItem } from '@/components/shared/VoucherCar
 import OCRValidationAlert, { PersonDiscrepancies } from '@/components/shared/OCRValidationAlert';
 import { useOCRValidation } from '@/hooks/useOCRValidation';
 import { toast } from 'sonner';
+import FichaHistorialPanel from './FichaHistorialPanel';
+import CambiarTitularModal from './CambiarTitularModal';
+import CambiarLocalModal from './CambiarLocalModal';
 
 interface FichaInscripcionModalProps {
   isOpen: boolean;
@@ -411,6 +414,12 @@ export default function FichaInscripcionModal({
   // Estado para controlar visibilidad de alerta de validación OCR
   const [showOCRValidation, setShowOCRValidation] = useState(true);
 
+  // Estados para los modales de auditoría y cambios (Sistema de Auditoría de Fichas)
+  const [showHistorialPanel, setShowHistorialPanel] = useState(false);
+  const [showCambiarTitularModal, setShowCambiarTitularModal] = useState(false);
+  const [showCambiarLocalModal, setShowCambiarLocalModal] = useState(false);
+  const [fichaId, setFichaId] = useState<string | null>(null);
+
   // Estados para documentos OCR - YA NO SE USAN, los datos van directo a formData
   // const [dniDocumento, setDniDocumento] = useState<DocumentoResult | null>(null);
   // const [comprobanteDocumento, setComprobanteDocumento] = useState<DocumentoResult | null>(null);
@@ -659,6 +668,9 @@ export default function FichaInscripcionModal({
       }
 
       if (existingFicha) {
+        // Guardar el ID de la ficha para el sistema de auditoría
+        setFichaId(existingFicha.id);
+
         setFormData({
           local_id: local!.id,
           lead_id: existingFicha.lead_id,
@@ -2681,9 +2693,46 @@ export default function FichaInscripcionModal({
           <h2 className="text-lg font-semibold">
             Ficha de Inscripción - {local.codigo}{local.piso && ` (${local.piso})`}
           </h2>
-          <button onClick={onClose} className="text-white hover:text-gray-200 transition-colors">
-            <X className="w-6 h-6" />
-          </button>
+
+          {/* Botones de auditoría y acciones (solo si hay ficha guardada) */}
+          <div className="flex items-center gap-2">
+            {fichaId && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowHistorialPanel(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm"
+                  title="Ver historial de cambios"
+                >
+                  <History className="w-4 h-4" />
+                  <span className="hidden sm:inline">Historial</span>
+                </button>
+                {/* Botón Cambiar Titular - Oculto temporalmente
+                <button
+                  type="button"
+                  onClick={() => setShowCambiarTitularModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/80 hover:bg-purple-500 rounded-lg transition-colors text-sm"
+                  title="Cambiar titularidad"
+                >
+                  <UserCog className="w-4 h-4" />
+                  <span className="hidden sm:inline">Cambiar Titular</span>
+                </button>
+                */}
+                <button
+                  type="button"
+                  onClick={() => setShowCambiarLocalModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/80 hover:bg-orange-500 rounded-lg transition-colors text-sm"
+                  title="Cambiar local/puesto"
+                >
+                  <Store className="w-4 h-4" />
+                  <span className="hidden sm:inline">Cambiar Local</span>
+                </button>
+              </>
+            )}
+            <button onClick={onClose} className="text-white hover:text-gray-200 transition-colors ml-2">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Body */}
@@ -3856,6 +3905,87 @@ export default function FichaInscripcionModal({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modales del Sistema de Auditoría de Fichas */}
+
+      {/* Panel de Historial */}
+      {fichaId && (
+        <FichaHistorialPanel
+          fichaId={fichaId}
+          localCodigo={local.codigo}
+          localPiso={local.piso}
+          isOpen={showHistorialPanel}
+          onClose={() => setShowHistorialPanel(false)}
+        />
+      )}
+
+      {/* Modal Cambiar Titular */}
+      {fichaId && (
+        <CambiarTitularModal
+          isOpen={showCambiarTitularModal}
+          onClose={() => setShowCambiarTitularModal(false)}
+          onSuccess={() => {
+            // Recargar la ficha después de cambiar titular
+            if (local) {
+              getClienteFichaByLocalId(local.id).then((ficha) => {
+                if (ficha) {
+                  // Actualizar formData con los nuevos datos del titular
+                  setFormData((prev) => ({
+                    ...prev,
+                    titular_nombres: ficha.titular_nombres || '',
+                    titular_apellido_paterno: ficha.titular_apellido_paterno || '',
+                    titular_apellido_materno: ficha.titular_apellido_materno || '',
+                    titular_tipo_documento: ficha.titular_tipo_documento || 'DNI',
+                    titular_numero_documento: ficha.titular_numero_documento || '',
+                    titular_celular: ficha.titular_celular || '',
+                    titular_email: ficha.titular_email || '',
+                    titular_fecha_nacimiento: ficha.titular_fecha_nacimiento || '',
+                    titular_direccion: ficha.titular_direccion || '',
+                    titular_distrito: ficha.titular_distrito || '',
+                    titular_provincia: ficha.titular_provincia || '',
+                    titular_departamento: ficha.titular_departamento || 'Lima',
+                  }));
+                }
+              });
+            }
+          }}
+          fichaId={fichaId}
+          localCodigo={local.codigo}
+          titularActual={{
+            nombres: formData.titular_nombres || null,
+            apellido_paterno: formData.titular_apellido_paterno || null,
+            apellido_materno: formData.titular_apellido_materno || null,
+            tipo_documento: formData.titular_tipo_documento || null,
+            numero_documento: formData.titular_numero_documento || null,
+            celular: formData.titular_celular || null,
+            email: formData.titular_email || null,
+            fecha_nacimiento: formData.titular_fecha_nacimiento || null,
+            direccion: formData.titular_direccion || null,
+            distrito: formData.titular_distrito || null,
+            provincia: formData.titular_provincia || null,
+            departamento: formData.titular_departamento || null,
+          }}
+        />
+      )}
+
+      {/* Modal Cambiar Local */}
+      {fichaId && local && (
+        <CambiarLocalModal
+          isOpen={showCambiarLocalModal}
+          onClose={() => setShowCambiarLocalModal(false)}
+          onSuccess={() => {
+            // Cerrar el modal y la ficha ya que cambió de local
+            toast.info('El local ha sido cambiado. La ficha ahora está vinculada al nuevo local.');
+            onClose();
+            onSave?.(); // Refrescar la vista principal
+          }}
+          fichaId={fichaId}
+          localActualId={local.id}
+          localActualCodigo={local.codigo}
+          localActualPiso={local.piso}
+          proyectoId={local.proyecto_id}
+        />
       )}
     </div>
   );
