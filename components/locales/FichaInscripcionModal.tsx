@@ -779,7 +779,6 @@ export default function FichaInscripcionModal({
           console.log('[FichaModal] depositosResult:', {
             success: depositosResult.success,
             count: depositosResult.data?.length,
-            error: depositosResult.error,
             data: depositosResult.data
           });
           if (depositosResult.success && depositosResult.data && depositosResult.data.length > 0) {
