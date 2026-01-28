@@ -1007,7 +1007,7 @@ export default function FichaInscripcionModal({
   };
 
   // Handler: Usuario confirma que es el MISMO cliente - cargar datos anteriores
-  const handleConfirmMismoCliente = () => {
+  const handleConfirmMismoCliente = async () => {
     if (!fichaAnteriorData || !local) return;
 
     const existingFicha = fichaAnteriorData;
