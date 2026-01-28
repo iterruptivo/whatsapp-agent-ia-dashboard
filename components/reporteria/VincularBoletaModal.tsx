@@ -213,6 +213,51 @@ export default function VincularBoletaModal({
       } finally {
         setExtractingOCR(false);
       }
+    } else if (selectedFile.type === 'application/pdf') {
+      // Convertir PDF a imagen para OCR y preview
+      setExtractingOCR(true);
+      try {
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url).toString();
+
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 2.0 }); // Alta resolución para OCR
+
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        const ctx = canvas.getContext('2d')!;
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        // Preview
+        const pngDataUrl = canvas.toDataURL('image/png');
+        setPreviewUrl(pngDataUrl);
+
+        // OCR - extraer solo base64 sin el prefijo data:image/png;base64,
+        const base64 = pngDataUrl.split(',')[1];
+        const ocrResult = await extractNumeroBoletaSimple(base64);
+
+        if (ocrResult.success && ocrResult.data) {
+          if (ocrResult.data.numero_boleta) {
+            setNumeroBoleta(ocrResult.data.numero_boleta);
+            toast.success('Número de boleta extraído automáticamente del PDF');
+          }
+          if (ocrResult.data.tipo) {
+            setTipo(ocrResult.data.tipo);
+          }
+          setConfianzaOCR(ocrResult.data.confianza);
+        } else {
+          toast.warning('No se pudo extraer el número del PDF. Ingréselo manualmente.');
+        }
+      } catch (err) {
+        console.error('Error procesando PDF:', err);
+        toast.warning('No se pudo procesar el PDF. Ingréselo manualmente.');
+        setPreviewUrl(null);
+      } finally {
+        setExtractingOCR(false);
+      }
     } else {
       setPreviewUrl(null);
     }
@@ -551,12 +596,12 @@ export default function VincularBoletaModal({
                     <p className="text-xs text-gray-500 mt-3 mb-2">
                       Otros depósitos del mismo cliente en esta fecha (sin boleta):
                     </p>
-                    {depositosDisponibles.map((dep) => {
+                    {depositosDisponibles.map((dep, index) => {
                       const key = `${dep.ficha_id}-${dep.voucher_index}`;
                       const isSelected = selectedDepositos.has(key);
                       return (
                         <label
-                          key={key}
+                          key={`${key}-${index}`}
                           className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-all ${
                             isSelected
                               ? 'bg-blue-50 border-blue-300'
