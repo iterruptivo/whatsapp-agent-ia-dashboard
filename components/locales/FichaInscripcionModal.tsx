@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, Save, Loader2, Plus, Trash2, Eye, Calendar, Pencil, Check, AlertCircle, CheckCircle, User, FileText, ExternalLink, Users, History, UserCog, Store } from 'lucide-react';
 import { Local } from '@/lib/locales';
 import { getLocalLeads } from '@/lib/locales';
@@ -10,7 +10,7 @@ import { analizarCicloVenta, obtenerDatosClienteAnterior } from '@/lib/actions-c
 import { getProyectoConfiguracion, getProyectoLegalData } from '@/lib/proyecto-config';
 import { procesarVentaLocal } from '@/lib/actions-control-pagos';
 import { updateMontoVenta } from '@/lib/actions-locales';
-import { updateDepositoFicha } from '@/lib/actions-depositos-ficha';
+import { updateDepositoFicha, getDepositosFicha, crearDeposito } from '@/lib/actions-depositos-ficha';
 import { useAuth } from '@/lib/auth-context';
 import PhoneInputCustom from '@/components/shared/PhoneInputCustom';
 import AlertModal from '@/components/shared/AlertModal';
@@ -419,6 +419,7 @@ export default function FichaInscripcionModal({
   const [showCambiarTitularModal, setShowCambiarTitularModal] = useState(false);
   const [showCambiarLocalModal, setShowCambiarLocalModal] = useState(false);
   const [fichaId, setFichaId] = useState<string | null>(null);
+  const fichaIdRef = useRef<string | null>(null); // Ref para acceso inmediato en callbacks
 
   // Estados para documentos OCR - YA NO SE USAN, los datos van directo a formData
   // const [dniDocumento, setDniDocumento] = useState<DocumentoResult | null>(null);
@@ -513,7 +514,7 @@ export default function FichaInscripcionModal({
     // Documentos adjuntos
     dni_fotos: [],
     comprobante_deposito_fotos: [],
-    comprobante_deposito_ocr: null,
+    comprobante_deposito_ocr: null, // DEPRECADO: Ya no se usa. Los vouchers se cargan desde depositos_ficha
     vendedor_id: null,
   });
 
@@ -601,7 +602,7 @@ export default function FichaInscripcionModal({
         observaciones: '',
         dni_fotos: [],
         comprobante_deposito_fotos: [],
-        comprobante_deposito_ocr: null,
+        comprobante_deposito_ocr: null, // DEPRECADO: Ya no se usa. Los vouchers se cargan desde depositos_ficha
         vendedor_id: null,
       });
 
@@ -669,6 +670,8 @@ export default function FichaInscripcionModal({
 
       if (existingFicha) {
         // Guardar el ID de la ficha para el sistema de auditoría
+        // IMPORTANTE: Actualizar ref INMEDIATAMENTE para que callbacks lo tengan disponible
+        fichaIdRef.current = existingFicha.id;
         setFichaId(existingFicha.id);
 
         setFormData({
@@ -747,7 +750,7 @@ export default function FichaInscripcionModal({
           // Documentos adjuntos
           dni_fotos: existingFicha.dni_fotos || [],
           comprobante_deposito_fotos: existingFicha.comprobante_deposito_fotos || [],
-          comprobante_deposito_ocr: existingFicha.comprobante_deposito_ocr || null,
+          comprobante_deposito_ocr: existingFicha.comprobante_deposito_ocr || null, // DEPRECADO: Ya no se usa
           vendedor_id: existingFicha.vendedor_id,
         });
         // Si la ficha tiene TEA guardada, usarla en vez del default del proyecto
@@ -767,13 +770,49 @@ export default function FichaInscripcionModal({
           setDniPairs(reconstructedPairs); // También para validación
         }
 
-        // Reconstruir vouchers desde URLs guardadas (con datos OCR si existen)
-        if (existingFicha.comprobante_deposito_fotos && existingFicha.comprobante_deposito_fotos.length > 0) {
-          const reconstructedVouchers = reconstruirVouchersDesdeUrls(
-            existingFicha.comprobante_deposito_fotos,
-            existingFicha.comprobante_deposito_ocr
-          );
-          setInitialVouchers(reconstructedVouchers);
+        // DEPRECADO: comprobante_deposito_ocr ya no se usa
+        // Cargar vouchers DIRECTAMENTE desde tabla depositos_ficha (ÚNICA fuente de verdad)
+        // NOTA: Usar existingFicha.id directamente porque setFichaId es asíncrono
+        console.log('[FichaModal] Cargando vouchers desde tabla. existingFicha.id:', existingFicha.id);
+        if (existingFicha.id) {
+          const depositosResult = await getDepositosFicha(existingFicha.id);
+          console.log('[FichaModal] depositosResult:', {
+            success: depositosResult.success,
+            count: depositosResult.data?.length,
+            error: depositosResult.error,
+            data: depositosResult.data
+          });
+          if (depositosResult.success && depositosResult.data && depositosResult.data.length > 0) {
+            const vouchersFromTable = depositosResult.data.map((dep) => ({
+              id: `voucher-${dep.id}`,
+              file: null,
+              url: dep.imagen_url,
+              previewUrl: dep.imagen_url,
+              depositoId: dep.id,
+              ocrData: {
+                monto: dep.monto ? Number(dep.monto) : undefined,
+                moneda: (dep.moneda as 'PEN' | 'USD') || undefined,
+                fecha: dep.fecha_comprobante || undefined,
+                hora: dep.hora_comprobante || undefined,
+                banco: dep.banco || undefined,
+                numero_operacion: dep.numero_operacion || undefined,
+                depositante: dep.depositante || undefined,
+                confianza: dep.confianza ? Number(dep.confianza) : undefined,
+                uploaded_at: dep.created_at || undefined,
+              },
+              estado: 'valido' as const
+            }));
+            console.log('[FichaModal] Calling setInitialVouchers with:', vouchersFromTable.length, 'vouchers', vouchersFromTable);
+            setInitialVouchers(vouchersFromTable);
+          } else {
+            console.log('[FichaModal] No vouchers to set - condition failed:', {
+              success: depositosResult.success,
+              hasData: !!depositosResult.data,
+              dataLength: depositosResult.data?.length
+            });
+          }
+        } else {
+          console.log('[FichaModal] existingFicha.id is falsy, skipping voucher load');
         }
 
         // Cargar boletas vinculadas (readonly - se vinculan desde Finanzas)
@@ -1045,7 +1084,7 @@ export default function FichaInscripcionModal({
       observaciones: existingFicha.observaciones || '',
       dni_fotos: existingFicha.dni_fotos || [],
       comprobante_deposito_fotos: existingFicha.comprobante_deposito_fotos || [],
-      comprobante_deposito_ocr: existingFicha.comprobante_deposito_ocr || null,
+      comprobante_deposito_ocr: existingFicha.comprobante_deposito_ocr || null, // DEPRECADO: Ya no se usa
       vendedor_id: existingFicha.vendedor_id,
     });
 
@@ -1056,13 +1095,32 @@ export default function FichaInscripcionModal({
       setDniPairs(reconstructedPairs);
     }
 
-    // Reconstruir vouchers
-    if (existingFicha.comprobante_deposito_fotos && existingFicha.comprobante_deposito_fotos.length > 0) {
-      const reconstructedVouchers = reconstruirVouchersDesdeUrls(
-        existingFicha.comprobante_deposito_fotos,
-        existingFicha.comprobante_deposito_ocr
-      );
-      setInitialVouchers(reconstructedVouchers);
+    // DEPRECADO: comprobante_deposito_ocr ya no se usa
+    // Cargar vouchers DIRECTAMENTE desde tabla depositos_ficha (ÚNICA fuente de verdad)
+    if (existingFicha.id) {
+      const depositosResult = await getDepositosFicha(existingFicha.id);
+      if (depositosResult.success && depositosResult.data && depositosResult.data.length > 0) {
+        const vouchersFromTable = depositosResult.data.map((dep) => ({
+          id: `voucher-${dep.id}`,
+          file: null,
+          url: dep.imagen_url,
+          previewUrl: dep.imagen_url,
+          depositoId: dep.id,
+          ocrData: {
+            monto: dep.monto ? Number(dep.monto) : undefined,
+            moneda: (dep.moneda as 'PEN' | 'USD') || undefined,
+            fecha: dep.fecha_comprobante || undefined,
+            hora: dep.hora_comprobante || undefined,
+            banco: dep.banco || undefined,
+            numero_operacion: dep.numero_operacion || undefined,
+            depositante: dep.depositante || undefined,
+            confianza: dep.confianza ? Number(dep.confianza) : undefined,
+            uploaded_at: dep.created_at || undefined,
+          },
+          estado: 'valido' as const
+        }));
+        setInitialVouchers(vouchersFromTable);
+      }
     }
 
     // TEA del proyecto
@@ -3547,7 +3605,7 @@ export default function FichaInscripcionModal({
                       setFormData(prev => ({
                         ...prev,
                         comprobante_deposito_fotos: urls,
-                        comprobante_deposito_ocr: ocrDataArray.length > 0 ? ocrDataArray : null,
+                        comprobante_deposito_ocr: ocrDataArray.length > 0 ? ocrDataArray : null, // DEPRECADO: Ya no se usa
                       }));
                     }}
                     onSaveToDatabase={async (voucherId, data, depositoId) => {
@@ -3577,6 +3635,46 @@ export default function FichaInscripcionModal({
                       } catch (error) {
                         console.error('Error al actualizar voucher:', error);
                         toast.error('Error al guardar los cambios');
+                      }
+                    }}
+                    onNewVoucherProcessed={async ({ url, ocrData }) => {
+                      // Usar ref para acceso inmediato (state es async)
+                      const currentFichaId = fichaIdRef.current;
+
+                      if (!currentFichaId) {
+                        console.error('[VoucherUploader] No hay fichaId para guardar el voucher');
+                        toast.error('Error: No se puede guardar - ficha no encontrada');
+                        return null;
+                      }
+
+                      try {
+                        const result = await crearDeposito({
+                          fichaId: currentFichaId,
+                          localId: local!.id,
+                          proyectoId: local!.proyecto_id,
+                          monto: ocrData.monto ?? null,
+                          moneda: (ocrData.moneda as 'USD' | 'PEN') ?? 'PEN',
+                          fechaComprobante: ocrData.fecha ?? null,
+                          horaComprobante: ocrData.hora ?? null,
+                          banco: ocrData.banco ?? null,
+                          numeroOperacion: ocrData.numero_operacion ?? null,
+                          depositante: ocrData.depositante ?? null,
+                          tipoOperacion: null,
+                          confianza: ocrData.confianza ?? 0,
+                          imagenUrl: url,
+                        });
+
+                        if (result.success && result.depositoId) {
+                          toast.success('Comprobante guardado en base de datos');
+                          return result.depositoId;
+                        } else {
+                          toast.error(result.message || 'Error al guardar comprobante');
+                          return null;
+                        }
+                      } catch (error) {
+                        console.error('Error creando depósito:', error);
+                        toast.error('Error al guardar comprobante');
+                        return null;
                       }
                     }}
                     disabled={loading}

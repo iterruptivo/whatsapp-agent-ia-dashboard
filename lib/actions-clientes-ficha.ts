@@ -2,7 +2,9 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { syncDepositosFromFicha } from './actions-depositos-ficha';
+// DEPRECADO: syncDepositosFromFicha ya no es necesario
+// La tabla depositos_ficha es la única fuente de verdad
+// import { syncDepositosFromFicha } from './actions-depositos-ficha';
 
 // ============================================================================
 // INTERFACES
@@ -363,15 +365,22 @@ export async function upsertClienteFicha(input: ClienteFichaInput): Promise<{ su
       fichaData = data as ClienteFicha;
     }
 
-    // Sincronizar depósitos a tabla depositos_ficha (escritura dual)
-    if (input.comprobante_deposito_ocr && input.comprobante_deposito_ocr.length > 0) {
-      await syncDepositosFromFicha({
-        fichaId: fichaData.id,
-        localId: input.local_id,
-        depositos: input.comprobante_deposito_ocr,
-        fotos: input.comprobante_deposito_fotos || [],
-      });
-    }
+    // =========================================================================
+    // DEPRECADO: Sincronización a tabla depositos_ficha
+    // =========================================================================
+    // La tabla depositos_ficha se gestiona directamente desde el frontend
+    // via crearDeposito() en actions-depositos-ficha.ts
+    // El JSONB comprobante_deposito_ocr solo se mantiene para compatibilidad
+    // pero NO es la fuente de verdad
+    // =========================================================================
+    // if (input.comprobante_deposito_ocr && input.comprobante_deposito_ocr.length > 0) {
+    //   await syncDepositosFromFicha({
+    //     fichaId: fichaData.id,
+    //     localId: input.local_id,
+    //     depositos: input.comprobante_deposito_ocr,
+    //     fotos: input.comprobante_deposito_fotos || [],
+    //   });
+    // }
 
     return {
       success: true,

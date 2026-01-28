@@ -431,6 +431,18 @@ export async function cambiarLocalFicha(params: {
       return { success: false, message: 'Error al actualizar la ficha' };
     }
 
+    // IMPORTANTE: Actualizar depositos_ficha para que apunten al nuevo local
+    // Esto es necesario para que Reporte Diario muestre el local correcto
+    const { error: updateDepositosError } = await supabase
+      .from('depositos_ficha')
+      .update({ local_id: params.nuevoLocalId })
+      .eq('ficha_id', params.fichaId);
+
+    if (updateDepositosError) {
+      console.error('[cambiarLocalFicha] Error actualizando depositos_ficha:', updateDepositosError);
+      // No fallar, el cambio principal ya se hizo
+    }
+
     // Liberar local anterior (volver a verde = disponible)
     const { error: liberarError } = await supabase
       .from('locales')

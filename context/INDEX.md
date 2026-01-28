@@ -10,9 +10,9 @@
 |---------|-------|
 | **Fase** | Produccion Activa |
 | **Ultimo Deploy** | 17 Diciembre 2025 |
-| **Sesion Actual** | 100+ |
+| **Sesion Actual** | 113 |
 | **Branch Activo** | main |
-| **Ultimo Feature** | Soporte de PISOS para Locales (23 Ene 2026) |
+| **Ultimo Feature** | Migración URLs Imágenes depositos_ficha (28 Ene 2026) |
 
 ---
 
@@ -20,6 +20,7 @@
 
 ```
 Total Leads:        ~20,000
+Leads Sperant:      9,370 (importados 27 Ene 2026)
 Total Locales:      823
 Usuarios Activos:   24
 Proyectos:          7
@@ -70,4 +71,4 @@ Uptime:             99.9%
 
 ---
 
-**Ultima Actualizacion:** 23 Enero 2026 - Soporte PISOS para Locales completo (Sesion 100+)
+**Ultima Actualizacion:** 28 Enero 2026 - Migración URLs Imágenes depositos_ficha (Sesión 113)

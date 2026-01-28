@@ -64,6 +64,10 @@ interface VoucherCardUploaderProps {
   disabled?: boolean;
   maxVouchers?: number;
   onSaveToDatabase?: (voucherId: string, data: VoucherOCRData, depositoId?: string) => Promise<void>;
+  onNewVoucherProcessed?: (params: {
+    url: string;
+    ocrData: VoucherOCRData;
+  }) => Promise<string | null>; // Retorna depositoId o null si falla
 }
 
 // ============================================================================
@@ -170,6 +174,7 @@ export default function VoucherCardUploader({
   disabled = false,
   maxVouchers = 10,
   onSaveToDatabase,
+  onNewVoucherProcessed,
 }: VoucherCardUploaderProps) {
   const [vouchers, setVouchers] = useState<VoucherItem[]>(initialVouchers);
   const [isDragging, setIsDragging] = useState(false);
@@ -179,6 +184,10 @@ export default function VoucherCardUploader({
   // SINCRONIZAR initialVouchers cuando cambia (para persistencia al reabrir)
   // ========================================
   useEffect(() => {
+    console.log('[VoucherCardUploader] initialVouchers changed:', {
+      count: initialVouchers?.length,
+      hasDepositoIds: initialVouchers?.map(v => ({ id: v.id, depositoId: v.depositoId }))
+    });
     if (initialVouchers && initialVouchers.length > 0) {
       setVouchers(initialVouchers);
     }
@@ -274,7 +283,21 @@ export default function VoucherCardUploader({
         }
 
         const withOCR: VoucherItem = { ...withUrl, ocrData, estado };
-        const finalVouchers = vouchersWithUrl.map((v) => (v.id === tempId ? withOCR : v));
+
+        // 5. Persistir en BD si la ficha ya existe
+        let finalVoucher = withOCR;
+        if (onNewVoucherProcessed && url) {
+          try {
+            const depositoId = await onNewVoucherProcessed({ url, ocrData });
+            if (depositoId) {
+              finalVoucher = { ...withOCR, depositoId };
+            }
+          } catch (err) {
+            console.error('[VoucherCardUploader] Error creating deposit:', err);
+          }
+        }
+
+        const finalVouchers = vouchersWithUrl.map((v) => (v.id === tempId ? finalVoucher : v));
         setVouchers(finalVouchers);
         onVouchersChange(finalVouchers);
       } catch (err) {
@@ -290,7 +313,7 @@ export default function VoucherCardUploader({
         onVouchersChange(vouchersWithError);
       }
     },
-    [vouchers, localId, supabase, onVouchersChange]
+    [vouchers, localId, supabase, onVouchersChange, onNewVoucherProcessed]
   );
 
   const handleFileSelect = useCallback(
@@ -520,11 +543,19 @@ function VoucherCard({ voucher, index, onDelete, onUpdate, onSaveToDatabase, dis
   }, [ocrData]);
 
   const handleSaveEdit = async () => {
+    console.log('[VoucherCard] handleSaveEdit called:', {
+      voucherId: voucher.id,
+      depositoId: voucher.depositoId,
+      hasOnSaveToDatabase: !!onSaveToDatabase,
+      editData
+    });
+
     // 1. Actualizar estado local inmediatamente (UX responsive)
     onUpdate(editData);
 
     // 2. Persistir en BD si está disponible y hay depositoId
     if (onSaveToDatabase && voucher.depositoId) {
+      console.log('[VoucherCard] Calling onSaveToDatabase...');
       try {
         await onSaveToDatabase(voucher.id, editData, voucher.depositoId);
         // Toast de éxito se muestra en el padre (FichaInscripcionModal)

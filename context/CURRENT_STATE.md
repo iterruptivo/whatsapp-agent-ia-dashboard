@@ -4,6 +4,666 @@
 
 ---
 
+## SESIÓN 113 - Migración URLs de Imágenes a depositos_ficha (28 Enero 2026)
+
+**Tipo:** Database Migration - Fix Crítico (Completado)
+
+**Objetivo:** Copiar URLs de imágenes del array `comprobante_deposito_fotos` al campo `imagen_url` de la tabla `depositos_ficha` para que las imágenes se vean en el frontend.
+
+### Problema
+
+Las imágenes de comprobantes NO se veían en el frontend porque:
+- URLs están en `clientes_ficha.comprobante_deposito_fotos` (TEXT[] array)
+- La tabla `depositos_ficha.imagen_url` estaba NULL
+- El frontend ahora lee SOLO de la tabla normalizada
+
+### Migración Creada
+
+**Archivo:** `migrations/036_sync_imagen_urls_to_depositos.sql`
+
+**Lógica:**
+```sql
+-- Para cada ficha con comprobante_deposito_fotos
+FOR url_index IN 1..array_length(comprobante_deposito_fotos, 1) LOOP
+  imagen_url_value := comprobante_deposito_fotos[url_index];
+
+  -- Actualizar deposito correspondiente
+  UPDATE depositos_ficha
+  SET imagen_url = imagen_url_value
+  WHERE ficha_id = X AND indice_original = (url_index - 1)
+  -- PostgreSQL arrays son 1-indexed, indice_original es 0-indexed
+END LOOP
+```
+
+**Características:**
+- ✅ Maneja indexación correcta (PostgreSQL 1-based → indice_original 0-based)
+- ✅ Solo actualiza si imagen_url es NULL o diferente
+- ✅ Valida URLs (no null, no vacías, no "undefined")
+- ✅ Reporta registros sin match (URLs sin depósito en tabla)
+- ✅ NO crea registros nuevos, solo actualiza existentes
+
+### Resultados de Ejecución
+
+**Estadísticas:**
+- Total depósitos en tabla: **882**
+- URLs copiadas/actualizadas: **882** (100%)
+- Con URL después de migración: **882**
+- Sin URL después de migración: **0**
+- Registros sin match: **0**
+
+**Estado Final:**
+```
+✅ TODAS las imágenes están sincronizadas
+✅ NO hay discrepancias entre array y tabla
+✅ Frontend puede mostrar las imágenes correctamente
+```
+
+**Ejemplos de URLs copiadas:**
+```
+ID: 8237a721-f698-4beb-9741-811f470a2408
+URL: https://qssefegfzxxurqbzndrs.supabase.co/storage/v1/object/public/documentos-fic...
+Índice: 4
+Updated: 2026-01-28 05:04:37
+
+ID: a0ba932a-2fa2-48ba-bea8-3226074bd85f
+URL: https://qssefegfzxxurqbzndrs.supabase.co/storage/v1/object/public/documentos-fic...
+Índice: 0
+Updated: 2026-01-28 05:04:37
+```
+
+### Verificaciones Post-Migración
+
+**1. Estado general:**
+```sql
+SELECT
+  COUNT(*) FILTER (WHERE imagen_url IS NOT NULL) AS con_url,
+  COUNT(*) FILTER (WHERE imagen_url IS NULL) AS sin_url,
+  COUNT(*) AS total
+FROM depositos_ficha;
+-- Resultado: 882 con_url | 0 sin_url | 882 total
+```
+
+**2. Verificar match array vs tabla:**
+```sql
+SELECT COUNT(*) FROM depositos_ficha d
+INNER JOIN clientes_ficha cf ON cf.id = d.ficha_id
+WHERE d.imagen_url != cf.comprobante_deposito_fotos[d.indice_original + 1];
+-- Resultado: 0 discrepancias
+```
+
+### Impacto
+
+**Frontend:**
+- ✅ Las imágenes de comprobantes ahora se ven correctamente
+- ✅ Reporte Diario de Finanzas muestra vouchers
+- ✅ Gestión de Fichas muestra las imágenes subidas
+- ✅ No requiere cambios en el código del frontend
+
+**Performance:**
+- Sin impacto en queries existentes
+- Actualización de `updated_at` ayuda a tracking
+- índices existentes cubren las consultas
+
+### Lecciones Aprendidas
+
+1. **Tipo de datos:** `comprobante_deposito_fotos` es TEXT[] (PostgreSQL array), NO JSONB
+2. **Indexación:** PostgreSQL arrays son 1-indexed, pero `indice_original` usa 0-based
+3. **Migración incremental:** Mejor migrar por pasos (primero OCR, luego URLs)
+4. **Verificación completa:** Siempre verificar array vs tabla después de migración
+
+---
+
+## SESIÓN 112 - Sincronización JSONB → Tabla depositos_ficha (28 Enero 2026)
+
+**Tipo:** Database Migration + Sync Script (Completado)
+
+**Objetivo:** Crear y ejecutar script SQL que sincronice datos del JSONB `comprobante_deposito_ocr` hacia la tabla normalizada `depositos_ficha`, asegurando que los datos más recientes editados por usuarios estén en la tabla.
+
+### Contexto
+
+El sistema tiene **escritura dual** para depósitos:
+- **JSONB** en `clientes_ficha.comprobante_deposito_ocr` (array de objetos)
+- **Tabla** `depositos_ficha` (normalizada)
+
+**Problema:** El JSONB puede tener datos más recientes porque los usuarios han estado editando y `upsertClienteFicha` actualiza el JSONB. La tabla puede tener datos desactualizados.
+
+### Migración Creada
+
+**Archivo:** `migrations/035_sync_jsonb_to_depositos_table.sql`
+
+**Características:**
+- ✅ Sincroniza SOLO campos con valores en JSONB (no sobrescribe con nulls)
+- ✅ Funciones helper para parseo de fechas (DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD)
+- ✅ Funciones helper para parseo de horas (HH:MM, HH:MM:SS)
+- ✅ NO crea depósitos nuevos, solo actualiza existentes
+- ✅ NO toca campos de validación (validado_finanzas, abono_pago_id, etc.)
+- ✅ Manejo robusto de errores en parseo
+
+### Campos Sincronizados
+
+Del JSONB `comprobante_deposito_ocr[i]` → Tabla `depositos_ficha`:
+- `monto` → `monto`
+- `moneda` → `moneda`
+- `fecha` → `fecha_comprobante` (parseado a DATE)
+- `hora` → `hora_comprobante` (parseado a TIME)
+- `banco` → `banco`
+- `numero_operacion` → `numero_operacion`
+- `depositante` → `depositante`
+
+### Lógica de Sincronización
+
+```sql
+-- Solo actualizar SI:
+-- 1. El JSONB tiene valor (no null, no "null", no "")
+-- 2. El valor es parseado correctamente (fechas/horas válidas)
+-- 3. El depósito ya existe en la tabla (por ficha_id + indice_original)
+
+UPDATE depositos_ficha
+SET
+  monto = CASE WHEN jsonb_monto IS NOT NULL THEN jsonb_monto ELSE monto END,
+  fecha_comprobante = CASE WHEN fecha_parsed IS NOT NULL THEN fecha_parsed ELSE fecha_comprobante END,
+  -- etc...
+WHERE ficha_id = X AND indice_original = Y
+```
+
+### Resultados de Ejecución
+
+**Estadísticas:**
+- Total depósitos en tabla: **880**
+- Depósitos actualizados: **873** (99.2%)
+- Depósitos validados por Finanzas: **22** (no se tocan)
+- Diferencias restantes: **8** (tabla tiene datos, JSONB tiene null)
+
+**Distribución de datos actualizados:**
+```
+ID Ejemplo                              | Monto     | Moneda | Fecha        | Hora
+fbc0fd2d-c6aa-45b6-9c64-202ad85c8da0   | 6,806.00  | PEN    | 2026-01-08   | 12:29:00
+313cc8e1-b7b2-4ecb-b8f5-88ceddc6d23a   | 900.00    | USD    | 2025-12-12   | 16:46:00
+47c4d89e-a949-4bd9-a728-e4528ab33b68   | 6,150.00  | USD    | 2025-12-16   | 15:23:00
+```
+
+### Diferencias Esperadas (8 registros)
+
+Son casos donde la **tabla tiene datos correctos** (editados/validados por usuario) y el **JSONB tiene null**:
+
+| Tabla Monto | JSONB Monto | Tabla Moneda | JSONB Moneda | Razón |
+|-------------|-------------|--------------|--------------|-------|
+| 500.00      | null        | PEN          | null         | Tabla es fuente de verdad |
+| 5,729.73    | 5,729.73    | USD          | null         | Tabla tiene moneda editada |
+| 20,100.00   | null        | USD          | null         | Tabla corrigió OCR |
+
+**Decisión:** Esto es correcto. El script NO sobrescribe datos buenos de la tabla con nulls del JSONB.
+
+### Verificaciones Post-Migración
+
+**1. Total actualizados hoy:**
+```sql
+SELECT COUNT(*) FROM depositos_ficha WHERE updated_at >= CURRENT_DATE;
+-- Resultado: 873
+```
+
+**2. Métricas generales:**
+```sql
+SELECT
+  'Total depósitos en tabla' as metrica, COUNT(*)::TEXT as valor
+FROM depositos_ficha
+UNION ALL
+SELECT 'Depósitos validados por Finanzas', COUNT(*)::TEXT
+FROM depositos_ficha WHERE validado_finanzas = true;
+-- Resultado: 880 total, 22 validados
+```
+
+**3. Diferencias remanentes:**
+```sql
+SELECT COUNT(*) FROM depositos_ficha d
+INNER JOIN clientes_ficha cf ON cf.id = d.ficha_id
+WHERE (cf.comprobante_deposito_ocr->d.indice_original->>'monto')::NUMERIC IS DISTINCT FROM d.monto
+   OR UPPER(cf.comprobante_deposito_ocr->d.indice_original->>'moneda') IS DISTINCT FROM d.moneda;
+-- Resultado: 8 (esperado)
+```
+
+### Funciones Helper Creadas
+
+**1. parse_fecha_ocr(TEXT) → DATE**
+- Soporta: DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD
+- Retorna NULL si formato inválido
+- Maneja casos especiales: "null", "undefined", ""
+
+**2. parse_hora_ocr(TEXT) → TIME**
+- Soporta: HH:MM, HH:MM:SS
+- Retorna NULL si formato inválido
+- Maneja casos especiales: "null", "N/A", ""
+
+**Nota:** Las funciones se mantienen en la BD por si se necesitan en el futuro. Para eliminarlas, descomentar las líneas al final del script SQL.
+
+### Ejecución
+
+```bash
+# Ejecutar migración
+node scripts/run-migration-generic.js migrations/035_sync_jsonb_to_depositos_table.sql
+
+# Verificar resultados
+node scripts/run-migration-generic.js --sql "SELECT COUNT(*) FROM depositos_ficha WHERE updated_at >= NOW() - INTERVAL '5 minutes';"
+```
+
+### Impacto
+
+**Positivo:**
+- ✅ Datos de JSONB (editados por usuarios) ahora en tabla normalizada
+- ✅ Queries más rápidas (no necesitan parsear JSONB)
+- ✅ Integridad referencial con validación de Finanzas
+- ✅ Preparación para deprecar JSONB en el futuro
+
+**Neutral:**
+- 8 registros mantienen datos de tabla (tabla > JSONB en calidad)
+- Funciones helper permanecen en BD (pueden ser útiles después)
+
+**Sin impacto negativo:**
+- NO se perdieron datos
+- NO se sobrescribieron validaciones de Finanzas
+- NO se crearon registros duplicados
+
+### Próximos Pasos Sugeridos
+
+1. ⏳ Monitorear `updated_at` de depósitos en próximas 24h para detectar escrituras duales
+2. ⏳ Considerar deprecar escritura a JSONB (solo mantener lectura para compatibilidad)
+3. ⏳ Implementar trigger que sincronice automáticamente tabla → JSONB (inverso)
+4. ⏳ Planificar eliminación completa del JSONB en 3-6 meses
+
+### Archivos Creados
+
+| Archivo | Propósito |
+|---------|-----------|
+| `migrations/035_sync_jsonb_to_depositos_table.sql` | Script SQL de sincronización |
+
+### Estado Final
+
+- ✅ Script SQL creado y ejecutado exitosamente
+- ✅ 873/880 depósitos sincronizados (99.2%)
+- ✅ 8 diferencias esperadas y validadas
+- ✅ Funciones helper disponibles para futuras migraciones
+- ✅ 0 errores de integridad
+- ✅ Tabla `depositos_ficha` es ahora fuente de verdad actualizada
+
+---
+
+## SESIÓN 111 - Análisis Completo para Migración Sperant → Leads (27 Enero 2026)
+
+**Tipo:** Database Architecture + Migration Planning (Completado)
+
+**Objetivo:** Analizar estructura de tablas `sperant_migrations_leads` (58 cols) y `leads` (27 cols) para diseñar migración completa con mapeo de campos, validaciones y SQL script.
+
+### Análisis de Datos
+
+**Tabla Origen:** `sperant_migrations_leads`
+- Total registros: 9,370 leads
+- Total columnas: 58
+- Completitud de datos: 99.98% (excelente)
+
+**Tabla Destino:** `leads`
+- Total columnas: 27
+- Campos requeridos: 1 (telefono)
+
+**Métricas de Calidad:**
+- Con celular: 9,368 (99.98%)
+- Con teléfono fijo: 1,988 (21.21%)
+- Con proyecto_id: 9,370 (100%)
+- Con vendedor asignado: 9,370 (100%)
+- **Sin teléfono alguno: 2 registros (0.02%)** ← Solo estos se rechazarán
+
+### Distribución de Leads por Estado Original
+
+| Estado Sperant | Cantidad | % | Estado Destino Propuesto |
+|----------------|----------|---|-------------------------|
+| bajo | 4,598 | 49.06% | lead_frio |
+| por contactar | 2,936 | 31.33% | lead_nuevo |
+| intermedio | 1,578 | 16.84% | lead_calificado |
+| desestimado | 121 | 1.29% | descartado |
+| agendado | 104 | 1.11% | visita_agendada |
+| alto | 19 | 0.20% | lead_caliente |
+| - (sin dato) | 9 | 0.10% | lead_nuevo |
+| compró | 2 | 0.02% | ganado |
+| separación | 2 | 0.02% | separacion |
+| visitó | 1 | 0.01% | visita_realizada |
+
+### Top 10 Proyectos con Más Leads
+
+| Proyecto | Leads | % del Total |
+|----------|-------|-------------|
+| Eco Plaza Trujillo | 2,238 | 23.88% |
+| Eco Plaza Faucett | 1,036 | 11.05% |
+| Mercado Trapiche | 1,027 | 10.96% |
+| Eco Plaza Chincha | 889 | 9.49% |
+| Urbanización San Gabriel | 805 | 8.59% |
+| CENTRO COMERCIAL WILSON | 784 | 8.37% |
+| EL MIRADOR DE SANTA CLARA | 591 | 6.31% |
+| Eco Plaza Boulevard | 542 | 5.78% |
+| Mercado San Gabriel | 502 | 5.36% |
+| Mercado Huancayo | 460 | 4.91% |
+
+### Mapeo de Campos Definido
+
+**Campos con Mapeo Directo (3):**
+- email → email
+- proyecto_id → proyecto_id
+- observaciones → observaciones_vendedor
+
+**Campos con Transformación (8):**
+1. `telefono = COALESCE(celular, telefono_principal)` - Priorizar celular
+2. `nombre = TRIM(nombres || ' ' || apellidos)` - Concatenar nombre completo
+3. `estado = CASE nivel_interes_proyecto...` - Mapeo de estados
+4. `utm = JSON_BUILD_OBJECT(...)` - Consolidar UTM
+5. `fecha_captura = TO_TIMESTAMP(...)` - Convertir desde Excel
+6. `vendedor_asignado_id = (SELECT id FROM vendedores WHERE username = usuario_asignado)` - Lookup
+7. `rubro = ocupacion` - Mapeo conceptual
+8. `horario_visita = en_que_horario_comunicar`
+
+**Campos Generados/Default (8):**
+- id → gen_random_uuid()
+- created_at → NOW()
+- updated_at → NOW()
+- intentos_bot → 0
+- notificacion_enviada → false
+- excluido_repulse → false
+- asistio → false
+- estado_al_notificar → NULL
+
+**Campos Descartados (39):**
+Datos sin equivalente en `leads` o no necesarios en el nuevo sistema.
+
+### Documentación Generada
+
+**1. Mapeo Completo de Campos:**
+- Archivo: `docs/arquitectura/migracion-sperant-leads-mapping.md`
+- Contenido:
+  - Transformaciones SQL detalladas
+  - Script SQL completo de migración
+  - Plan de rollback
+  - Validaciones post-migración
+
+**2. Análisis de Datos:**
+- Archivo: `docs/arquitectura/migracion-sperant-leads-analisis-datos.md`
+- Contenido:
+  - Estadísticas de completitud
+  - Distribución por proyecto/estado
+  - Riesgos identificados
+  - Queries de pre-validación (3 obligatorias)
+  - Queries de post-validación
+
+**3. Resumen Ejecutivo:**
+- Archivo: `docs/arquitectura/migracion-sperant-leads-RESUMEN.md`
+- Contenido:
+  - TL;DR (30 segundos)
+  - Plan de ejecución (5 fases, 45 min total)
+  - Checklist de validaciones
+  - Criterios de éxito/falla
+  - Decisiones pendientes
+
+### Validaciones PRE-Migración (Obligatorias)
+
+**1. Validar Proyectos Existen:**
+```sql
+SELECT DISTINCT s.proyecto_id, s.proyecto
+FROM sperant_migrations_leads s
+LEFT JOIN proyectos p ON s.proyecto_id = p.id
+WHERE p.id IS NULL;
+```
+**Esperado:** 0 filas
+
+**2. Validar Vendedores Existen:**
+```sql
+SELECT DISTINCT s.usuario_asignado, COUNT(*) as leads
+FROM sperant_migrations_leads s
+LEFT JOIN vendedores v ON v.username = s.usuario_asignado
+WHERE v.id IS NULL
+GROUP BY s.usuario_asignado;
+```
+**Acción:** Decidir estrategia (crear, NULL, o mapear a default)
+
+**3. Analizar Duplicados:**
+```sql
+SELECT celular, COUNT(*) as veces
+FROM sperant_migrations_leads
+WHERE celular IS NOT NULL
+GROUP BY celular
+HAVING COUNT(*) > 1;
+```
+**Acción:** Decidir si permitir, consolidar, o agregar UNIQUE constraint
+
+### Riesgos Identificados
+
+| Riesgo | Probabilidad | Impacto | Mitigación |
+|--------|--------------|---------|------------|
+| Proyectos no existen | Media | Alto | Pre-validación + crear antes |
+| Vendedores no existen | Media | Medio | Pre-validación + estrategia definida |
+| Duplicados de teléfono | Alta | Medio | Análisis + decisión de negocio |
+| Estados no válidos | Baja | Alto | Verificar enum/constraint de tabla |
+
+### Estimaciones
+
+**Tiempo de Migración:**
+- Registros: 9,370
+- Tiempo estimado: 3-5 minutos
+- Con optimizaciones de índices
+
+**Tamaño de Datos:**
+- ~14 MB de datos nuevos
+- Impacto despreciable en disco
+
+**Plan de Ejecución Completo:**
+1. Pre-Validación: 15 minutos
+2. Backup: 5 minutos
+3. Migración: 5 minutos
+4. Post-Validación: 15 minutos
+5. Limpieza: 5 minutos
+**Total:** 45 minutos
+
+### Decisiones Pendientes (Usuario/PM)
+
+**1. Estrategia para Duplicados:**
+- Opción A: Permitir duplicados (lead en múltiples proyectos)
+- Opción B: Consolidar en un solo registro
+- Opción C: UNIQUE constraint (telefono, proyecto_id)
+
+**2. Vendedores No Encontrados:**
+- Opción A: Crear usuarios genéricos
+- Opción B: Permitir NULL y asignar manualmente después
+- Opción C: Mapear a vendedor por defecto
+
+**3. Mapeo de Estados Extendido:**
+- Verificar que estados como `visita_agendada`, `separacion`, `ganado` existan en tabla `leads`
+
+### Próximos Pasos Inmediatos
+
+**Para Usuario/PM:**
+1. Revisar documentación completa (3 archivos)
+2. Tomar decisiones pendientes (duplicados, vendedores, estados)
+3. Aprobar ejecución (staging primero o directo a producción)
+4. Definir ventana de mantenimiento si es necesaria
+
+**Para DataDev (Database Architect):**
+1. Ejecutar pre-validaciones cuando usuario apruebe
+2. Ajustar script SQL según resultados
+3. Crear archivo SQL final listo para ejecutar
+4. Asistir en ejecución y monitoreo
+
+### Criterios de Éxito
+
+✅ **Migración exitosa si:**
+- ~9,368 registros insertados en `leads`
+- 0 errores de integridad referencial
+- Distribución de estados coherente con origen
+- Dashboard funciona correctamente
+- Todas las queries de post-validación pasan
+
+### Scripts Creados para Ejecución
+
+```bash
+# Ejecutar migración completa
+node scripts/run-migration-generic.js migrations/sperant-to-leads.sql
+
+# Validaciones
+node scripts/run-migration-generic.js --sql "SELECT COUNT(*) FROM leads WHERE created_at >= NOW() - INTERVAL '1 hour';"
+```
+
+### Estado Final
+
+- ✅ Análisis completo de 9,370 leads
+- ✅ Mapeo de 58 → 27 campos definido
+- ✅ 3 documentos técnicos generados
+- ✅ Script SQL de migración preparado (en mapping.md)
+- ✅ Validaciones pre/post definidas
+- ✅ Riesgos identificados y mitigados
+- ✅ Plan de ejecución detallado
+- ⏳ Pendiente: Aprobación de usuario para ejecutar
+- ⏳ Pendiente: Decisiones de negocio (duplicados, vendedores)
+
+---
+
+## SESIÓN 110 - Importación Leads de Sperant a Supabase (27 Enero 2026)
+
+**Tipo:** Database Migration + Import Script (Completado)
+
+**Objetivo:** Importar 9,370 leads desde Excel de Sperant a nueva tabla en Supabase para análisis de migración.
+
+### Resultados de Importación
+
+**Archivo Fuente:**
+- Ruta: `docs/sperant/sperant-09-01--27-01.xlsx`
+- Total registros: 9,370 leads
+- Columnas: 54
+
+**Tabla Creada:**
+- Nombre: `sperant_migrations_leads`
+- Campos: 56 columnas totales (54 datos + id + created_at)
+- Todos los campos como TEXT para preservar datos originales
+- Índices en: nro_documento, email, celular, proyecto
+
+**Estadísticas de Importación:**
+- ✅ Registros insertados: 9,370 (100%)
+- ✅ Tiempo total: 18.6 segundos
+- ✅ Velocidad: 504 registros/segundo
+- ✅ Batches: 19 (500 registros por batch)
+- ✅ Total en BD confirmado: 9,370
+
+**Análisis de Datos:**
+- Documentos únicos: 8,942 (95.4%)
+- Emails únicos: 8,151 (87.0%)
+- Celulares únicos: 8,940 (95.4%)
+- Duplicados detectados: ~428 leads (por documento)
+
+### Implementación
+
+**1. Schema SQL (`scripts/create-sperant-table.sql`)**
+- ✅ Tabla `sperant_migrations_leads` con 56 columnas
+- ✅ Mapeo de columnas Excel → snake_case:
+  - "N°" → `numero`
+  - "Nº Documento" → `nro_documento`
+  - "Usuario asignado" → `usuario_asignado`
+  - "estas_buscando_financiamiento_para_adquirir_tu_local_comercial" → `estas_buscando_financiamiento`
+  - etc. (54 columnas)
+- ✅ 4 índices para búsquedas rápidas
+- ✅ Comentario descriptivo en tabla
+
+**2. Script de Importación (`scripts/import-sperant-leads.js`)**
+- ✅ Lee Excel con librería `xlsx`
+- ✅ Transforma columnas Excel → campos DB
+- ✅ Inserta en batches de 500 para performance
+- ✅ Usa Supabase service role key (bypass RLS)
+- ✅ Muestra progreso en consola con barra visual
+- ✅ Verifica COUNT final en BD
+- ✅ Resumen con estadísticas completas
+
+### Columnas Principales Importadas
+
+| Campo Original | Campo DB | Tipo |
+|----------------|----------|------|
+| N° | numero | TEXT |
+| Fecha Creación | fecha_creacion | TEXT |
+| Nombres | nombres | TEXT |
+| Apellidos | apellidos | TEXT |
+| Nº Documento | nro_documento | TEXT |
+| Email | email | TEXT |
+| Celular | celular | TEXT |
+| Proyecto | proyecto | TEXT |
+| Medio De Captación | medio_captacion_proyecto | TEXT |
+| Usuario asignado | usuario_asignado | TEXT |
+| Utm_Source | utm_source | TEXT |
+| Departamento | departamento | TEXT |
+| Provincia | provincia | TEXT |
+| Distrito | distrito | TEXT |
+
+### Muestra de Datos Importados
+
+```
+ID: 1 | Cinthia Katherine | +51928380194 | cinthia.cathe@gmail.com
+      | Proyecto: EL MIRADOR DE SANTA CLARA | Medio: facebook
+
+ID: 2 | Luis Fernando Ichpas Chávez | +51933334085 | ferichpas@gmail.com
+      | Proyecto: EL MIRADOR DE SANTA CLARA | Medio: facebook
+
+ID: 3 | Rosario Giraldez | +51963892934 | shary7_7@hotmail.com
+      | Proyecto: CENTRO COMERCIAL WILSON | Medio: facebook
+```
+
+### Scripts Creados
+
+| Script | Propósito | Estado |
+|--------|-----------|--------|
+| `scripts/create-sperant-table.sql` | SQL de creación tabla | ✅ Ejecutado |
+| `scripts/import-sperant-leads.js` | Importación desde Excel | ✅ Ejecutado |
+
+### Comandos Ejecutados
+
+```bash
+# Crear tabla
+node scripts/run-migration-generic.js scripts/create-sperant-table.sql
+
+# Importar leads
+node scripts/import-sperant-leads.js
+
+# Verificar importación
+node scripts/run-migration-generic.js --sql "SELECT COUNT(*) FROM sperant_migrations_leads"
+```
+
+### Notas Técnicas
+
+**Mapeo de Columnas:**
+- Todas las columnas del Excel fueron mapeadas exitosamente
+- Nombres largos fueron abreviados manteniendo semántica
+- Caracteres especiales (Nº, ñ) eliminados en nombres de columnas
+- Espacios reemplazados por underscore
+
+**Validación de Duplicados:**
+- No se eliminaron duplicados durante importación
+- Se preservaron todos los datos originales
+- Índices permiten análisis de duplicados post-importación
+
+**Performance:**
+- Batches de 500 registros optiman velocidad vs memoria
+- Total: 19 batches procesados en 18.6 segundos
+- Velocidad promedio: 504 registros/segundo
+
+### Próximos Pasos Posibles
+
+1. ⏳ Análisis de duplicados por documento/email/celular
+2. ⏳ Cruce con tabla `leads` existente del dashboard
+3. ⏳ Identificación de leads no migrados
+4. ⏳ Mapeo de proyectos Sperant → proyectos EcoPlaza
+5. ⏳ Análisis de medios de captación
+6. ⏳ Migración selectiva a tabla `leads` si se requiere
+
+### Estado Final
+
+- ✅ Tabla creada exitosamente
+- ✅ 9,370 leads importados (100%)
+- ✅ Índices funcionando
+- ✅ Verificación de COUNT confirmada
+- ✅ Datos preservados sin pérdida
+- ✅ Scripts reutilizables para futuras importaciones
+
+---
+
 ## SESIÓN 109 - Filtro de Búsqueda por Local en Reporte Diario (26 Enero 2026)
 
 **Tipo:** Feature (Completado)

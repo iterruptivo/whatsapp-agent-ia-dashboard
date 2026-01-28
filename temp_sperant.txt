@@ -1,0 +1,41 @@
+
+╔════════════════════════════════════════════════════════════════╗
+║  SCRIPT DE MIGRACIÓN SQL GENÉRICO - SUPABASE                  ║
+╚════════════════════════════════════════════════════════════════╝
+
+📋 Configuración cargada de .env.local
+   URL: https://qssefegfzxxurqbzndrs.supabase.co
+   Service Role Key: eyJhbGciOiJIUzI1NiIs...
+
+📝 SQL inline detectado
+   Tamaño: 92 caracteres
+   Líneas: 1
+
+🚀 Iniciando ejecución...
+
+⚙️  Método 1: PostgreSQL directo (pg)
+   ✅ Conectado a PostgreSQL
+   ✅ SQL ejecutado correctamente
+   📊 Filas afectadas/retornadas: 17
+
+   Primeras 10 filas:
+┌─────────┬───────────────────────────────┐
+│ (index) │ proyecto                      │
+├─────────┼───────────────────────────────┤
+│ 0       │ 'ALAMEDA SANTO DOMINGO'       │
+│ 1       │ 'CENTRO COMERCIAL CHORRILLOS' │
+│ 2       │ 'CENTRO COMERCIAL WILSON'     │
+│ 3       │ 'Eco Plaza Boulevard'         │
+│ 4       │ 'Eco Plaza Chincha'           │
+│ 5       │ 'Eco Plaza Faucett'           │
+│ 6       │ 'Eco Plaza Trujillo'          │
+│ 7       │ 'EL MIRADOR DE SANTA CLARA'   │
+│ 8       │ 'Lord campo Verde'            │
+│ 9       │ 'Lord Oasis Ica'              │
+└─────────┴───────────────────────────────┘
+   ✅ Conexión cerrada
+
+╔════════════════════════════════════════════════════════════════╗
+║  ✅ MIGRACIÓN COMPLETADA EXITOSAMENTE                         ║
+╚════════════════════════════════════════════════════════════════╝
+

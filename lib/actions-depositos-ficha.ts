@@ -373,6 +373,14 @@ export async function crearDeposito(params: {
       return { success: false, message: 'Error al guardar depósito' };
     }
 
+    // =========================================================================
+    // DEPRECADO: Escritura dual a JSONB
+    // =========================================================================
+    // La tabla depositos_ficha es ahora la ÚNICA fuente de verdad
+    // El JSONB comprobante_deposito_ocr ya NO se actualiza
+    // Solo se mantiene para compatibilidad con código legacy
+    // =========================================================================
+    /*
     // 2. También actualizar JSONB para compatibilidad (escritura dual)
     const { data: ficha } = await supabase
       .from('clientes_ficha')
@@ -425,6 +433,7 @@ export async function crearDeposito(params: {
       console.error('[DEPOSITOS_FICHA] Error actualizando indice_original:', indexError);
       // El depósito ya existe, pero sin índice correcto - no es crítico, continuar
     }
+    */
 
     return {
       success: true,
@@ -478,18 +487,21 @@ export async function updateDepositoFicha(params: {
 
     if (params.monto !== undefined) updateData.monto = params.monto;
     if (params.moneda !== undefined) updateData.moneda = params.moneda;
-    if (params.fechaComprobante !== undefined) {
+    // IMPORTANTE: Solo actualizar fecha_comprobante si hay un valor real (no null/undefined)
+    // Esto evita sobrescribir fechas existentes cuando el JSONB no tiene el valor
+    if (params.fechaComprobante !== undefined && params.fechaComprobante !== null) {
       // Convertir fecha de DD-MM-YYYY a YYYY-MM-DD para el campo DATE de PostgreSQL
       let fechaParaDB = params.fechaComprobante;
-      if (params.fechaComprobante) {
-        const parts = params.fechaComprobante.split('-');
-        if (parts.length === 3 && parts[0].length === 2) {
-          fechaParaDB = `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
+      const parts = params.fechaComprobante.split('-');
+      if (parts.length === 3 && parts[0].length === 2) {
+        fechaParaDB = `${parts[2]}-${parts[1]}-${parts[0]}`;
       }
       updateData.fecha_comprobante = fechaParaDB;
     }
-    if (params.horaComprobante !== undefined) updateData.hora_comprobante = params.horaComprobante;
+    // IMPORTANTE: Solo actualizar hora_comprobante si hay un valor real
+    if (params.horaComprobante !== undefined && params.horaComprobante !== null) {
+      updateData.hora_comprobante = params.horaComprobante;
+    }
     if (params.banco !== undefined) updateData.banco = params.banco;
     if (params.numeroOperacion !== undefined) updateData.numero_operacion = params.numeroOperacion;
     if (params.depositante !== undefined) updateData.depositante = params.depositante;
@@ -505,6 +517,14 @@ export async function updateDepositoFicha(params: {
       return { success: false, message: 'Error al actualizar depósito' };
     }
 
+    // =========================================================================
+    // DEPRECADO: Sincronización a JSONB
+    // =========================================================================
+    // La tabla depositos_ficha es la ÚNICA fuente de verdad
+    // Ya NO sincronizamos cambios al JSONB comprobante_deposito_ocr
+    // El JSONB puede tener datos desactualizados - esto es intencional
+    // =========================================================================
+    /*
     // 4. También actualizar JSONB en clientes_ficha para compatibilidad
     if (depositoActual.ficha_id && depositoActual.indice_original !== null) {
       const { data: ficha } = await supabase
@@ -544,6 +564,7 @@ export async function updateDepositoFicha(params: {
         }
       }
     }
+    */
 
     return { success: true, message: 'Depósito actualizado correctamente' };
   } catch (error) {
@@ -750,6 +771,22 @@ export async function syncDepositosFromFicha(params: {
   depositos: DepositoOCRInput[];
   fotos: string[];
 }): Promise<{ success: boolean; synced: number; message?: string }> {
+  // =============================================================================
+  // DEPRECADO: Esta función ya no debe usarse
+  // =============================================================================
+  // RAZÓN: La tabla depositos_ficha es ahora la única fuente de verdad
+  // El JSONB comprobante_deposito_ocr se mantiene solo para compatibilidad
+  // pero NO debe usarse para actualizar la tabla normalizada
+  //
+  // FLUJO CORRECTO:
+  // 1. Frontend llama a crearDeposito() directamente
+  // 2. crearDeposito() escribe a tabla Y JSONB (escritura dual)
+  // 3. La tabla es la fuente de verdad para todas las lecturas
+  // =============================================================================
+  console.warn('[DEPRECATED] syncDepositosFromFicha() ya no debe usarse. Usar crearDeposito() directamente.');
+  return { success: true, synced: 0, message: 'Función deprecada - tabla es fuente de verdad' };
+
+  /* CÓDIGO ORIGINAL COMENTADO
   try {
     const supabase = await createClient();
 
@@ -778,9 +815,10 @@ export async function syncDepositosFromFicha(params: {
       const imagenUrl = params.fotos[i] || null;
 
       // Verificar si ya existe este depósito en la tabla
+      // Si existe, NO lo actualizamos (la tabla es fuente de verdad)
       const { data: existing } = await supabase
         .from('depositos_ficha')
-        .select('id')
+        .select('id, imagen_url')
         .eq('ficha_id', params.fichaId)
         .eq('indice_original', i)
         .maybeSingle();
@@ -829,16 +867,29 @@ export async function syncDepositosFromFicha(params: {
       };
 
       if (existing) {
-        // Actualizar existente (pero NO cambiar validado_finanzas)
-        const { error } = await supabase
-          .from('depositos_ficha')
-          .update({
-            ...depositoData,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', existing.id);
+        // =====================================================================
+        // DEPÓSITO YA EXISTE EN TABLA - NO SOBRESCRIBIR DATOS
+        // =====================================================================
+        // La tabla normalizada es la fuente de verdad. Los datos que tiene
+        // fueron editados por el usuario (via updateDepositoFicha) y son correctos.
+        // El JSONB puede tener datos desactualizados, NO usarlos para update.
+        //
+        // Solo actualizamos imagen_url si hay una nueva (por si subió nueva imagen)
+        // =====================================================================
+        if (imagenUrl && imagenUrl !== existing.imagen_url) {
+          const { error } = await supabase
+            .from('depositos_ficha')
+            .update({
+              imagen_url: imagenUrl,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', existing.id);
 
-        if (!error) synced++;
+          if (!error) synced++;
+        } else {
+          // Depósito existe y no hay nueva imagen, no hacer nada
+          synced++;
+        }
       } else {
         // Insertar nuevo
         const { error } = await supabase
@@ -857,6 +908,7 @@ export async function syncDepositosFromFicha(params: {
     console.error('[SYNC_DEPOSITOS] Error:', error);
     return { success: false, synced: 0, message: 'Error sincronizando' };
   }
+  */
 }
 
 // =============================================================================

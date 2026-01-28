@@ -1,0 +1,8 @@
+# Archivos Excel de Sperant (NO versionar - contienen datos sensibles)
+*.xlsx
+*.xls
+*.csv
+
+# Archivos temporales
+~$*.xlsx
+~$*.xls

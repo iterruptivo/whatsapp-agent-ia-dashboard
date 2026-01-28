@@ -4,6 +4,62 @@
 
 ---
 
+## SESIÓN 113 - 28 Enero 2026
+
+**Fase:** Database Migration - Fix Crítico Imágenes
+
+**Objetivo:** Migrar URLs de imágenes del array `comprobante_deposito_fotos` al campo `imagen_url` de la tabla `depositos_ficha` para que se vean en el frontend.
+
+**Problema:**
+- Las imágenes de comprobantes NO se veían en el frontend
+- URLs estaban en `clientes_ficha.comprobante_deposito_fotos` (TEXT[] array)
+- La tabla `depositos_ficha.imagen_url` estaba NULL
+- Frontend ahora lee SOLO de la tabla normalizada
+
+**Solución implementada:**
+1. Creada migración `036_sync_imagen_urls_to_depositos.sql`
+2. Script copia URLs del array TEXT[] a la tabla
+3. Maneja indexación correcta: PostgreSQL (1-based) → indice_original (0-based)
+4. Solo actualiza si imagen_url es NULL o diferente
+5. Valida URLs (no null, no vacías, no "undefined")
+
+**Resultados:**
+- ✅ 882 URLs copiadas/actualizadas (100%)
+- ✅ 0 discrepancias entre array y tabla
+- ✅ 0 registros sin match
+- ✅ Frontend ahora muestra las imágenes correctamente
+
+**Lección aprendida:**
+- `comprobante_deposito_fotos` es TEXT[] (PostgreSQL array), NO JSONB
+- PostgreSQL arrays son 1-indexed, pero `indice_original` usa 0-based
+- Migración incremental es mejor: primero OCR (035), luego URLs (036)
+
+**Archivos creados:**
+- `migrations/036_sync_imagen_urls_to_depositos.sql`
+
+**Estado:** COMPLETADO - Imágenes sincronizadas y visibles en frontend
+
+---
+
+## SESIÓN 112 - 28 Enero 2026
+
+**Fase:** Database Migration - Sincronización JSONB → Tabla
+
+**Objetivo:** Sincronizar datos del JSONB `comprobante_deposito_ocr` hacia la tabla normalizada `depositos_ficha`.
+
+**Resultados:**
+- ✅ 873 depósitos actualizados de 880 (99.2%)
+- ✅ Funciones helper para parseo de fechas y horas
+- ✅ NO sobrescribe datos buenos de la tabla con nulls del JSONB
+- ✅ 22 depósitos validados por Finanzas preservados
+
+**Archivos creados:**
+- `migrations/035_sync_jsonb_to_depositos_table.sql`
+
+**Estado:** COMPLETADO
+
+---
+
 ## SESIÓN 101 - 18 Enero 2026
 
 **Fase:** Fix Google Maps API Key + QA Final
