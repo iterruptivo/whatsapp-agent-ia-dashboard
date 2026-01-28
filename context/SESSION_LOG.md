@@ -4,6 +4,58 @@
 
 ---
 
+## SESIÓN 114 - 28 Enero 2026
+
+**Fase:** Database Migration + Code Fix - indice_original NULL
+
+**Objetivo:** Arreglar 66 registros con `indice_original = NULL` que impedían vincular boletas, y prevenir futuros NULLs.
+
+**Problema:**
+- 66 depósitos tenían `indice_original = NULL`
+- La función `crearDeposito()` NO calculaba ni asignaba este campo
+- Sin `indice_original`, no se pueden vincular boletas (requiere índice para identificar depósito)
+
+**Solución implementada:**
+1. **Migración SQL:** `038_fix_null_indice_original.sql`
+   - Para cada ficha, obtiene max(indice_original) existente
+   - Asigna índices secuenciales a los NULL continuando desde max + 1
+   - Ordenados por created_at ASC para respetar orden cronológico
+
+2. **Code Fix:** `lib/actions-depositos-ficha.ts` - función `crearDeposito()`
+   - Antes del INSERT, consulta el max(indice_original) de esa ficha
+   - Calcula proximoIndice = max + 1 (o 0 si no hay depósitos previos)
+   - Inserta CON indice_original asignado
+
+**Resultados:**
+- ✅ 66 registros NULL corregidos
+- ✅ Índices secuenciales (0, 1, 2...) por ficha
+- ✅ 0 registros con NULL después de migración
+- ✅ Futuros depósitos SIEMPRE tendrán indice_original
+
+**Validación:**
+```sql
+-- Total NULL: 0
+SELECT COUNT(*) FROM depositos_ficha WHERE indice_original IS NULL;
+
+-- Distribución correcta (ejemplo):
+-- ficha con 4 depósitos: min_idx=0, max_idx=3 ✅
+-- ficha con 5 depósitos: min_idx=0, max_idx=4 ✅
+-- ficha con 10 depósitos: min_idx=0, max_idx=9 ✅
+```
+
+**Archivos creados/modificados:**
+- `migrations/038_fix_null_indice_original.sql` (nuevo)
+- `lib/actions-depositos-ficha.ts` (modificado - líneas 337-369)
+
+**Impacto:**
+- ✅ Usuarios pueden vincular boletas para esos 66 depósitos
+- ✅ No más problemas de "depósito no encontrado" al vincular
+- ✅ Integridad referencial de la tabla normalizada garantizada
+
+**Estado:** COMPLETADO - indice_original NULL eliminado y prevenido
+
+---
+
 ## SESIÓN 113 - 28 Enero 2026
 
 **Fase:** Database Migration - Fix Crítico Imágenes

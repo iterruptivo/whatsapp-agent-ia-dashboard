@@ -10,9 +10,9 @@
 |---------|-------|
 | **Fase** | Produccion Activa |
 | **Ultimo Deploy** | 17 Diciembre 2025 |
-| **Sesion Actual** | 113 |
+| **Sesion Actual** | 114 |
 | **Branch Activo** | main |
-| **Ultimo Feature** | Migración URLs Imágenes depositos_ficha (28 Ene 2026) |
+| **Ultimo Feature** | Fix indice_original NULL en depositos_ficha (28 Ene 2026) |
 
 ---
 
@@ -71,4 +71,4 @@ Uptime:             99.9%
 
 ---
 
-**Ultima Actualizacion:** 28 Enero 2026 - Migración URLs Imágenes depositos_ficha (Sesión 113)
+**Ultima Actualizacion:** 28 Enero 2026 - Fix indice_original NULL en depositos_ficha (Sesión 114)

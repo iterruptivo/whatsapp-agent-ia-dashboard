@@ -344,13 +344,27 @@ export async function crearDeposito(params: {
       }
     }
 
-    // 1. Insertar en tabla nueva
+    // 1. Obtener el próximo índice secuencial para esta ficha
+    const { data: maxIndiceData } = await supabase
+      .from('depositos_ficha')
+      .select('indice_original')
+      .eq('ficha_id', params.fichaId)
+      .order('indice_original', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+
+    const proximoIndice = maxIndiceData?.indice_original !== null && maxIndiceData?.indice_original !== undefined
+      ? maxIndiceData.indice_original + 1
+      : 0;
+
+    // 2. Insertar en tabla nueva CON indice_original
     const { data: deposito, error: insertError } = await supabase
       .from('depositos_ficha')
       .insert({
         ficha_id: params.fichaId,
         local_id: params.localId,
         proyecto_id: params.proyectoId,
+        indice_original: proximoIndice, // SIEMPRE asignar índice
         monto: params.monto,
         moneda: params.moneda,
         fecha_comprobante: fechaParaDB,

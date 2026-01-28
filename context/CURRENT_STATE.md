@@ -4,6 +4,84 @@
 
 ---
 
+## SESIÓN 114 - Fix indice_original NULL en depositos_ficha (28 Enero 2026)
+
+**Tipo:** Database Migration + Code Fix (Completado)
+
+**Objetivo:** Arreglar 66 registros con `indice_original = NULL` que impedían vincular boletas, y prevenir futuros NULLs.
+
+### Problema
+
+66 depósitos tenían `indice_original = NULL` porque:
+- La función `crearDeposito()` NO calculaba ni asignaba este campo
+- El código asumía que el trigger de base de datos lo asignaría (no existe tal trigger)
+- Sin `indice_original`, no se pueden vincular boletas (requiere este índice para identificar el depósito)
+
+### Solución Implementada
+
+**1. Migración SQL:** `migrations/038_fix_null_indice_original.sql`
+
+Lógica:
+```sql
+-- Para cada ficha, obtiene el max(indice_original) existente
+-- Asigna índices secuenciales a los NULL continuando desde max + 1
+-- Ordenados por created_at ASC para respetar orden cronológico
+```
+
+**Resultados:**
+- ✅ 66 registros NULL corregidos
+- ✅ Índices secuenciales (0, 1, 2...) por ficha
+- ✅ 0 registros con NULL después de migración
+
+**2. Code Fix:** `lib/actions-depositos-ficha.ts`
+
+Cambio en `crearDeposito()`:
+```typescript
+// ANTES: NO se asignaba indice_original
+const { data: deposito } = await supabase
+  .from('depositos_ficha')
+  .insert({ /* sin indice_original */ })
+
+// DESPUÉS: SIEMPRE se asigna
+const { data: maxIndiceData } = await supabase
+  .from('depositos_ficha')
+  .select('indice_original')
+  .eq('ficha_id', params.fichaId)
+  .order('indice_original', { ascending: false, nullsFirst: false })
+  .limit(1)
+
+const proximoIndice = maxIndiceData?.indice_original !== null
+  ? maxIndiceData.indice_original + 1
+  : 0;
+
+const { data: deposito } = await supabase
+  .from('depositos_ficha')
+  .insert({ indice_original: proximoIndice, /* ... */ })
+```
+
+### Validación
+
+```sql
+-- Total NULL: 0
+SELECT COUNT(*) FROM depositos_ficha WHERE indice_original IS NULL;
+
+-- Distribución correcta por ficha (ejemplo):
+ficha_id                                | total | min_idx | max_idx
+----------------------------------------+-------+---------+---------
+00e42f20-e093-478a-bd03-e1f9df3997c1   | 4     | 0       | 3
+01172e19-1793-406c-84ec-a5861bfc5685   | 5     | 0       | 4
+05db967b-c818-440d-809a-b2d94fb1c0ea   | 10    | 0       | 9
+```
+
+### Impacto
+
+- ✅ Ahora los usuarios pueden vincular boletas para esos 66 depósitos
+- ✅ Futuros depósitos SIEMPRE tendrán `indice_original`
+- ✅ La tabla normalizada mantiene su integridad referencial
+- ✅ No más problemas de "depósito no encontrado" al vincular boletas
+
+---
+
 ## SESIÓN 113 - Migración URLs de Imágenes a depositos_ficha (28 Enero 2026)
 
 **Tipo:** Database Migration - Fix Crítico (Completado)
