@@ -785,8 +785,8 @@ export default function FichaInscripcionModal({
             const vouchersFromTable = depositosResult.data.map((dep) => ({
               id: `voucher-${dep.id}`,
               file: null,
-              url: dep.imagen_url,
-              previewUrl: dep.imagen_url,
+              url: dep.imagen_url || undefined,
+              previewUrl: dep.imagen_url || undefined,
               depositoId: dep.id,
               ocrData: {
                 monto: dep.monto ? Number(dep.monto) : undefined,
