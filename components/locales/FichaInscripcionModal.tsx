@@ -782,22 +782,22 @@ export default function FichaInscripcionModal({
             data: depositosResult.data
           });
           if (depositosResult.success && depositosResult.data && depositosResult.data.length > 0) {
-            const vouchersFromTable = depositosResult.data.map((dep) => ({
+            const vouchersFromTable: VoucherItem[] = depositosResult.data.map((dep) => ({
               id: `voucher-${dep.id}`,
               file: null,
-              url: dep.imagen_url || undefined,
-              previewUrl: dep.imagen_url || undefined,
+              url: dep.imagen_url || '',
+              previewUrl: dep.imagen_url || '',
               depositoId: dep.id,
               ocrData: {
-                monto: dep.monto ? Number(dep.monto) : undefined,
-                moneda: (dep.moneda as 'PEN' | 'USD') || undefined,
-                fecha: dep.fecha_comprobante || undefined,
-                hora: dep.hora_comprobante || undefined,
-                banco: dep.banco || undefined,
-                numero_operacion: dep.numero_operacion || undefined,
-                depositante: dep.depositante || undefined,
-                confianza: dep.confianza ? Number(dep.confianza) : undefined,
-                uploaded_at: dep.created_at || undefined,
+                monto: dep.monto ? Number(dep.monto) : null,
+                moneda: (dep.moneda as 'PEN' | 'USD') || null,
+                fecha: dep.fecha_comprobante || null,
+                hora: dep.hora_comprobante || null,
+                banco: dep.banco || null,
+                numero_operacion: dep.numero_operacion || null,
+                depositante: dep.depositante || null,
+                confianza: dep.confianza ? Number(dep.confianza) : 0,
+                uploaded_at: dep.created_at || null,
               },
               estado: 'valido' as const
             }));
@@ -1099,22 +1099,22 @@ export default function FichaInscripcionModal({
     if (existingFicha.id) {
       const depositosResult = await getDepositosFicha(existingFicha.id);
       if (depositosResult.success && depositosResult.data && depositosResult.data.length > 0) {
-        const vouchersFromTable = depositosResult.data.map((dep) => ({
+        const vouchersFromTable: VoucherItem[] = depositosResult.data.map((dep) => ({
           id: `voucher-${dep.id}`,
           file: null,
-          url: dep.imagen_url,
-          previewUrl: dep.imagen_url,
+          url: dep.imagen_url || '',
+          previewUrl: dep.imagen_url || '',
           depositoId: dep.id,
           ocrData: {
-            monto: dep.monto ? Number(dep.monto) : undefined,
-            moneda: (dep.moneda as 'PEN' | 'USD') || undefined,
-            fecha: dep.fecha_comprobante || undefined,
-            hora: dep.hora_comprobante || undefined,
-            banco: dep.banco || undefined,
-            numero_operacion: dep.numero_operacion || undefined,
-            depositante: dep.depositante || undefined,
-            confianza: dep.confianza ? Number(dep.confianza) : undefined,
-            uploaded_at: dep.created_at || undefined,
+            monto: dep.monto ? Number(dep.monto) : null,
+            moneda: (dep.moneda as 'PEN' | 'USD') || null,
+            fecha: dep.fecha_comprobante || null,
+            hora: dep.hora_comprobante || null,
+            banco: dep.banco || null,
+            numero_operacion: dep.numero_operacion || null,
+            depositante: dep.depositante || null,
+            confianza: dep.confianza ? Number(dep.confianza) : 0,
+            uploaded_at: dep.created_at || null,
           },
           estado: 'valido' as const
         }));
